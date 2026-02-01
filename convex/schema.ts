@@ -223,4 +223,28 @@ export default defineSchema({
     .index("by_doctorId", ["doctorId"])
     .index("by_userId", ["userId"])
     .index("by_doctorId_and_rating", ["doctorId", "rating"]),
+
+  // AI Training Data - knowledge base for symptom analysis
+  aiTrainingData: defineTable({
+    category: v.string(), // "symptoms" | "conditions" | "specialties" | "medications" | "general"
+    title: v.string(),
+    title_ar: v.optional(v.string()),
+    content: v.string(), // Main training content
+    content_ar: v.optional(v.string()),
+    keywords: v.optional(v.array(v.string())), // For search/matching
+    metadata: v.optional(v.object({
+      source: v.optional(v.string()),
+      lastReviewed: v.optional(v.string()),
+      specialty: v.optional(v.string()),
+    })),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_category", ["category"])
+    .index("by_isActive", ["isActive"])
+    .searchIndex("search_training", {
+      searchField: "content",
+      filterFields: ["category", "isActive"],
+    }),
 });
