@@ -2,20 +2,25 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // Users table - synced from Clerk
+  // Users table
   users: defineTable({
-    clerkId: v.string(),
+    clerkId: v.optional(v.string()), // Legacy — will be removed after migration
     email: v.string(),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     phone: v.optional(v.string()),
     preferredLanguage: v.optional(v.string()), // "ar" | "en" | "fr"
+    role: v.optional(v.string()), // "patient" | "doctor" | "clinic"
+    specialty: v.optional(v.string()), // for doctors
+    isApproved: v.optional(v.boolean()), // for doctors — default false, requires admin approval
+    wilaya: v.optional(v.string()), // patients can add later
     favoriteDoctorIds: v.optional(v.array(v.id("doctors"))),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_clerkId", ["clerkId"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_role", ["role"])
+    .index("by_role_and_approval", ["role", "isApproved"]),
 
   // Doctors & Clinics
   doctors: defineTable({

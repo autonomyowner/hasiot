@@ -107,6 +107,7 @@ export default function AdminPage() {
           {[
             { id: 'dashboard', label: 'لوحة التحكم' },
             { id: 'doctors', label: 'الأطباء والعيادات' },
+            { id: 'pending', label: 'طلبات الأطباء' },
             { id: 'training', label: 'بيانات تدريب الذكاء الاصطناعي' },
             { id: 'appointments', label: 'المواعيد' },
           ].map(tab => (
@@ -125,6 +126,7 @@ export default function AdminPage() {
         <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && <DashboardTab key="dashboard" />}
           {activeTab === 'doctors' && <DoctorsTab key="doctors" />}
+          {activeTab === 'pending' && <PendingDoctorsTab key="pending" />}
           {activeTab === 'training' && <TrainingTab key="training" />}
           {activeTab === 'appointments' && <AppointmentsTab key="appointments" />}
         </AnimatePresence>
@@ -1072,6 +1074,81 @@ function AppointmentsTab() {
                       <option value="cancelled">ملغى</option>
                       <option value="no_show">لم يحضر</option>
                     </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
+function PendingDoctorsTab() {
+  const pendingDoctors = useQuery(api.admin.queries.listPendingDoctors)
+  const approveDoctor = useMutation(api.users.mutations.approveDoctorAccount)
+  const [approving, setApproving] = useState(null)
+
+  const handleApprove = async (userId) => {
+    setApproving(userId)
+    try {
+      await approveDoctor({ userId })
+    } catch (err) {
+      console.error('Error approving doctor:', err)
+    }
+    setApproving(null)
+  }
+
+  if (pendingDoctors === undefined) return <LoadingState />
+
+  const specialtyLabels = {}
+  SPECIALTIES.forEach(s => { specialtyLabels[s.value] = s.label_ar })
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+    >
+      <div className="admin-section-header">
+        <h2 className="admin-section-title">طلبات تسجيل الأطباء</h2>
+        <span className="admin-badge admin-badge-warning">{pendingDoctors.length} طلب</span>
+      </div>
+
+      {pendingDoctors.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+          لا توجد طلبات معلقة
+        </div>
+      ) : (
+        <div className="admin-table-wrapper">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>البريد الإلكتروني</th>
+                <th>الدور</th>
+                <th>التخصص</th>
+                <th>تاريخ التسجيل</th>
+                <th>إجراء</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingDoctors.map(doctor => (
+                <tr key={doctor._id}>
+                  <td>{`${doctor.firstName || ''} ${doctor.lastName || ''}`.trim() || '-'}</td>
+                  <td>{doctor.email}</td>
+                  <td>{doctor.role === 'doctor' ? 'طبيب' : 'عيادة'}</td>
+                  <td>{specialtyLabels[doctor.specialty] || doctor.specialty || '-'}</td>
+                  <td>{new Date(doctor.createdAt).toLocaleDateString('ar-DZ')}</td>
+                  <td>
+                    <button
+                      className="admin-btn admin-btn-primary admin-btn-small"
+                      onClick={() => handleApprove(doctor._id)}
+                      disabled={approving === doctor._id}
+                    >
+                      {approving === doctor._id ? 'جاري...' : 'موافقة'}
+                    </button>
                   </td>
                 </tr>
               ))}

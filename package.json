@@ -11,14 +11,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@clerk/clerk-react": "^5.60.0",
+    "@convex-dev/better-auth": "^0.10.11",
+    "better-auth": "^1.4.9",
     "convex": "^1.31.7",
     "framer-motion": "^12.29.2",
     "mapbox-gl": "^3.18.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-router-dom": "^7.13.0",
-    "svix": "^1.84.1"
+    "react-router-dom": "^7.13.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

@@ -1,25 +1,21 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
-import { ClerkProvider, useAuth } from '@clerk/clerk-react'
-import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import { ConvexReactClient, ConvexProvider } from 'convex/react'
+import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react'
+import { authClient } from './lib/auth-client'
 import './index.css'
 import App from './App.jsx'
 import MapPage from './MapPage.jsx'
 import AdminPage from './AdminPage.jsx'
+import SignInPage from './pages/SignInPage.jsx'
+import SignUpPage from './pages/SignUpPage.jsx'
+import DoctorDashboard from './pages/DoctorDashboard.jsx'
 
 // Convex client
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL)
 
-// Clerk publishable key
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
-
-if (!clerkPubKey) {
-  console.warn('Missing VITE_CLERK_PUBLISHABLE_KEY - auth features will be disabled')
-}
-
-// Admin routes use ConvexProvider without Clerk (has its own auth)
+// Admin routes use ConvexProvider without auth (has its own session auth)
 function AdminRoutes() {
   return (
     <ConvexProvider client={convex}>
@@ -30,28 +26,18 @@ function AdminRoutes() {
   )
 }
 
-// Main app routes with Clerk auth
+// Main app routes with Better-Auth
 function MainRoutes() {
-  if (!clerkPubKey) {
-    return (
-      <ConvexProvider client={convex}>
-        <Routes>
-          <Route path="/" element={<App />} />
-          <Route path="/map" element={<MapPage />} />
-        </Routes>
-      </ConvexProvider>
-    )
-  }
-
   return (
-    <ClerkProvider publishableKey={clerkPubKey}>
-      <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-        <Routes>
-          <Route path="/" element={<App />} />
-          <Route path="/map" element={<MapPage />} />
-        </Routes>
-      </ConvexProviderWithClerk>
-    </ClerkProvider>
+    <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+      <Routes>
+        <Route path="/" element={<App />} />
+        <Route path="/map" element={<MapPage />} />
+        <Route path="/sign-in" element={<SignInPage />} />
+        <Route path="/sign-up" element={<SignUpPage />} />
+        <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
+      </Routes>
+    </ConvexBetterAuthProvider>
   )
 }
 
@@ -59,7 +45,7 @@ function MainRoutes() {
 function AppRouter() {
   const location = useLocation()
 
-  // Admin routes bypass Clerk entirely
+  // Admin routes bypass auth provider entirely
   if (location.pathname.startsWith('/admin')) {
     return <AdminRoutes />
   }

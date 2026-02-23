@@ -1,53 +1,59 @@
-import { SignInButton, SignUpButton, UserButton, useUser } from '@clerk/clerk-react'
+import { useNavigate } from 'react-router-dom'
+import { useCurrentUser } from '../../hooks/useCurrentUser'
+import { authClient } from '../../lib/auth-client'
 import './AuthButtons.css'
 
 const translations = {
   ar: {
     signIn: 'تسجيل الدخول',
     signUp: 'إنشاء حساب',
-    welcome: 'مرحباً'
+    welcome: 'مرحباً',
+    signOut: 'تسجيل الخروج',
   },
   en: {
     signIn: 'Sign In',
     signUp: 'Sign Up',
-    welcome: 'Welcome'
+    welcome: 'Welcome',
+    signOut: 'Sign Out',
   }
 }
 
 export default function AuthButtons({ lang = 'ar' }) {
-  const { isSignedIn, user, isLoaded } = useUser()
+  const navigate = useNavigate()
+  const { user, isLoading, isAuthenticated } = useCurrentUser()
   const t = translations[lang] || translations.ar
 
-  if (!isLoaded) {
+  if (isLoading) {
     return <div className="auth-loading"></div>
   }
 
-  if (isSignedIn) {
+  if (isAuthenticated && user) {
     return (
       <div className="auth-user">
         <span className="welcome-text">
-          {t.welcome}, {user.firstName || user.username}
+          {t.welcome}, {user.firstName || user.email}
         </span>
-        <UserButton
-          afterSignOutUrl="/"
-          appearance={{
-            elements: {
-              avatarBox: 'user-avatar'
-            }
+        <button
+          className="btn btn-outline-auth"
+          onClick={async () => {
+            await authClient.signOut()
+            window.location.href = '/'
           }}
-        />
+        >
+          {t.signOut}
+        </button>
       </div>
     )
   }
 
   return (
     <div className="auth-buttons">
-      <SignInButton mode="modal">
-        <button className="btn btn-outline-auth">{t.signIn}</button>
-      </SignInButton>
-      <SignUpButton mode="modal">
-        <button className="btn btn-primary-auth">{t.signUp}</button>
-      </SignUpButton>
+      <button className="btn btn-outline-auth" onClick={() => navigate('/sign-in')}>
+        {t.signIn}
+      </button>
+      <button className="btn btn-primary-auth" onClick={() => navigate('/sign-up')}>
+        {t.signUp}
+      </button>
     </div>
   )
 }

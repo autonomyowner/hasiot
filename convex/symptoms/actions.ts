@@ -204,17 +204,15 @@ export const analyzeSymptoms = action({
               : "This analysis is for informational purposes only. Please consult a healthcare professional.";
         }
 
-        // Store the analysis
-        const identity = await ctx.auth.getUserIdentity();
+        // Try to get the current user to store analysis with userId
         let userId = undefined;
-
-        if (identity) {
-          const user = await ctx.runQuery(api.users.queries.getUserByClerkId, {
-            clerkId: identity.subject,
-          });
-          if (user) {
-            userId = user._id;
+        try {
+          const currentUser = await ctx.runQuery(api.users.queries.getCurrentUser, {});
+          if (currentUser) {
+            userId = currentUser._id;
           }
+        } catch {
+          // Not authenticated — store without userId
         }
 
         const analysisId = await ctx.runMutation(api.symptoms.mutations.storeAnalysis, {

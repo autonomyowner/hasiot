@@ -1,5 +1,6 @@
-import { mutation, internalMutation } from "../_generated/server";
+import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { getAuthenticatedAppUser } from "../auth";
 
 // Update user profile
 export const updateProfile = mutation({
@@ -10,18 +11,9 @@ export const updateProfile = mutation({
     preferredLanguage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Not authenticated");
     }
 
     const updates: Record<string, unknown> = {
@@ -43,18 +35,9 @@ export const updateProfile = mutation({
 export const toggleFavorite = mutation({
   args: { doctorId: v.id("doctors") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Not authenticated");
     }
 
     // Verify doctor exists
@@ -68,10 +51,8 @@ export const toggleFavorite = mutation({
 
     let newFavorites: typeof currentFavorites;
     if (isFavorite) {
-      // Remove from favorites
       newFavorites = currentFavorites.filter((id) => id !== args.doctorId);
     } else {
-      // Add to favorites
       newFavorites = [...currentFavorites, args.doctorId];
     }
 
@@ -84,86 +65,94 @@ export const toggleFavorite = mutation({
   },
 });
 
-// Internal mutation to create user from webhook
-export const createFromWebhook = internalMutation({
+// Set user role after signup — called from frontend after authClient.signUp.email()
+export const setUserRole = mutation({
   args: {
-    clerkId: v.string(),
+    role: v.string(), // "patient" | "doctor" | "clinic"
+    specialty: v.optional(v.string()),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+
+    const updates: Record<string, unknown> = {
+      role: args.role,
+      updatedAt: Date.now(),
+    };
+
+    if (args.firstName !== undefined) updates.firstName = args.firstName;
+    if (args.lastName !== undefined) updates.lastName = args.lastName;
+
+    if (args.role === "doctor" || args.role === "clinic") {
+      updates.specialty = args.specialty;
+      updates.isApproved = false; // Requires admin approval
+    }
+
+    await ctx.db.patch(user._id, updates);
+
+    return { success: true };
+  },
+});
+
+// Admin approves a doctor/clinic account
+export const approveDoctorAccount = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser) {
+      throw new Error("User not found");
+    }
+
+    if (targetUser.role !== "doctor" && targetUser.role !== "clinic") {
+      throw new Error("User is not a doctor or clinic");
+    }
+
+    await ctx.db.patch(args.userId, {
+      isApproved: true,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// Create user record — called after signup to create the app user entry
+export const createUser = mutation({
+  args: {
     email: v.string(),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
+    role: v.string(),
+    specialty: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Check if user already exists
     const existing = await ctx.db
       .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
 
     if (existing) {
       return existing._id;
     }
 
     const userId = await ctx.db.insert("users", {
-      clerkId: args.clerkId,
       email: args.email,
       firstName: args.firstName,
       lastName: args.lastName,
-      preferredLanguage: "ar", // Default to Arabic
+      role: args.role,
+      specialty: args.role === "doctor" || args.role === "clinic" ? args.specialty : undefined,
+      isApproved: args.role === "patient" ? undefined : false,
+      preferredLanguage: "ar",
       favoriteDoctorIds: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
 
     return userId;
-  },
-});
-
-// Internal mutation to update user from webhook
-export const updateFromWebhook = internalMutation({
-  args: {
-    clerkId: v.string(),
-    email: v.optional(v.string()),
-    firstName: v.optional(v.string()),
-    lastName: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-
-    if (!user) {
-      return null;
-    }
-
-    const updates: Record<string, unknown> = {
-      updatedAt: Date.now(),
-    };
-
-    if (args.email !== undefined) updates.email = args.email;
-    if (args.firstName !== undefined) updates.firstName = args.firstName;
-    if (args.lastName !== undefined) updates.lastName = args.lastName;
-
-    await ctx.db.patch(user._id, updates);
-
-    return user._id;
-  },
-});
-
-// Internal mutation to delete user from webhook
-export const deleteFromWebhook = internalMutation({
-  args: { clerkId: v.string() },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-
-    if (user) {
-      await ctx.db.delete(user._id);
-      return true;
-    }
-
-    return false;
   },
 });

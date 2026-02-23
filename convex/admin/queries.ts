@@ -156,3 +156,25 @@ export const getSpecialties = query({
     return specialties;
   },
 });
+
+// List pending doctor/clinic accounts awaiting approval
+export const listPendingDoctors = query({
+  args: {},
+  handler: async (ctx) => {
+    const pendingDoctors = await ctx.db
+      .query("users")
+      .withIndex("by_role_and_approval", (q) =>
+        q.eq("role", "doctor").eq("isApproved", false)
+      )
+      .collect();
+
+    const pendingClinics = await ctx.db
+      .query("users")
+      .withIndex("by_role_and_approval", (q) =>
+        q.eq("role", "clinic").eq("isApproved", false)
+      )
+      .collect();
+
+    return [...pendingDoctors, ...pendingClinics];
+  },
+});

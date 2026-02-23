@@ -1,5 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { getAuthenticatedAppUser } from "../auth";
 
 // Get current user's appointments
 export const getUserAppointments = query({
@@ -8,16 +9,7 @@ export const getUserAppointments = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
       return [];
     }
@@ -72,19 +64,14 @@ export const getUserAppointments = query({
 export const getAppointment = query({
   args: { appointmentId: v.id("appointments") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) {
       return null;
     }
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
     const appointment = await ctx.db.get(args.appointmentId);
 
-    if (!appointment || (user && appointment.userId !== user._id)) {
+    if (!appointment || appointment.userId !== user._id) {
       return null;
     }
 
@@ -165,16 +152,7 @@ export const getAvailableSlots = query({
 export const getUpcomingCount = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return 0;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
       return 0;
     }

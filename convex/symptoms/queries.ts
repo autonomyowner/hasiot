@@ -1,5 +1,6 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { getAuthenticatedAppUser } from "../auth";
 
 // Get user's symptom analysis history
 export const getMyAnalyses = query({
@@ -7,16 +8,7 @@ export const getMyAnalyses = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
       return [];
     }
@@ -46,19 +38,9 @@ export const getAnalysis = query({
     }
 
     // Check if user has access
-    const identity = await ctx.auth.getUserIdentity();
-
     if (analysis.userId) {
       // If analysis has a userId, verify ownership
-      if (!identity) {
-        return null;
-      }
-
-      const user = await ctx.db
-        .query("users")
-        .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-        .unique();
-
+      const user = await getAuthenticatedAppUser(ctx);
       if (!user || analysis.userId !== user._id) {
         return null;
       }

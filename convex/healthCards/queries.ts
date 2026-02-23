@@ -1,20 +1,12 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { getAuthenticatedAppUser } from "../auth";
 
 // Get current user's health card
 export const getMyHealthCard = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
       return null;
     }
@@ -62,22 +54,13 @@ export const getHealthCardByNumber = query({
     }
 
     // Without PIN, check if requester has permission
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const requesterUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
-    if (!requesterUser) {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) {
       return null;
     }
 
     // Check if this is the owner
-    if (card.userId === requesterUser._id) {
+    if (card.userId === user._id) {
       return card;
     }
 
@@ -94,16 +77,7 @@ export const getMyMedicalRecords = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
       return [];
     }
@@ -155,16 +129,7 @@ export const getMyMedicalRecords = query({
 export const getMedicalRecord = query({
   args: { recordId: v.id("medicalRecords") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
       return null;
     }
@@ -196,16 +161,7 @@ export const getMedicalRecord = query({
 export const getRecordsCounts = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return {};
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
       return {};
     }

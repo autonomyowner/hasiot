@@ -1,5 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { getAuthenticatedAppUser } from "../auth";
 
 // Generate a unique card number
 function generateCardNumber(): string {
@@ -40,18 +41,9 @@ export const createHealthCard = mutation({
     emergencyAccessPin: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Not authenticated");
     }
 
     // Check if user already has a health card
@@ -121,18 +113,9 @@ export const updateHealthCard = mutation({
     emergencyAccessPin: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Not authenticated");
     }
 
     const card = await ctx.db
@@ -195,18 +178,9 @@ export const addMedicalRecord = mutation({
     attachmentUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Not authenticated");
     }
 
     // Get or create health card
@@ -259,18 +233,9 @@ export const addMedicalRecord = mutation({
 export const deleteMedicalRecord = mutation({
   args: { recordId: v.id("medicalRecords") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Not authenticated");
     }
 
     const record = await ctx.db.get(args.recordId);
@@ -292,18 +257,9 @@ export const grantSharePermission = mutation({
     expiresInDays: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Not authenticated");
     }
 
     const card = await ctx.db
@@ -352,18 +308,9 @@ export const grantSharePermission = mutation({
 export const revokeSharePermission = mutation({
   args: { doctorId: v.id("doctors") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Not authenticated");
     }
 
     const card = await ctx.db

@@ -27,6 +27,7 @@ npx convex deploy    # Deploy Convex to production
 - `src/main.jsx` - App entry point with Clerk + Convex providers (conditional auth based on env vars)
 - `src/App.jsx` - Main landing page with all sections, includes `translations` object for AR/EN
 - `src/MapPage.jsx` - Interactive map with Mapbox GL for doctor/clinic directory
+- `src/AdminPage.jsx` - Admin dashboard (Arabic RTL) with own session auth
 - `src/components/` - Reusable UI components
   - `auth/AuthButtons.jsx` - Sign in/up buttons with Clerk
   - `symptoms/SymptomChecker.jsx` - Conversational AI symptom analysis chat
@@ -36,9 +37,12 @@ npx convex deploy    # Deploy Convex to production
 
 ```
 convex/
-├── schema.ts              # Database schema (8 tables)
+├── schema.ts              # Database schema (9 tables)
 ├── auth.config.ts         # Clerk JWT verification config
 ├── http.ts                # HTTP routes for webhooks
+├── admin/
+│   ├── queries.ts         # getDashboardStats, listAllDoctors, listTrainingData
+│   └── mutations.ts       # CRUD for doctors and AI training data (no auth required)
 ├── users/
 │   ├── queries.ts         # getCurrentUser, getFavorites, isFavorite
 │   └── mutations.ts       # updateProfile, toggleFavorite, webhook handlers
@@ -71,6 +75,7 @@ convex/
 | `medicalRecords` | Prescriptions, lab results, etc. |
 | `symptomAnalyses` | AI analysis history |
 | `reviews` | Doctor ratings & reviews |
+| `aiTrainingData` | Knowledge base for AI symptom checker |
 
 ## Key Technologies
 
@@ -118,6 +123,13 @@ OPENROUTER_API_KEY=sk-or-xxx
 
 Frontend hosted on Vercel with environment variables for each deployment.
 
+## Admin Panel
+
+- **URL**: `/admin`
+- **Auth**: Simple session-based (not Clerk) - Username: `admin`, Password: `admin2026`
+- **Features**: Dashboard stats, doctor/clinic CRUD, AI training data management, appointments
+- **Note**: Admin route bypasses Clerk provider in `main.jsx` to avoid domain restrictions on localhost
+
 ## Design Constraints
 
 - No icons in UI (per project requirements)
@@ -125,3 +137,4 @@ Frontend hosted on Vercel with environment variables for each deployment.
 - Instrument Serif for headings, Outfit for body text, Cairo for Arabic
 - Bilingual: Arabic (RTL) and English (LTR) with language toggle
 - All translatable text in `translations` objects at component level
+- Admin panel is Arabic-only with full RTL support

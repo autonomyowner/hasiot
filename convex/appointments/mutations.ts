@@ -1,5 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { getAuthenticatedAppUser } from "../auth";
 
 // Book an appointment
 export const bookAppointment = mutation({
@@ -12,18 +13,9 @@ export const bookAppointment = mutation({
     symptomAnalysisId: v.optional(v.id("symptomAnalyses")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Not authenticated");
     }
 
     // Verify doctor exists and is active
@@ -81,18 +73,9 @@ export const cancelAppointment = mutation({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Not authenticated");
     }
 
     const appointment = await ctx.db.get(args.appointmentId);
@@ -131,18 +114,9 @@ export const rescheduleAppointment = mutation({
     newTime: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .unique();
-
+    const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("User not found");
+      throw new Error("Not authenticated");
     }
 
     const appointment = await ctx.db.get(args.appointmentId);
