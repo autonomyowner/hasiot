@@ -170,6 +170,84 @@ export const getUpcomingCount = query({
   },
 });
 
+// Get doctor's appointments (for doctor dashboard)
+export const getDoctorAppointments = query({
+  args: {
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user || (user.role !== "doctor" && user.role !== "clinic")) {
+      return [];
+    }
+
+    // Find the doctor record linked to this user's email
+    const doctors = await ctx.db.query("doctors").collect();
+    const doctor = doctors.find(
+      (d) => d.email === user.email
+    );
+
+    if (!doctor) {
+      // Fallback: get all appointments where doctor name matches
+      return [];
+    }
+
+    let appointments;
+    if (args.status) {
+      appointments = await ctx.db
+        .query("appointments")
+        .withIndex("by_doctorId", (q) => q.eq("doctorId", doctor._id))
+        .order("desc")
+        .collect();
+      appointments = appointments.filter((a) => a.status === args.status);
+    } else {
+      appointments = await ctx.db
+        .query("appointments")
+        .withIndex("by_doctorId", (q) => q.eq("doctorId", doctor._id))
+        .order("desc")
+        .collect();
+    }
+
+    // Enrich with patient info
+    const enriched = await Promise.all(
+      appointments.map(async (apt) => {
+        const patient = await ctx.db.get(apt.userId);
+        return {
+          ...apt,
+          patient: patient
+            ? {
+                _id: patient._id,
+                firstName: patient.firstName,
+                lastName: patient.lastName,
+                email: patient.email,
+                phone: patient.phone,
+              }
+            : null,
+        };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+// Get doctor's schedule for a specific week
+export const getDoctorSchedule = query({
+  args: {
+    doctorId: v.id("doctors"),
+  },
+  handler: async (ctx, args) => {
+    const doctor = await ctx.db.get(args.doctorId);
+    if (!doctor) {
+      return null;
+    }
+    return {
+      workingHours: doctor.workingHours || [],
+      consultationFee: doctor.consultationFee,
+    };
+  },
+});
+
 // Helper function to get day of week from date string
 function getDayOfWeek(dateStr: string): string {
   const days = [

@@ -43,6 +43,7 @@ export const updateProfile = mutation({
     lastName: v.optional(v.string()),
     phone: v.optional(v.string()),
     preferredLanguage: v.optional(v.string()),
+    wilaya: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
@@ -58,6 +59,7 @@ export const updateProfile = mutation({
     if (args.lastName !== undefined) updates.lastName = args.lastName;
     if (args.phone !== undefined) updates.phone = args.phone;
     if (args.preferredLanguage !== undefined) updates.preferredLanguage = args.preferredLanguage;
+    if (args.wilaya !== undefined) updates.wilaya = args.wilaya;
 
     await ctx.db.patch(user._id, updates);
 

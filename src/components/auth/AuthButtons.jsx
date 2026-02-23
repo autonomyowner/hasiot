@@ -9,12 +9,14 @@ const translations = {
     signUp: 'إنشاء حساب',
     welcome: 'مرحباً',
     signOut: 'تسجيل الخروج',
+    dashboard: 'لوحة التحكم',
   },
   en: {
     signIn: 'Sign In',
     signUp: 'Sign Up',
     welcome: 'Welcome',
     signOut: 'Sign Out',
+    dashboard: 'Dashboard',
   }
 }
 
@@ -28,11 +30,18 @@ export default function AuthButtons({ lang = 'ar' }) {
   }
 
   if (isAuthenticated && user) {
+    const dashboardPath = user.role === 'doctor' || user.role === 'clinic'
+      ? '/doctor-dashboard'
+      : '/dashboard'
+
     return (
       <div className="auth-user">
-        <span className="welcome-text">
-          {t.welcome}, {user.firstName || user.email}
-        </span>
+        <button
+          className="btn btn-primary-auth"
+          onClick={() => navigate(dashboardPath)}
+        >
+          {t.dashboard}
+        </button>
         <button
           className="btn btn-outline-auth"
           onClick={async () => {

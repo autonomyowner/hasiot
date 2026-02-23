@@ -182,6 +182,111 @@ async function updateDoctorRating(ctx: { db: any }, doctorId: string) {
   });
 }
 
+// Save doctor's working hours schedule
+export const saveWorkingHours = mutation({
+  args: {
+    doctorId: v.id("doctors"),
+    workingHours: v.array(
+      v.object({
+        day: v.string(),
+        open: v.string(),
+        close: v.string(),
+        isClosed: v.optional(v.boolean()),
+      })
+    ),
+    consultationFee: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user || (user.role !== "doctor" && user.role !== "clinic")) {
+      throw new Error("Not authorized");
+    }
+
+    const doctor = await ctx.db.get(args.doctorId);
+    if (!doctor) {
+      throw new Error("Doctor not found");
+    }
+
+    const updates: Record<string, unknown> = {
+      workingHours: args.workingHours,
+      updatedAt: Date.now(),
+    };
+
+    if (args.consultationFee !== undefined) {
+      updates.consultationFee = args.consultationFee;
+    }
+
+    await ctx.db.patch(args.doctorId, updates);
+
+    return { success: true };
+  },
+});
+
+// Block specific dates (create availability schedule entries with all slots unavailable)
+export const blockDate = mutation({
+  args: {
+    doctorId: v.id("doctors"),
+    date: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user || (user.role !== "doctor" && user.role !== "clinic")) {
+      throw new Error("Not authorized");
+    }
+
+    // Check if schedule already exists for this date
+    const existing = await ctx.db
+      .query("availabilitySchedules")
+      .withIndex("by_doctorId_and_date", (q) =>
+        q.eq("doctorId", args.doctorId).eq("date", args.date)
+      )
+      .unique();
+
+    if (existing) {
+      // Mark all slots as unavailable
+      await ctx.db.patch(existing._id, {
+        slots: existing.slots.map((s) => ({ ...s, isAvailable: false })),
+      });
+    } else {
+      // Create empty schedule (no slots = day off)
+      await ctx.db.insert("availabilitySchedules", {
+        doctorId: args.doctorId,
+        date: args.date,
+        slots: [],
+      });
+    }
+
+    return { success: true };
+  },
+});
+
+// Unblock a date
+export const unblockDate = mutation({
+  args: {
+    doctorId: v.id("doctors"),
+    date: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user || (user.role !== "doctor" && user.role !== "clinic")) {
+      throw new Error("Not authorized");
+    }
+
+    const existing = await ctx.db
+      .query("availabilitySchedules")
+      .withIndex("by_doctorId_and_date", (q) =>
+        q.eq("doctorId", args.doctorId).eq("date", args.date)
+      )
+      .unique();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+
+    return { success: true };
+  },
+});
+
 // Seed doctors (for development)
 export const seedDoctors = internalMutation({
   args: {},

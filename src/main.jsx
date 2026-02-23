@@ -11,6 +11,7 @@ import AdminPage from './AdminPage.jsx'
 import SignInPage from './pages/SignInPage.jsx'
 import SignUpPage from './pages/SignUpPage.jsx'
 import DoctorDashboard from './pages/DoctorDashboard.jsx'
+import PatientDashboard from './pages/PatientDashboard.jsx'
 
 // Convex client
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL)
@@ -35,6 +36,7 @@ function MainRoutes() {
         <Route path="/map" element={<MapPage />} />
         <Route path="/sign-in" element={<SignInPage />} />
         <Route path="/sign-up" element={<SignUpPage />} />
+        <Route path="/dashboard" element={<PatientDashboard />} />
         <Route path="/doctor-dashboard" element={<DoctorDashboard />} />
       </Routes>
     </ConvexBetterAuthProvider>
