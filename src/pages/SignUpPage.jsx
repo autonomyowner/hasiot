@@ -114,12 +114,14 @@ export default function SignUpPage() {
       setSuccess(true)
       setLoading(false)
 
-      // Patient gets immediate access
-      if (role === 'patient') {
-        setTimeout(() => {
+      // Redirect based on role
+      setTimeout(() => {
+        if (role === 'doctor') {
+          window.location.href = '/doctor-dashboard'
+        } else {
           window.location.href = '/'
-        }, 1500)
-      }
+        }
+      }, 1500)
     } catch (err) {
       setError(t.error)
       setLoading(false)
