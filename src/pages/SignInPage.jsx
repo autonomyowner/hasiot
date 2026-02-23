@@ -6,7 +6,7 @@ import './AuthPages.css'
 const translations = {
   ar: {
     title: 'تسجيل الدخول',
-    subtitle: 'مرحباً بك مجدداً في طبرة',
+    subtitle: 'مرحباً بك مجدداً في تبرا',
     email: 'البريد الإلكتروني',
     password: 'كلمة المرور',
     signIn: 'تسجيل الدخول',
@@ -69,7 +69,7 @@ export default function SignInPage() {
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <Link to="/" className="auth-logo">طبرة</Link>
+            <Link to="/" className="auth-logo">تبرا</Link>
             <h1 className="auth-title">{t.title}</h1>
             <p className="auth-subtitle">{t.subtitle}</p>
           </div>

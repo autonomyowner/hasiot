@@ -25,7 +25,7 @@ const SPECIALTIES = [
 const translations = {
   ar: {
     title: 'إنشاء حساب',
-    subtitle: 'انضم إلى طبرة اليوم',
+    subtitle: 'انضم إلى تبرا اليوم',
     patient: 'أنا مريض',
     doctor: 'أنا طبيب',
     firstName: 'الاسم الأول',
@@ -134,7 +134,7 @@ export default function SignUpPage() {
         <div className="auth-container">
           <div className="auth-card">
             <div className="auth-header">
-              <Link to="/" className="auth-logo">طبرة</Link>
+              <Link to="/" className="auth-logo">تبرا</Link>
               <h1 className="auth-title">{t.pendingTitle}</h1>
             </div>
             <div className="auth-success">
@@ -158,7 +158,7 @@ export default function SignUpPage() {
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <Link to="/" className="auth-logo">طبرة</Link>
+            <Link to="/" className="auth-logo">تبرا</Link>
             <h1 className="auth-title">{t.title}</h1>
             <p className="auth-subtitle">{t.subtitle}</p>
           </div>

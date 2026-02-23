@@ -33,7 +33,7 @@ export default function DoctorDashboard() {
         <div className="auth-container">
           <div className="auth-card">
             <div className="auth-header">
-              <Link to="/" className="auth-logo">طبرة</Link>
+              <Link to="/" className="auth-logo">تبرا</Link>
               <h1 className="auth-title">حسابك قيد المراجعة</h1>
             </div>
             <div className="auth-success">
@@ -55,7 +55,7 @@ export default function DoctorDashboard() {
     <div className="doctor-dashboard" dir="rtl">
       <header className="doctor-header">
         <div className="doctor-header-inner">
-          <Link to="/" className="auth-logo">طبرة</Link>
+          <Link to="/" className="auth-logo">تبرا</Link>
           <div>
             <span style={{ color: '#6b7280', marginLeft: '1rem' }}>
               مرحباً، د. {user.firstName || user.email}
