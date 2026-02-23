@@ -2,6 +2,40 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 
+// Generate an upload URL for CV file
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+// Save CV file reference to user record
+export const saveCvFile = mutation({
+  args: { fileId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+
+    if (user.role !== "doctor" && user.role !== "clinic") {
+      throw new Error("Only doctors/clinics can upload CVs");
+    }
+
+    await ctx.db.patch(user._id, {
+      cvFileId: args.fileId,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
 // Update user profile
 export const updateProfile = mutation({
   args: {

@@ -1129,6 +1129,7 @@ function PendingDoctorsTab() {
                 <th>البريد الإلكتروني</th>
                 <th>الدور</th>
                 <th>التخصص</th>
+                <th>السيرة الذاتية</th>
                 <th>تاريخ التسجيل</th>
                 <th>إجراء</th>
               </tr>
@@ -1140,12 +1141,20 @@ function PendingDoctorsTab() {
                   <td>{doctor.email}</td>
                   <td>{doctor.role === 'doctor' ? 'طبيب' : 'عيادة'}</td>
                   <td>{specialtyLabels[doctor.specialty] || doctor.specialty || '-'}</td>
+                  <td>
+                    {doctor.cvFileId ? (
+                      <CvDownloadLink fileId={doctor.cvFileId} />
+                    ) : (
+                      <span style={{ color: '#ef4444', fontSize: '0.8125rem' }}>لم يُرفع بعد</span>
+                    )}
+                  </td>
                   <td>{new Date(doctor.createdAt).toLocaleDateString('ar-DZ')}</td>
                   <td>
                     <button
                       className="admin-btn admin-btn-primary admin-btn-small"
                       onClick={() => handleApprove(doctor._id)}
-                      disabled={approving === doctor._id}
+                      disabled={approving === doctor._id || !doctor.cvFileId}
+                      title={!doctor.cvFileId ? 'يجب رفع السيرة الذاتية أولاً' : ''}
                     >
                       {approving === doctor._id ? 'جاري...' : 'موافقة'}
                     </button>
@@ -1157,6 +1166,24 @@ function PendingDoctorsTab() {
         </div>
       )}
     </motion.div>
+  )
+}
+
+function CvDownloadLink({ fileId }) {
+  const cvUrl = useQuery(api.users.queries.getCvUrl, { fileId })
+
+  if (!cvUrl) return <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>جاري التحميل...</span>
+
+  return (
+    <a
+      href={cvUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="admin-btn admin-btn-secondary admin-btn-small"
+      style={{ textDecoration: 'none', display: 'inline-block' }}
+    >
+      عرض CV
+    </a>
   )
 }
 

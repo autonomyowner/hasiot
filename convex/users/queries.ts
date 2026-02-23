@@ -40,3 +40,11 @@ export const isFavorite = query({
     return user.favoriteDoctorIds.includes(args.doctorId);
   },
 });
+
+// Get CV download URL (for admin review)
+export const getCvUrl = query({
+  args: { fileId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.fileId);
+  },
+});

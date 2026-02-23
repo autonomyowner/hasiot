@@ -13,6 +13,7 @@ export default defineSchema({
     role: v.optional(v.string()), // "patient" | "doctor" | "clinic"
     specialty: v.optional(v.string()), // for doctors
     isApproved: v.optional(v.boolean()), // for doctors — default false, requires admin approval
+    cvFileId: v.optional(v.id("_storage")), // CV/document uploaded by doctor for admin review
     wilaya: v.optional(v.string()), // patients can add later
     favoriteDoctorIds: v.optional(v.array(v.id("doctors"))),
     createdAt: v.number(),
