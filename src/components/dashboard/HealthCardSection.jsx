@@ -3,7 +3,7 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { motion, AnimatePresence } from 'framer-motion'
 import { QRCodeSVG } from 'qrcode.react'
-import html2canvas from 'html2canvas'
+import { domToPng } from 'modern-screenshot'
 
 const translations = {
   ar: {
@@ -158,14 +158,14 @@ export default function HealthCardSection({ lang = 'ar', user }) {
     if (!cardRef.current) return
     setDownloading(true)
     try {
-      const canvas = await html2canvas(cardRef.current, {
+      await document.fonts.ready
+      const dataUrl = await domToPng(cardRef.current, {
         scale: 3,
-        backgroundColor: null,
-        useCORS: true,
+        backgroundColor: 'transparent',
       })
       const link = document.createElement('a')
       link.download = `tabra-health-card-${healthCard.cardNumber}.png`
-      link.href = canvas.toDataURL('image/png')
+      link.href = dataUrl
       link.click()
     } catch (err) {
       console.error('Download error:', err)
