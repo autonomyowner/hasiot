@@ -25,6 +25,12 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       requireEmailVerification: false,
       minPasswordLength: 8,
     },
+    advanced: {
+      defaultCookieAttributes: {
+        sameSite: "none",
+        secure: true,
+      },
+    },
     plugins: [convex({ authConfig })],
   });
 };
