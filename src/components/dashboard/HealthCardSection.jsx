@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { motion, AnimatePresence } from 'framer-motion'
+import { QRCodeSVG } from 'qrcode.react'
+import html2canvas from 'html2canvas'
 
 const translations = {
   ar: {
@@ -48,6 +50,10 @@ const translations = {
     addCondition: 'إضافة حالة مزمنة...',
     addMed: 'إضافة دواء',
     removeMed: 'حذف',
+    downloadCard: 'تحميل البطاقة',
+    printCard: 'طباعة',
+    downloading: 'جاري التحميل...',
+    scanQR: 'امسح الرمز لعرض بياناتك الطبية',
   },
   en: {
     title: 'Health Card',
@@ -93,6 +99,10 @@ const translations = {
     addCondition: 'Add condition...',
     addMed: 'Add medication',
     removeMed: 'Remove',
+    downloadCard: 'Download Card',
+    printCard: 'Print',
+    downloading: 'Downloading...',
+    scanQR: 'Scan to view medical info',
   }
 }
 
@@ -137,6 +147,48 @@ export default function HealthCardSection({ lang = 'ar', user }) {
 
   const [allergyInput, setAllergyInput] = useState('')
   const [conditionInput, setConditionInput] = useState('')
+  const [downloading, setDownloading] = useState(false)
+  const cardRef = useRef(null)
+
+  const cardUrl = healthCard?.cardNumber
+    ? `https://tabra.space/card/${healthCard.cardNumber}`
+    : ''
+
+  const handleDownload = useCallback(async () => {
+    if (!cardRef.current) return
+    setDownloading(true)
+    try {
+      const canvas = await html2canvas(cardRef.current, {
+        scale: 3,
+        backgroundColor: null,
+        useCORS: true,
+      })
+      const link = document.createElement('a')
+      link.download = `tabra-health-card-${healthCard.cardNumber}.png`
+      link.href = canvas.toDataURL('image/png')
+      link.click()
+    } catch (err) {
+      console.error('Download error:', err)
+    }
+    setDownloading(false)
+  }, [healthCard?.cardNumber])
+
+  const handlePrint = useCallback(() => {
+    if (!cardRef.current) return
+    const printWin = window.open('', '_blank')
+    if (!printWin) return
+    const html = cardRef.current.outerHTML
+    printWin.document.write(`
+      <html><head><style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: white; }
+        @media print { body { background: white; } }
+      </style></head><body>${html}</body></html>
+    `)
+    printWin.document.close()
+    printWin.focus()
+    setTimeout(() => { printWin.print(); printWin.close() }, 300)
+  }, [])
 
   const initEditForm = () => {
     if (healthCard) {
@@ -313,34 +365,69 @@ export default function HealthCardSection({ lang = 'ar', user }) {
         </div>
       ) : (
         <>
-          {/* Visual Card */}
-          <div className="health-card-visual">
-            <div className="hc-header">
-              <span className="hc-logo">تبرا</span>
-              <span className="hc-number" onClick={copyCardNumber} title={t.cardNumber}>
-                {healthCard.cardNumber}
-                {copied ? ' ✓' : ' 📋'}
-              </span>
+          {/* ID-Style Health Card */}
+          <div className="health-card-visual health-card-id" ref={cardRef}>
+            <div className="hc-id-left">
+              <div className="hc-header">
+                <span className="hc-logo">tabra</span>
+                <span className="hc-badge">{isRTL ? 'البطاقة الصحية' : 'Health Card'}</span>
+              </div>
+              <div className="hc-name">
+                {user?.firstName} {user?.lastName}
+              </div>
+              <div className="hc-number-row" onClick={copyCardNumber} title={t.cardNumber}>
+                <span className="hc-number">{healthCard.cardNumber}</span>
+                {copied && <span className="hc-copied">{t.copied}</span>}
+              </div>
+              <div className="hc-details">
+                {healthCard.bloodType && (
+                  <div className="hc-detail-item">
+                    <span className="hc-detail-label">{t.bloodType}</span>
+                    <span className="hc-detail-value hc-blood">{healthCard.bloodType}</span>
+                  </div>
+                )}
+                {healthCard.emergencyContact?.name && (
+                  <div className="hc-detail-item">
+                    <span className="hc-detail-label">{t.emergencyContact}</span>
+                    <span className="hc-detail-value">
+                      {healthCard.emergencyContact.name}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="hc-name">
-              {user?.firstName} {user?.lastName}
+            <div className="hc-id-right">
+              <div className="hc-qr-wrapper">
+                <QRCodeSVG
+                  value={cardUrl}
+                  size={88}
+                  bgColor="transparent"
+                  fgColor="#ffffff"
+                  level="M"
+                />
+              </div>
+              <span className="hc-qr-hint">{t.scanQR}</span>
             </div>
-            <div className="hc-details">
-              {healthCard.bloodType && (
-                <div className="hc-detail-item">
-                  <span className="hc-detail-label">{t.bloodType}</span>
-                  <span className="hc-detail-value">{healthCard.bloodType}</span>
-                </div>
-              )}
-              {healthCard.emergencyContact?.name && (
-                <div className="hc-detail-item">
-                  <span className="hc-detail-label">{t.emergencyContact}</span>
-                  <span className="hc-detail-value">
-                    {healthCard.emergencyContact.name} · {healthCard.emergencyContact.phone}
-                  </span>
-                </div>
-              )}
-            </div>
+          </div>
+
+          {/* Card Actions */}
+          <div className="hc-card-actions">
+            <button className="btn-secondary" onClick={handleDownload} disabled={downloading}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              {downloading ? t.downloading : t.downloadCard}
+            </button>
+            <button className="btn-secondary" onClick={handlePrint}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                <rect x="6" y="14" width="12" height="8" />
+              </svg>
+              {t.printCard}
+            </button>
           </div>
 
           {/* Card details */}

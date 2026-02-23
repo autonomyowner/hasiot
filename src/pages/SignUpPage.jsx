@@ -32,6 +32,9 @@ const translations = {
     lastName: 'اسم العائلة',
     email: 'البريد الإلكتروني',
     password: 'كلمة المرور',
+    confirmPassword: 'تأكيد كلمة المرور',
+    passwordMismatch: 'كلمتا المرور غير متطابقتين',
+    phone: 'رقم الهاتف',
     specialty: 'التخصص',
     selectSpecialty: 'اختر التخصص',
     signUp: 'إنشاء الحساب',
@@ -54,6 +57,9 @@ const translations = {
     lastName: 'Last Name',
     email: 'Email',
     password: 'Password',
+    confirmPassword: 'Confirm Password',
+    passwordMismatch: 'Passwords do not match',
+    phone: 'Phone Number',
     specialty: 'Specialty',
     selectSpecialty: 'Select specialty',
     signUp: 'Create Account',
@@ -75,6 +81,8 @@ export default function SignUpPage() {
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [phone, setPhone] = useState('')
   const [specialty, setSpecialty] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -86,6 +94,12 @@ export default function SignUpPage() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    if (password !== confirmPassword) {
+      setError(t.passwordMismatch)
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -107,6 +121,7 @@ export default function SignUpPage() {
         email,
         firstName,
         lastName,
+        phone: phone || undefined,
         role,
         specialty: role === 'doctor' ? specialty : undefined,
       })
@@ -218,11 +233,36 @@ export default function SignUpPage() {
             </div>
 
             <div className="auth-field">
+              <label>{t.phone}</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                required
+                autoComplete="tel"
+                placeholder="0555 123 456"
+                dir="ltr"
+              />
+            </div>
+
+            <div className="auth-field">
               <label>{t.password}</label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="new-password"
+                minLength={8}
+              />
+            </div>
+
+            <div className="auth-field">
+              <label>{t.confirmPassword}</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 autoComplete="new-password"
                 minLength={8}

@@ -18,7 +18,9 @@ export const getMyHealthCard = query({
   },
 });
 
-// Get health card by card number (for emergency access)
+// Get health card by card number (public access)
+// Without PIN: returns basic info (name, blood type, allergies, emergency contact)
+// With correct PIN: returns full info including medical records
 export const getHealthCardByNumber = query({
   args: {
     cardNumber: v.string(),
@@ -34,39 +36,46 @@ export const getHealthCardByNumber = query({
       return null;
     }
 
-    // For emergency access, verify PIN
+    const user = await ctx.db.get(card.userId);
+    const userName = user ? `${user.firstName} ${user.lastName}` : "Unknown";
+
+    // Basic info always visible (no PIN needed)
+    const basicInfo = {
+      cardNumber: card.cardNumber,
+      userName,
+      bloodType: card.bloodType,
+      allergies: card.allergies,
+      emergencyContact: card.emergencyContact,
+      hasPin: !!card.emergencyAccessPin,
+      pinVerified: false as boolean,
+      medicalRecords: [] as Array<Record<string, unknown>>,
+      chronicConditions: [] as string[],
+      currentMedications: [] as Array<Record<string, unknown>>,
+    };
+
+    // With correct PIN: return full medical records
     if (args.emergencyPin) {
       if (card.emergencyAccessPin !== args.emergencyPin) {
-        return null; // Invalid PIN
+        return { ...basicInfo, pinError: true };
       }
 
-      // Return limited emergency info
-      const user = await ctx.db.get(card.userId);
+      // Fetch medical records
+      const records = await ctx.db
+        .query("medicalRecords")
+        .withIndex("by_healthCardId", (q) => q.eq("healthCardId", card._id))
+        .order("desc")
+        .collect();
+
       return {
-        cardNumber: card.cardNumber,
-        bloodType: card.bloodType,
-        allergies: card.allergies,
-        chronicConditions: card.chronicConditions,
-        currentMedications: card.currentMedications,
-        emergencyContact: card.emergencyContact,
-        userName: user ? `${user.firstName} ${user.lastName}` : "Unknown",
+        ...basicInfo,
+        pinVerified: true,
+        chronicConditions: card.chronicConditions || [],
+        currentMedications: card.currentMedications || [],
+        medicalRecords: records,
       };
     }
 
-    // Without PIN, check if requester has permission
-    const user = await getAuthenticatedAppUser(ctx);
-    if (!user) {
-      return null;
-    }
-
-    // Check if this is the owner
-    if (card.userId === user._id) {
-      return card;
-    }
-
-    // Check share permissions - would need to link doctors to users
-    // For now, only owner can access without emergency PIN
-    return null;
+    return basicInfo;
   },
 });
 
