@@ -671,6 +671,29 @@
   text-align: left;
 }
 
+/* Section header */
+.admin-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.admin-section-title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  color: var(--black);
+}
+
+.admin-badge-warning {
+  background: #FEF9C3;
+  color: #A16207;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .admin-header-inner,
@@ -680,17 +703,229 @@
     padding-right: 1rem;
   }
 
+  .admin-header-inner {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .admin-logo {
+    font-size: 1.2rem !important;
+  }
+
+  .admin-header-user {
+    display: none;
+  }
+
+  /* Scrollable nav tabs */
+  .admin-nav {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-nav-inner {
+    flex-wrap: nowrap;
+    min-width: max-content;
+    gap: 0;
+  }
+
+  .admin-nav-btn {
+    padding: 0.75rem 1rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  /* Main content */
+  .admin-main {
+    padding: 1rem;
+  }
+
+  .admin-page-title {
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+  }
+
+  .admin-section-header {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .admin-section-title {
+    font-size: 1.3rem;
+  }
+
+  /* Card header (title + button) */
+  .admin-card-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .admin-card-header .admin-page-title {
+    margin-bottom: 0;
+  }
+
+  /* Stats grid - 2 columns on mobile */
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+
+  .admin-stat-card {
+    padding: 1rem;
+  }
+
+  .admin-stat-value {
+    font-size: 1.5rem;
+  }
+
+  .admin-stat-label {
+    font-size: 0.75rem;
+  }
+
+  /* Breakdown cards stack */
+  .admin-breakdown-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Filters stack */
+  .admin-filters {
+    flex-direction: column;
+    padding: 0.75rem 1rem;
+  }
+
+  .admin-filters .admin-form-select {
+    width: 100%;
+  }
+
+  /* Tables become cards on mobile */
+  .admin-table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-table {
+    font-size: 0.8rem;
+    min-width: 600px;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    padding: 0.625rem 0.75rem;
+  }
+
+  /* Form rows stack */
   .admin-form-row,
   .admin-form-row-3 {
     grid-template-columns: 1fr;
   }
 
-  .admin-table {
-    font-size: 0.875rem;
+  /* Modals full-screen on mobile */
+  .admin-modal-overlay {
+    padding: 0;
+    align-items: flex-end;
   }
 
-  .admin-table th,
-  .admin-table td {
+  .admin-modal {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 1rem 1rem 0 0;
+  }
+
+  .admin-modal-header {
+    padding: 1rem;
+    position: sticky;
+    top: 0;
+    background: var(--white);
+    z-index: 1;
+  }
+
+  .admin-modal-title {
+    font-size: 1.1rem;
+  }
+
+  .admin-modal-body {
+    padding: 1rem;
+  }
+
+  .admin-modal-footer {
+    padding: 1rem;
+    position: sticky;
+    bottom: 0;
+    background: var(--white);
+    z-index: 1;
+  }
+
+  .admin-form-input,
+  .admin-form-textarea,
+  .admin-form-select {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.9rem;
+  }
+
+  /* List items */
+  .admin-list-item {
+    padding: 1rem;
+  }
+
+  .admin-list-item-header {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .admin-list-item-header .admin-actions {
+    margin-right: 0 !important;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  /* Action buttons */
+  .admin-actions {
+    gap: 0.75rem;
+  }
+
+  /* Info box */
+  .admin-info-box {
     padding: 0.75rem 1rem;
+  }
+
+  .admin-info-box p {
+    font-size: 0.8rem;
+  }
+
+  /* Login */
+  .admin-login-card {
+    padding: 1.5rem;
+  }
+
+  .admin-login-title {
+    font-size: 1.5rem;
+  }
+
+  /* Buttons */
+  .admin-btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+  }
+
+  .admin-btn-small {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  /* Empty state */
+  .admin-empty {
+    padding: 2rem 1rem;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 400px) {
+  .admin-stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-nav-btn {
+    padding: 0.625rem 0.75rem;
+    font-size: 0.75rem;
   }
 }
