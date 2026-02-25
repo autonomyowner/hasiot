@@ -768,6 +768,141 @@
   font-weight: 500;
 }
 
+/* Early Access Section */
+.early-access {
+  padding: 6rem 0;
+  background: linear-gradient(135deg, #f0fdf9 0%, #f8fafc 100%);
+}
+
+.early-access-card {
+  max-width: 640px;
+  margin: 0 auto;
+  text-align: center;
+  background: #fff;
+  border-radius: 1.5rem;
+  padding: 3rem 2.5rem;
+  box-shadow: 0 4px 24px rgba(13, 122, 95, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  border: 1px solid #e5e7eb;
+}
+
+.early-access-badge {
+  display: inline-block;
+  background: #0D7A5F14;
+  color: #0D7A5F;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.375rem 1rem;
+  border-radius: 2rem;
+  margin-bottom: 1.25rem;
+  letter-spacing: 0.02em;
+}
+
+.early-access-title {
+  font-family: 'Instrument Serif', serif;
+  font-size: clamp(1.75rem, 3vw, 2.25rem);
+  font-weight: 400;
+  color: #111827;
+  margin: 0 0 1rem;
+  line-height: 1.2;
+}
+
+.early-access-title em {
+  color: #0D7A5F;
+  font-style: normal;
+}
+
+.early-access-description {
+  font-size: 1rem;
+  color: #6b7280;
+  line-height: 1.7;
+  margin: 0 0 1.5rem;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.early-access-features {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.early-access-feature {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #0D7A5F;
+}
+
+.early-access-form {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.early-access-input {
+  flex: 1;
+  padding: 0.875rem 1.125rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 0.75rem;
+  font-size: 0.9375rem;
+  background: #f9fafb;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+
+.early-access-input:focus {
+  border-color: #0D7A5F;
+  box-shadow: 0 0 0 3px #0D7A5F18;
+  background: #fff;
+}
+
+.early-access-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.early-access-success {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  padding: 1rem;
+  background: #f0fdf4;
+  border-radius: 0.75rem;
+  color: #0D7A5F;
+  font-weight: 500;
+  font-size: 0.9375rem;
+  width: 100%;
+}
+
+.early-access-error {
+  color: #ef4444;
+  font-size: 0.8125rem;
+  margin-top: 0.75rem;
+}
+
+@media (max-width: 540px) {
+  .early-access-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .early-access-form {
+    flex-direction: column;
+  }
+
+  .early-access-features {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
 /* CTA Section */
 .cta {
   padding: 10rem 0;

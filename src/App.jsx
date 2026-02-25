@@ -1,6 +1,8 @@
 import { useState, useEffect, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import { useMutation } from 'convex/react'
+import { api } from '../convex/_generated/api'
 import './App.css'
 
 const hasConvex = !!import.meta.env.VITE_CONVEX_URL
@@ -178,6 +180,19 @@ const translations = {
         terms: 'شروط الخدمة',
         cookies: 'سياسة ملفات تعريف الارتباط'
       }
+    },
+    earlyAccess: {
+      badge: 'قريباً',
+      title: 'تطبيق هاسيو',
+      titleHighlight: 'على جوالك',
+      description: 'نطلق تطبيق الجوال قريباً! سجّل بريدك الإلكتروني لتكون من أول المستخدمين وتحصل على وصول مبكر حصري.',
+      placeholder: 'بريدك الإلكتروني',
+      submit: 'سجّل الآن',
+      submitting: 'جاري التسجيل...',
+      success: 'تم التسجيل بنجاح! سنتواصل معك قريباً.',
+      duplicate: 'بريدك مسجل بالفعل! سنتواصل معك قريباً.',
+      error: 'حدث خطأ، يرجى المحاولة مرة أخرى.',
+      features: ['وصول مبكر للتطبيق', 'عروض حصرية', 'تجربة بيتا'],
     }
   },
   en: {
@@ -346,6 +361,19 @@ const translations = {
         terms: 'Terms of Service',
         cookies: 'Cookie Policy'
       }
+    },
+    earlyAccess: {
+      badge: 'Coming Soon',
+      title: 'Hasio App',
+      titleHighlight: 'on Your Phone',
+      description: 'We\'re launching the mobile app soon! Enter your email to get early access and be part of the first beta users.',
+      placeholder: 'Your email address',
+      submit: 'Sign Up',
+      submitting: 'Signing up...',
+      success: 'You\'re in! We\'ll reach out soon.',
+      duplicate: 'You\'re already signed up! We\'ll reach out soon.',
+      error: 'Something went wrong, please try again.',
+      features: ['Early app access', 'Exclusive offers', 'Beta experience'],
     }
   }
 }
@@ -370,6 +398,9 @@ function App() {
   const [chatStep, setChatStep] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showTravelPlanner, setShowTravelPlanner] = useState(false)
+  const [earlyEmail, setEarlyEmail] = useState('')
+  const [earlyStatus, setEarlyStatus] = useState(null) // null | 'submitting' | 'success' | 'duplicate' | 'error'
+  const captureEmail = hasConvex ? useMutation(api.emailCaptures.mutations.captureEmail) : null
 
   const t = translations[lang]
   const isRTL = lang === 'ar'
@@ -776,6 +807,83 @@ function App() {
               </div>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      {/* Early Access Email Capture */}
+      <section className="early-access" id="early-access">
+        <div className="container">
+          <motion.div
+            className="early-access-card"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+          >
+            <motion.span className="early-access-badge" variants={fadeInUp}>
+              {t.earlyAccess.badge}
+            </motion.span>
+            <motion.h2 className="early-access-title" variants={fadeInUp}>
+              {t.earlyAccess.title} <em>{t.earlyAccess.titleHighlight}</em>
+            </motion.h2>
+            <motion.p className="early-access-description" variants={fadeInUp}>
+              {t.earlyAccess.description}
+            </motion.p>
+
+            <motion.div className="early-access-features" variants={fadeInUp}>
+              {t.earlyAccess.features.map((f, i) => (
+                <span key={i} className="early-access-feature">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  {f}
+                </span>
+              ))}
+            </motion.div>
+
+            <motion.form
+              className="early-access-form"
+              variants={fadeInUp}
+              onSubmit={async (e) => {
+                e.preventDefault()
+                if (!earlyEmail.trim() || !captureEmail || earlyStatus === 'submitting') return
+                setEarlyStatus('submitting')
+                try {
+                  const result = await captureEmail({ email: earlyEmail.trim(), source: 'home_banner' })
+                  setEarlyStatus(result.duplicate ? 'duplicate' : 'success')
+                  if (!result.duplicate) setEarlyEmail('')
+                } catch {
+                  setEarlyStatus('error')
+                }
+              }}
+            >
+              {earlyStatus === 'success' || earlyStatus === 'duplicate' ? (
+                <div className="early-access-success">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0D7A5F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  <span>{earlyStatus === 'duplicate' ? t.earlyAccess.duplicate : t.earlyAccess.success}</span>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="email"
+                    required
+                    value={earlyEmail}
+                    onChange={(e) => { setEarlyEmail(e.target.value); setEarlyStatus(null) }}
+                    placeholder={t.earlyAccess.placeholder}
+                    className="early-access-input"
+                  />
+                  <button
+                    type="submit"
+                    className="btn btn-primary btn-large early-access-btn"
+                    disabled={earlyStatus === 'submitting'}
+                  >
+                    {earlyStatus === 'submitting' ? t.earlyAccess.submitting : t.earlyAccess.submit}
+                  </button>
+                </>
+              )}
+            </motion.form>
+            {earlyStatus === 'error' && (
+              <p className="early-access-error">{t.earlyAccess.error}</p>
+            )}
+          </motion.div>
         </div>
       </section>
 

@@ -179,6 +179,14 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_listingId_and_rating", ["listingId", "rating"]),
 
+  // Email captures (early access signups)
+  emailCaptures: defineTable({
+    email: v.string(),
+    source: v.optional(v.string()), // "home_banner", "footer", etc.
+    createdAt: v.number(),
+  })
+    .index("by_email", ["email"]),
+
   // Travel Knowledge Base — for AI travel planner
   travelKnowledge: defineTable({
     category: v.string(), // "destinations" | "hotels" | "restaurants" | "culture" | "transport" | "tips" | "events" | "general"

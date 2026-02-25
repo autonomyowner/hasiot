@@ -14,6 +14,8 @@ import type * as auth from "../auth.js";
 import type * as bookings_mutations from "../bookings/mutations.js";
 import type * as bookings_queries from "../bookings/queries.js";
 import type * as config_queries from "../config/queries.js";
+import type * as emailCaptures_mutations from "../emailCaptures/mutations.js";
+import type * as emailCaptures_queries from "../emailCaptures/queries.js";
 import type * as http from "../http.js";
 import type * as listings_mutations from "../listings/mutations.js";
 import type * as listings_queries from "../listings/queries.js";
@@ -38,6 +40,8 @@ declare const fullApi: ApiFromModules<{
   "bookings/mutations": typeof bookings_mutations;
   "bookings/queries": typeof bookings_queries;
   "config/queries": typeof config_queries;
+  "emailCaptures/mutations": typeof emailCaptures_mutations;
+  "emailCaptures/queries": typeof emailCaptures_queries;
   http: typeof http;
   "listings/mutations": typeof listings_mutations;
   "listings/queries": typeof listings_queries;

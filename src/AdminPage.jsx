@@ -134,6 +134,7 @@ export default function AdminPage() {
             { id: 'pending', label: 'حسابات معلقة' },
             { id: 'knowledge', label: 'قاعدة المعرفة' },
             { id: 'bookings', label: 'الحجوزات' },
+            { id: 'emails', label: 'البريد الإلكتروني' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -154,6 +155,7 @@ export default function AdminPage() {
           {activeTab === 'pending' && <PendingBusinessesTab key="pending" />}
           {activeTab === 'knowledge' && <KnowledgeTab key="knowledge" />}
           {activeTab === 'bookings' && <BookingsTab key="bookings" />}
+          {activeTab === 'emails' && <EmailCapturesTab key="emails" />}
         </AnimatePresence>
       </main>
     </div>
@@ -225,6 +227,7 @@ function DashboardTab() {
     { label: 'الحجوزات', value: stats.totalBookings, color: 'pink' },
     { label: 'قاعدة المعرفة', value: stats.totalKnowledgeData, color: 'indigo' },
     { label: 'خطط السفر', value: stats.totalTravelPlans, color: 'teal' },
+    { label: 'تسجيلات البريد', value: stats.totalEmailCaptures ?? 0, color: 'red' },
   ]
 
   return (
@@ -1429,6 +1432,64 @@ function BusinessDocDownloadLink({ fileId }) {
     >
       عرض الوثيقة
     </a>
+  )
+}
+
+function EmailCapturesTab() {
+  const emails = useQuery(api.emailCaptures.queries.listAll)
+
+  if (!emails) return <LoadingState />
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h2 className="admin-page-title" style={{ margin: 0 }}>تسجيلات البريد الإلكتروني</h2>
+        <span style={{ background: '#0D7A5F14', color: '#0D7A5F', padding: '0.375rem 0.75rem', borderRadius: '1rem', fontSize: '0.875rem', fontWeight: 600 }}>
+          {emails.length} تسجيل
+        </span>
+      </div>
+
+      {emails.length === 0 ? (
+        <div className="admin-empty">
+          <p>لا توجد تسجيلات بريد إلكتروني بعد</p>
+        </div>
+      ) : (
+        <div className="admin-table-wrapper">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>البريد الإلكتروني</th>
+                <th>المصدر</th>
+                <th>التاريخ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {emails.map((entry, i) => (
+                <tr key={entry._id}>
+                  <td>{i + 1}</td>
+                  <td style={{ fontWeight: 500 }}>{entry.email}</td>
+                  <td>
+                    <span style={{
+                      background: '#f3f4f6', padding: '0.125rem 0.5rem',
+                      borderRadius: '0.25rem', fontSize: '0.75rem', color: '#6b7280'
+                    }}>
+                      {entry.source || '—'}
+                    </span>
+                  </td>
+                  <td style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                    {new Date(entry.createdAt).toLocaleDateString('ar-SA', {
+                      year: 'numeric', month: 'long', day: 'numeric',
+                      hour: '2-digit', minute: '2-digit'
+                    })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </motion.div>
   )
 }
 

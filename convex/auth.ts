@@ -17,7 +17,9 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     trustedOrigins: [
       "http://localhost:5173",
       "http://localhost:3000",
-      // TODO: Add production Hasio domain
+      "https://www.hasio.xyz",
+      "https://hasio.xyz",
+      "https://hasio.vercel.app",
     ],
     emailAndPassword: {
       enabled: true,

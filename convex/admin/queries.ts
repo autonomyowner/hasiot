@@ -10,6 +10,7 @@ export const getDashboardStats = query({
     const users = await ctx.db.query("users").collect();
     const knowledgeData = await ctx.db.query("travelKnowledge").collect();
     const travelPlans = await ctx.db.query("travelPlans").collect();
+    const emailCaptures = await ctx.db.query("emailCaptures").collect();
 
     const bookingsByStatus = {
       pending: bookings.filter(b => b.status === "pending").length,
@@ -34,6 +35,7 @@ export const getDashboardStats = query({
       totalTravelPlans: travelPlans.length,
       bookingsByStatus,
       listingsByType,
+      totalEmailCaptures: emailCaptures.length,
       activeListings: listings.filter(l => l.isActive !== false).length,
       verifiedListings: listings.filter(l => l.isVerified === true).length,
       pendingContent: listings.filter(l => l.status === "pending").length,
