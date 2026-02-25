@@ -1,0 +1,12 @@
+<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10966D;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0A6650;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <circle cx="512" cy="450" r="280" fill="url(#logoGrad)"/>
+  <text x="512" y="470" font-family="Georgia, serif" font-size="320" font-weight="bold" fill="white" text-anchor="middle" dominant-baseline="central">H</text>
+  <text x="512" y="800" font-family="Arial, sans-serif" font-size="100" font-weight="600" fill="#0D7A5F" text-anchor="middle">HASIO</text>
+  <text x="512" y="880" font-family="Arial, sans-serif" font-size="40" fill="#737373" text-anchor="middle">Al-Ahsa Oasis Guide</text>
+</svg>
