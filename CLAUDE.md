@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Tabra (تبرا) is an Algerian healthcare platform built with React and Vite. It features an AI symptom checker, doctor/clinic directory with map view, appointment booking, and digital health cards. Two user roles: patients (immediate access) and doctors/clinics (require CV upload + admin approval).
+Hasio is a Saudi Arabia travel guide platform built with React and Vite. It features an AI travel planner, hotel/restaurant/attraction directory with interactive map, booking system, and favorite listings. Three user roles: tourists (immediate access), business owners and service providers (require document upload + admin approval).
+
+**Brand:** Always use "Hasio" in English — never "هاسيو" in logos or brand display, even in Arabic mode. Arabic text content can reference هاسيو contextually.
 
 ## Commands
 
@@ -15,10 +17,14 @@ npm run build        # Build for production (outputs to dist/)
 npm run preview      # Preview production build locally
 npm run lint         # Run ESLint
 npx convex dashboard # Open Convex dashboard
-npx convex deploy    # Deploy Convex to production
+npx convex dev --once            # Push code to dev without watching
+npx convex deploy --yes          # Deploy Convex to production
+npx convex run <path> --prod     # Run a function against production
 ```
 
 **Development**: Run `npm run dev` and `npm run dev:convex` in separate terminals simultaneously.
+
+**Deploy to production**: `npx convex deploy --yes` pushes Convex functions. Frontend deploys automatically via Vercel on git push to `main`.
 
 ## Architecture
 
@@ -26,7 +32,7 @@ npx convex deploy    # Deploy Convex to production
 
 Authentication uses `@convex-dev/better-auth` with email/password. The auth API runs on the Convex HTTP backend (not the frontend), so cross-origin setup is required:
 
-- **Server**: `convex/auth.ts` — `createAuth()` with `betterAuth()`, `getAuthenticatedAppUser(ctx)` helper (replaces all old Clerk patterns). Cookies use `SameSite=None; Secure` for cross-origin.
+- **Server**: `convex/auth.ts` — `createAuth()` with `betterAuth()`, `getAuthenticatedAppUser(ctx)` helper. Cookies use `SameSite=None; Secure` for cross-origin.
 - **HTTP routes**: `convex/http.ts` — `authComponent.registerRoutes(http, createAuth, { cors: true })`
 - **Client**: `src/lib/auth-client.js` — `createAuthClient()` with `baseURL` pointing to `VITE_CONVEX_SITE_URL` and `credentials: "include"`
 - **Hooks**: `src/hooks/useCurrentUser.js` — `useCurrentUser()` and `useConvexAuth()` combine `authClient.useSession()` with Convex user query
@@ -40,71 +46,87 @@ const user = await getAuthenticatedAppUser(ctx); // returns null if not authenti
 
 ### User Roles & Approval Flow
 
-- **Patients**: Sign up → immediate access to all features
-- **Doctors/Clinics**: Sign up → redirected to `/doctor-dashboard` → must upload CV → admin reviews CV at `/admin` → approves → dashboard unlocks
-- CV files stored in Convex file storage (`_storage`), referenced by `cvFileId` on user record
+- **Tourists**: Sign up → immediate access to all features
+- **Business Owners / Service Providers**: Sign up → redirected to `/business` → must upload business document → admin reviews at `/admin` → approves → dashboard unlocks
+- Business documents stored in Convex file storage (`_storage`), referenced by `businessDocFileId` on user record
 
 ### Frontend (React + Vite)
 
-- `src/main.jsx` — Routing: `/`, `/map`, `/sign-in`, `/sign-up`, `/doctor-dashboard`, `/admin`
-- `src/App.jsx` — Landing page with `translations` object for AR/EN
-- `src/MapPage.jsx` — Mapbox GL interactive map for doctor/clinic directory
+- `src/main.jsx` — Routing: `/`, `/explore`, `/sign-in`, `/sign-up`, `/dashboard`, `/business`, `/admin`
+- `src/App.jsx` — Landing page with `translations` object for AR/EN. Lazy-loads Convex-dependent components (AuthButtons, TravelPlanner, ChatWidget) so the page renders even without a backend.
+- `src/MapPage.jsx` — Mapbox GL interactive map centered on Riyadh (24.7136, 46.6753). Includes Al-Ahsa region highlight with green fill. Geocoding restricted to `country=sa`.
 - `src/AdminPage.jsx` — Arabic RTL admin dashboard with session auth
-- `src/pages/` — SignInPage, SignUpPage, DoctorDashboard
-- `src/components/auth/AuthButtons.jsx` — Uses `useCurrentUser()` hook, navigates to auth pages
+- `src/components/travel/TravelPlanner.jsx` — AI travel planner chat interface
+- `src/components/chat/ChatWidget.jsx` — Floating chat button wrapping TravelPlanner
+
+**File naming caveat**: `PatientDashboard.jsx` is the tourist dashboard, `DoctorDashboard.jsx` is the business dashboard. These names are legacy from the original codebase — `main.jsx` imports them with aliases (`BusinessDashboard`, `TouristDashboard`).
 
 ### Backend (Convex)
 
 ```
 convex/
-├── schema.ts              # Database schema (9 tables)
+├── schema.ts              # Database schema (7 tables)
 ├── convex.config.ts       # Registers betterAuth component
 ├── auth.config.ts         # getAuthConfigProvider()
 ├── auth.ts                # Better-Auth instance + getAuthenticatedAppUser helper
 ├── http.ts                # Auth routes with CORS
 ├── admin/
-│   ├── queries.ts         # getDashboardStats, listAllDoctors, listPendingDoctors
-│   └── mutations.ts       # CRUD for doctors and AI training data
+│   ├── queries.ts         # getDashboardStats, listAllListings, listPendingBusinesses
+│   └── mutations.ts       # CRUD for listings and travel knowledge data
 ├── users/
-│   ├── queries.ts         # getCurrentUser, getFavorites, isFavorite, getCvUrl
-│   └── mutations.ts       # updateProfile, toggleFavorite, setUserRole, approveDoctorAccount, generateUploadUrl, saveCvFile, createUser
-├── doctors/
-│   ├── queries.ts         # listDoctors, searchDoctors, getSpecialties, getNearLocation
-│   └── mutations.ts       # createDoctor, updateDoctor, addReview, seedDoctors
-├── appointments/
-│   ├── queries.ts         # getUserAppointments, getAvailableSlots, getAppointment
-│   └── mutations.ts       # bookAppointment, cancelAppointment, rescheduleAppointment
-├── healthCards/
-│   ├── queries.ts         # getMyHealthCard, getMyMedicalRecords
-│   └── mutations.ts       # createHealthCard, updateHealthCard, addMedicalRecord
-├── symptoms/
-│   ├── actions.ts         # analyzeSymptoms (OpenRouter API with Claude 3.5 Haiku)
-│   ├── queries.ts         # getMyAnalyses, getAnalysis
-│   └── mutations.ts       # storeAnalysis
-└── migrations/
-    └── migrateUsersToRoles.ts  # One-time migration (already run)
+│   ├── queries.ts         # getCurrentUser, getFavorites, isFavorite, getBusinessDocUrl
+│   └── mutations.ts       # updateProfile, toggleFavorite, setUserRole, approveBusinessAccount, generateUploadUrl, saveBusinessDoc, createUser
+├── listings/
+│   ├── queries.ts         # listListings, searchListings, getCategories, getCities, getListingsNearLocation
+│   └── mutations.ts       # createListing, updateListing, addReview, seedListings
+├── bookings/
+│   ├── queries.ts         # getUserBookings, getAvailableSlots, getBooking, getBusinessBookings
+│   └── mutations.ts       # createBooking, cancelBooking, rescheduleBooking, confirmBooking
+└── travelPlanner/
+    ├── actions.ts         # planTravel (OpenRouter API with Claude 3.5 Haiku — conversational Saudi travel planner)
+    ├── queries.ts         # getMyPlans, getPlan
+    └── mutations.ts       # storePlan
 ```
 
 ### Database Tables
 
 | Table | Purpose |
 |-------|---------|
-| `users` | User profiles with role (patient/doctor/clinic), isApproved, cvFileId |
-| `doctors` | Doctors, clinics, hospitals with geolocation |
-| `availabilitySchedules` | Time slots per doctor |
-| `appointments` | Bookings with status tracking |
-| `healthCards` | Digital health cards (TBR-XXX-XXX format) |
-| `medicalRecords` | Prescriptions, lab results, etc. |
-| `symptomAnalyses` | AI analysis history |
-| `reviews` | Doctor ratings & reviews |
-| `aiTrainingData` | Knowledge base for AI symptom checker |
+| `users` | User profiles with role (tourist/business_owner/service_provider/admin), isApproved, businessDocFileId |
+| `listings` | Hotels, restaurants, attractions, events, tours with geolocation (~88 Saudi entries) |
+| `availabilitySchedules` | Time slots per listing |
+| `bookings` | Reservations, tour bookings, event tickets with status tracking |
+| `travelPlans` | AI travel plan history |
+| `reviews` | Listing ratings & reviews |
+| `travelKnowledge` | Knowledge base for AI travel planner |
+
+### Seeding Data
+
+The `listings` table is populated via `convex/listings/mutations.ts:seedListings` (internal mutation). It clears existing data then inserts 88 Saudi Arabia listings (hotels, restaurants, attractions, events, tours) across Riyadh, Jeddah, Mecca, Medina, AlUla, Abha, Dammam, and more. Run with:
+```bash
+npx convex run listings/mutations:seedListings          # dev
+npx convex run listings/mutations:seedListings --prod    # production
+```
+
+### AI Travel Planner
+
+`convex/travelPlanner/actions.ts` exports `planTravel` — a multi-turn conversational action that:
+- Uses OpenRouter API with `anthropic/claude-3.5-haiku`
+- Asks 3-5 follow-up questions before generating a full plan
+- Understands Saudi/Gulf Arabic dialect expressions
+- Returns JSON with `ready: false` (follow-up question) or `ready: true` (full itinerary, destinations, tips, budget)
+- Matches the user's language — responds in English to English input, Arabic to Arabic input
+
+### Internationalization Pattern
+
+Each component defines its own `translations` object with `ar` and `en` keys. Language state is passed as a prop or managed locally. There is no global i18n library — keep translations co-located with the component that uses them.
 
 ## Key Technologies
 
 - **React 19** with Vite 7
 - **Convex** — Serverless backend with real-time subscriptions
 - **Better-Auth** (`@convex-dev/better-auth`) — Email/password authentication
-- **OpenRouter** — AI API (Claude 3.5 Haiku for symptom analysis)
+- **OpenRouter** — AI API (Claude 3.5 Haiku for travel planning)
 - **Mapbox GL JS** — Interactive maps and geocoding
 - **Framer Motion** — Animations
 - **React Router DOM 7** — Client-side routing
@@ -125,27 +147,19 @@ SITE_URL=https://your-deployment.convex.site
 OPENROUTER_API_KEY=sk-or-xxx
 ```
 
-## Deployments
-
-| Environment | Convex Cloud | Convex Site |
-|-------------|-------------|-------------|
-| Development | `prestigious-duck-501.convex.cloud` | `prestigious-duck-501.convex.site` |
-| Production | `zany-starling-644.convex.cloud` | `zany-starling-644.convex.site` |
-
-Frontend hosted on Vercel at `tabra.space`. Auth `trustedOrigins` include both `tabra.space` and `www.tabra.space`.
-
 ## Admin Panel
 
 - **URL**: `/admin`
 - **Auth**: Session-based — Username: `admin`, Password: `admin2026`
-- **Features**: Dashboard stats, doctor/clinic CRUD, pending doctor approvals (with CV review), AI training data, appointments
+- **Features**: Dashboard stats, listing CRUD, pending business approvals (with doc review), travel knowledge data, bookings
 - **Note**: Admin route uses plain `ConvexProvider` (bypasses Better-Auth)
 
 ## Design Constraints
 
-- Red (#DC2626) primary color with generous white space
+- Green (#0D7A5F) primary color with generous white space
 - Instrument Serif for headings, Outfit for body text, Cairo for Arabic
-- Bilingual: Arabic (RTL) and English (LTR) with language toggle
+- Bilingual: Arabic (RTL) and English (LTR) with language toggle on all pages
 - All translatable text in `translations` objects at component level
 - Admin panel is Arabic-only with full RTL support
-- Arabic brand name is تبرا (not طبرة)
+- Brand name always displayed as "Hasio" (English) in UI — never Arabic script for the logo
+- Icons must be monochrome/neutral — never use colored icons

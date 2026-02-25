@@ -6,7 +6,7 @@ import './AuthPages.css'
 const translations = {
   ar: {
     title: 'تسجيل الدخول',
-    subtitle: 'مرحباً بك مجدداً في تبرا',
+    subtitle: 'مرحباً بك مجدداً في Hasio',
     email: 'البريد الإلكتروني',
     password: 'كلمة المرور',
     signIn: 'تسجيل الدخول',
@@ -18,7 +18,7 @@ const translations = {
   },
   en: {
     title: 'Sign In',
-    subtitle: 'Welcome back to Tabra',
+    subtitle: 'Welcome back to Hasio',
     email: 'Email',
     password: 'Password',
     signIn: 'Sign In',
@@ -35,7 +35,7 @@ export default function SignInPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [lang] = useState('ar')
+  const [lang, setLang] = useState('ar')
   const navigate = useNavigate()
   const t = translations[lang] || translations.ar
 
@@ -69,7 +69,10 @@ export default function SignInPage() {
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <Link to="/" className="auth-logo">تبرا</Link>
+            <button className="auth-lang-toggle" onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')}>
+              {lang === 'ar' ? 'EN' : 'عربي'}
+            </button>
+            <Link to="/" className="auth-logo">Hasio</Link>
             <h1 className="auth-title">{t.title}</h1>
             <p className="auth-subtitle">{t.subtitle}</p>
           </div>

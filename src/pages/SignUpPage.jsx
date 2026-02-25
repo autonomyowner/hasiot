@@ -5,29 +5,23 @@ import { api } from '../../convex/_generated/api'
 import { authClient } from '../lib/auth-client'
 import './AuthPages.css'
 
-const SPECIALTIES = [
-  { value: "general", label_ar: "طب عام", label_en: "General Medicine" },
-  { value: "cardiology", label_ar: "طب القلب", label_en: "Cardiology" },
-  { value: "dermatology", label_ar: "طب الجلد", label_en: "Dermatology" },
-  { value: "dentist", label_ar: "طب الأسنان", label_en: "Dentistry" },
-  { value: "ophthalmology", label_ar: "طب العيون", label_en: "Ophthalmology" },
-  { value: "pediatrics", label_ar: "طب الأطفال", label_en: "Pediatrics" },
-  { value: "gynecology", label_ar: "طب النساء", label_en: "Gynecology" },
-  { value: "orthopedics", label_ar: "طب العظام", label_en: "Orthopedics" },
-  { value: "neurology", label_ar: "طب الأعصاب", label_en: "Neurology" },
-  { value: "psychiatry", label_ar: "الطب النفسي", label_en: "Psychiatry" },
-  { value: "ent", label_ar: "أنف أذن حنجرة", label_en: "ENT" },
-  { value: "urology", label_ar: "طب المسالك البولية", label_en: "Urology" },
-  { value: "radiology", label_ar: "الأشعة", label_en: "Radiology" },
-  { value: "laboratory", label_ar: "مختبر تحاليل", label_en: "Laboratory" },
+const BUSINESS_TYPES = [
+  { value: "hotel", label_ar: "فندق", label_en: "Hotel" },
+  { value: "restaurant", label_ar: "مطعم", label_en: "Restaurant" },
+  { value: "tour_operator", label_ar: "منظم رحلات", label_en: "Tour Operator" },
+  { value: "travel_agency", label_ar: "وكالة سفر", label_en: "Travel Agency" },
+  { value: "car_rental", label_ar: "تأجير سيارات", label_en: "Car Rental" },
+  { value: "attraction", label_ar: "معلم سياحي", label_en: "Attraction" },
+  { value: "event_organizer", label_ar: "منظم فعاليات", label_en: "Event Organizer" },
+  { value: "guide", label_ar: "مرشد سياحي", label_en: "Tour Guide" },
 ]
 
 const translations = {
   ar: {
     title: 'إنشاء حساب',
-    subtitle: 'انضم إلى تبرا اليوم',
-    patient: 'أنا مريض',
-    doctor: 'أنا طبيب',
+    subtitle: 'انضم إلى Hasio اليوم',
+    tourist: 'أنا سائح',
+    business: 'صاحب عمل',
     firstName: 'الاسم الأول',
     lastName: 'اسم العائلة',
     email: 'البريد الإلكتروني',
@@ -35,8 +29,8 @@ const translations = {
     confirmPassword: 'تأكيد كلمة المرور',
     passwordMismatch: 'كلمتا المرور غير متطابقتين',
     phone: 'رقم الهاتف',
-    specialty: 'التخصص',
-    selectSpecialty: 'اختر التخصص',
+    businessType: 'نوع العمل',
+    selectBusinessType: 'اختر نوع العمل',
     signUp: 'إنشاء الحساب',
     hasAccount: 'لديك حساب بالفعل؟',
     signIn: 'تسجيل الدخول',
@@ -45,14 +39,14 @@ const translations = {
     loading: 'جاري التحميل...',
     pendingTitle: 'تم إنشاء حسابك بنجاح',
     pendingMessage: 'حسابك قيد المراجعة من قبل الإدارة. سيتم إعلامك عند الموافقة على حسابك.',
-    patientSuccess: 'تم إنشاء حسابك بنجاح! جاري التحويل...',
+    touristSuccess: 'تم إنشاء حسابك بنجاح! جاري التحويل...',
     goHome: 'الذهاب للرئيسية',
   },
   en: {
     title: 'Create Account',
-    subtitle: 'Join Tabra today',
-    patient: "I'm a patient",
-    doctor: "I'm a doctor",
+    subtitle: 'Join Hasio today',
+    tourist: "I'm a tourist",
+    business: "Business owner",
     firstName: 'First Name',
     lastName: 'Last Name',
     email: 'Email',
@@ -60,8 +54,8 @@ const translations = {
     confirmPassword: 'Confirm Password',
     passwordMismatch: 'Passwords do not match',
     phone: 'Phone Number',
-    specialty: 'Specialty',
-    selectSpecialty: 'Select specialty',
+    businessType: 'Business Type',
+    selectBusinessType: 'Select business type',
     signUp: 'Create Account',
     hasAccount: 'Already have an account?',
     signIn: 'Sign In',
@@ -70,24 +64,24 @@ const translations = {
     loading: 'Loading...',
     pendingTitle: 'Account created successfully',
     pendingMessage: 'Your account is pending admin review. You will be notified when approved.',
-    patientSuccess: 'Account created! Redirecting...',
+    touristSuccess: 'Account created! Redirecting...',
     goHome: 'Go to Home',
   }
 }
 
 export default function SignUpPage() {
-  const [role, setRole] = useState('patient')
+  const [role, setRole] = useState('tourist')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [phone, setPhone] = useState('')
-  const [specialty, setSpecialty] = useState('')
+  const [businessType, setBusinessType] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [lang] = useState('ar')
+  const [lang, setLang] = useState('ar')
   const t = translations[lang] || translations.ar
   const createUser = useMutation(api.users.mutations.createUser)
 
@@ -123,7 +117,7 @@ export default function SignUpPage() {
         lastName,
         phone: phone || undefined,
         role,
-        specialty: role === 'doctor' ? specialty : undefined,
+        businessType: role === 'business_owner' ? businessType : undefined,
       })
 
       setSuccess(true)
@@ -131,8 +125,8 @@ export default function SignUpPage() {
 
       // Redirect based on role
       setTimeout(() => {
-        if (role === 'doctor') {
-          window.location.href = '/doctor-dashboard'
+        if (role === 'business_owner') {
+          window.location.href = '/business'
         } else {
           window.location.href = '/'
         }
@@ -149,12 +143,15 @@ export default function SignUpPage() {
         <div className="auth-container">
           <div className="auth-card">
             <div className="auth-header">
-              <Link to="/" className="auth-logo">تبرا</Link>
+              <button className="auth-lang-toggle" onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')}>
+                {lang === 'ar' ? 'EN' : 'عربي'}
+              </button>
+              <Link to="/" className="auth-logo">Hasio</Link>
               <h1 className="auth-title">{t.pendingTitle}</h1>
             </div>
             <div className="auth-success">
-              {role === 'patient' ? (
-                <p>{t.patientSuccess}</p>
+              {role === 'tourist' ? (
+                <p>{t.touristSuccess}</p>
               ) : (
                 <p>{t.pendingMessage}</p>
               )}
@@ -173,7 +170,10 @@ export default function SignUpPage() {
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <Link to="/" className="auth-logo">تبرا</Link>
+            <button className="auth-lang-toggle" onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')}>
+              {lang === 'ar' ? 'EN' : 'عربي'}
+            </button>
+            <Link to="/" className="auth-logo">Hasio</Link>
             <h1 className="auth-title">{t.title}</h1>
             <p className="auth-subtitle">{t.subtitle}</p>
           </div>
@@ -182,17 +182,17 @@ export default function SignUpPage() {
           <div className="auth-role-toggle">
             <button
               type="button"
-              className={`role-btn ${role === 'patient' ? 'active' : ''}`}
-              onClick={() => setRole('patient')}
+              className={`role-btn ${role === 'tourist' ? 'active' : ''}`}
+              onClick={() => setRole('tourist')}
             >
-              {t.patient}
+              {t.tourist}
             </button>
             <button
               type="button"
-              className={`role-btn ${role === 'doctor' ? 'active' : ''}`}
-              onClick={() => setRole('doctor')}
+              className={`role-btn ${role === 'business_owner' ? 'active' : ''}`}
+              onClick={() => setRole('business_owner')}
             >
-              {t.doctor}
+              {t.business}
             </button>
           </div>
 
@@ -240,7 +240,7 @@ export default function SignUpPage() {
                 onChange={(e) => setPhone(e.target.value)}
                 required
                 autoComplete="tel"
-                placeholder="0555 123 456"
+                placeholder="+966 55 123 4567"
                 dir="ltr"
               />
             </div>
@@ -269,18 +269,18 @@ export default function SignUpPage() {
               />
             </div>
 
-            {role === 'doctor' && (
+            {role === 'business_owner' && (
               <div className="auth-field">
-                <label>{t.specialty}</label>
+                <label>{t.businessType}</label>
                 <select
-                  value={specialty}
-                  onChange={(e) => setSpecialty(e.target.value)}
+                  value={businessType}
+                  onChange={(e) => setBusinessType(e.target.value)}
                   required
                 >
-                  <option value="">{t.selectSpecialty}</option>
-                  {SPECIALTIES.map(s => (
-                    <option key={s.value} value={s.value}>
-                      {lang === 'ar' ? s.label_ar : s.label_en}
+                  <option value="">{t.selectBusinessType}</option>
+                  {BUSINESS_TYPES.map(b => (
+                    <option key={b.value} value={b.value}>
+                      {lang === 'ar' ? b.label_ar : b.label_en}
                     </option>
                   ))}
                 </select>

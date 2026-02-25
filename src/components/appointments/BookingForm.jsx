@@ -6,15 +6,16 @@ import './BookingForm.css'
 
 const translations = {
   ar: {
-    title: 'حجز موعد',
-    selectDoctor: 'اختر الطبيب',
+    title: 'حجز جديد',
+    selectListing: 'اختر المكان',
     selectDate: 'اختر التاريخ',
     selectTime: 'اختر الوقت',
+    partySize: 'عدد الأشخاص',
     notes: 'ملاحظات (اختياري)',
-    notesPlaceholder: 'أضف أي معلومات إضافية للطبيب...',
+    notesPlaceholder: 'أضف أي معلومات إضافية...',
     book: 'تأكيد الحجز',
     booking: 'جاري الحجز...',
-    success: 'تم حجز الموعد بنجاح!',
+    success: 'تم الحجز بنجاح!',
     error: 'حدث خطأ أثناء الحجز. يرجى المحاولة مرة أخرى.',
     noSlots: 'لا توجد مواعيد متاحة في هذا اليوم',
     loading: 'جاري التحميل...',
@@ -23,15 +24,16 @@ const translations = {
     booked: 'محجوز'
   },
   en: {
-    title: 'Book Appointment',
-    selectDoctor: 'Select Doctor',
+    title: 'New Booking',
+    selectListing: 'Select Place',
     selectDate: 'Select Date',
     selectTime: 'Select Time',
+    partySize: 'Party Size',
     notes: 'Notes (optional)',
-    notesPlaceholder: 'Add any additional information for the doctor...',
+    notesPlaceholder: 'Add any additional information...',
     book: 'Confirm Booking',
     booking: 'Booking...',
-    success: 'Appointment booked successfully!',
+    success: 'Booking confirmed successfully!',
     error: 'An error occurred while booking. Please try again.',
     noSlots: 'No available slots on this date',
     loading: 'Loading...',
@@ -43,13 +45,14 @@ const translations = {
 
 export default function BookingForm({
   lang = 'ar',
-  doctorId = null,
-  specialty = null,
+  listingId = null,
+  category = null,
   onSuccess
 }) {
-  const [selectedDoctor, setSelectedDoctor] = useState(doctorId)
+  const [selectedListing, setSelectedListing] = useState(listingId)
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
+  const [partySize, setPartySize] = useState(1)
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -58,30 +61,26 @@ export default function BookingForm({
   const t = translations[lang] || translations.ar
   const isRTL = lang === 'ar'
 
-  // Fetch doctors (optionally filtered by specialty)
-  const doctors = useQuery(api.doctors.queries.listDoctors, {
-    specialty: specialty || undefined,
+  const listings = useQuery(api.listings.queries.listListings, {
+    category: category || undefined,
     limit: 50
   })
 
-  // Fetch available slots when doctor and date are selected
   const slots = useQuery(
-    api.appointments.queries.getAvailableSlots,
-    selectedDoctor && selectedDate
-      ? { doctorId: selectedDoctor, date: selectedDate }
+    api.bookings.queries.getAvailableSlots,
+    selectedListing && selectedDate
+      ? { listingId: selectedListing, date: selectedDate }
       : "skip"
   )
 
-  const bookAppointment = useMutation(api.appointments.mutations.bookAppointment)
+  const createBooking = useMutation(api.bookings.mutations.createBooking)
 
-  // Update selected doctor when doctorId prop changes
   useEffect(() => {
-    if (doctorId) {
-      setSelectedDoctor(doctorId)
+    if (listingId) {
+      setSelectedListing(listingId)
     }
-  }, [doctorId])
+  }, [listingId])
 
-  // Generate next 14 days for date selection
   const getAvailableDates = () => {
     const dates = []
     const today = new Date()
@@ -90,7 +89,7 @@ export default function BookingForm({
       date.setDate(today.getDate() + i)
       dates.push({
         value: date.toISOString().split('T')[0],
-        label: date.toLocaleDateString(lang === 'ar' ? 'ar-DZ' : 'en-US', {
+        label: date.toLocaleDateString(lang === 'ar' ? 'ar-SA' : 'en-US', {
           weekday: 'short',
           month: 'short',
           day: 'numeric'
@@ -103,7 +102,7 @@ export default function BookingForm({
   const handleSubmit = async (e) => {
     e.preventDefault()
 
-    if (!selectedDoctor || !selectedDate || !selectedTime) {
+    if (!selectedListing || !selectedDate || !selectedTime) {
       return
     }
 
@@ -111,10 +110,11 @@ export default function BookingForm({
     setError(null)
 
     try {
-      await bookAppointment({
-        doctorId: selectedDoctor,
+      await createBooking({
+        listingId: selectedListing,
         date: selectedDate,
         time: selectedTime,
+        partySize: partySize,
         notes: notes || undefined
       })
 
@@ -133,7 +133,7 @@ export default function BookingForm({
     }
   }
 
-  const selectedDoctorData = doctors?.find(d => d._id === selectedDoctor)
+  const selectedListingData = listings?.find(d => d._id === selectedListing)
 
   return (
     <div className={`booking-form ${isRTL ? 'rtl' : 'ltr'}`}>
@@ -156,40 +156,54 @@ export default function BookingForm({
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            {/* Doctor Selection */}
-            {!doctorId && (
+            {/* Listing Selection */}
+            {!listingId && (
               <div className="form-group">
-                <label>{t.selectDoctor}</label>
+                <label>{t.selectListing}</label>
                 <select
-                  value={selectedDoctor || ''}
+                  value={selectedListing || ''}
                   onChange={(e) => {
-                    setSelectedDoctor(e.target.value || null)
+                    setSelectedListing(e.target.value || null)
                     setSelectedDate('')
                     setSelectedTime('')
                   }}
                   required
                 >
-                  <option value="">{t.selectDoctor}</option>
-                  {doctors?.map(doctor => (
-                    <option key={doctor._id} value={doctor._id}>
-                      {isRTL ? doctor.name_ar : doctor.name_en} - {isRTL ? doctor.specialty_ar : doctor.specialty}
+                  <option value="">{t.selectListing}</option>
+                  {listings?.map(listing => (
+                    <option key={listing._id} value={listing._id}>
+                      {isRTL ? listing.name_ar : listing.name_en} - {isRTL ? listing.category_ar : listing.category}
                     </option>
                   ))}
                 </select>
               </div>
             )}
 
-            {/* Show selected doctor info */}
-            {selectedDoctorData && (
+            {/* Show selected listing info */}
+            {selectedListingData && (
               <div className="selected-doctor-info">
-                <h3>{isRTL ? selectedDoctorData.name_ar : selectedDoctorData.name_en}</h3>
-                <p>{isRTL ? selectedDoctorData.specialty_ar : selectedDoctorData.specialty}</p>
-                <p className="doctor-address">{selectedDoctorData.address}</p>
+                <h3>{isRTL ? selectedListingData.name_ar : selectedListingData.name_en}</h3>
+                <p>{isRTL ? selectedListingData.category_ar : selectedListingData.category}</p>
+                <p className="doctor-address">{selectedListingData.address}</p>
+              </div>
+            )}
+
+            {/* Party Size */}
+            {selectedListing && (
+              <div className="form-group">
+                <label>{t.partySize}</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={partySize}
+                  onChange={(e) => setPartySize(parseInt(e.target.value) || 1)}
+                />
               </div>
             )}
 
             {/* Date Selection */}
-            {selectedDoctor && (
+            {selectedListing && (
               <div className="form-group">
                 <label>{t.selectDate}</label>
                 <div className="date-grid">
@@ -258,7 +272,7 @@ export default function BookingForm({
             <button
               type="submit"
               className="submit-btn"
-              disabled={!selectedDoctor || !selectedDate || !selectedTime || loading}
+              disabled={!selectedListing || !selectedDate || !selectedTime || loading}
             >
               {loading ? t.booking : t.book}
             </button>

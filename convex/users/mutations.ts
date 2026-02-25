@@ -2,7 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 
-// Generate an upload URL for CV file
+// Generate an upload URL for business document
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
@@ -14,8 +14,8 @@ export const generateUploadUrl = mutation({
   },
 });
 
-// Save CV file reference to user record
-export const saveCvFile = mutation({
+// Save business document reference to user record
+export const saveBusinessDoc = mutation({
   args: { fileId: v.id("_storage") },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
@@ -23,8 +23,8 @@ export const saveCvFile = mutation({
       throw new Error("Not authenticated");
     }
 
-    if (user.role !== "doctor" && user.role !== "clinic") {
-      throw new Error("Only doctors/clinics can upload CVs");
+    if (user.role !== "business_owner" && user.role !== "service_provider") {
+      throw new Error("Only business accounts can upload documents");
     }
 
     await ctx.db.patch(user._id, {
@@ -43,7 +43,7 @@ export const updateProfile = mutation({
     lastName: v.optional(v.string()),
     phone: v.optional(v.string()),
     preferredLanguage: v.optional(v.string()),
-    wilaya: v.optional(v.string()),
+    city: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
@@ -59,7 +59,7 @@ export const updateProfile = mutation({
     if (args.lastName !== undefined) updates.lastName = args.lastName;
     if (args.phone !== undefined) updates.phone = args.phone;
     if (args.preferredLanguage !== undefined) updates.preferredLanguage = args.preferredLanguage;
-    if (args.wilaya !== undefined) updates.wilaya = args.wilaya;
+    if (args.city !== undefined) updates.city = args.city;
 
     await ctx.db.patch(user._id, updates);
 
@@ -67,33 +67,32 @@ export const updateProfile = mutation({
   },
 });
 
-// Toggle favorite doctor
+// Toggle favorite listing
 export const toggleFavorite = mutation({
-  args: { doctorId: v.id("doctors") },
+  args: { listingId: v.id("listings") },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
       throw new Error("Not authenticated");
     }
 
-    // Verify doctor exists
-    const doctor = await ctx.db.get(args.doctorId);
-    if (!doctor) {
-      throw new Error("Doctor not found");
+    const listing = await ctx.db.get(args.listingId);
+    if (!listing) {
+      throw new Error("Listing not found");
     }
 
-    const currentFavorites = user.favoriteDoctorIds || [];
-    const isFavorite = currentFavorites.includes(args.doctorId);
+    const currentFavorites = user.favoriteListingIds || [];
+    const isFavorite = currentFavorites.includes(args.listingId);
 
     let newFavorites: typeof currentFavorites;
     if (isFavorite) {
-      newFavorites = currentFavorites.filter((id) => id !== args.doctorId);
+      newFavorites = currentFavorites.filter((id) => id !== args.listingId);
     } else {
-      newFavorites = [...currentFavorites, args.doctorId];
+      newFavorites = [...currentFavorites, args.listingId];
     }
 
     await ctx.db.patch(user._id, {
-      favoriteDoctorIds: newFavorites,
+      favoriteListingIds: newFavorites,
       updatedAt: Date.now(),
     });
 
@@ -101,11 +100,11 @@ export const toggleFavorite = mutation({
   },
 });
 
-// Set user role after signup — called from frontend after authClient.signUp.email()
+// Set user role after signup
 export const setUserRole = mutation({
   args: {
-    role: v.string(), // "patient" | "doctor" | "clinic"
-    specialty: v.optional(v.string()),
+    role: v.string(), // "tourist" | "business_owner" | "service_provider"
+    businessType: v.optional(v.string()),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
   },
@@ -123,9 +122,9 @@ export const setUserRole = mutation({
     if (args.firstName !== undefined) updates.firstName = args.firstName;
     if (args.lastName !== undefined) updates.lastName = args.lastName;
 
-    if (args.role === "doctor" || args.role === "clinic") {
-      updates.specialty = args.specialty;
-      updates.isApproved = false; // Requires admin approval
+    if (args.role === "business_owner" || args.role === "service_provider") {
+      updates.businessType = args.businessType;
+      updates.isApproved = false;
     }
 
     await ctx.db.patch(user._id, updates);
@@ -134,8 +133,8 @@ export const setUserRole = mutation({
   },
 });
 
-// Admin approves a doctor/clinic account
-export const approveDoctorAccount = mutation({
+// Admin approves a business account
+export const approveBusinessAccount = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const targetUser = await ctx.db.get(args.userId);
@@ -143,8 +142,8 @@ export const approveDoctorAccount = mutation({
       throw new Error("User not found");
     }
 
-    if (targetUser.role !== "doctor" && targetUser.role !== "clinic") {
-      throw new Error("User is not a doctor or clinic");
+    if (targetUser.role !== "business_owner" && targetUser.role !== "service_provider") {
+      throw new Error("User is not a business account");
     }
 
     await ctx.db.patch(args.userId, {
@@ -156,7 +155,7 @@ export const approveDoctorAccount = mutation({
   },
 });
 
-// Create user record — called after signup to create the app user entry
+// Create user record
 export const createUser = mutation({
   args: {
     email: v.string(),
@@ -164,10 +163,9 @@ export const createUser = mutation({
     lastName: v.optional(v.string()),
     phone: v.optional(v.string()),
     role: v.string(),
-    specialty: v.optional(v.string()),
+    businessType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Check if user already exists
     const existing = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))
@@ -183,10 +181,10 @@ export const createUser = mutation({
       lastName: args.lastName,
       phone: args.phone,
       role: args.role,
-      specialty: args.role === "doctor" || args.role === "clinic" ? args.specialty : undefined,
-      isApproved: args.role === "patient" ? undefined : false,
+      businessType: args.role === "business_owner" || args.role === "service_provider" ? args.businessType : undefined,
+      isApproved: args.role === "tourist" ? undefined : false,
       preferredLanguage: "ar",
-      favoriteDoctorIds: [],
+      favoriteListingIds: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });

@@ -9,41 +9,64 @@ import './AdminPage.css'
 const ADMIN_USERNAME = 'admin'
 const ADMIN_PASSWORD = 'admin2026'
 
-// Algerian wilayas
-const WILAYAS = [
-  "أدرار", "الشلف", "الأغواط", "أم البواقي", "باتنة", "بجاية", "بسكرة",
-  "بشار", "البليدة", "البويرة", "تمنراست", "تبسة", "تلمسان", "تيارت",
-  "تيزي وزو", "الجزائر", "الجلفة", "جيجل", "سطيف", "سعيدة", "سكيكدة",
-  "سيدي بلعباس", "عنابة", "قالمة", "قسنطينة", "المدية", "مستغانم",
-  "المسيلة", "معسكر", "ورقلة", "وهران", "البيض", "إليزي", "برج بوعريريج",
-  "بومرداس", "الطارف", "تندوف", "تيسمسيلت", "الوادي", "خنشلة",
-  "سوق أهراس", "تيبازة", "ميلة", "عين الدفلى", "النعامة", "عين تموشنت",
-  "غرداية", "غليزان", "المغير", "المنيعة", "أولاد جلال", "برج باجي مختار",
-  "بني عباس", "تيميمون", "تقرت", "جانت", "عين صالح", "عين قزام"
+// Saudi cities
+const SAUDI_CITIES = [
+  "Riyadh", "Jeddah", "Mecca", "Medina", "Dammam", "Al Khobar", "Dhahran",
+  "Tabuk", "Taif", "Abha", "Khamis Mushait", "Jizan", "Najran", "Hail",
+  "Al Baha", "Arar", "Sakaka", "AlUla", "Yanbu", "Al Jubail"
 ]
 
-const SPECIALTIES = [
-  { value: "general", label_en: "General Medicine", label_ar: "طب عام" },
-  { value: "cardiology", label_en: "Cardiology", label_ar: "طب القلب" },
-  { value: "dermatology", label_en: "Dermatology", label_ar: "طب الجلد" },
-  { value: "dentist", label_en: "Dentistry", label_ar: "طب الأسنان" },
-  { value: "ophthalmology", label_en: "Ophthalmology", label_ar: "طب العيون" },
-  { value: "pediatrics", label_en: "Pediatrics", label_ar: "طب الأطفال" },
-  { value: "gynecology", label_en: "Gynecology", label_ar: "طب النساء" },
-  { value: "orthopedics", label_en: "Orthopedics", label_ar: "طب العظام" },
-  { value: "neurology", label_en: "Neurology", label_ar: "طب الأعصاب" },
-  { value: "psychiatry", label_en: "Psychiatry", label_ar: "الطب النفسي" },
-  { value: "ent", label_en: "ENT", label_ar: "أنف أذن حنجرة" },
-  { value: "urology", label_en: "Urology", label_ar: "طب المسالك البولية" },
-  { value: "radiology", label_en: "Radiology", label_ar: "الأشعة" },
-  { value: "laboratory", label_en: "Laboratory", label_ar: "مختبر تحاليل" },
+const SAUDI_CITIES_AR = {
+  "Riyadh": "الرياض",
+  "Jeddah": "جدة",
+  "Mecca": "مكة المكرمة",
+  "Medina": "المدينة المنورة",
+  "Dammam": "الدمام",
+  "Al Khobar": "الخبر",
+  "Dhahran": "الظهران",
+  "Tabuk": "تبوك",
+  "Taif": "الطائف",
+  "Abha": "أبها",
+  "Khamis Mushait": "خميس مشيط",
+  "Jizan": "جازان",
+  "Najran": "نجران",
+  "Hail": "حائل",
+  "Al Baha": "الباحة",
+  "Arar": "عرعر",
+  "Sakaka": "سكاكا",
+  "AlUla": "العلا",
+  "Yanbu": "ينبع",
+  "Al Jubail": "الجبيل"
+}
+
+const CATEGORIES = [
+  { value: "luxury_hotel", label: "فندق فاخر" },
+  { value: "business_hotel", label: "فندق أعمال" },
+  { value: "mid_range_hotel", label: "فندق متوسط" },
+  { value: "boutique_hotel", label: "فندق بوتيك" },
+  { value: "resort", label: "منتجع" },
+  { value: "traditional_food", label: "مطبخ تقليدي" },
+  { value: "fine_dining", label: "مطعم فاخر" },
+  { value: "seafood", label: "مأكولات بحرية" },
+  { value: "international", label: "عالمي" },
+  { value: "fast_food", label: "وجبات سريعة" },
+  { value: "historical_site", label: "موقع تاريخي" },
+  { value: "museum", label: "متحف" },
+  { value: "natural_landmark", label: "معلم طبيعي" },
+  { value: "entertainment", label: "ترفيه" },
+  { value: "cultural_tour", label: "جولة ثقافية" },
+  { value: "adventure", label: "مغامرة" },
+  { value: "seasonal_event", label: "موسم" },
 ]
 
-const TRAINING_CATEGORIES = [
-  { value: "symptoms", label: "الأعراض" },
-  { value: "conditions", label: "الحالات الطبية" },
-  { value: "specialties", label: "التخصصات" },
-  { value: "medications", label: "الأدوية" },
+const KNOWLEDGE_CATEGORIES = [
+  { value: "destinations", label: "الوجهات" },
+  { value: "hotels", label: "الفنادق" },
+  { value: "restaurants", label: "المطاعم" },
+  { value: "culture", label: "الثقافة" },
+  { value: "transport", label: "المواصلات" },
+  { value: "tips", label: "نصائح السفر" },
+  { value: "events", label: "الفعاليات" },
   { value: "general", label: "معلومات عامة" },
 ]
 
@@ -55,7 +78,7 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState('dashboard')
 
   useEffect(() => {
-    const session = sessionStorage.getItem('tabra_admin_auth')
+    const session = sessionStorage.getItem('hasio_admin_auth')
     if (session === 'authenticated') {
       setIsAuthenticated(true)
     }
@@ -65,7 +88,7 @@ export default function AdminPage() {
     e.preventDefault()
     if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
       setIsAuthenticated(true)
-      sessionStorage.setItem('tabra_admin_auth', 'authenticated')
+      sessionStorage.setItem('hasio_admin_auth', 'authenticated')
       setLoginError('')
     } else {
       setLoginError('اسم المستخدم أو كلمة المرور غير صحيحة')
@@ -74,7 +97,7 @@ export default function AdminPage() {
 
   const handleLogout = () => {
     setIsAuthenticated(false)
-    sessionStorage.removeItem('tabra_admin_auth')
+    sessionStorage.removeItem('hasio_admin_auth')
   }
 
   if (!isAuthenticated) {
@@ -92,7 +115,7 @@ export default function AdminPage() {
     <div className="admin-layout" dir="rtl">
       <header className="admin-header">
         <div className="admin-header-inner">
-          <Link to="/" className="admin-logo">لوحة تحكم طبرة</Link>
+          <Link to="/" className="admin-logo">لوحة تحكم هاسيو</Link>
           <div className="admin-header-right">
             <span className="admin-header-user">مرحباً، المدير</span>
             <button onClick={handleLogout} className="admin-btn admin-btn-secondary admin-btn-small">
@@ -105,11 +128,12 @@ export default function AdminPage() {
       <nav className="admin-nav">
         <div className="admin-nav-inner">
           {[
-            { id: 'dashboard', label: 'لوحة التحكم' },
-            { id: 'doctors', label: 'الأطباء والعيادات' },
-            { id: 'pending', label: 'طلبات الأطباء' },
-            { id: 'training', label: 'بيانات تدريب الذكاء الاصطناعي' },
-            { id: 'appointments', label: 'المواعيد' },
+            { id: 'dashboard', label: 'الإحصائيات' },
+            { id: 'listings', label: 'الأماكن' },
+            { id: 'content', label: 'محتوى معلق' },
+            { id: 'pending', label: 'حسابات معلقة' },
+            { id: 'knowledge', label: 'قاعدة المعرفة' },
+            { id: 'bookings', label: 'الحجوزات' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -125,10 +149,11 @@ export default function AdminPage() {
       <main className="admin-main">
         <AnimatePresence mode="wait">
           {activeTab === 'dashboard' && <DashboardTab key="dashboard" />}
-          {activeTab === 'doctors' && <DoctorsTab key="doctors" />}
-          {activeTab === 'pending' && <PendingDoctorsTab key="pending" />}
-          {activeTab === 'training' && <TrainingTab key="training" />}
-          {activeTab === 'appointments' && <AppointmentsTab key="appointments" />}
+          {activeTab === 'listings' && <ListingsTab key="listings" />}
+          {activeTab === 'content' && <ContentApprovalTab key="content" />}
+          {activeTab === 'pending' && <PendingBusinessesTab key="pending" />}
+          {activeTab === 'knowledge' && <KnowledgeTab key="knowledge" />}
+          {activeTab === 'bookings' && <BookingsTab key="bookings" />}
         </AnimatePresence>
       </main>
     </div>
@@ -144,7 +169,7 @@ function LoginForm({ username, setUsername, password, setPassword, loginError, h
         className="admin-login-card"
       >
         <div className="admin-login-header">
-          <h1 className="admin-login-title">لوحة تحكم طبرة</h1>
+          <h1 className="admin-login-title">لوحة تحكم هاسيو</h1>
           <p className="admin-login-subtitle">سجّل الدخول للوصول إلى لوحة التحكم</p>
         </div>
 
@@ -192,13 +217,14 @@ function DashboardTab() {
   if (!stats) return <LoadingState />
 
   const statCards = [
-    { label: 'إجمالي الأطباء/العيادات', value: stats.totalDoctors, color: 'blue' },
-    { label: 'الأطباء النشطون', value: stats.activeDoctors, color: 'green' },
-    { label: 'الموثقون', value: stats.verifiedDoctors, color: 'purple' },
+    { label: 'إجمالي الأماكن', value: stats.totalListings, color: 'blue' },
+    { label: 'الأماكن النشطة', value: stats.activeListings, color: 'green' },
+    { label: 'الموثقة', value: stats.verifiedListings, color: 'purple' },
+    { label: 'محتوى معلق', value: stats.pendingContent ?? 0, color: 'yellow' },
     { label: 'إجمالي المستخدمين', value: stats.totalUsers, color: 'orange' },
-    { label: 'المواعيد', value: stats.totalAppointments, color: 'pink' },
-    { label: 'بيانات التدريب', value: stats.totalTrainingData, color: 'indigo' },
-    { label: 'تحليلات الأعراض', value: stats.totalSymptomAnalyses, color: 'teal' },
+    { label: 'الحجوزات', value: stats.totalBookings, color: 'pink' },
+    { label: 'قاعدة المعرفة', value: stats.totalKnowledgeData, color: 'indigo' },
+    { label: 'خطط السفر', value: stats.totalTravelPlans, color: 'teal' },
   ]
 
   return (
@@ -225,36 +251,44 @@ function DashboardTab() {
         <div className="admin-breakdown-card">
           <h3 className="admin-breakdown-title">حسب النوع</h3>
           <div className="admin-breakdown-row">
-            <span className="admin-breakdown-label">أطباء</span>
-            <span className="admin-breakdown-value">{stats.doctorsByType.doctor}</span>
+            <span className="admin-breakdown-label">فنادق</span>
+            <span className="admin-breakdown-value">{stats.listingsByType?.hotel ?? 0}</span>
           </div>
           <div className="admin-breakdown-row">
-            <span className="admin-breakdown-label">عيادات</span>
-            <span className="admin-breakdown-value">{stats.doctorsByType.clinic}</span>
+            <span className="admin-breakdown-label">مطاعم</span>
+            <span className="admin-breakdown-value">{stats.listingsByType?.restaurant ?? 0}</span>
           </div>
           <div className="admin-breakdown-row">
-            <span className="admin-breakdown-label">مستشفيات</span>
-            <span className="admin-breakdown-value">{stats.doctorsByType.hospital}</span>
+            <span className="admin-breakdown-label">معالم سياحية</span>
+            <span className="admin-breakdown-value">{stats.listingsByType?.attraction ?? 0}</span>
+          </div>
+          <div className="admin-breakdown-row">
+            <span className="admin-breakdown-label">فعاليات</span>
+            <span className="admin-breakdown-value">{stats.listingsByType?.event ?? 0}</span>
+          </div>
+          <div className="admin-breakdown-row">
+            <span className="admin-breakdown-label">جولات</span>
+            <span className="admin-breakdown-value">{stats.listingsByType?.tour ?? 0}</span>
           </div>
         </div>
 
         <div className="admin-breakdown-card">
-          <h3 className="admin-breakdown-title">المواعيد حسب الحالة</h3>
+          <h3 className="admin-breakdown-title">الحجوزات حسب الحالة</h3>
           <div className="admin-breakdown-row">
             <span className="admin-breakdown-label">قيد الانتظار</span>
-            <span className="admin-breakdown-value yellow">{stats.appointmentsByStatus.pending}</span>
+            <span className="admin-breakdown-value yellow">{stats.bookingsByStatus?.pending ?? 0}</span>
           </div>
           <div className="admin-breakdown-row">
             <span className="admin-breakdown-label">مؤكدة</span>
-            <span className="admin-breakdown-value blue">{stats.appointmentsByStatus.confirmed}</span>
+            <span className="admin-breakdown-value blue">{stats.bookingsByStatus?.confirmed ?? 0}</span>
           </div>
           <div className="admin-breakdown-row">
             <span className="admin-breakdown-label">مكتملة</span>
-            <span className="admin-breakdown-value green">{stats.appointmentsByStatus.completed}</span>
+            <span className="admin-breakdown-value green">{stats.bookingsByStatus?.completed ?? 0}</span>
           </div>
           <div className="admin-breakdown-row">
             <span className="admin-breakdown-label">ملغاة</span>
-            <span className="admin-breakdown-value red">{stats.appointmentsByStatus.cancelled}</span>
+            <span className="admin-breakdown-value red">{stats.bookingsByStatus?.cancelled ?? 0}</span>
           </div>
         </div>
       </div>
@@ -262,29 +296,29 @@ function DashboardTab() {
   )
 }
 
-function DoctorsTab() {
+function ListingsTab() {
   const [showForm, setShowForm] = useState(false)
-  const [editingDoctor, setEditingDoctor] = useState(null)
+  const [editingListing, setEditingListing] = useState(null)
   const [filterType, setFilterType] = useState('')
-  const [filterWilaya, setFilterWilaya] = useState('')
+  const [filterCity, setFilterCity] = useState('')
 
-  const doctors = useQuery(api.admin.queries.listAllDoctors, {
+  const listings = useQuery(api.admin.queries.listAllListings, {
     type: filterType || undefined,
-    wilaya: filterWilaya || undefined,
+    city: filterCity || undefined,
   })
-  const createDoctor = useMutation(api.admin.mutations.createDoctor)
-  const updateDoctor = useMutation(api.admin.mutations.updateDoctor)
-  const deleteDoctor = useMutation(api.admin.mutations.deleteDoctor)
+  const createListing = useMutation(api.admin.mutations.createListing)
+  const updateListing = useMutation(api.admin.mutations.updateListing)
+  const deleteListing = useMutation(api.admin.mutations.deleteListing)
 
   const handleSubmit = async (formData) => {
     try {
-      if (editingDoctor) {
-        await updateDoctor({ id: editingDoctor._id, ...formData })
+      if (editingListing) {
+        await updateListing({ id: editingListing._id, ...formData })
       } else {
-        await createDoctor(formData)
+        await createListing(formData)
       }
       setShowForm(false)
-      setEditingDoctor(null)
+      setEditingListing(null)
     } catch (error) {
       alert('خطأ: ' + error.message)
     }
@@ -292,27 +326,29 @@ function DoctorsTab() {
 
   const handleDelete = async (id) => {
     if (confirm('هل أنت متأكد من حذف هذا العنصر؟')) {
-      await deleteDoctor({ id })
+      await deleteListing({ id })
     }
   }
 
-  const handleEdit = (doctor) => {
-    setEditingDoctor(doctor)
+  const handleEdit = (listing) => {
+    setEditingListing(listing)
     setShowForm(true)
   }
 
   const typeLabels = {
-    doctor: 'طبيب',
-    clinic: 'عيادة',
-    hospital: 'مستشفى'
+    hotel: 'فندق',
+    restaurant: 'مطعم',
+    attraction: 'معلم سياحي',
+    event: 'فعالية',
+    tour: 'جولة'
   }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <div className="admin-card-header">
-        <h2 className="admin-page-title">الأطباء والعيادات</h2>
+        <h2 className="admin-page-title">الأماكن والخدمات</h2>
         <button
-          onClick={() => { setShowForm(true); setEditingDoctor(null); }}
+          onClick={() => { setShowForm(true); setEditingListing(null); }}
           className="admin-btn admin-btn-primary"
         >
           إضافة جديد
@@ -326,34 +362,36 @@ function DoctorsTab() {
           className="admin-form-select"
         >
           <option value="">كل الأنواع</option>
-          <option value="doctor">طبيب</option>
-          <option value="clinic">عيادة</option>
-          <option value="hospital">مستشفى</option>
+          <option value="hotel">فندق</option>
+          <option value="restaurant">مطعم</option>
+          <option value="attraction">معلم سياحي</option>
+          <option value="event">فعالية</option>
+          <option value="tour">جولة</option>
         </select>
         <select
-          value={filterWilaya}
-          onChange={(e) => setFilterWilaya(e.target.value)}
+          value={filterCity}
+          onChange={(e) => setFilterCity(e.target.value)}
           className="admin-form-select"
         >
-          <option value="">كل الولايات</option>
-          {WILAYAS.map(w => <option key={w} value={w}>{w}</option>)}
+          <option value="">كل المدن</option>
+          {SAUDI_CITIES.map(c => <option key={c} value={c}>{SAUDI_CITIES_AR[c] || c}</option>)}
         </select>
       </div>
 
       <AnimatePresence>
         {showForm && (
-          <DoctorForm
+          <ListingForm
             onSubmit={handleSubmit}
-            onClose={() => { setShowForm(false); setEditingDoctor(null); }}
-            initialData={editingDoctor}
+            onClose={() => { setShowForm(false); setEditingListing(null); }}
+            initialData={editingListing}
           />
         )}
       </AnimatePresence>
 
-      {!doctors ? (
+      {!listings ? (
         <LoadingState />
-      ) : doctors.length === 0 ? (
-        <div className="admin-empty">لا يوجد أطباء/عيادات. أضف أول واحد.</div>
+      ) : listings.length === 0 ? (
+        <div className="admin-empty">لا توجد أماكن أو خدمات. أضف أول واحد.</div>
       ) : (
         <div className="admin-table-wrapper">
           <table className="admin-table">
@@ -361,38 +399,50 @@ function DoctorsTab() {
               <tr>
                 <th>الاسم</th>
                 <th>النوع</th>
-                <th>التخصص</th>
-                <th>الولاية</th>
+                <th>الفئة</th>
+                <th>المدينة</th>
                 <th>الحالة</th>
+                <th>حالة المراجعة</th>
                 <th style={{ textAlign: 'left' }}>الإجراءات</th>
               </tr>
             </thead>
             <tbody>
-              {doctors.map(doctor => (
-                <tr key={doctor._id}>
+              {listings.map(listing => (
+                <tr key={listing._id}>
                   <td>
-                    <div className="admin-table-name">{doctor.name_ar}</div>
-                    <div className="admin-table-sub">{doctor.name_en}</div>
+                    <div className="admin-table-name">{listing.name_ar}</div>
+                    <div className="admin-table-sub">{listing.name_en}</div>
                   </td>
-                  <td>{typeLabels[doctor.type] || doctor.type}</td>
-                  <td>{doctor.specialty_ar || doctor.specialty}</td>
-                  <td>{doctor.wilaya}</td>
+                  <td>{typeLabels[listing.type] || listing.type}</td>
+                  <td>{listing.category_ar || listing.category}</td>
+                  <td>{SAUDI_CITIES_AR[listing.city] || listing.city}</td>
                   <td>
-                    <span className={`admin-badge ${doctor.isActive !== false ? 'green' : 'gray'}`}>
-                      {doctor.isActive !== false ? 'نشط' : 'غير نشط'}
+                    <span className={`admin-badge ${listing.isActive !== false ? 'green' : 'gray'}`}>
+                      {listing.isActive !== false ? 'نشط' : 'غير نشط'}
                     </span>
-                    {doctor.isVerified && (
+                    {listing.isVerified && (
                       <span className="admin-badge blue" style={{ marginRight: '0.5rem' }}>
                         موثق
                       </span>
                     )}
                   </td>
                   <td>
+                    {listing.status === 'approved' ? (
+                      <span className="admin-badge green">معتمد</span>
+                    ) : listing.status === 'pending' ? (
+                      <span className="admin-badge yellow">قيد المراجعة</span>
+                    ) : listing.status === 'rejected' ? (
+                      <span className="admin-badge red">مرفوض</span>
+                    ) : (
+                      <span className="admin-badge gray">أصلي</span>
+                    )}
+                  </td>
+                  <td>
                     <div className="admin-actions">
-                      <button onClick={() => handleEdit(doctor)} className="admin-action-btn edit">
+                      <button onClick={() => handleEdit(listing)} className="admin-action-btn edit">
                         تعديل
                       </button>
-                      <button onClick={() => handleDelete(doctor._id)} className="admin-action-btn delete">
+                      <button onClick={() => handleDelete(listing._id)} className="admin-action-btn delete">
                         حذف
                       </button>
                     </div>
@@ -407,33 +457,37 @@ function DoctorsTab() {
   )
 }
 
-function DoctorForm({ onSubmit, onClose, initialData }) {
+function ListingForm({ onSubmit, onClose, initialData }) {
   const [formData, setFormData] = useState({
-    type: initialData?.type || 'doctor',
+    type: initialData?.type || 'hotel',
+    category: initialData?.category || 'luxury_hotel',
+    category_ar: initialData?.category_ar || '',
     name_en: initialData?.name_en || '',
     name_ar: initialData?.name_ar || '',
-    specialty: initialData?.specialty || 'general',
-    specialty_ar: initialData?.specialty_ar || '',
     description_en: initialData?.description_en || '',
     description_ar: initialData?.description_ar || '',
     address: initialData?.address || '',
-    wilaya: initialData?.wilaya || 'الجزائر',
-    lat: initialData?.coordinates?.lat || 36.7538,
-    lng: initialData?.coordinates?.lng || 3.0588,
+    city: initialData?.city || 'Riyadh',
+    region: initialData?.region || '',
+    lat: initialData?.coordinates?.lat || 24.7136,
+    lng: initialData?.coordinates?.lng || 46.6753,
     phone: initialData?.phone || '',
     email: initialData?.email || '',
-    consultationFee: initialData?.consultationFee || '',
+    website: initialData?.website || '',
+    priceRange: initialData?.priceRange || '',
     isVerified: initialData?.isVerified || false,
     isActive: initialData?.isActive !== false,
   })
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    const { lat, lng, consultationFee, ...rest } = formData
+    const { lat, lng, ...rest } = formData
     onSubmit({
       ...rest,
       coordinates: { lat: parseFloat(lat), lng: parseFloat(lng) },
-      consultationFee: consultationFee ? parseInt(consultationFee) : undefined,
+      priceRange: rest.priceRange || undefined,
+      website: rest.website || undefined,
+      region: rest.region || undefined,
     })
   }
 
@@ -454,7 +508,7 @@ function DoctorForm({ onSubmit, onClose, initialData }) {
       >
         <div className="admin-modal-header">
           <h3 className="admin-modal-title">
-            {initialData ? 'تعديل طبيب/عيادة' : 'إضافة طبيب/عيادة جديد'}
+            {initialData ? 'تعديل مكان/خدمة' : 'إضافة مكان/خدمة جديد'}
           </h3>
         </div>
 
@@ -469,27 +523,29 @@ function DoctorForm({ onSubmit, onClose, initialData }) {
                     onChange={(e) => setFormData({...formData, type: e.target.value})}
                     className="admin-form-select"
                   >
-                    <option value="doctor">طبيب</option>
-                    <option value="clinic">عيادة</option>
-                    <option value="hospital">مستشفى</option>
+                    <option value="hotel">فندق</option>
+                    <option value="restaurant">مطعم</option>
+                    <option value="attraction">معلم سياحي</option>
+                    <option value="event">فعالية</option>
+                    <option value="tour">جولة</option>
                   </select>
                 </div>
                 <div className="admin-form-group">
-                  <label className="admin-form-label">التخصص *</label>
+                  <label className="admin-form-label">الفئة *</label>
                   <select
-                    value={formData.specialty}
+                    value={formData.category}
                     onChange={(e) => {
-                      const spec = SPECIALTIES.find(s => s.value === e.target.value)
+                      const cat = CATEGORIES.find(c => c.value === e.target.value)
                       setFormData({
                         ...formData,
-                        specialty: e.target.value,
-                        specialty_ar: spec?.label_ar || ''
+                        category: e.target.value,
+                        category_ar: cat?.label || ''
                       })
                     }}
                     className="admin-form-select"
                   >
-                    {SPECIALTIES.map(s => (
-                      <option key={s.value} value={s.value}>{s.label_ar}</option>
+                    {CATEGORIES.map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
                   </select>
                 </div>
@@ -532,13 +588,13 @@ function DoctorForm({ onSubmit, onClose, initialData }) {
 
               <div className="admin-form-row-3">
                 <div className="admin-form-group">
-                  <label className="admin-form-label">الولاية *</label>
+                  <label className="admin-form-label">المدينة *</label>
                   <select
-                    value={formData.wilaya}
-                    onChange={(e) => setFormData({...formData, wilaya: e.target.value})}
+                    value={formData.city}
+                    onChange={(e) => setFormData({...formData, city: e.target.value})}
                     className="admin-form-select"
                   >
-                    {WILAYAS.map(w => <option key={w} value={w}>{w}</option>)}
+                    {SAUDI_CITIES.map(c => <option key={c} value={c}>{SAUDI_CITIES_AR[c] || c}</option>)}
                   </select>
                 </div>
                 <div className="admin-form-group">
@@ -567,6 +623,17 @@ function DoctorForm({ onSubmit, onClose, initialData }) {
                 </div>
               </div>
 
+              <div className="admin-form-group">
+                <label className="admin-form-label">المنطقة</label>
+                <input
+                  type="text"
+                  value={formData.region}
+                  onChange={(e) => setFormData({...formData, region: e.target.value})}
+                  className="admin-form-input"
+                  placeholder="مثال: منطقة الرياض، المنطقة الشرقية"
+                />
+              </div>
+
               <div className="admin-form-row">
                 <div className="admin-form-group">
                   <label className="admin-form-label">الهاتف</label>
@@ -590,16 +657,32 @@ function DoctorForm({ onSubmit, onClose, initialData }) {
                 </div>
               </div>
 
-              <div className="admin-form-group">
-                <label className="admin-form-label">رسوم الاستشارة (دج)</label>
-                <input
-                  type="number"
-                  value={formData.consultationFee}
-                  onChange={(e) => setFormData({...formData, consultationFee: e.target.value})}
-                  className="admin-form-input"
-                  dir="ltr"
-                  placeholder="مثال: 2000"
-                />
+              <div className="admin-form-row">
+                <div className="admin-form-group">
+                  <label className="admin-form-label">الموقع الإلكتروني</label>
+                  <input
+                    type="url"
+                    value={formData.website}
+                    onChange={(e) => setFormData({...formData, website: e.target.value})}
+                    className="admin-form-input"
+                    dir="ltr"
+                    placeholder="https://example.com"
+                  />
+                </div>
+                <div className="admin-form-group">
+                  <label className="admin-form-label">نطاق السعر</label>
+                  <select
+                    value={formData.priceRange}
+                    onChange={(e) => setFormData({...formData, priceRange: e.target.value})}
+                    className="admin-form-select"
+                  >
+                    <option value="">غير محدد</option>
+                    <option value="$">$ اقتصادي</option>
+                    <option value="$$">$$ متوسط</option>
+                    <option value="$$$">$$$ مرتفع</option>
+                    <option value="$$$$">$$$$ فاخر</option>
+                  </select>
+                </div>
               </div>
 
               <div className="admin-form-row">
@@ -659,24 +742,24 @@ function DoctorForm({ onSubmit, onClose, initialData }) {
   )
 }
 
-function TrainingTab() {
+function KnowledgeTab() {
   const [showForm, setShowForm] = useState(false)
   const [editingData, setEditingData] = useState(null)
   const [filterCategory, setFilterCategory] = useState('')
 
-  const trainingData = useQuery(api.admin.queries.listTrainingData, {
+  const knowledgeData = useQuery(api.admin.queries.listKnowledgeData, {
     category: filterCategory || undefined,
   })
-  const createTrainingData = useMutation(api.admin.mutations.createTrainingData)
-  const updateTrainingData = useMutation(api.admin.mutations.updateTrainingData)
-  const deleteTrainingData = useMutation(api.admin.mutations.deleteTrainingData)
+  const createKnowledgeData = useMutation(api.admin.mutations.createKnowledgeData)
+  const updateKnowledgeData = useMutation(api.admin.mutations.updateKnowledgeData)
+  const deleteKnowledgeData = useMutation(api.admin.mutations.deleteKnowledgeData)
 
   const handleSubmit = async (formData) => {
     try {
       if (editingData) {
-        await updateTrainingData({ id: editingData._id, ...formData })
+        await updateKnowledgeData({ id: editingData._id, ...formData })
       } else {
-        await createTrainingData(formData)
+        await createKnowledgeData(formData)
       }
       setShowForm(false)
       setEditingData(null)
@@ -686,23 +769,26 @@ function TrainingTab() {
   }
 
   const handleDelete = async (id) => {
-    if (confirm('هل أنت متأكد من حذف هذه البيانات التدريبية؟')) {
-      await deleteTrainingData({ id })
+    if (confirm('هل أنت متأكد من حذف هذه البيانات؟')) {
+      await deleteKnowledgeData({ id })
     }
   }
 
   const categoryLabels = {
-    symptoms: 'الأعراض',
-    conditions: 'الحالات الطبية',
-    specialties: 'التخصصات',
-    medications: 'الأدوية',
+    destinations: 'الوجهات',
+    hotels: 'الفنادق',
+    restaurants: 'المطاعم',
+    culture: 'الثقافة',
+    transport: 'المواصلات',
+    tips: 'نصائح السفر',
+    events: 'الفعاليات',
     general: 'معلومات عامة'
   }
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <div className="admin-card-header">
-        <h2 className="admin-page-title">بيانات تدريب الذكاء الاصطناعي</h2>
+        <h2 className="admin-page-title">قاعدة المعرفة السياحية</h2>
         <button
           onClick={() => { setShowForm(true); setEditingData(null); }}
           className="admin-btn admin-btn-primary"
@@ -713,9 +799,9 @@ function TrainingTab() {
 
       <div className="admin-info-box">
         <p>
-          أضف المعرفة الطبية لتحسين فاحص الأعراض بالذكاء الاصطناعي. قم بتضمين الأعراض والحالات
-          والتخصصات والأدوية ومعلومات الرعاية الصحية العامة. سيستخدم الذكاء الاصطناعي هذه
-          البيانات لتقديم استجابات أكثر دقة وملاءمة.
+          أضف معلومات سياحية لتحسين مساعد السفر بالذكاء الاصطناعي. قم بتضمين الوجهات والفنادق
+          والمطاعم والثقافة والمواصلات ونصائح السفر والفعاليات. سيستخدم الذكاء الاصطناعي هذه
+          البيانات لتقديم توصيات أكثر دقة وملاءمة للمسافرين.
         </p>
       </div>
 
@@ -726,7 +812,7 @@ function TrainingTab() {
           className="admin-form-select"
         >
           <option value="">كل الفئات</option>
-          {TRAINING_CATEGORIES.map(c => (
+          {KNOWLEDGE_CATEGORIES.map(c => (
             <option key={c.value} value={c.value}>{c.label}</option>
           ))}
         </select>
@@ -734,7 +820,7 @@ function TrainingTab() {
 
       <AnimatePresence>
         {showForm && (
-          <TrainingForm
+          <KnowledgeForm
             onSubmit={handleSubmit}
             onClose={() => { setShowForm(false); setEditingData(null); }}
             initialData={editingData}
@@ -742,13 +828,13 @@ function TrainingTab() {
         )}
       </AnimatePresence>
 
-      {!trainingData ? (
+      {!knowledgeData ? (
         <LoadingState />
-      ) : trainingData.length === 0 ? (
-        <div className="admin-empty">لا توجد بيانات تدريبية. أضف أول إدخال لتعزيز الذكاء الاصطناعي.</div>
+      ) : knowledgeData.length === 0 ? (
+        <div className="admin-empty">لا توجد بيانات في قاعدة المعرفة. أضف أول إدخال لتعزيز مساعد السفر.</div>
       ) : (
         <div className="admin-list">
-          {trainingData.map(item => (
+          {knowledgeData.map(item => (
             <div key={item._id} className="admin-list-item">
               <div className="admin-list-item-header">
                 <div style={{ flex: 1 }}>
@@ -796,16 +882,16 @@ function TrainingTab() {
   )
 }
 
-function TrainingForm({ onSubmit, onClose, initialData }) {
+function KnowledgeForm({ onSubmit, onClose, initialData }) {
   const [formData, setFormData] = useState({
-    category: initialData?.category || 'symptoms',
+    category: initialData?.category || 'destinations',
     title: initialData?.title || '',
     title_ar: initialData?.title_ar || '',
     content: initialData?.content || '',
     content_ar: initialData?.content_ar || '',
     keywords: initialData?.keywords?.join(', ') || '',
     source: initialData?.metadata?.source || '',
-    specialty: initialData?.metadata?.specialty || '',
+    relatedCity: initialData?.metadata?.relatedCity || '',
     isActive: initialData?.isActive !== false,
   })
 
@@ -823,9 +909,9 @@ function TrainingForm({ onSubmit, onClose, initialData }) {
       content: formData.content,
       content_ar: formData.content_ar || undefined,
       keywords: keywords.length > 0 ? keywords : undefined,
-      metadata: (formData.source || formData.specialty) ? {
+      metadata: (formData.source || formData.relatedCity) ? {
         source: formData.source || undefined,
-        specialty: formData.specialty || undefined,
+        relatedCity: formData.relatedCity || undefined,
         lastReviewed: new Date().toISOString().split('T')[0],
       } : undefined,
       isActive: formData.isActive,
@@ -849,7 +935,7 @@ function TrainingForm({ onSubmit, onClose, initialData }) {
       >
         <div className="admin-modal-header">
           <h3 className="admin-modal-title">
-            {initialData ? 'تعديل بيانات التدريب' : 'إضافة بيانات تدريب جديدة'}
+            {initialData ? 'تعديل بيانات المعرفة' : 'إضافة بيانات معرفة جديدة'}
           </h3>
         </div>
 
@@ -864,21 +950,21 @@ function TrainingForm({ onSubmit, onClose, initialData }) {
                     onChange={(e) => setFormData({...formData, category: e.target.value})}
                     className="admin-form-select"
                   >
-                    {TRAINING_CATEGORIES.map(c => (
+                    {KNOWLEDGE_CATEGORIES.map(c => (
                       <option key={c.value} value={c.value}>{c.label}</option>
                     ))}
                   </select>
                 </div>
                 <div className="admin-form-group">
-                  <label className="admin-form-label">التخصص المتعلق</label>
+                  <label className="admin-form-label">المدينة المتعلقة</label>
                   <select
-                    value={formData.specialty}
-                    onChange={(e) => setFormData({...formData, specialty: e.target.value})}
+                    value={formData.relatedCity}
+                    onChange={(e) => setFormData({...formData, relatedCity: e.target.value})}
                     className="admin-form-select"
                   >
-                    <option value="">لا يوجد</option>
-                    {SPECIALTIES.map(s => (
-                      <option key={s.value} value={s.value}>{s.label_ar}</option>
+                    <option value="">عام (كل المدن)</option>
+                    {SAUDI_CITIES.map(c => (
+                      <option key={c} value={c}>{SAUDI_CITIES_AR[c] || c}</option>
                     ))}
                   </select>
                 </div>
@@ -914,7 +1000,7 @@ function TrainingForm({ onSubmit, onClose, initialData }) {
                   onChange={(e) => setFormData({...formData, content_ar: e.target.value})}
                   className="admin-form-textarea"
                   rows={6}
-                  placeholder="أدخل المعلومات الطبية التفصيلية، الأعراض، الحالات، العلاجات، إلخ."
+                  placeholder="أدخل المعلومات السياحية التفصيلية، الوجهات، النصائح، الثقافة، إلخ."
                   required
                 />
               </div>
@@ -937,7 +1023,7 @@ function TrainingForm({ onSubmit, onClose, initialData }) {
                   value={formData.keywords}
                   onChange={(e) => setFormData({...formData, keywords: e.target.value})}
                   className="admin-form-input"
-                  placeholder="مثال: صداع، شقيقة، ألم، توتر"
+                  placeholder="مثال: الرياض، سياحة، فنادق، تراث"
                 />
               </div>
 
@@ -948,7 +1034,7 @@ function TrainingForm({ onSubmit, onClose, initialData }) {
                   value={formData.source}
                   onChange={(e) => setFormData({...formData, source: e.target.value})}
                   className="admin-form-input"
-                  placeholder="مثال: منظمة الصحة العالمية، مجلة طبية، كتاب"
+                  placeholder="مثال: هيئة السياحة، موقع رسمي، دليل سياحي"
                 />
               </div>
 
@@ -958,7 +1044,7 @@ function TrainingForm({ onSubmit, onClose, initialData }) {
                   checked={formData.isActive}
                   onChange={(e) => setFormData({...formData, isActive: e.target.checked})}
                 />
-                <span>نشط (تضمين في تدريب الذكاء الاصطناعي)</span>
+                <span>نشط (تضمين في قاعدة معرفة مساعد السفر)</span>
               </label>
             </div>
           </div>
@@ -977,14 +1063,14 @@ function TrainingForm({ onSubmit, onClose, initialData }) {
   )
 }
 
-function AppointmentsTab() {
+function BookingsTab() {
   const [filterStatus, setFilterStatus] = useState('')
 
-  const appointments = useQuery(api.admin.queries.listAllAppointments, {
+  const bookings = useQuery(api.admin.queries.listAllBookings, {
     status: filterStatus || undefined,
     limit: 100,
   })
-  const updateStatus = useMutation(api.admin.mutations.updateAppointmentStatus)
+  const updateStatus = useMutation(api.admin.mutations.updateBookingStatus)
 
   const handleStatusChange = async (id, status) => {
     await updateStatus({ id, status })
@@ -1008,7 +1094,7 @@ function AppointmentsTab() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <h2 className="admin-page-title">المواعيد</h2>
+      <h2 className="admin-page-title">الحجوزات</h2>
 
       <div className="admin-filters">
         <select
@@ -1025,46 +1111,46 @@ function AppointmentsTab() {
         </select>
       </div>
 
-      {!appointments ? (
+      {!bookings ? (
         <LoadingState />
-      ) : appointments.length === 0 ? (
-        <div className="admin-empty">لا توجد مواعيد.</div>
+      ) : bookings.length === 0 ? (
+        <div className="admin-empty">لا توجد حجوزات.</div>
       ) : (
         <div className="admin-table-wrapper">
           <table className="admin-table">
             <thead>
               <tr>
-                <th>المريض</th>
-                <th>الطبيب</th>
+                <th>المستخدم</th>
+                <th>المكان</th>
                 <th>التاريخ والوقت</th>
                 <th>الحالة</th>
                 <th style={{ textAlign: 'left' }}>الإجراءات</th>
               </tr>
             </thead>
             <tbody>
-              {appointments.map(apt => (
-                <tr key={apt._id}>
+              {bookings.map(booking => (
+                <tr key={booking._id}>
                   <td>
-                    <div className="admin-table-name">{apt.userName}</div>
-                    <div className="admin-table-sub">{apt.userEmail}</div>
+                    <div className="admin-table-name">{booking.userName}</div>
+                    <div className="admin-table-sub">{booking.userEmail}</div>
                   </td>
                   <td>
-                    <div>{apt.doctorName_ar}</div>
-                    <div className="admin-table-sub">{apt.doctorName}</div>
+                    <div>{booking.listingName_ar}</div>
+                    <div className="admin-table-sub">{booking.listingName}</div>
                   </td>
                   <td>
-                    <div>{apt.date}</div>
-                    <div className="admin-table-sub">{apt.time}</div>
+                    <div>{booking.date}</div>
+                    <div className="admin-table-sub">{booking.time}</div>
                   </td>
                   <td>
-                    <span className={`admin-badge ${statusColors[apt.status]}`}>
-                      {statusLabels[apt.status] || apt.status}
+                    <span className={`admin-badge ${statusColors[booking.status]}`}>
+                      {statusLabels[booking.status] || booking.status}
                     </span>
                   </td>
                   <td style={{ textAlign: 'left' }}>
                     <select
-                      value={apt.status}
-                      onChange={(e) => handleStatusChange(apt._id, e.target.value)}
+                      value={booking.status}
+                      onChange={(e) => handleStatusChange(booking._id, e.target.value)}
                       className="admin-form-select"
                       style={{ padding: '0.5rem', fontSize: '0.875rem' }}
                     >
@@ -1085,25 +1171,184 @@ function AppointmentsTab() {
   )
 }
 
-function PendingDoctorsTab() {
-  const pendingDoctors = useQuery(api.admin.queries.listPendingDoctors)
-  const approveDoctor = useMutation(api.users.mutations.approveDoctorAccount)
+function ContentApprovalTab() {
+  const pendingContent = useQuery(api.admin.queries.listPendingContent)
+  const approveContent = useMutation(api.admin.mutations.approveContent)
+  const rejectContent = useMutation(api.admin.mutations.rejectContent)
+  const [actionId, setActionId] = useState(null)
+  const [rejectModal, setRejectModal] = useState(null)
+  const [rejectReason, setRejectReason] = useState('')
+
+  const handleApprove = async (id) => {
+    setActionId(id)
+    try {
+      await approveContent({ id })
+    } catch (err) {
+      console.error('Error approving content:', err)
+    }
+    setActionId(null)
+  }
+
+  const handleReject = async (id) => {
+    setActionId(id)
+    try {
+      await rejectContent({ id, reason: rejectReason || undefined })
+      setRejectModal(null)
+      setRejectReason('')
+    } catch (err) {
+      console.error('Error rejecting content:', err)
+    }
+    setActionId(null)
+  }
+
+  const typeLabels = {
+    hotel: 'فندق',
+    restaurant: 'مطعم',
+    attraction: 'معلم سياحي',
+    event: 'فعالية',
+    tour: 'جولة'
+  }
+
+  if (pendingContent === undefined) return <LoadingState />
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <div className="admin-section-header">
+        <h2 className="admin-section-title">محتوى معلق للمراجعة</h2>
+        <span className="admin-badge admin-badge-warning">{pendingContent.length} عنصر</span>
+      </div>
+
+      {pendingContent.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+          لا يوجد محتوى معلق للمراجعة
+        </div>
+      ) : (
+        <div className="admin-table-wrapper">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>الاسم</th>
+                <th>النوع</th>
+                <th>المدينة</th>
+                <th>المالك</th>
+                <th>تاريخ الإرسال</th>
+                <th style={{ textAlign: 'left' }}>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingContent.map(listing => (
+                <tr key={listing._id}>
+                  <td>
+                    <div className="admin-table-name">{listing.name_ar}</div>
+                    <div className="admin-table-sub">{listing.name_en}</div>
+                  </td>
+                  <td>{typeLabels[listing.type] || listing.type}</td>
+                  <td>{SAUDI_CITIES_AR[listing.city] || listing.city}</td>
+                  <td>
+                    <div className="admin-table-name">{listing.ownerName}</div>
+                    <div className="admin-table-sub">{listing.ownerEmail}</div>
+                  </td>
+                  <td>{new Date(listing.createdAt).toLocaleDateString('ar-SA')}</td>
+                  <td>
+                    <div className="admin-actions">
+                      <button
+                        onClick={() => handleApprove(listing._id)}
+                        className="admin-action-btn edit"
+                        disabled={actionId === listing._id}
+                      >
+                        {actionId === listing._id ? 'جاري...' : 'موافقة'}
+                      </button>
+                      <button
+                        onClick={() => setRejectModal(listing._id)}
+                        className="admin-action-btn delete"
+                        disabled={actionId === listing._id}
+                      >
+                        رفض
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <AnimatePresence>
+        {rejectModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="admin-modal-overlay"
+            onClick={() => setRejectModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="admin-modal"
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '500px' }}
+            >
+              <div className="admin-modal-header">
+                <h3 className="admin-modal-title">رفض المحتوى</h3>
+              </div>
+              <div className="admin-modal-body">
+                <div className="admin-form-group">
+                  <label className="admin-form-label">سبب الرفض (اختياري)</label>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    className="admin-form-textarea"
+                    rows={3}
+                    placeholder="أدخل سبب الرفض ليراه صاحب المحتوى..."
+                  />
+                </div>
+              </div>
+              <div className="admin-modal-footer">
+                <button
+                  onClick={() => setRejectModal(null)}
+                  className="admin-btn admin-btn-secondary"
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={() => handleReject(rejectModal)}
+                  className="admin-btn admin-btn-primary"
+                  style={{ background: '#ef4444' }}
+                  disabled={actionId === rejectModal}
+                >
+                  {actionId === rejectModal ? 'جاري...' : 'تأكيد الرفض'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
+function PendingBusinessesTab() {
+  const pendingBusinesses = useQuery(api.admin.queries.listPendingBusinesses)
+  const approveBusiness = useMutation(api.users.mutations.approveBusinessAccount)
   const [approving, setApproving] = useState(null)
 
   const handleApprove = async (userId) => {
     setApproving(userId)
     try {
-      await approveDoctor({ userId })
+      await approveBusiness({ userId })
     } catch (err) {
-      console.error('Error approving doctor:', err)
+      console.error('Error approving business:', err)
     }
     setApproving(null)
   }
 
-  if (pendingDoctors === undefined) return <LoadingState />
+  if (pendingBusinesses === undefined) return <LoadingState />
 
-  const specialtyLabels = {}
-  SPECIALTIES.forEach(s => { specialtyLabels[s.value] = s.label_ar })
+  const categoryLabels = {}
+  CATEGORIES.forEach(c => { categoryLabels[c.value] = c.label })
 
   return (
     <motion.div
@@ -1112,11 +1357,11 @@ function PendingDoctorsTab() {
       exit={{ opacity: 0, y: -10 }}
     >
       <div className="admin-section-header">
-        <h2 className="admin-section-title">طلبات تسجيل الأطباء</h2>
-        <span className="admin-badge admin-badge-warning">{pendingDoctors.length} طلب</span>
+        <h2 className="admin-section-title">طلبات تسجيل مزودي الخدمات</h2>
+        <span className="admin-badge admin-badge-warning">{pendingBusinesses.length} طلب</span>
       </div>
 
-      {pendingDoctors.length === 0 ? (
+      {pendingBusinesses.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
           لا توجد طلبات معلقة
         </div>
@@ -1128,35 +1373,35 @@ function PendingDoctorsTab() {
                 <th>الاسم</th>
                 <th>البريد الإلكتروني</th>
                 <th>الدور</th>
-                <th>التخصص</th>
-                <th>السيرة الذاتية</th>
+                <th>الفئة</th>
+                <th>وثائق العمل</th>
                 <th>تاريخ التسجيل</th>
                 <th>إجراء</th>
               </tr>
             </thead>
             <tbody>
-              {pendingDoctors.map(doctor => (
-                <tr key={doctor._id}>
-                  <td>{`${doctor.firstName || ''} ${doctor.lastName || ''}`.trim() || '-'}</td>
-                  <td>{doctor.email}</td>
-                  <td>{doctor.role === 'doctor' ? 'طبيب' : 'عيادة'}</td>
-                  <td>{specialtyLabels[doctor.specialty] || doctor.specialty || '-'}</td>
+              {pendingBusinesses.map(business => (
+                <tr key={business._id}>
+                  <td>{`${business.firstName || ''} ${business.lastName || ''}`.trim() || '-'}</td>
+                  <td>{business.email}</td>
+                  <td>{business.role === 'business_owner' ? 'صاحب عمل' : 'مزود خدمة'}</td>
+                  <td>{categoryLabels[business.category] || business.category || '-'}</td>
                   <td>
-                    {doctor.cvFileId ? (
-                      <CvDownloadLink fileId={doctor.cvFileId} />
+                    {business.businessDocFileId ? (
+                      <BusinessDocDownloadLink fileId={business.businessDocFileId} />
                     ) : (
                       <span style={{ color: '#ef4444', fontSize: '0.8125rem' }}>لم يُرفع بعد</span>
                     )}
                   </td>
-                  <td>{new Date(doctor.createdAt).toLocaleDateString('ar-DZ')}</td>
+                  <td>{new Date(business.createdAt).toLocaleDateString('ar-SA')}</td>
                   <td>
                     <button
                       className="admin-btn admin-btn-primary admin-btn-small"
-                      onClick={() => handleApprove(doctor._id)}
-                      disabled={approving === doctor._id || !doctor.cvFileId}
-                      title={!doctor.cvFileId ? 'يجب رفع السيرة الذاتية أولاً' : ''}
+                      onClick={() => handleApprove(business._id)}
+                      disabled={approving === business._id || !business.businessDocFileId}
+                      title={!business.businessDocFileId ? 'يجب رفع وثائق العمل أولاً' : ''}
                     >
-                      {approving === doctor._id ? 'جاري...' : 'موافقة'}
+                      {approving === business._id ? 'جاري...' : 'موافقة'}
                     </button>
                   </td>
                 </tr>
@@ -1169,20 +1414,20 @@ function PendingDoctorsTab() {
   )
 }
 
-function CvDownloadLink({ fileId }) {
-  const cvUrl = useQuery(api.users.queries.getCvUrl, { fileId })
+function BusinessDocDownloadLink({ fileId }) {
+  const docUrl = useQuery(api.users.queries.getBusinessDocUrl, { fileId })
 
-  if (!cvUrl) return <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>جاري التحميل...</span>
+  if (!docUrl) return <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>جاري التحميل...</span>
 
   return (
     <a
-      href={cvUrl}
+      href={docUrl}
       target="_blank"
       rel="noopener noreferrer"
       className="admin-btn admin-btn-secondary admin-btn-small"
       style={{ textDecoration: 'none', display: 'inline-block' }}
     >
-      عرض CV
+      عرض الوثيقة
     </a>
   )
 }

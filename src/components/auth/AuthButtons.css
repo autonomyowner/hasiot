@@ -30,8 +30,8 @@
 }
 
 .btn-outline-auth:hover {
-  border-color: #DC2626;
-  color: #DC2626;
+  border-color: #0D7A5F;
+  color: #0D7A5F;
 }
 
 .btn-primary-auth {
@@ -39,7 +39,7 @@
   font-size: 0.875rem;
   font-weight: 500;
   color: white;
-  background-color: #DC2626;
+  background-color: #0D7A5F;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -47,7 +47,7 @@
 }
 
 .btn-primary-auth:hover {
-  background-color: #b91c1c;
+  background-color: #065F46;
 }
 
 .auth-user {

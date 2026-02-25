@@ -6,48 +6,41 @@ import { api } from '../convex/_generated/api'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import ChatWidget from './components/chat/ChatWidget'
-
-mapboxgl.accessToken = 'pk.eyJ1IjoiYXplZGRpbmV6ZWxsYWciLCJhIjoiY21sMDJ2cWN6MDF2eTNmczZjM3RrNGgzOCJ9.nj7bNijXa1rMWKui0LbpqA'
+import SaveToTripModal from './components/trips/SaveToTripModal'
 
 // Translations for the map page
 const mapTranslations = {
   ar: {
-    title: 'خريطة الأطباء والعيادات',
+    title: 'استكشف السعودية',
     backHome: 'الرئيسية',
-    searchPlaceholder: 'ابحث عن طبيب أو عيادة...',
+    searchPlaceholder: 'ابحث عن فندق، مطعم، أو معلم...',
     addNew: 'إضافة موقع جديد',
     filters: {
       all: 'الكل',
-      doctors: 'الأطباء',
-      clinics: 'العيادات'
+      hotels: 'الفنادق',
+      restaurants: 'المطاعم',
+      attractions: 'المعالم'
     },
     form: {
       title: 'إضافة موقع جديد',
       type: 'النوع',
-      doctor: 'طبيب',
-      clinic: 'عيادة',
+      hotel: 'فندق',
+      restaurant: 'مطعم',
+      attraction: 'معلم سياحي',
       name: 'الاسم',
-      namePlaceholder: 'اسم الطبيب أو العيادة',
-      specialty: 'التخصص',
-      specialtyPlaceholder: 'مثال: طب عام، أسنان...',
+      namePlaceholder: 'اسم الفندق، المطعم أو المعلم',
+      category: 'التصنيف',
+      categoryPlaceholder: 'مثال: فاخر، مأكولات شعبية، تاريخي...',
       address: 'العنوان',
       addressPlaceholder: 'العنوان الكامل',
       searchLocation: 'البحث عن موقع',
       searchPlaceholder: 'ابحث عن عنوان أو مكان...',
-      street: 'الشارع',
-      streetPlaceholder: 'مثال: شارع محمد خميستي',
-      commune: 'البلدية',
-      communePlaceholder: 'مثال: قصر البخاري',
-      wilaya: 'الولاية',
-      wilayaPlaceholder: 'مثال: المدية',
-      postalCode: 'الرمز البريدي',
-      postalCodePlaceholder: 'مثال: 26300',
-      placeName: 'اسم المكان (اختياري)',
-      placeNamePlaceholder: 'مثال: عيادة الصنوبر',
+      city: 'المدينة',
+      cityPlaceholder: 'مثال: الرياض',
       phone: 'الهاتف',
-      phonePlaceholder: '0555 00 00 00',
+      phonePlaceholder: '05XX XXX XXXX',
       hours: 'ساعات العمل',
-      hoursPlaceholder: '08:00 - 17:00',
+      hoursPlaceholder: '08:00 - 22:00',
       clickMap: 'تحديد الموقع على الخريطة',
       selectOnMap: 'انقر على الخريطة',
       orSearchAbove: 'أو ابحث عن موقع أعلاه',
@@ -60,56 +53,52 @@ const mapTranslations = {
       cancel: 'إلغاء'
     },
     popup: {
-      specialty: 'التخصص',
+      category: 'التصنيف',
       address: 'العنوان',
       phone: 'الهاتف',
       hours: 'ساعات العمل',
       getDirections: 'الاتجاهات',
-      book: 'حجز موعد'
+      book: 'احجز الآن',
+      saveToTrip: 'حفظ في رحلة'
     },
     stats: {
       total: 'إجمالي المواقع',
-      doctors: 'طبيب',
-      clinics: 'عيادة'
+      hotels: 'فندق',
+      restaurants: 'مطعم',
+      attractions: 'معلم'
     }
   },
   en: {
-    title: 'Doctors & Clinics Map',
+    title: 'Explore Saudi Arabia',
     backHome: 'Home',
-    searchPlaceholder: 'Search for a doctor or clinic...',
+    searchPlaceholder: 'Search for a hotel, restaurant, or attraction...',
     addNew: 'Add New Location',
     filters: {
       all: 'All',
-      doctors: 'Doctors',
-      clinics: 'Clinics'
+      hotels: 'Hotels',
+      restaurants: 'Restaurants',
+      attractions: 'Attractions'
     },
     form: {
       title: 'Add New Location',
       type: 'Type',
-      doctor: 'Doctor',
-      clinic: 'Clinic',
+      hotel: 'Hotel',
+      restaurant: 'Restaurant',
+      attraction: 'Attraction',
       name: 'Name',
-      namePlaceholder: 'Doctor or clinic name',
-      specialty: 'Specialty',
-      specialtyPlaceholder: 'e.g. General, Dentist...',
+      namePlaceholder: 'Hotel, restaurant or attraction name',
+      category: 'Category',
+      categoryPlaceholder: 'e.g. Luxury, Street Food, Historical...',
       address: 'Address',
       addressPlaceholder: 'Full address',
       searchLocation: 'Search Location',
       searchPlaceholder: 'Search for an address or place...',
-      street: 'Street',
-      streetPlaceholder: 'e.g. Mohamed Khmisti Street',
-      commune: 'Commune',
-      communePlaceholder: 'e.g. Ksar El Bokhari',
-      wilaya: 'Wilaya',
-      wilayaPlaceholder: 'e.g. Medea',
-      postalCode: 'Postal Code',
-      postalCodePlaceholder: 'e.g. 26300',
-      placeName: 'Place Name (optional)',
-      placeNamePlaceholder: 'e.g. Pine Clinic',
+      city: 'City',
+      cityPlaceholder: 'e.g. Riyadh',
       phone: 'Phone',
-      phonePlaceholder: '0555 00 00 00',
+      phonePlaceholder: '05XX XXX XXXX',
       hours: 'Working Hours',
-      hoursPlaceholder: '08:00 - 17:00',
+      hoursPlaceholder: '08:00 - 22:00',
       clickMap: 'Select location on map',
       selectOnMap: 'Click on map',
       orSearchAbove: 'or search for a location above',
@@ -122,34 +111,36 @@ const mapTranslations = {
       cancel: 'Cancel'
     },
     popup: {
-      specialty: 'Specialty',
+      category: 'Category',
       address: 'Address',
       phone: 'Phone',
       hours: 'Hours',
       getDirections: 'Directions',
-      book: 'Book Appointment'
+      book: 'Book Now',
+      saveToTrip: 'Save to Trip'
     },
     stats: {
       total: 'Total Locations',
-      doctors: 'Doctors',
-      clinics: 'Clinics'
+      hotels: 'Hotels',
+      restaurants: 'Restaurants',
+      attractions: 'Attractions'
     }
   }
 }
 
-// Transform Convex doctor data to map format
-const transformDoctorToLocation = (doctor) => ({
-  id: doctor._id,
-  type: doctor.type === 'hospital' ? 'clinic' : doctor.type, // treat hospital as clinic for filtering
-  name: doctor.name_en,
-  nameAr: doctor.name_ar,
-  specialty: doctor.specialty,
-  specialtyAr: doctor.specialty_ar || doctor.specialty,
-  address: doctor.address,
-  addressAr: doctor.address,
-  phone: doctor.phone || '',
-  hours: doctor.workingHours ? formatWorkingHours(doctor.workingHours) : '',
-  coordinates: [doctor.coordinates.lng, doctor.coordinates.lat] // Mapbox uses [lng, lat]
+// Transform Convex listing data to map format
+const transformListingToLocation = (listing) => ({
+  id: listing._id,
+  type: listing.type,
+  name: listing.name_en,
+  nameAr: listing.name_ar,
+  category: listing.category,
+  categoryAr: listing.category_ar || listing.category,
+  address: listing.address,
+  addressAr: listing.address,
+  phone: listing.phone || '',
+  hours: listing.workingHours ? formatWorkingHours(listing.workingHours) : '',
+  coordinates: [listing.coordinates.lng, listing.coordinates.lat] // Mapbox uses [lng, lat]
 })
 
 const formatWorkingHours = (hours) => {
@@ -161,30 +152,29 @@ const formatWorkingHours = (hours) => {
 function MapPage() {
   const [lang, setLang] = useState('ar')
 
-  // Fetch doctors from Convex
-  const doctorsFromDb = useQuery(api.doctors.queries.listDoctors, {})
-  const createDoctor = useMutation(api.doctors.mutations.createDoctor)
+  // Fetch public config (Mapbox token)
+  const config = useQuery(api.config.queries.getPublicConfig, {})
+
+  // Fetch listings from Convex
+  const listingsFromDb = useQuery(api.listings.queries.listListings, {})
+  const createListing = useMutation(api.listings.mutations.createListing)
 
   // Transform to map format
-  const locations = doctorsFromDb ? doctorsFromDb.map(transformDoctorToLocation) : []
-  const isLoading = doctorsFromDb === undefined
+  const locations = listingsFromDb ? listingsFromDb.map(transformListingToLocation) : []
+  const isLoading = listingsFromDb === undefined
   const [filter, setFilter] = useState('all')
   const [showAddForm, setShowAddForm] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [newLocation, setNewLocation] = useState({
-    type: 'doctor',
+    type: 'hotel',
     name: '',
     nameAr: '',
-    specialty: '',
-    specialtyAr: '',
+    category: '',
+    categoryAr: '',
     address: '',
     addressAr: '',
-    street: '',
-    commune: '',
-    wilaya: '',
-    postalCode: '',
-    placeName: '',
+    city: '',
     phone: '',
     hours: '',
     coordinates: null
@@ -193,6 +183,7 @@ function MapPage() {
   const [searchResults, setSearchResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
   const [isSelectingOnMap, setIsSelectingOnMap] = useState(false)
+  const [saveToTripListing, setSaveToTripListing] = useState(null)
 
   const mapContainer = useRef(null)
   const map = useRef(null)
@@ -205,16 +196,90 @@ function MapPage() {
 
   // Initialize map
   useEffect(() => {
-    if (map.current) return
+    if (map.current || !config?.mapboxToken) return
+
+    mapboxgl.accessToken = config.mapboxToken
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/light-v11',
-      center: [3.0588, 36.7538], // Center on Algiers
-      zoom: 5.5
+      center: [46.6753, 24.7136], // Center on Riyadh
+      zoom: 5
     })
 
     map.current.on('load', () => {
+      // Add Al-Ahsa (الأحساء) region highlight
+      map.current.addSource('al-ahsa-region', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: { name: 'الأحساء', nameEn: 'Al-Ahsa' },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [[
+              [49.15, 25.75],
+              [49.45, 25.82],
+              [49.72, 25.78],
+              [49.95, 25.65],
+              [50.05, 25.48],
+              [50.08, 25.25],
+              [50.02, 25.05],
+              [49.88, 24.88],
+              [49.68, 24.78],
+              [49.42, 24.75],
+              [49.20, 24.82],
+              [49.05, 24.98],
+              [48.98, 25.18],
+              [49.00, 25.40],
+              [49.05, 25.58],
+              [49.15, 25.75]
+            ]]
+          }
+        }
+      })
+
+      // Green gradient fill
+      map.current.addLayer({
+        id: 'al-ahsa-fill',
+        type: 'fill',
+        source: 'al-ahsa-region',
+        paint: {
+          'fill-color': '#0D7A5F',
+          'fill-opacity': 0.12
+        }
+      })
+
+      // Subtle border
+      map.current.addLayer({
+        id: 'al-ahsa-border',
+        type: 'line',
+        source: 'al-ahsa-region',
+        paint: {
+          'line-color': '#0D7A5F',
+          'line-width': 1.5,
+          'line-opacity': 0.3
+        }
+      })
+
+      // Region label
+      map.current.addLayer({
+        id: 'al-ahsa-label',
+        type: 'symbol',
+        source: 'al-ahsa-region',
+        layout: {
+          'text-field': 'الأحساء\nAl-Ahsa',
+          'text-size': 14,
+          'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+          'text-anchor': 'center'
+        },
+        paint: {
+          'text-color': '#065F46',
+          'text-opacity': 0.6,
+          'text-halo-color': '#ffffff',
+          'text-halo-width': 1
+        }
+      })
+
       setMapLoaded(true)
     })
 
@@ -229,7 +294,7 @@ function MapPage() {
       map.current = null
       setMapLoaded(false)
     }
-  }, [])
+  }, [config?.mapboxToken])
 
   // Update map click handler when isSelectingOnMap changes
   useEffect(() => {
@@ -263,8 +328,9 @@ function MapPage() {
 
     // Filter locations
     let filteredLocations = locations.filter(loc => {
-      if (filter === 'doctors') return loc.type === 'doctor'
-      if (filter === 'clinics') return loc.type === 'clinic'
+      if (filter === 'hotels') return loc.type === 'hotel'
+      if (filter === 'restaurants') return loc.type === 'restaurant'
+      if (filter === 'attractions') return loc.type === 'attraction'
       return true
     })
 
@@ -274,8 +340,8 @@ function MapPage() {
       filteredLocations = filteredLocations.filter(loc =>
         loc.name.toLowerCase().includes(query) ||
         loc.nameAr.includes(query) ||
-        loc.specialty.toLowerCase().includes(query) ||
-        loc.specialtyAr.includes(query) ||
+        loc.category.toLowerCase().includes(query) ||
+        loc.categoryAr.includes(query) ||
         loc.address.toLowerCase().includes(query) ||
         loc.addressAr.includes(query)
       )
@@ -330,7 +396,7 @@ function MapPage() {
       try {
         const response = await fetch(
           `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(locationSearch)}.json?` +
-          `access_token=${mapboxgl.accessToken}&country=dz&types=address,place,locality,neighborhood,poi&limit=5`
+          `access_token=${mapboxgl.accessToken}&country=sa&types=address,place,locality,neighborhood,poi&limit=5`
         )
         const data = await response.json()
         setSearchResults(data.features || [])
@@ -350,29 +416,14 @@ function MapPage() {
 
     // Parse the address components from the result
     const context = result.context || []
-    let street = ''
-    let commune = ''
-    let wilaya = ''
-    let postalCode = ''
-
-    // Extract place name
-    const placeName = result.text || ''
+    let city = ''
 
     // Parse context for address components
     context.forEach(item => {
-      if (item.id.startsWith('postcode')) {
-        postalCode = item.text
-      } else if (item.id.startsWith('place') || item.id.startsWith('locality')) {
-        commune = item.text
-      } else if (item.id.startsWith('region')) {
-        wilaya = item.text
+      if (item.id.startsWith('place') || item.id.startsWith('locality') || item.id.startsWith('region')) {
+        if (!city) city = item.text
       }
     })
-
-    // Use the main text as street if it looks like an address
-    if (result.place_type?.includes('address')) {
-      street = result.text + (result.address ? ` ${result.address}` : '')
-    }
 
     // Build full address string
     const fullAddress = result.place_name || ''
@@ -380,11 +431,7 @@ function MapPage() {
     setNewLocation(prev => ({
       ...prev,
       coordinates: [lng, lat],
-      street: street || prev.street,
-      commune: commune || prev.commune,
-      wilaya: wilaya || prev.wilaya,
-      postalCode: postalCode || prev.postalCode,
-      placeName: result.place_type?.includes('poi') ? placeName : prev.placeName,
+      city: city || prev.city,
       address: fullAddress,
       addressAr: fullAddress
     }))
@@ -407,52 +454,40 @@ function MapPage() {
     e.preventDefault()
     if (!newLocation.coordinates) return
 
-    // Build full address from structured fields if not already set
+    // Build full address if not already set
     let fullAddress = newLocation.address
-    if (!fullAddress && (newLocation.street || newLocation.commune || newLocation.wilaya)) {
-      const addressParts = []
-      if (newLocation.placeName) addressParts.push(newLocation.placeName)
-      if (newLocation.street) addressParts.push(newLocation.street)
-      if (newLocation.commune) addressParts.push(newLocation.commune)
-      if (newLocation.postalCode) addressParts.push(newLocation.postalCode)
-      if (newLocation.wilaya) addressParts.push(newLocation.wilaya)
-      fullAddress = addressParts.join(', ')
+    if (!fullAddress && newLocation.city) {
+      fullAddress = newLocation.city
     }
 
     // Save to Convex database
     try {
-      await createDoctor({
+      await createListing({
         type: newLocation.type,
         name_en: newLocation.name,
         name_ar: newLocation.nameAr || newLocation.name,
-        specialty: newLocation.specialty,
-        specialty_ar: newLocation.specialtyAr || newLocation.specialty,
+        category: newLocation.category,
         address: fullAddress,
-        wilaya: newLocation.wilaya || 'Unknown',
+        city: newLocation.city || 'Unknown',
         coordinates: {
           lat: newLocation.coordinates[1],
           lng: newLocation.coordinates[0]
         },
-        phone: newLocation.phone || undefined,
-        languages: ['ar', 'fr']
+        phone: newLocation.phone || undefined
       })
     } catch (error) {
       console.error('Failed to add location:', error)
     }
 
     setNewLocation({
-      type: 'doctor',
+      type: 'hotel',
       name: '',
       nameAr: '',
-      specialty: '',
-      specialtyAr: '',
+      category: '',
+      categoryAr: '',
       address: '',
       addressAr: '',
-      street: '',
-      commune: '',
-      wilaya: '',
-      postalCode: '',
-      placeName: '',
+      city: '',
       phone: '',
       hours: '',
       coordinates: null
@@ -463,8 +498,17 @@ function MapPage() {
     setShowAddForm(false)
   }
 
-  const doctorCount = locations.filter(l => l.type === 'doctor').length
-  const clinicCount = locations.filter(l => l.type === 'clinic').length
+  const hotelCount = locations.filter(l => l.type === 'hotel').length
+  const restaurantCount = locations.filter(l => l.type === 'restaurant').length
+  const attractionCount = locations.filter(l => l.type === 'attraction').length
+
+  // Helper to get localized type label
+  const getTypeLabel = (type) => {
+    if (type === 'hotel') return t.form.hotel
+    if (type === 'restaurant') return t.form.restaurant
+    if (type === 'attraction') return t.form.attraction
+    return type
+  }
 
   return (
     <div className={`map-page ${isRTL ? 'rtl' : 'ltr'}`}>
@@ -504,23 +548,29 @@ function MapPage() {
               {t.filters.all}
             </button>
             <button
-              className={`filter-tab ${filter === 'doctors' ? 'active' : ''}`}
-              onClick={() => setFilter('doctors')}
+              className={`filter-tab ${filter === 'hotels' ? 'active' : ''}`}
+              onClick={() => setFilter('hotels')}
             >
-              {t.filters.doctors}
+              {t.filters.hotels}
             </button>
             <button
-              className={`filter-tab ${filter === 'clinics' ? 'active' : ''}`}
-              onClick={() => setFilter('clinics')}
+              className={`filter-tab ${filter === 'restaurants' ? 'active' : ''}`}
+              onClick={() => setFilter('restaurants')}
             >
-              {t.filters.clinics}
+              {t.filters.restaurants}
+            </button>
+            <button
+              className={`filter-tab ${filter === 'attractions' ? 'active' : ''}`}
+              onClick={() => setFilter('attractions')}
+            >
+              {t.filters.attractions}
             </button>
           </div>
 
           {/* Loading indicator */}
           {isLoading && (
             <div className="loading-indicator" style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
-              Loading doctors...
+              Loading listings...
             </div>
           )}
 
@@ -531,12 +581,16 @@ function MapPage() {
               <span className="stat-label">{t.stats.total}</span>
             </div>
             <div className="stat">
-              <span className="stat-number">{isLoading ? '...' : doctorCount}</span>
-              <span className="stat-label">{t.stats.doctors}</span>
+              <span className="stat-number">{isLoading ? '...' : hotelCount}</span>
+              <span className="stat-label">{t.stats.hotels}</span>
             </div>
             <div className="stat">
-              <span className="stat-number">{isLoading ? '...' : clinicCount}</span>
-              <span className="stat-label">{t.stats.clinics}</span>
+              <span className="stat-number">{isLoading ? '...' : restaurantCount}</span>
+              <span className="stat-label">{t.stats.restaurants}</span>
+            </div>
+            <div className="stat">
+              <span className="stat-number">{isLoading ? '...' : attractionCount}</span>
+              <span className="stat-label">{t.stats.attractions}</span>
             </div>
           </div>
 
@@ -552,8 +606,9 @@ function MapPage() {
           <div className="location-list">
             {locations
               .filter(loc => {
-                if (filter === 'doctors') return loc.type === 'doctor'
-                if (filter === 'clinics') return loc.type === 'clinic'
+                if (filter === 'hotels') return loc.type === 'hotel'
+                if (filter === 'restaurants') return loc.type === 'restaurant'
+                if (filter === 'attractions') return loc.type === 'attraction'
                 return true
               })
               .filter(loc => {
@@ -561,8 +616,8 @@ function MapPage() {
                 const query = searchQuery.toLowerCase()
                 return loc.name.toLowerCase().includes(query) ||
                   loc.nameAr.includes(query) ||
-                  loc.specialty.toLowerCase().includes(query) ||
-                  loc.specialtyAr.includes(query)
+                  loc.category.toLowerCase().includes(query) ||
+                  loc.categoryAr.includes(query)
               })
               .map(location => (
                 <motion.div
@@ -579,11 +634,11 @@ function MapPage() {
                   whileTap={{ scale: 0.98 }}
                 >
                   <div className={`location-type-badge ${location.type}`}>
-                    {location.type === 'doctor' ? t.form.doctor : t.form.clinic}
+                    {getTypeLabel(location.type)}
                   </div>
                   <h3>{isRTL ? location.nameAr : location.name}</h3>
                   <p className="location-specialty">
-                    {isRTL ? location.specialtyAr : location.specialty}
+                    {isRTL ? location.categoryAr : location.category}
                   </p>
                   <p className="location-address">
                     {isRTL ? location.addressAr : location.address}
@@ -643,17 +698,24 @@ function MapPage() {
                   <div className="type-selector">
                     <button
                       type="button"
-                      className={`type-btn ${newLocation.type === 'doctor' ? 'active' : ''}`}
-                      onClick={() => setNewLocation(prev => ({ ...prev, type: 'doctor' }))}
+                      className={`type-btn ${newLocation.type === 'hotel' ? 'active' : ''}`}
+                      onClick={() => setNewLocation(prev => ({ ...prev, type: 'hotel' }))}
                     >
-                      {t.form.doctor}
+                      {t.form.hotel}
                     </button>
                     <button
                       type="button"
-                      className={`type-btn ${newLocation.type === 'clinic' ? 'active' : ''}`}
-                      onClick={() => setNewLocation(prev => ({ ...prev, type: 'clinic' }))}
+                      className={`type-btn ${newLocation.type === 'restaurant' ? 'active' : ''}`}
+                      onClick={() => setNewLocation(prev => ({ ...prev, type: 'restaurant' }))}
                     >
-                      {t.form.clinic}
+                      {t.form.restaurant}
+                    </button>
+                    <button
+                      type="button"
+                      className={`type-btn ${newLocation.type === 'attraction' ? 'active' : ''}`}
+                      onClick={() => setNewLocation(prev => ({ ...prev, type: 'attraction' }))}
+                    >
+                      {t.form.attraction}
                     </button>
                   </div>
                 </div>
@@ -670,14 +732,14 @@ function MapPage() {
                   />
                 </div>
 
-                {/* Specialty */}
+                {/* Category */}
                 <div className="form-group">
-                  <label>{t.form.specialty}</label>
+                  <label>{t.form.category}</label>
                   <input
                     type="text"
-                    placeholder={t.form.specialtyPlaceholder}
-                    value={newLocation.specialty}
-                    onChange={(e) => setNewLocation(prev => ({ ...prev, specialty: e.target.value }))}
+                    placeholder={t.form.categoryPlaceholder}
+                    value={newLocation.category}
+                    onChange={(e) => setNewLocation(prev => ({ ...prev, category: e.target.value }))}
                     required
                   />
                 </div>
@@ -713,55 +775,14 @@ function MapPage() {
                   )}
                 </div>
 
-                {/* Structured Address Fields */}
+                {/* City */}
                 <div className="form-group">
-                  <label>{t.form.placeName}</label>
+                  <label>{t.form.city}</label>
                   <input
                     type="text"
-                    placeholder={t.form.placeNamePlaceholder}
-                    value={newLocation.placeName}
-                    onChange={(e) => setNewLocation(prev => ({ ...prev, placeName: e.target.value }))}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>{t.form.street}</label>
-                  <input
-                    type="text"
-                    placeholder={t.form.streetPlaceholder}
-                    value={newLocation.street}
-                    onChange={(e) => setNewLocation(prev => ({ ...prev, street: e.target.value }))}
-                  />
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>{t.form.commune}</label>
-                    <input
-                      type="text"
-                      placeholder={t.form.communePlaceholder}
-                      value={newLocation.commune}
-                      onChange={(e) => setNewLocation(prev => ({ ...prev, commune: e.target.value }))}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>{t.form.postalCode}</label>
-                    <input
-                      type="text"
-                      placeholder={t.form.postalCodePlaceholder}
-                      value={newLocation.postalCode}
-                      onChange={(e) => setNewLocation(prev => ({ ...prev, postalCode: e.target.value }))}
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>{t.form.wilaya}</label>
-                  <input
-                    type="text"
-                    placeholder={t.form.wilayaPlaceholder}
-                    value={newLocation.wilaya}
-                    onChange={(e) => setNewLocation(prev => ({ ...prev, wilaya: e.target.value }))}
+                    placeholder={t.form.cityPlaceholder}
+                    value={newLocation.city}
+                    onChange={(e) => setNewLocation(prev => ({ ...prev, city: e.target.value }))}
                   />
                 </div>
 
@@ -852,14 +873,14 @@ function MapPage() {
               &times;
             </button>
             <div className={`popup-type-badge ${selectedLocation.type}`}>
-              {selectedLocation.type === 'doctor' ? t.form.doctor : t.form.clinic}
+              {getTypeLabel(selectedLocation.type)}
             </div>
             <h3>{isRTL ? selectedLocation.nameAr : selectedLocation.name}</h3>
 
             <div className="popup-details">
               <div className="popup-row">
-                <span className="popup-label">{t.popup.specialty}:</span>
-                <span>{isRTL ? selectedLocation.specialtyAr : selectedLocation.specialty}</span>
+                <span className="popup-label">{t.popup.category}:</span>
+                <span>{isRTL ? selectedLocation.categoryAr : selectedLocation.category}</span>
               </div>
               <div className="popup-row">
                 <span className="popup-label">{t.popup.address}:</span>
@@ -888,6 +909,12 @@ function MapPage() {
               >
                 {t.popup.getDirections}
               </a>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setSaveToTripListing(selectedLocation)}
+              >
+                {t.popup.saveToTrip}
+              </button>
               <button className="btn btn-primary">
                 {t.popup.book}
               </button>
@@ -895,6 +922,17 @@ function MapPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Save to Trip Modal */}
+      {saveToTripListing && (
+        <SaveToTripModal
+          listingId={saveToTripListing.id}
+          listingName={isRTL ? saveToTripListing.nameAr : saveToTripListing.name}
+          lang={lang}
+          isOpen={!!saveToTripListing}
+          onClose={() => setSaveToTripListing(null)}
+        />
+      )}
 
       {/* Floating Chat Widget */}
       <ChatWidget lang={lang} />

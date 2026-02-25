@@ -49,7 +49,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #DC2626;
+  border-color: #0D7A5F;
 }
 
 .selected-doctor-info {
@@ -95,12 +95,12 @@
 }
 
 .date-btn:hover {
-  border-color: #DC2626;
+  border-color: #0D7A5F;
 }
 
 .date-btn.selected {
-  background-color: #DC2626;
-  border-color: #DC2626;
+  background-color: #0D7A5F;
+  border-color: #0D7A5F;
   color: white;
 }
 
@@ -124,12 +124,12 @@
 }
 
 .time-btn:hover:not(:disabled) {
-  border-color: #DC2626;
+  border-color: #0D7A5F;
 }
 
 .time-btn.selected {
-  background-color: #DC2626;
-  border-color: #DC2626;
+  background-color: #0D7A5F;
+  border-color: #0D7A5F;
   color: white;
 }
 
@@ -154,10 +154,10 @@
 .error-message {
   padding: 1rem;
   margin-bottom: 1rem;
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
+  background-color: #ECFDF5;
+  border: 1px solid #A7F3D0;
   border-radius: 8px;
-  color: #991b1b;
+  color: #064E3B;
   font-size: 0.875rem;
 }
 
@@ -168,7 +168,7 @@
   font-size: 1rem;
   font-weight: 600;
   color: white;
-  background-color: #DC2626;
+  background-color: #0D7A5F;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -176,7 +176,7 @@
 }
 
 .submit-btn:hover:not(:disabled) {
-  background-color: #b91c1c;
+  background-color: #065F46;
 }
 
 .submit-btn:disabled {

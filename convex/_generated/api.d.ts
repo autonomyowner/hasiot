@@ -10,18 +10,18 @@
 
 import type * as admin_mutations from "../admin/mutations.js";
 import type * as admin_queries from "../admin/queries.js";
-import type * as appointments_mutations from "../appointments/mutations.js";
-import type * as appointments_queries from "../appointments/queries.js";
 import type * as auth from "../auth.js";
-import type * as doctors_mutations from "../doctors/mutations.js";
-import type * as doctors_queries from "../doctors/queries.js";
-import type * as healthCards_mutations from "../healthCards/mutations.js";
-import type * as healthCards_queries from "../healthCards/queries.js";
+import type * as bookings_mutations from "../bookings/mutations.js";
+import type * as bookings_queries from "../bookings/queries.js";
+import type * as config_queries from "../config/queries.js";
 import type * as http from "../http.js";
-import type * as migrations_migrateUsersToRoles from "../migrations/migrateUsersToRoles.js";
-import type * as symptoms_actions from "../symptoms/actions.js";
-import type * as symptoms_mutations from "../symptoms/mutations.js";
-import type * as symptoms_queries from "../symptoms/queries.js";
+import type * as listings_mutations from "../listings/mutations.js";
+import type * as listings_queries from "../listings/queries.js";
+import type * as travelPlanner_actions from "../travelPlanner/actions.js";
+import type * as travelPlanner_mutations from "../travelPlanner/mutations.js";
+import type * as travelPlanner_queries from "../travelPlanner/queries.js";
+import type * as trips_mutations from "../trips/mutations.js";
+import type * as trips_queries from "../trips/queries.js";
 import type * as users_mutations from "../users/mutations.js";
 import type * as users_queries from "../users/queries.js";
 
@@ -34,18 +34,18 @@ import type {
 declare const fullApi: ApiFromModules<{
   "admin/mutations": typeof admin_mutations;
   "admin/queries": typeof admin_queries;
-  "appointments/mutations": typeof appointments_mutations;
-  "appointments/queries": typeof appointments_queries;
   auth: typeof auth;
-  "doctors/mutations": typeof doctors_mutations;
-  "doctors/queries": typeof doctors_queries;
-  "healthCards/mutations": typeof healthCards_mutations;
-  "healthCards/queries": typeof healthCards_queries;
+  "bookings/mutations": typeof bookings_mutations;
+  "bookings/queries": typeof bookings_queries;
+  "config/queries": typeof config_queries;
   http: typeof http;
-  "migrations/migrateUsersToRoles": typeof migrations_migrateUsersToRoles;
-  "symptoms/actions": typeof symptoms_actions;
-  "symptoms/mutations": typeof symptoms_mutations;
-  "symptoms/queries": typeof symptoms_queries;
+  "listings/mutations": typeof listings_mutations;
+  "listings/queries": typeof listings_queries;
+  "travelPlanner/actions": typeof travelPlanner_actions;
+  "travelPlanner/mutations": typeof travelPlanner_mutations;
+  "travelPlanner/queries": typeof travelPlanner_queries;
+  "trips/mutations": typeof trips_mutations;
+  "trips/queries": typeof trips_queries;
   "users/mutations": typeof users_mutations;
   "users/queries": typeof users_queries;
 }>;

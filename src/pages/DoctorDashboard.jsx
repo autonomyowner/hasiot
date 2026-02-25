@@ -19,7 +19,8 @@ const DAYS = [
 ]
 
 const tabs = [
-  { id: 'appointments', label: 'المواعيد' },
+  { id: 'listings', label: 'قوائمي' },
+  { id: 'bookings', label: 'الحجوزات' },
   { id: 'schedule', label: 'جدول العمل' },
   { id: 'profile', label: 'الملف الشخصي' },
 ]
@@ -27,10 +28,10 @@ const tabs = [
 export default function DoctorDashboard() {
   const { user, isLoading, isAuthenticated } = useCurrentUser()
   const generateUploadUrl = useMutation(api.users.mutations.generateUploadUrl)
-  const saveCvFile = useMutation(api.users.mutations.saveCvFile)
+  const saveBusinessDoc = useMutation(api.users.mutations.saveBusinessDoc)
   const [uploading, setUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
-  const [activeTab, setActiveTab] = useState('appointments')
+  const [activeTab, setActiveTab] = useState('listings')
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -38,7 +39,7 @@ export default function DoctorDashboard() {
     }
   }, [isLoading, isAuthenticated])
 
-  const handleCvUpload = async (e) => {
+  const handleDocUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     setUploading(true)
@@ -50,10 +51,10 @@ export default function DoctorDashboard() {
         body: file,
       })
       const { storageId } = await result.json()
-      await saveCvFile({ fileId: storageId })
+      await saveBusinessDoc({ fileId: storageId })
       setUploadSuccess(true)
     } catch (err) {
-      console.error('CV upload error:', err)
+      console.error('Document upload error:', err)
     }
     setUploading(false)
   }
@@ -72,7 +73,7 @@ export default function DoctorDashboard() {
 
   if (!user) return null
 
-  const needsCv = !user.isApproved && !user.cvFileId && !uploadSuccess
+  const needsDoc = !user.isApproved && !user.cvFileId && !uploadSuccess
   const pendingReview = !user.isApproved && (user.cvFileId || uploadSuccess)
   const isApproved = user.isApproved === true
 
@@ -81,10 +82,10 @@ export default function DoctorDashboard() {
       {/* Header */}
       <header className="dashboard-header">
         <div className="dashboard-header-inner">
-          <Link to="/" className="auth-logo">تبرا</Link>
+          <Link to="/" className="auth-logo">Hasio</Link>
           <div className="dashboard-user-info">
             <span className="dashboard-user-name">
-              مرحباً، {user.role === 'doctor' ? 'د. ' : ''}{user.firstName || user.email}
+              مرحباً، {user.firstName || user.email}
             </span>
             <button
               className="dashboard-signout"
@@ -97,28 +98,28 @@ export default function DoctorDashboard() {
       </header>
 
       <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '1.5rem 1rem' }}>
-        {/* CV Upload Banner */}
-        {needsCv && (
+        {/* Document Upload Banner */}
+        {needsDoc && (
           <div style={{
             background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '12px',
             padding: '1.5rem', marginBottom: '1.5rem'
           }}>
             <h3 style={{ color: '#92400e', margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: '600' }}>
-              مطلوب: رفع السيرة الذاتية
+              مطلوب: رفع وثيقة العمل
             </h3>
             <p style={{ color: '#92400e', margin: '0 0 1rem', fontSize: '0.875rem', lineHeight: '1.6' }}>
-              لتفعيل حسابك، يرجى رفع سيرتك الذاتية (CV) أو وثيقة تثبت ممارستك للمهنة.
+              لتفعيل حسابك، يرجى رفع رخصة العمل أو وثيقة تثبت نشاطك التجاري.
               سيقوم فريق الإدارة بمراجعتها والموافقة على حسابك.
             </p>
             <label style={{
-              display: 'inline-block', padding: '0.625rem 1.25rem', background: '#DC2626',
+              display: 'inline-block', padding: '0.625rem 1.25rem', background: '#0D7A5F',
               color: 'white', borderRadius: '8px', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500'
             }}>
-              {uploading ? 'جاري الرفع...' : 'رفع السيرة الذاتية (PDF)'}
+              {uploading ? 'جاري الرفع...' : 'رفع وثيقة العمل (PDF)'}
               <input
                 type="file"
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                onChange={handleCvUpload}
+                onChange={handleDocUpload}
                 disabled={uploading}
                 style={{ display: 'none' }}
               />
@@ -136,7 +137,7 @@ export default function DoctorDashboard() {
               حسابك قيد المراجعة
             </h3>
             <p style={{ color: '#1e40af', margin: '0', fontSize: '0.875rem', lineHeight: '1.6' }}>
-              تم استلام سيرتك الذاتية بنجاح. فريق الإدارة يراجع طلبك حالياً.
+              تم استلام وثيقتك بنجاح. فريق الإدارة يراجع طلبك حالياً.
               سيتم تفعيل حسابك بعد الموافقة.
             </p>
           </div>
@@ -156,21 +157,389 @@ export default function DoctorDashboard() {
             ))}
           </div>
 
-          {activeTab === 'appointments' && <DoctorAppointmentsTab />}
+          {activeTab === 'listings' && <MyListingsTab user={user} />}
+          {activeTab === 'bookings' && <BusinessBookingsTab />}
           {activeTab === 'schedule' && <ScheduleTab user={user} />}
-          {activeTab === 'profile' && <DoctorProfileTab user={user} />}
+          {activeTab === 'profile' && <BusinessProfileTab user={user} />}
         </div>
       </main>
     </div>
   )
 }
 
-// === Appointments Tab ===
-function DoctorAppointmentsTab() {
-  const appointments = useQuery(api.appointments.queries.getDoctorAppointments, {})
-  const confirmAppointment = useMutation(api.appointments.mutations.confirmAppointment)
-  const completeAppointment = useMutation(api.appointments.mutations.completeAppointment)
-  const cancelAppointment = useMutation(api.appointments.mutations.cancelAppointment)
+// === My Listings Tab ===
+function MyListingsTab({ user }) {
+  const myListings = useQuery(api.listings.queries.getMyListings, {})
+  const submitListing = useMutation(api.listings.mutations.submitListing)
+  const updateMyListing = useMutation(api.listings.mutations.updateMyListing)
+  const deleteMyListing = useMutation(api.listings.mutations.deleteMyListing)
+  const [showForm, setShowForm] = useState(false)
+  const [editingListing, setEditingListing] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  const SAUDI_CITIES = [
+    "Riyadh", "Jeddah", "Mecca", "Medina", "Dammam", "Al Khobar", "Dhahran",
+    "Tabuk", "Taif", "Abha", "Khamis Mushait", "Jizan", "Najran", "Hail",
+    "Al Baha", "Arar", "Sakaka", "AlUla", "Yanbu", "Al Jubail"
+  ]
+  const SAUDI_CITIES_AR = {
+    "Riyadh": "الرياض", "Jeddah": "جدة", "Mecca": "مكة المكرمة", "Medina": "المدينة المنورة",
+    "Dammam": "الدمام", "Al Khobar": "الخبر", "Dhahran": "الظهران", "Tabuk": "تبوك",
+    "Taif": "الطائف", "Abha": "أبها", "Khamis Mushait": "خميس مشيط", "Jizan": "جازان",
+    "Najran": "نجران", "Hail": "حائل", "Al Baha": "الباحة", "Arar": "عرعر",
+    "Sakaka": "سكاكا", "AlUla": "العلا", "Yanbu": "ينبع", "Al Jubail": "الجبيل"
+  }
+  const CATEGORIES = [
+    { value: "luxury_hotel", label: "فندق فاخر" },
+    { value: "business_hotel", label: "فندق أعمال" },
+    { value: "mid_range_hotel", label: "فندق متوسط" },
+    { value: "boutique_hotel", label: "فندق بوتيك" },
+    { value: "resort", label: "منتجع" },
+    { value: "traditional_food", label: "مطبخ تقليدي" },
+    { value: "fine_dining", label: "مطعم فاخر" },
+    { value: "seafood", label: "مأكولات بحرية" },
+    { value: "international", label: "عالمي" },
+    { value: "fast_food", label: "وجبات سريعة" },
+    { value: "historical_site", label: "موقع تاريخي" },
+    { value: "museum", label: "متحف" },
+    { value: "natural_landmark", label: "معلم طبيعي" },
+    { value: "entertainment", label: "ترفيه" },
+    { value: "cultural_tour", label: "جولة ثقافية" },
+    { value: "adventure", label: "مغامرة" },
+    { value: "seasonal_event", label: "موسم" },
+  ]
+
+  // Allowed types based on role
+  const allowedTypes = user?.role === 'service_provider'
+    ? [{ value: 'tour', label: 'جولة' }]
+    : [
+        { value: 'hotel', label: 'فندق' },
+        { value: 'restaurant', label: 'مطعم' },
+        { value: 'attraction', label: 'معلم سياحي' },
+        { value: 'event', label: 'فعالية' },
+      ]
+
+  const typeLabels = { hotel: 'فندق', restaurant: 'مطعم', attraction: 'معلم سياحي', event: 'فعالية', tour: 'جولة' }
+
+  const statusConfig = {
+    pending: { label: 'قيد المراجعة', color: '#f59e0b', bg: '#fef3c7' },
+    approved: { label: 'معتمد', color: '#059669', bg: '#d1fae5' },
+    rejected: { label: 'مرفوض', color: '#dc2626', bg: '#fee2e2' },
+  }
+
+  const handleSubmit = async (formData) => {
+    setSubmitting(true)
+    try {
+      if (editingListing) {
+        await updateMyListing({ listingId: editingListing._id, ...formData })
+      } else {
+        await submitListing(formData)
+      }
+      setShowForm(false)
+      setEditingListing(null)
+    } catch (error) {
+      alert('خطأ: ' + error.message)
+    }
+    setSubmitting(false)
+  }
+
+  const handleDelete = async (id) => {
+    if (!confirm('هل أنت متأكد من حذف هذا العنصر؟')) return
+    try {
+      await deleteMyListing({ listingId: id })
+    } catch (error) {
+      alert('خطأ: ' + error.message)
+    }
+  }
+
+  const pending = (myListings || []).filter(l => l.status === 'pending').length
+  const approved = (myListings || []).filter(l => l.status === 'approved').length
+  const rejected = (myListings || []).filter(l => l.status === 'rejected').length
+
+  return (
+    <div>
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        {[
+          { label: 'الإجمالي', value: (myListings || []).length, color: '#6b7280' },
+          { label: 'قيد المراجعة', value: pending, color: '#f59e0b' },
+          { label: 'معتمد', value: approved, color: '#059669' },
+          { label: 'مرفوض', value: rejected, color: '#dc2626' },
+        ].map((stat, i) => (
+          <div key={i} className="dash-card" style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: stat.color, margin: '0 0 0.25rem' }}>{stat.value}</p>
+            <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Add New Button */}
+      <div style={{ marginBottom: '1.5rem' }}>
+        <button
+          className="btn-primary"
+          onClick={() => { setShowForm(true); setEditingListing(null); }}
+        >
+          إضافة جديد
+        </button>
+      </div>
+
+      {/* Listing Cards */}
+      {myListings === undefined ? (
+        <div className="dash-card" style={{ textAlign: 'center', color: '#9ca3af' }}>جاري التحميل...</div>
+      ) : myListings.length === 0 ? (
+        <div className="empty-state" style={{ padding: '2rem' }}>
+          <p>لم تقم بإضافة أي قوائم بعد. اضغط "إضافة جديد" للبدء.</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {myListings.map(listing => {
+            const sc = statusConfig[listing.status] || statusConfig.pending
+            return (
+              <div key={listing._id} className="dash-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <span style={{
+                        padding: '0.125rem 0.5rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        color: sc.color,
+                        background: sc.bg,
+                      }}>
+                        {sc.label}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                        {typeLabels[listing.type] || listing.type}
+                      </span>
+                    </div>
+                    <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>{listing.name_ar}</h3>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>{listing.name_en}</p>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#9ca3af' }}>
+                      {SAUDI_CITIES_AR[listing.city] || listing.city} · {listing.address}
+                    </p>
+                    {listing.status === 'rejected' && listing.rejectionReason && (
+                      <div style={{
+                        marginTop: '0.5rem', padding: '0.5rem 0.75rem',
+                        background: '#fee2e2', borderRadius: '8px',
+                        fontSize: '0.8125rem', color: '#991b1b'
+                      }}>
+                        سبب الرفض: {listing.rejectionReason}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      className="apt-action-btn"
+                      onClick={() => { setEditingListing(listing); setShowForm(true); }}
+                      style={{ fontSize: '0.8125rem' }}
+                    >
+                      تعديل
+                    </button>
+                    <button
+                      className="apt-action-btn danger"
+                      onClick={() => handleDelete(listing._id)}
+                      style={{ fontSize: '0.8125rem' }}
+                    >
+                      حذف
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Create/Edit Form Modal */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => e.target === e.currentTarget && setShowForm(false)}
+          >
+            <motion.div
+              className="modal-content"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'auto' }}
+            >
+              <div className="modal-header">
+                <h2>{editingListing ? 'تعديل القائمة' : 'إضافة قائمة جديدة'}</h2>
+                <button className="modal-close" onClick={() => { setShowForm(false); setEditingListing(null); }}>&times;</button>
+              </div>
+              <CreateListingForm
+                onSubmit={handleSubmit}
+                submitting={submitting}
+                initialData={editingListing}
+                allowedTypes={allowedTypes}
+                categories={CATEGORIES}
+                cities={SAUDI_CITIES}
+                citiesAr={SAUDI_CITIES_AR}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function CreateListingForm({ onSubmit, submitting, initialData, allowedTypes, categories, cities, citiesAr }) {
+  const [form, setForm] = useState({
+    type: initialData?.type || allowedTypes[0]?.value || 'hotel',
+    category: initialData?.category || categories[0]?.value || '',
+    category_ar: initialData?.category_ar || categories[0]?.label || '',
+    name_en: initialData?.name_en || '',
+    name_ar: initialData?.name_ar || '',
+    description_en: initialData?.description_en || '',
+    description_ar: initialData?.description_ar || '',
+    address: initialData?.address || '',
+    city: initialData?.city || 'Riyadh',
+    region: initialData?.region || '',
+    lat: initialData?.coordinates?.lat || 24.7136,
+    lng: initialData?.coordinates?.lng || 46.6753,
+    phone: initialData?.phone || '',
+    email: initialData?.email || '',
+    website: initialData?.website || '',
+    priceRange: initialData?.priceRange || '',
+  })
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    const { lat, lng, ...rest } = form
+    onSubmit({
+      ...rest,
+      coordinates: { lat: parseFloat(lat), lng: parseFloat(lng) },
+      priceRange: rest.priceRange || undefined,
+      website: rest.website || undefined,
+      region: rest.region || undefined,
+      email: rest.email || undefined,
+      phone: rest.phone || undefined,
+      description_en: rest.description_en || undefined,
+      description_ar: rest.description_ar || undefined,
+      category_ar: rest.category_ar || undefined,
+    })
+  }
+
+  const u = (field, value) => setForm(p => ({ ...p, [field]: value }))
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', padding: '0 0 1rem' }}>
+        <div className="form-row">
+          <div className="form-group">
+            <label>النوع *</label>
+            <select value={form.type} onChange={e => u('type', e.target.value)}>
+              {allowedTypes.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>الفئة *</label>
+            <select value={form.category} onChange={e => {
+              const cat = categories.find(c => c.value === e.target.value)
+              setForm(p => ({ ...p, category: e.target.value, category_ar: cat?.label || '' }))
+            }}>
+              {categories.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>الاسم (بالعربية) *</label>
+            <input value={form.name_ar} onChange={e => u('name_ar', e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label>الاسم (بالإنجليزية) *</label>
+            <input value={form.name_en} onChange={e => u('name_en', e.target.value)} dir="ltr" required />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>العنوان *</label>
+          <input value={form.address} onChange={e => u('address', e.target.value)} required />
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>المدينة *</label>
+            <select value={form.city} onChange={e => u('city', e.target.value)}>
+              {cities.map(c => <option key={c} value={c}>{citiesAr[c] || c}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>المنطقة</label>
+            <input value={form.region} onChange={e => u('region', e.target.value)} placeholder="مثال: منطقة الرياض" />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>خط العرض *</label>
+            <input type="number" step="any" value={form.lat} onChange={e => u('lat', e.target.value)} dir="ltr" required />
+          </div>
+          <div className="form-group">
+            <label>خط الطول *</label>
+            <input type="number" step="any" value={form.lng} onChange={e => u('lng', e.target.value)} dir="ltr" required />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>الهاتف</label>
+            <input value={form.phone} onChange={e => u('phone', e.target.value)} dir="ltr" />
+          </div>
+          <div className="form-group">
+            <label>البريد الإلكتروني</label>
+            <input type="email" value={form.email} onChange={e => u('email', e.target.value)} dir="ltr" />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>الموقع الإلكتروني</label>
+            <input type="url" value={form.website} onChange={e => u('website', e.target.value)} dir="ltr" placeholder="https://example.com" />
+          </div>
+          <div className="form-group">
+            <label>نطاق السعر</label>
+            <select value={form.priceRange} onChange={e => u('priceRange', e.target.value)}>
+              <option value="">غير محدد</option>
+              <option value="$">$ اقتصادي</option>
+              <option value="$$">$$ متوسط</option>
+              <option value="$$$">$$$ مرتفع</option>
+              <option value="$$$$">$$$$ فاخر</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>الوصف (بالعربية)</label>
+          <textarea value={form.description_ar} onChange={e => u('description_ar', e.target.value)} rows={3} />
+        </div>
+        <div className="form-group">
+          <label>الوصف (بالإنجليزية)</label>
+          <textarea value={form.description_en} onChange={e => u('description_en', e.target.value)} rows={3} dir="ltr" />
+        </div>
+
+        <button className="btn-primary" type="submit" disabled={submitting} style={{ width: '100%', justifyContent: 'center' }}>
+          {submitting ? 'جاري الإرسال...' : initialData ? 'تحديث (سيعاد للمراجعة)' : 'إرسال للمراجعة'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// === Bookings Tab ===
+function BusinessBookingsTab() {
+  const bookings = useQuery(api.bookings.queries.getBusinessBookings, {})
+  const confirmBooking = useMutation(api.bookings.mutations.confirmBooking)
+  const completeBooking = useMutation(api.bookings.mutations.completeBooking)
+  const cancelBooking = useMutation(api.bookings.mutations.cancelBooking)
 
   const [actionId, setActionId] = useState(null)
   const [completeNotes, setCompleteNotes] = useState('')
@@ -178,26 +547,26 @@ function DoctorAppointmentsTab() {
 
   const today = new Date().toISOString().split('T')[0]
 
-  const todaysAppts = (appointments || []).filter(
-    a => a.date === today && a.status !== 'cancelled'
+  const todaysBookings = (bookings || []).filter(
+    b => b.date === today && b.status !== 'cancelled'
   ).sort((a, b) => a.time.localeCompare(b.time))
 
-  const upcoming = (appointments || []).filter(
-    a => a.date > today && (a.status === 'pending' || a.status === 'confirmed')
+  const upcoming = (bookings || []).filter(
+    b => b.date > today && (b.status === 'pending' || b.status === 'confirmed')
   ).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
 
-  const pending = (appointments || []).filter(a => a.status === 'pending')
+  const pending = (bookings || []).filter(b => b.status === 'pending')
 
   const handleConfirm = async (id) => {
     setActionId(id)
-    try { await confirmAppointment({ appointmentId: id }) } catch (e) { console.error(e) }
+    try { await confirmBooking({ bookingId: id }) } catch (e) { console.error(e) }
     setActionId(null)
   }
 
   const handleComplete = async (id) => {
     setActionId(id)
     try {
-      await completeAppointment({ appointmentId: id, notes: completeNotes || undefined })
+      await completeBooking({ bookingId: id, notes: completeNotes || undefined })
       setShowCompleteModal(null)
       setCompleteNotes('')
     } catch (e) { console.error(e) }
@@ -205,19 +574,18 @@ function DoctorAppointmentsTab() {
   }
 
   const handleCancel = async (id) => {
-    if (!confirm('هل تريد إلغاء هذا الموعد؟')) return
+    if (!confirm('هل تريد إلغاء هذا الحجز؟')) return
     setActionId(id)
-    try { await cancelAppointment({ appointmentId: id }) } catch (e) { console.error(e) }
+    try { await cancelBooking({ bookingId: id }) } catch (e) { console.error(e) }
     setActionId(null)
   }
 
   const statusLabel = { pending: 'قيد الانتظار', confirmed: 'مؤكد', completed: 'مكتمل', cancelled: 'ملغي' }
 
-  // Stats
-  const confirmedToday = todaysAppts.filter(a => a.status === 'confirmed').length
-  const thisWeekCompleted = (appointments || []).filter(a => {
-    if (a.status !== 'completed') return false
-    const d = new Date(a.date)
+  const confirmedToday = todaysBookings.filter(b => b.status === 'confirmed').length
+  const thisWeekCompleted = (bookings || []).filter(b => {
+    if (b.status !== 'completed') return false
+    const d = new Date(b.date)
     const now = new Date()
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     return d >= weekAgo
@@ -229,7 +597,7 @@ function DoctorAppointmentsTab() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         {[
           { label: 'في الانتظار', value: pending.length, color: '#f59e0b' },
-          { label: 'مواعيد اليوم', value: todaysAppts.length, color: '#3b82f6' },
+          { label: 'حجوزات اليوم', value: todaysBookings.length, color: '#3b82f6' },
           { label: 'مؤكدة اليوم', value: confirmedToday, color: '#059669' },
           { label: 'مكتملة هذا الأسبوع', value: thisWeekCompleted, color: '#6366f1' },
         ].map((stat, i) => (
@@ -240,14 +608,14 @@ function DoctorAppointmentsTab() {
         ))}
       </div>
 
-      {/* Today's appointments */}
-      {todaysAppts.length > 0 && (
+      {/* Today's bookings */}
+      {todaysBookings.length > 0 && (
         <div className="subsection">
-          <h3 className="subsection-title">مواعيد اليوم</h3>
-          {todaysAppts.map(apt => (
-            <AppointmentRow
-              key={apt._id}
-              apt={apt}
+          <h3 className="subsection-title">حجوزات اليوم</h3>
+          {todaysBookings.map(booking => (
+            <BookingRow
+              key={booking._id}
+              booking={booking}
               statusLabel={statusLabel}
               actionId={actionId}
               onConfirm={handleConfirm}
@@ -260,18 +628,18 @@ function DoctorAppointmentsTab() {
 
       {/* Upcoming */}
       <div className="subsection">
-        <h3 className="subsection-title">المواعيد القادمة</h3>
-        {appointments === undefined ? (
+        <h3 className="subsection-title">الحجوزات القادمة</h3>
+        {bookings === undefined ? (
           <div className="dash-card" style={{ textAlign: 'center', color: '#9ca3af' }}>جاري التحميل...</div>
         ) : upcoming.length === 0 ? (
           <div className="empty-state" style={{ padding: '2rem' }}>
-            <p>لا توجد مواعيد قادمة</p>
+            <p>لا توجد حجوزات قادمة</p>
           </div>
         ) : (
-          upcoming.map(apt => (
-            <AppointmentRow
-              key={apt._id}
-              apt={apt}
+          upcoming.map(booking => (
+            <BookingRow
+              key={booking._id}
+              booking={booking}
               statusLabel={statusLabel}
               actionId={actionId}
               onConfirm={handleConfirm}
@@ -299,16 +667,16 @@ function DoctorAppointmentsTab() {
               exit={{ scale: 0.95, opacity: 0 }}
             >
               <div className="modal-header">
-                <h2>إتمام الموعد</h2>
+                <h2>إتمام الحجز</h2>
                 <button className="modal-close" onClick={() => setShowCompleteModal(null)}>&times;</button>
               </div>
               <div className="form-group">
-                <label>ملاحظات الطبيب (اختياري)</label>
+                <label>ملاحظات (اختياري)</label>
                 <textarea
                   value={completeNotes}
                   onChange={e => setCompleteNotes(e.target.value)}
                   rows={3}
-                  placeholder="أضف ملاحظات حول الزيارة..."
+                  placeholder="أضف ملاحظات..."
                 />
               </div>
               <button
@@ -327,9 +695,9 @@ function DoctorAppointmentsTab() {
   )
 }
 
-function AppointmentRow({ apt, statusLabel, actionId, onConfirm, onComplete, onCancel }) {
+function BookingRow({ booking, statusLabel, actionId, onConfirm, onComplete, onCancel }) {
   const formatDate = (dateStr) => {
-    return new Date(dateStr + 'T00:00:00').toLocaleDateString('ar-DZ', {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('ar-SA', {
       weekday: 'short', month: 'short', day: 'numeric'
     })
   }
@@ -338,38 +706,39 @@ function AppointmentRow({ apt, statusLabel, actionId, onConfirm, onComplete, onC
     <div className="dash-card">
       <div className="apt-card">
         <div className="apt-info">
-          <h3>{apt.patient?.firstName} {apt.patient?.lastName || apt.patient?.email}</h3>
-          <p>{apt.patient?.phone || ''}</p>
-          <p className="apt-datetime">{formatDate(apt.date)} · {apt.time}</p>
-          {apt.notes && <p style={{ fontSize: '0.8125rem', color: '#9ca3af', marginTop: '0.25rem' }}>{apt.notes}</p>}
+          <h3>{booking.tourist?.firstName} {booking.tourist?.lastName || booking.tourist?.email}</h3>
+          <p>{booking.tourist?.phone || ''}</p>
+          <p className="apt-datetime">{formatDate(booking.date)} · {booking.time}</p>
+          {booking.partySize && <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>عدد الأشخاص: {booking.partySize}</p>}
+          {booking.notes && <p style={{ fontSize: '0.8125rem', color: '#9ca3af', marginTop: '0.25rem' }}>{booking.notes}</p>}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-          <span className={`status-badge status-${apt.status}`}>
-            {statusLabel[apt.status] || apt.status}
+          <span className={`status-badge status-${booking.status}`}>
+            {statusLabel[booking.status] || booking.status}
           </span>
           <div className="apt-actions">
-            {apt.status === 'pending' && (
+            {booking.status === 'pending' && (
               <button
                 className="apt-action-btn confirm"
-                onClick={() => onConfirm(apt._id)}
-                disabled={actionId === apt._id}
+                onClick={() => onConfirm(booking._id)}
+                disabled={actionId === booking._id}
               >
                 تأكيد
               </button>
             )}
-            {(apt.status === 'pending' || apt.status === 'confirmed') && (
+            {(booking.status === 'pending' || booking.status === 'confirmed') && (
               <>
                 <button
                   className="apt-action-btn"
-                  onClick={() => onComplete(apt._id)}
-                  disabled={actionId === apt._id}
+                  onClick={() => onComplete(booking._id)}
+                  disabled={actionId === booking._id}
                 >
                   إتمام
                 </button>
                 <button
                   className="apt-action-btn danger"
-                  onClick={() => onCancel(apt._id)}
-                  disabled={actionId === apt._id}
+                  onClick={() => onCancel(booking._id)}
+                  disabled={actionId === booking._id}
                 >
                   إلغاء
                 </button>
@@ -384,49 +753,43 @@ function AppointmentRow({ apt, statusLabel, actionId, onConfirm, onComplete, onC
 
 // === Schedule Tab ===
 function ScheduleTab({ user }) {
-  // Find doctor record by user email
-  const doctors = useQuery(api.doctors.queries.listDoctors, { limit: 100 })
-  const saveWorkingHours = useMutation(api.doctors.mutations.saveWorkingHours)
+  const listings = useQuery(api.listings.queries.listListings, { limit: 100 })
+  const saveWorkingHours = useMutation(api.listings.mutations.saveWorkingHours)
 
-  const doctor = doctors?.find(d => d.email === user?.email)
+  const listing = listings?.find(l => l.email === user?.email)
 
   const [schedule, setSchedule] = useState(
     DAYS.map(day => ({
       day: day.key,
       open: '08:00',
-      close: '16:00',
+      close: '22:00',
       isClosed: day.key === 'friday',
     }))
   )
-  const [fee, setFee] = useState('')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
   useEffect(() => {
-    if (doctor?.workingHours?.length) {
+    if (listing?.workingHours?.length) {
       const merged = DAYS.map(day => {
-        const existing = doctor.workingHours.find(wh => wh.day === day.key)
-        return existing || { day: day.key, open: '08:00', close: '16:00', isClosed: true }
+        const existing = listing.workingHours.find(wh => wh.day === day.key)
+        return existing || { day: day.key, open: '08:00', close: '22:00', isClosed: true }
       })
       setSchedule(merged)
     }
-    if (doctor?.consultationFee) {
-      setFee(String(doctor.consultationFee))
-    }
-  }, [doctor])
+  }, [listing])
 
   const updateDay = (index, field, value) => {
     setSchedule(prev => prev.map((s, i) => i === index ? { ...s, [field]: value } : s))
   }
 
   const handleSave = async () => {
-    if (!doctor) return
+    if (!listing) return
     setSaving(true)
     try {
       await saveWorkingHours({
-        doctorId: doctor._id,
+        listingId: listing._id,
         workingHours: schedule,
-        consultationFee: fee ? Number(fee) : undefined,
       })
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -436,10 +799,10 @@ function ScheduleTab({ user }) {
     setSaving(false)
   }
 
-  if (!doctor) {
+  if (!listing) {
     return (
       <div className="empty-state" style={{ padding: '2rem' }}>
-        <p>لم يتم ربط حسابك بملف طبيب بعد. تواصل مع الإدارة.</p>
+        <p>لم يتم ربط حسابك بقائمة أعمال بعد. تواصل مع الإدارة.</p>
       </div>
     )
   }
@@ -456,7 +819,6 @@ function ScheduleTab({ user }) {
         </div>
       </div>
 
-      {/* Weekly schedule grid */}
       <div className="dash-card" style={{ marginBottom: '1.5rem' }}>
         {schedule.map((day, index) => {
           const dayInfo = DAYS.find(d => d.key === day.day)
@@ -471,20 +833,18 @@ function ScheduleTab({ user }) {
                 borderBottom: index < schedule.length - 1 ? '1px solid #f3f4f6' : 'none',
               }}
             >
-              {/* Day toggle */}
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '120px', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={!day.isClosed}
                   onChange={e => updateDay(index, 'isClosed', !e.target.checked)}
-                  style={{ accentColor: '#DC2626' }}
+                  style={{ accentColor: '#0D7A5F' }}
                 />
                 <span style={{ fontSize: '0.875rem', fontWeight: 500, color: day.isClosed ? '#9ca3af' : '#111827' }}>
                   {dayInfo?.ar}
                 </span>
               </label>
 
-              {/* Time inputs */}
               {!day.isClosed ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <input
@@ -520,27 +880,12 @@ function ScheduleTab({ user }) {
           )
         })}
       </div>
-
-      {/* Consultation fee */}
-      <div className="dash-card">
-        <div className="form-group" style={{ marginBottom: 0 }}>
-          <label>سعر الاستشارة (دج)</label>
-          <input
-            type="number"
-            value={fee}
-            onChange={e => setFee(e.target.value)}
-            placeholder="2000"
-            dir="ltr"
-            style={{ maxWidth: '200px' }}
-          />
-        </div>
-      </div>
     </div>
   )
 }
 
-// === Doctor Profile Tab ===
-function DoctorProfileTab({ user }) {
+// === Business Profile Tab ===
+function BusinessProfileTab({ user }) {
   const updateProfile = useMutation(api.users.mutations.updateProfile)
   const [form, setForm] = useState({
     firstName: user?.firstName || '',
@@ -577,8 +922,8 @@ function DoctorProfileTab({ user }) {
         </div>
 
         <div className="form-group">
-          <label>التخصص</label>
-          <input value={user?.specialty || '-'} disabled style={{ background: '#f9fafb', color: '#9ca3af' }} />
+          <label>نوع العمل</label>
+          <input value={user?.businessType || '-'} disabled style={{ background: '#f9fafb', color: '#9ca3af' }} />
         </div>
 
         <div className="form-row">
@@ -597,7 +942,7 @@ function DoctorProfileTab({ user }) {
           <input
             value={form.phone}
             onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
-            placeholder="+213 XX XXX XXXX"
+            placeholder="+966 5X XXX XXXX"
             dir="ltr"
           />
         </div>
@@ -609,7 +954,6 @@ function DoctorProfileTab({ user }) {
           {saved && <span style={{ color: '#059669', fontSize: '0.875rem' }}>تم الحفظ</span>}
         </div>
 
-        {/* CV status */}
         <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #f3f4f6' }}>
           <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
             حالة الحساب: {' '}
@@ -619,7 +963,7 @@ function DoctorProfileTab({ user }) {
           </p>
           {user?.cvFileId && (
             <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
-              السيرة الذاتية: مرفوعة
+              وثيقة العمل: مرفوعة
             </p>
           )}
         </div>

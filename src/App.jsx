@@ -1,10 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import AuthButtons from './components/auth/AuthButtons'
-import SymptomChecker from './components/symptoms/SymptomChecker'
-import ChatWidget from './components/chat/ChatWidget'
 import './App.css'
+
+const hasConvex = !!import.meta.env.VITE_CONVEX_URL
+
+// Lazy-load components that need Convex provider
+const AuthButtons = hasConvex ? lazy(() => import('./components/auth/AuthButtons')) : () => null
+const TravelPlanner = hasConvex ? lazy(() => import('./components/travel/TravelPlanner')) : () => null
+const ChatWidget = hasConvex ? lazy(() => import('./components/chat/ChatWidget')) : () => null
 
 // Translations
 const translations = {
@@ -14,84 +18,84 @@ const translations = {
       features: 'المميزات',
       howItWorks: 'كيف يعمل',
       services: 'الخدمات',
-      map: 'الخريطة',
+      map: 'استكشف',
       contact: 'تواصل معنا',
       getStarted: 'ابدأ الآن',
       langSwitch: 'EN'
     },
     // Hero
     hero: {
-      badge: 'صُنع للجزائر',
-      title: 'صحتك،',
-      titleHighlight: 'افضل',
-      description: 'تبرا تربطك بفاحص الأعراض بالذكاء الاصطناعي، الأطباء، العيادات، وأدوات الصحة الرقمية — كل ذلك في منصة واحدة مصممة للجزائريين.',
-      btnPrimary: 'افحص أعراضك الآن',
-      btnSecondary: 'ابحث عن طبيب',
+      badge: 'اكتشف السعودية',
+      title: 'سفرك،',
+      titleHighlight: 'أسهل',
+      description: 'هاسيو يربطك بمخطط رحلات ذكي، فنادق، مطاعم، ومعالم سياحية — كل ذلك في منصة واحدة مصممة لاستكشاف السعودية.',
+      btnPrimary: 'خطط رحلتك الآن',
+      btnSecondary: 'استكشف الوجهات',
       stats: {
-        doctors: 'طبيب',
-        wilayas: 'ولاية',
+        destinations: 'وجهة',
+        regions: 'منطقة',
         support: 'دعم متواصل'
       }
     },
     // Chat Demo
     chat: {
-      assistant: 'مساعد تبرا',
+      assistant: 'مساعد هاسيو',
       online: 'متصل الآن',
-      userMsg1: 'عندي صداع وتعب شديد',
-      botMsg1: 'أفهم ذلك. دعني أسألك بعض الأسئلة لمساعدتك بشكل أفضل. منذ متى وأنت تعاني من هذه الأعراض؟',
-      userMsg2: 'من صباح أمس',
-      botMsg2: 'بناءً على أعراضك، أنصحك بزيارة طبيب عام. وجدت 12 طبيب بالقرب منك متاحين اليوم.'
+      userMsg1: 'ابي اروح العلا، وش تنصحني؟',
+      botMsg1: 'العلا وجهة رائعة! تبي تزور مدائن صالح والبلدة القديمة؟ خلني أرتب لك خطة كاملة مع أفضل الفنادق والمطاعم.',
+      userMsg2: 'ايه ورتب لي 3 أيام',
+      botMsg2: 'تمام! جهزت لك خطة 3 أيام تشمل مدائن صالح، جبل الفيل، البلدة القديمة، مع 5 فنادق قريبة وأفضل المطاعم المحلية.'
     },
     // Features
     features: {
       label: 'المميزات',
       title: 'كل ما تحتاجه',
-      titleHighlight: 'لصحة أفضل',
-      description: 'من التشخيص بالذكاء الاصطناعي إلى حجز المواعيد، تبرا تجلب حلول الرعاية الصحية الحديثة للجزائر.',
+      titleHighlight: 'لرحلة مثالية',
+      description: 'من التخطيط الذكي إلى الحجز الفوري، هاسيو يجلب لك تجربة سفر متكاملة في السعودية.',
       items: [
         {
           number: '01',
-          title: 'فحص الأعراض بالذكاء الاصطناعي',
-          description: 'صف أعراضك بالعربية أو الفرنسية. الذكاء الاصطناعي يحللها ويقدم إرشادات أولية عن الحالات المحتملة.'
+          title: 'مخطط رحلات ذكي',
+          description: 'صف وجهتك واهتماماتك بالعربية أو الإنجليزية. الذكاء الاصطناعي يخطط لك رحلة كاملة مع جدول يومي مفصل.'
         },
         {
           number: '02',
-          title: 'دليل الأطباء',
-          description: 'اعثر على أطباء ومختصين مؤهلين في جميع الـ69 ولاية. فلتر حسب التخصص، الموقع، والتوفر.'
+          title: 'فنادق وإقامة',
+          description: 'اعثر على أفضل الفنادق والشاليهات والمنتجعات في جميع الـ13 منطقة. فلتر حسب السعر، التقييم، والموقع.'
         },
         {
           number: '03',
-          title: 'البحث عن العيادات',
-          description: 'حدد موقع العيادات والمستشفيات القريبة مع عرض خريطة تفاعلية. شاهد التقييمات والخدمات ومعلومات الاتصال.'
+          title: 'مطاعم',
+          description: 'اكتشف أفضل المطاعم والمقاهي القريبة مع عرض خريطة تفاعلية. شاهد التقييمات والقوائم ومعلومات الاتصال.'
         },
         {
           number: '04',
-          title: 'البحث الذكي',
-          description: 'بحث قوي يفهم ما تحتاجه. اعثر على الأطباء، العيادات، أو الخدمات الطبية فوراً.'
+          title: 'حجوزات',
+          description: 'احجز فنادق ومطاعم وأنشطة سياحية عبر الإنترنت مع التوفر في الوقت الفعلي. استلم التأكيدات فوراً.'
         },
         {
           number: '05',
-          title: 'حجز المواعيد',
-          description: 'احجز مواعيدك عبر الإنترنت مع التوفر في الوقت الفعلي. استلم التأكيدات والتذكيرات عبر الرسائل القصيرة.'
+          title: 'معالم سياحية',
+          description: 'استكشف المعالم والوجهات السياحية في كل منطقة. من المواقع التاريخية إلى المغامرات الطبيعية.'
         },
         {
           number: '06',
-          title: 'البطاقات الصحية الرقمية',
-          description: 'احفظ تاريخك الطبي، الوصفات، والسجلات الصحية رقمياً. الوصول إليها في أي مكان وزمان.'
+          title: 'البحث الذكي',
+          description: 'بحث قوي يفهم ما تحتاجه. اعثر على الفنادق، المطاعم، أو الأنشطة السياحية فوراً.'
         }
       ]
     },
     // How It Works
     howItWorks: {
       label: 'كيف يعمل',
-      title: 'احصل على الرعاية في',
+      title: 'خطط رحلتك في',
       titleHighlight: 'أربع خطوات بسيطة',
-      description: 'من أول عرض إلى زيارة الطبيب، تبرا ترشدك في كل خطوة من رحلتك الصحية.',
+      description: 'من اختيار الوجهة إلى الحجز، هاسيو يرشدك في كل خطوة من رحلتك.',
       steps: [
-        { number: 1, title: 'صف الأعراض', description: 'أخبر تبرا كيف تشعر بكلماتك الخاصة' },
-        { number: 2, title: 'تحليل الذكاء الاصطناعي', description: 'احصل على رؤى فورية عن حالتك' },
-        { number: 3, title: 'اعثر على طبيب', description: 'تصفح المختصين الموصى بهم بالقرب منك' },
-        { number: 4, title: 'احجز وزُر', description: 'حدد موعدك في ثوانٍ' }
+        { number: 1, title: 'اختر وجهتك', description: 'أخبر هاسيو وين تبي تروح واهتماماتك' },
+        { number: 2, title: 'خطة ذكية', description: 'احصل على خطة رحلة مفصلة بالذكاء الاصطناعي' },
+        { number: 3, title: 'اكتشف الخيارات', description: 'تصفح الفنادق والمطاعم والأنشطة القريبة' },
+        { number: 4, title: 'احجز وانطلق', description: 'أكد حجوزاتك وابدأ مغامرتك' }
       ]
     },
     // Services
@@ -99,47 +103,47 @@ const translations = {
       label: 'الخدمات',
       title: 'اكتشف',
       titleHighlight: 'خدماتنا الأساسية',
-      description: 'أدوات رعاية صحية شاملة مصممة خصيصاً لنظام الرعاية الصحية الجزائري.',
+      description: 'أدوات سفر شاملة مصممة خصيصاً لاستكشاف المملكة العربية السعودية.',
       directory: {
-        title: 'دليل الأطباء والعيادات',
-        description: 'اعثر على مقدم الرعاية الصحية المناسب في أي مكان بالجزائر مع دليلنا الشامل.',
+        title: 'دليل الفنادق والمنتجعات',
+        description: 'اعثر على الإقامة المثالية في أي مكان بالسعودية مع دليلنا الشامل.',
         features: [
           'عرض خريطة تفاعلية لجميع المواقع',
-          'فلتر حسب التخصص والتوفر',
-          'تقييمات وآراء حقيقية من المرضى',
-          'معلومات الاتصال المباشر'
+          'فلتر حسب السعر والتقييم والمرافق',
+          'تقييمات وآراء حقيقية من المسافرين',
+          'حجز مباشر وتأكيد فوري'
         ]
       },
       booking: {
-        title: 'حجز المواعيد',
-        description: 'احجز مواعيد مع أي طبيب أو عيادة في شبكتنا فوراً عبر الإنترنت.',
+        title: 'حجز الرحلات والأنشطة',
+        description: 'احجز أنشطة سياحية وجولات ومغامرات في شبكتنا فوراً عبر الإنترنت.',
         features: [
           'تقويم التوفر في الوقت الفعلي',
-          'تأكيد وتذكيرات عبر SMS',
-          'خيارات إعادة جدولة سهلة',
-          'بدون مكالمات هاتفية'
+          'تأكيد فوري عبر البريد والرسائل',
+          'خيارات إلغاء وتعديل مرنة',
+          'بدون رسوم حجز إضافية'
         ]
       },
-      healthCards: {
-        title: 'البطاقات الصحية الرقمية',
-        description: 'احفظ سجلاتك الطبية، الوصفات، وتاريخك الصحي في بطاقة رقمية آمنة واحدة.',
+      attractions: {
+        title: 'المعالم السياحية',
+        description: 'اكتشف أجمل المعالم والوجهات السياحية في المملكة من تاريخ وثقافة وطبيعة.',
         features: [
-          'تخزين مشفر وآمن',
-          'شارك مع أي طبيب فوراً',
-          'تتبع تاريخك الصحي',
-          'ميزة الوصول في حالات الطوارئ'
+          'دليل شامل لكل منطقة',
+          'صور ومعلومات تفصيلية',
+          'مسارات سياحية مقترحة',
+          'نصائح من مسافرين محليين'
         ],
-        cardHolder: 'حامل البطاقة',
+        cardHolder: 'المسافر',
         validThru: 'صالحة حتى'
       },
       search: {
         title: 'البحث الذكي',
         description: 'اعثر على ما تحتاجه بالضبط مع بحثنا الذكي الذي يفهم اللغة الطبيعية.',
         features: [
-          'البحث بالعربية، الفرنسية، أو الإنجليزية',
+          'البحث بالعربية أو الإنجليزية',
           'اقتراحات الإكمال التلقائي',
           'فلتر حسب المسافة، السعر، التقييم',
-          'حفظ عمليات البحث المفضلة'
+          'حفظ الوجهات المفضلة'
         ],
         recentSearches: 'عمليات البحث الأخيرة:'
       }
@@ -147,18 +151,18 @@ const translations = {
     // CTA
     cta: {
       title: 'كن من أوائل المستخدمين',
-      titleHighlight: 'لتبرا',
-      description: 'نعمل على بناء منصة صحية متكاملة للجزائريين. سجّل الآن لتكون من أوائل من يجرب تبرا عند الإطلاق.',
+      titleHighlight: 'لهاسيو',
+      description: 'نعمل على بناء أفضل منصة سفر لاستكشاف السعودية. سجّل الآن لتكون من أوائل من يجرب هاسيو عند الإطلاق.',
       btnPrimary: 'سجّل للإطلاق المبكر',
       btnSecondary: 'تواصل معنا'
     },
     // Footer
     footer: {
-      description: 'نجعل الحياة الصحية أسهل للجزائريين. حلول رعاية صحية مدعومة بالذكاء الاصطناعي في متناول يدك.',
-      phone: '+213 667 20 22 23',
+      description: 'نجعل السفر واستكشاف السعودية أسهل. حلول سفر مدعومة بالذكاء الاصطناعي في متناول يدك.',
+      phone: '+966 50 000 0000',
       product: {
         title: 'المنتج',
-        links: ['فحص الأعراض بالذكاء الاصطناعي', 'البحث عن أطباء', 'حجز المواعيد', 'البطاقات الصحية']
+        links: ['مخطط الرحلات الذكي', 'استكشف الوجهات', 'حجز الفنادق', 'المعالم السياحية']
       },
       company: {
         title: 'الشركة',
@@ -166,10 +170,10 @@ const translations = {
       },
       support: {
         title: 'الدعم',
-        links: ['مركز المساعدة', 'تواصل معنا', 'للأطباء', 'للعيادات']
+        links: ['مركز المساعدة', 'تواصل معنا', 'للفنادق', 'للمطاعم']
       },
       bottom: {
-        hadith: 'قال ﷺ: "تداووا فإن الله تعالى لم يضع داءً إلا وضع له دواءً غير داء واحد: الهرم" (سنن الترمذي)',
+        quote: '"السفر يُعلّمك أكثر مما تُعلّمك أي مدرسة" — المملكة العربية السعودية، أرض التاريخ والمستقبل',
         privacy: 'سياسة الخصوصية',
         terms: 'شروط الخدمة',
         cookies: 'سياسة ملفات تعريف الارتباط'
@@ -182,84 +186,84 @@ const translations = {
       features: 'Features',
       howItWorks: 'How it Works',
       services: 'Services',
-      map: 'Map',
+      map: 'Explore',
       contact: 'Contact',
       getStarted: 'Get Started',
       langSwitch: 'عربي'
     },
     // Hero
     hero: {
-      badge: 'Made for Algeria',
-      title: 'Your Health,',
+      badge: 'Discover Saudi Arabia',
+      title: 'Your Travel,',
       titleHighlight: 'Simplified',
-      description: 'Tabra connects you with AI-powered symptom checking, doctors, clinics, and digital health tools — all in one platform designed for Algerians.',
-      btnPrimary: 'Check Symptoms Now',
-      btnSecondary: 'Find a Doctor',
+      description: 'Hasio connects you with AI-powered trip planning, hotels, restaurants, and attractions — all in one platform designed to explore Saudi Arabia.',
+      btnPrimary: 'Plan Your Trip Now',
+      btnSecondary: 'Explore Destinations',
       stats: {
-        doctors: 'Doctors',
-        wilayas: 'Wilayas',
+        destinations: 'Destinations',
+        regions: 'Regions',
         support: 'AI Support'
       }
     },
     // Chat Demo
     chat: {
-      assistant: 'Tabra Assistant',
+      assistant: 'Hasio Assistant',
       online: 'Online now',
-      userMsg1: 'I have a headache and feeling tired',
-      botMsg1: 'I understand. Let me ask a few questions to help you better. How long have you had these symptoms?',
-      userMsg2: 'Since yesterday morning',
-      botMsg2: 'Based on your symptoms, I recommend consulting a general practitioner. I found 12 doctors near you available today.'
+      userMsg1: 'Where should I visit in Riyadh?',
+      botMsg1: 'Great choice! Riyadh has amazing spots. Would you like to explore historical sites like Diriyah or modern attractions like Boulevard City? Let me plan your trip.',
+      userMsg2: 'Both! Plan me a 3-day trip',
+      botMsg2: 'Done! I\'ve created a 3-day itinerary covering Diriyah, Boulevard City, Kingdom Tower, and the National Museum, with 5 top-rated hotels and restaurants nearby.'
     },
     // Features
     features: {
       label: 'Features',
       title: 'Everything you need for',
-      titleHighlight: 'better health',
-      description: 'From AI-powered diagnosis to appointment booking, Tabra brings modern healthcare solutions to Algeria.',
+      titleHighlight: 'the perfect trip',
+      description: 'From AI-powered planning to instant booking, Hasio brings a complete travel experience across Saudi Arabia.',
       items: [
         {
           number: '01',
-          title: 'AI Symptom Checker',
-          description: 'Describe your symptoms in Arabic or French. Our AI analyzes them and provides initial guidance on potential conditions.'
+          title: 'AI Travel Planner',
+          description: 'Describe your destination and interests in Arabic or English. Our AI plans a complete trip with a detailed daily itinerary.'
         },
         {
           number: '02',
-          title: 'Doctor Directory',
-          description: 'Find qualified doctors and specialists across all 69 wilayas. Filter by specialty, location, and availability.'
+          title: 'Hotels & Stays',
+          description: 'Find the best hotels, chalets, and resorts across all 13 regions. Filter by price, rating, and location.'
         },
         {
           number: '03',
-          title: 'Clinic Finder',
-          description: 'Locate nearby clinics and hospitals with interactive map view. See ratings, services, and contact information.'
+          title: 'Restaurants',
+          description: 'Discover the best restaurants and cafes nearby with interactive map view. See ratings, menus, and contact information.'
         },
         {
           number: '04',
-          title: 'Smart Search',
-          description: 'Powerful search that understands what you need. Find doctors, clinics, or medical services instantly.'
+          title: 'Bookings',
+          description: 'Book hotels, restaurants, and tourist activities online with real-time availability. Receive instant confirmations.'
         },
         {
           number: '05',
-          title: 'Book Appointments',
-          description: 'Schedule appointments online with real-time availability. Receive confirmations and reminders via SMS.'
+          title: 'Attractions',
+          description: 'Explore landmarks and tourist destinations in every region. From historical sites to natural adventures.'
         },
         {
           number: '06',
-          title: 'Digital Health Cards',
-          description: 'Store your medical history, prescriptions, and health records digitally. Access them anywhere, anytime.'
+          title: 'Smart Search',
+          description: 'Powerful search that understands what you need. Find hotels, restaurants, or tourist activities instantly.'
         }
       ]
     },
     // How It Works
     howItWorks: {
       label: 'How It Works',
-      title: 'Get care in',
+      title: 'Plan your trip in',
       titleHighlight: 'four simple steps',
-      description: 'From first symptom to doctor visit, Tabra guides you through every step of your healthcare journey.',
+      description: 'From choosing your destination to booking, Hasio guides you through every step of your journey.',
       steps: [
-        { number: 1, title: 'Describe Symptoms', description: 'Tell Tabra how you feel in your own words' },
-        { number: 2, title: 'Get AI Analysis', description: 'Receive instant insights about your condition' },
-        { number: 3, title: 'Find a Doctor', description: 'Browse recommended specialists near you' },
-        { number: 4, title: 'Book & Visit', description: 'Schedule your appointment in seconds' }
+        { number: 1, title: 'Choose Destination', description: 'Tell Hasio where you want to go and your interests' },
+        { number: 2, title: 'AI Planning', description: 'Get a detailed trip plan powered by AI' },
+        { number: 3, title: 'Discover Options', description: 'Browse hotels, restaurants, and activities nearby' },
+        { number: 4, title: 'Book & Go', description: 'Confirm your bookings and start your adventure' }
       ]
     },
     // Services
@@ -267,47 +271,47 @@ const translations = {
       label: 'Services',
       title: 'Explore our',
       titleHighlight: 'core services',
-      description: 'Comprehensive healthcare tools designed specifically for the Algerian healthcare system.',
+      description: 'Comprehensive travel tools designed specifically for exploring Saudi Arabia.',
       directory: {
-        title: 'Doctor & Clinic Directory',
-        description: 'Find the right healthcare provider anywhere in Algeria with our comprehensive directory.',
+        title: 'Hotels & Resorts Directory',
+        description: 'Find the perfect stay anywhere in Saudi Arabia with our comprehensive directory.',
         features: [
           'Interactive map view of all locations',
-          'Filter by specialty and availability',
-          'Real patient reviews and ratings',
-          'Direct contact information'
+          'Filter by price, rating, and amenities',
+          'Real traveler reviews and ratings',
+          'Direct booking with instant confirmation'
         ]
       },
       booking: {
-        title: 'Appointment Booking',
-        description: 'Schedule appointments with any doctor or clinic in our network instantly online.',
+        title: 'Trip & Activity Booking',
+        description: 'Book tourist activities, tours, and adventures in our network instantly online.',
         features: [
           'Real-time availability calendar',
-          'SMS confirmation and reminders',
-          'Easy rescheduling options',
-          'No phone calls needed'
+          'Instant email and SMS confirmation',
+          'Flexible cancellation and modification',
+          'No extra booking fees'
         ]
       },
-      healthCards: {
-        title: 'Digital Health Cards',
-        description: 'Keep your medical records, prescriptions, and health history in one secure digital card.',
+      attractions: {
+        title: 'Tourist Attractions',
+        description: 'Discover the most beautiful landmarks and destinations across the Kingdom — history, culture, and nature.',
         features: [
-          'Secure encrypted storage',
-          'Share with any doctor instantly',
-          'Track your health history',
-          'Emergency access feature'
+          'Comprehensive guide for each region',
+          'Photos and detailed information',
+          'Suggested tourist itineraries',
+          'Tips from local travelers'
         ],
-        cardHolder: 'Card Holder',
+        cardHolder: 'Traveler',
         validThru: 'Valid Thru'
       },
       search: {
         title: 'Smart Search',
         description: 'Find exactly what you need with our intelligent search that understands natural language.',
         features: [
-          'Search in Arabic, French, or English',
+          'Search in Arabic or English',
           'Auto-complete suggestions',
           'Filter by distance, price, rating',
-          'Save favorite searches'
+          'Save favorite destinations'
         ],
         recentSearches: 'Recent searches:'
       }
@@ -315,18 +319,18 @@ const translations = {
     // CTA
     cta: {
       title: 'Be among the first to use',
-      titleHighlight: 'Tabra',
-      description: 'We are building a comprehensive healthcare platform for Algerians. Sign up now to be among the first to try Tabra at launch.',
+      titleHighlight: 'Hasio',
+      description: 'We are building the best travel platform for exploring Saudi Arabia. Sign up now to be among the first to try Hasio at launch.',
       btnPrimary: 'Sign Up for Early Access',
       btnSecondary: 'Contact Us'
     },
     // Footer
     footer: {
-      description: 'Making health life easier for Algerians. AI-powered healthcare solutions at your fingertips.',
-      phone: '+213 667 20 22 23',
+      description: 'Making travel and exploring Saudi Arabia easier. AI-powered travel solutions at your fingertips.',
+      phone: '+966 50 000 0000',
       product: {
         title: 'Product',
-        links: ['AI Symptom Checker', 'Find Doctors', 'Book Appointments', 'Health Cards']
+        links: ['AI Travel Planner', 'Explore Destinations', 'Book Hotels', 'Attractions']
       },
       company: {
         title: 'Company',
@@ -334,10 +338,10 @@ const translations = {
       },
       support: {
         title: 'Support',
-        links: ['Help Center', 'Contact Us', 'For Doctors', 'For Clinics']
+        links: ['Help Center', 'Contact Us', 'For Hotels', 'For Restaurants']
       },
       bottom: {
-        hadith: 'The Prophet ﷺ said: "Seek treatment, for Allah has not created a disease except that He has also created its cure, except for one: old age" (Sunan al-Tirmidhi)',
+        quote: '"Travel teaches you more than any school ever could" — Saudi Arabia, land of history and the future',
         privacy: 'Privacy Policy',
         terms: 'Terms of Service',
         cookies: 'Cookie Policy'
@@ -365,7 +369,7 @@ function App() {
   const [scrolled, setScrolled] = useState(false)
   const [chatStep, setChatStep] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [showSymptomChecker, setShowSymptomChecker] = useState(false)
+  const [showTravelPlanner, setShowTravelPlanner] = useState(false)
 
   const t = translations[lang]
   const isRTL = lang === 'ar'
@@ -395,27 +399,28 @@ function App() {
 
   return (
     <div className={`app ${isRTL ? 'rtl' : 'ltr'}`}>
+      <div className="grid-bg" />
       {/* Header */}
       <header className={`header ${scrolled ? 'scrolled' : ''}`}>
         <div className="container header-inner">
           <a href="#" className="logo">
             <div className="logo-circle">
-              <img src="/logo.png" alt="Tabra" />
+              <img src="/logo.png" alt="Hasio" />
             </div>
-            <span className="logo-text">Tabra</span>
+            <span className="logo-text">Hasio</span>
           </a>
           <nav className="nav">
             <ul className="nav-links">
               <li><a href="#features" className="nav-link">{t.nav.features}</a></li>
               <li><a href="#how-it-works" className="nav-link">{t.nav.howItWorks}</a></li>
               <li><a href="#services" className="nav-link">{t.nav.services}</a></li>
-              <li><Link to="/map" className="nav-link">{t.nav.map}</Link></li>
+              <li><Link to="/explore" className="nav-link">{t.nav.map}</Link></li>
               <li><a href="#contact" className="nav-link">{t.nav.contact}</a></li>
             </ul>
             <button onClick={toggleLang} className="btn btn-lang">
               {t.nav.langSwitch}
             </button>
-            <AuthButtons lang={lang} />
+            <Suspense fallback={null}><AuthButtons lang={lang} /></Suspense>
           </nav>
           <div className="mobile-actions">
             <button onClick={toggleLang} className="btn btn-lang btn-lang-mobile">
@@ -445,7 +450,7 @@ function App() {
               <li><a href="#features" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t.nav.features}</a></li>
               <li><a href="#how-it-works" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t.nav.howItWorks}</a></li>
               <li><a href="#services" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t.nav.services}</a></li>
-              <li><Link to="/map" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t.nav.map}</Link></li>
+              <li><Link to="/explore" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t.nav.map}</Link></li>
               <li><a href="#contact" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t.nav.contact}</a></li>
             </ul>
             <a href="#" className="btn btn-primary mobile-cta" onClick={() => setMobileMenuOpen(false)}>{t.nav.getStarted}</a>
@@ -473,17 +478,17 @@ function App() {
               {t.hero.description}
             </motion.p>
             <motion.div className="hero-buttons" variants={fadeInUp}>
-              <button onClick={() => setShowSymptomChecker(true)} className="btn btn-primary btn-large">{t.hero.btnPrimary}</button>
-              <Link to="/map" className="btn btn-outline btn-large">{t.hero.btnSecondary}</Link>
+              <button onClick={() => setShowTravelPlanner(true)} className="btn btn-primary btn-large">{t.hero.btnPrimary}</button>
+              <Link to="/explore" className="btn btn-outline btn-large">{t.hero.btnSecondary}</Link>
             </motion.div>
             <motion.div className="hero-stats" variants={fadeInUp}>
               <div className="stat-item">
-                <h4>+5000</h4>
-                <p>{t.hero.stats.doctors}</p>
+                <h4>+500</h4>
+                <p>{t.hero.stats.destinations}</p>
               </div>
               <div className="stat-item">
-                <h4>69</h4>
-                <p>{t.hero.stats.wilayas}</p>
+                <h4>13</h4>
+                <p>{t.hero.stats.regions}</p>
               </div>
               <div className="stat-item">
                 <h4>24/7</h4>
@@ -501,7 +506,7 @@ function App() {
             <div className="hero-card">
               <div className="chat-header">
                 <div className="chat-avatar">
-                  <img src="/logo.png" alt="Tabra" />
+                  <img src="/logo.png" alt="Hasio" />
                 </div>
                 <div className="chat-info">
                   <h4>{t.chat.assistant}</h4>
@@ -642,7 +647,7 @@ function App() {
           </motion.div>
 
           <div className="services-grid">
-            {/* Doctor & Clinic Directory */}
+            {/* Hotels & Resorts Directory */}
             <motion.div
               className="service-card"
               initial={{ opacity: 0, y: 30 }}
@@ -667,7 +672,7 @@ function App() {
               </div>
             </motion.div>
 
-            {/* Appointment Booking */}
+            {/* Trip & Activity Booking */}
             <motion.div
               className="service-card"
               initial={{ opacity: 0, y: 30 }}
@@ -698,7 +703,7 @@ function App() {
               </div>
             </motion.div>
 
-            {/* Digital Health Cards */}
+            {/* Tourist Attractions */}
             <motion.div
               className="service-card"
               initial={{ opacity: 0, y: 30 }}
@@ -707,10 +712,10 @@ function App() {
               transition={{ delay: 0.2 }}
             >
               <div className="service-content">
-                <h3>{t.services.healthCards.title}</h3>
-                <p>{t.services.healthCards.description}</p>
+                <h3>{t.services.attractions.title}</h3>
+                <p>{t.services.attractions.description}</p>
                 <ul className="service-features">
-                  {t.services.healthCards.features.map((feature, i) => (
+                  {t.services.attractions.features.map((feature, i) => (
                     <li key={i}>{feature}</li>
                   ))}
                 </ul>
@@ -718,17 +723,17 @@ function App() {
               <div className="service-visual">
                 <div className="health-card-preview">
                   <div className="card-header">
-                    <span className="card-brand">{isRTL ? 'تبرا الصحية' : 'Tabra Health'}</span>
+                    <span className="card-brand">{isRTL ? 'هاسيو للسفر' : 'Hasio Travel'}</span>
                     <div className="card-chip"></div>
                   </div>
-                  <div className="card-number">•••• •••• •••• 4521</div>
+                  <div className="card-number">{isRTL ? 'بطاقة المسافر' : 'Traveler Pass'}</div>
                   <div className="card-info">
                     <div className="card-info-item">
-                      <label>{t.services.healthCards.cardHolder}</label>
-                      <span>{isRTL ? 'أحمد بن علي' : 'Ahmed Benali'}</span>
+                      <label>{t.services.attractions.cardHolder}</label>
+                      <span>{isRTL ? 'محمد العتيبي' : 'Mohammed Al-Otaibi'}</span>
                     </div>
                     <div className="card-info-item">
-                      <label>{t.services.healthCards.validThru}</label>
+                      <label>{t.services.attractions.validThru}</label>
                       <span>12/28</span>
                     </div>
                   </div>
@@ -756,16 +761,16 @@ function App() {
               <div className="service-visual">
                 <div className="search-preview">
                   <div className="search-input">
-                    طبيب أسنان في الجزائر العاصمة
+                    {isRTL ? 'فنادق في العلا قريبة من مدائن صالح' : 'Hotels in AlUla near Hegra'}
                   </div>
                   <div className="search-label">
                     {t.services.search.recentSearches}
                   </div>
                   <div className="search-item">
-                    Cardiologue Oran
+                    {isRTL ? 'مطاعم في جدة البلد' : 'Restaurants in Jeddah Al-Balad'}
                   </div>
                   <div className="search-item">
-                    Pédiatre disponible ce weekend
+                    {isRTL ? 'أنشطة مغامرات في نيوم' : 'Adventure activities in NEOM'}
                   </div>
                 </div>
               </div>
@@ -805,9 +810,9 @@ function App() {
             <div className="footer-brand">
               <a href="#" className="logo">
                 <div className="logo-circle">
-                  <img src="/logo.png" alt="Tabra" />
+                  <img src="/logo.png" alt="Hasio" />
                 </div>
-                <span className="logo-text">Tabra</span>
+                <span className="logo-text">Hasio</span>
               </a>
               <p>{t.footer.description}</p>
               <a href={`tel:${t.footer.phone}`} className="footer-phone" dir="ltr">
@@ -840,7 +845,7 @@ function App() {
             </div>
           </div>
           <div className="footer-bottom">
-            <p className="footer-hadith">{t.footer.bottom.hadith}</p>
+            <p className="footer-hadith">{t.footer.bottom.quote}</p>
             <div className="footer-legal">
               <a href="#">{t.footer.bottom.privacy}</a>
               <a href="#">{t.footer.bottom.terms}</a>
@@ -851,17 +856,17 @@ function App() {
       </footer>
 
       {/* Floating Chat Widget */}
-      <ChatWidget lang={lang} />
+      <Suspense fallback={null}><ChatWidget lang={lang} /></Suspense>
 
-      {/* Symptom Checker Modal */}
+      {/* Travel Planner Modal */}
       <AnimatePresence>
-        {showSymptomChecker && (
+        {showTravelPlanner && (
           <motion.div
             className="modal-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowSymptomChecker(false)}
+            onClick={() => setShowTravelPlanner(false)}
           >
             <motion.div
               className="modal-content"
@@ -872,18 +877,20 @@ function App() {
             >
               <button
                 className="modal-close"
-                onClick={() => setShowSymptomChecker(false)}
+                onClick={() => setShowTravelPlanner(false)}
                 aria-label="Close"
               >
                 &times;
               </button>
-              <SymptomChecker
-                lang={lang}
-                onBookAppointment={(data) => {
-                  console.log('Book appointment with:', data)
-                  setShowSymptomChecker(false)
-                }}
-              />
+              <Suspense fallback={null}>
+                <TravelPlanner
+                  lang={lang}
+                  onBookListing={(data) => {
+                    console.log('Book listing with:', data)
+                    setShowTravelPlanner(false)
+                  }}
+                />
+              </Suspense>
             </motion.div>
           </motion.div>
         )}

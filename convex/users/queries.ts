@@ -10,39 +10,38 @@ export const getCurrentUser = query({
   },
 });
 
-// Get user's favorite doctors
+// Get user's favorite listings
 export const getFavorites = query({
   args: {},
   handler: async (ctx) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user || !user.favoriteDoctorIds || user.favoriteDoctorIds.length === 0) {
+    if (!user || !user.favoriteListingIds || user.favoriteListingIds.length === 0) {
       return [];
     }
 
-    // Fetch all favorite doctors
-    const doctors = await Promise.all(
-      user.favoriteDoctorIds.map((id) => ctx.db.get(id))
+    const listings = await Promise.all(
+      user.favoriteListingIds.map((id) => ctx.db.get(id))
     );
 
-    return doctors.filter(Boolean);
+    return listings.filter(Boolean);
   },
 });
 
-// Check if a doctor is in favorites
+// Check if a listing is in favorites
 export const isFavorite = query({
-  args: { doctorId: v.id("doctors") },
+  args: { listingId: v.id("listings") },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user || !user.favoriteDoctorIds) {
+    if (!user || !user.favoriteListingIds) {
       return false;
     }
 
-    return user.favoriteDoctorIds.includes(args.doctorId);
+    return user.favoriteListingIds.includes(args.listingId);
   },
 });
 
-// Get CV download URL (for admin review)
-export const getCvUrl = query({
+// Get business doc download URL (for admin review)
+export const getBusinessDocUrl = query({
   args: { fileId: v.id("_storage") },
   handler: async (ctx, args) => {
     return await ctx.storage.getUrl(args.fileId);

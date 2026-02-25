@@ -21,7 +21,7 @@
   align-items: center;
   gap: 10px;
   padding: 14px 24px;
-  background: #DC2626;
+  background: #0D7A5F;
   color: white;
   border: none;
   border-radius: 50px;
@@ -29,13 +29,13 @@
   font-family: 'Cairo', 'Outfit', sans-serif;
   font-size: 0.9375rem;
   font-weight: 600;
-  box-shadow: 0 4px 20px rgba(220, 38, 38, 0.4);
+  box-shadow: 0 4px 20px rgba(13, 122, 95, 0.4);
   transition: all 0.3s ease;
 }
 
 .chat-fab:hover {
-  background: #b91c1c;
-  box-shadow: 0 6px 30px rgba(220, 38, 38, 0.5);
+  background: #065F46;
+  box-shadow: 0 6px 30px rgba(13, 122, 95, 0.5);
 }
 
 .chat-fab.active {
@@ -79,7 +79,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  background: #DC2626;
+  background: #0D7A5F;
   color: white;
   flex-shrink: 0;
 }

@@ -15,10 +15,9 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     baseURL: siteUrl,
     database: authComponent.adapter(ctx),
     trustedOrigins: [
-      "https://tabra.space",
-      "https://www.tabra.space",
       "http://localhost:5173",
       "http://localhost:3000",
+      // TODO: Add production Hasio domain
     ],
     emailAndPassword: {
       enabled: true,

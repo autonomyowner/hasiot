@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import SymptomChecker from '../symptoms/SymptomChecker'
+import TravelPlanner from '../travel/TravelPlanner'
 import './ChatWidget.css'
 
 const translations = {
   ar: {
-    buttonText: 'افحص أعراضك الآن',
+    buttonText: 'خطط رحلتك الآن',
     close: 'إغلاق'
   },
   en: {
-    buttonText: 'Check Symptoms Now',
+    buttonText: 'Plan Your Trip Now',
     close: 'Close'
   }
 }
@@ -19,9 +19,8 @@ export default function ChatWidget({ lang = 'ar' }) {
   const t = translations[lang] || translations.ar
   const isRTL = lang === 'ar'
 
-  const handleBookAppointment = (data) => {
-    console.log('Book appointment with:', data)
-    // Could navigate to booking page or open booking modal
+  const handleBookListing = (data) => {
+    console.log('Book listing with:', data)
   }
 
   return (
@@ -39,10 +38,10 @@ export default function ChatWidget({ lang = 'ar' }) {
             <div className="chat-window-header">
               <div className="chat-window-title">
                 <div className="chat-avatar">
-                  <img src="/logo.png" alt="Tabra" />
+                  <img src="/logo.png" alt="Hasio" />
                 </div>
                 <div className="chat-title-text">
-                  <span className="chat-name">Tabra</span>
+                  <span className="chat-name">Hasio</span>
                   <span className="chat-status">{isRTL ? 'متصل الآن' : 'Online'}</span>
                 </div>
               </div>
@@ -58,9 +57,9 @@ export default function ChatWidget({ lang = 'ar' }) {
               </button>
             </div>
             <div className="chat-window-body">
-              <SymptomChecker
+              <TravelPlanner
                 lang={lang}
-                onBookAppointment={handleBookAppointment}
+                onBookListing={handleBookListing}
               />
             </div>
           </motion.div>

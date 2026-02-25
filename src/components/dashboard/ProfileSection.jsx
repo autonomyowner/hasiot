@@ -2,17 +2,10 @@ import { useState } from 'react'
 import { useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 
-const WILAYAS = [
-  'Adrar', 'Chlef', 'Laghouat', 'Oum El Bouaghi', 'Batna', 'Béjaïa', 'Biskra',
-  'Béchar', 'Blida', 'Bouira', 'Tamanrasset', 'Tébessa', 'Tlemcen', 'Tiaret',
-  'Tizi Ouzou', 'Alger', 'Djelfa', 'Jijel', 'Sétif', 'Saïda', 'Skikda',
-  'Sidi Bel Abbès', 'Annaba', 'Guelma', 'Constantine', 'Médéa', 'Mostaganem',
-  'M\'Sila', 'Mascara', 'Ouargla', 'Oran', 'El Bayadh', 'Illizi',
-  'Bordj Bou Arréridj', 'Boumerdès', 'El Tarf', 'Tindouf', 'Tissemsilt',
-  'El Oued', 'Khenchela', 'Souk Ahras', 'Tipaza', 'Mila', 'Aïn Defla',
-  'Naâma', 'Aïn Témouchent', 'Ghardaïa', 'Relizane',
-  'El M\'Ghair', 'El Menia', 'Ouled Djellal', 'Bordj Badji Mokhtar',
-  'Béni Abbès', 'Timimoun', 'Touggourt', 'Djanet', 'In Salah', 'In Guezzam'
+const SAUDI_CITIES = [
+  'Riyadh', 'Jeddah', 'Mecca', 'Medina', 'Dammam', 'Khobar', 'Dhahran',
+  'Tabuk', 'Abha', 'Taif', 'Hail', 'Buraidah', 'Najran', 'Jizan',
+  'Yanbu', 'Al Kharj', 'AlUla', 'NEOM', 'Jubail', 'Khamis Mushait'
 ]
 
 const translations = {
@@ -22,8 +15,8 @@ const translations = {
     lastName: 'اسم العائلة',
     email: 'البريد الإلكتروني',
     phone: 'رقم الهاتف',
-    wilaya: 'الولاية',
-    selectWilaya: 'اختر الولاية',
+    city: 'المدينة',
+    selectCity: 'اختر المدينة',
     language: 'اللغة المفضلة',
     arabic: 'العربية',
     english: 'English',
@@ -31,9 +24,9 @@ const translations = {
     saving: 'جاري الحفظ...',
     saved: 'تم الحفظ بنجاح',
     role: 'نوع الحساب',
-    patient: 'مريض',
-    doctor: 'طبيب',
-    clinic: 'عيادة',
+    tourist: 'سائح',
+    business_owner: 'صاحب عمل',
+    service_provider: 'مقدم خدمة',
   },
   en: {
     title: 'Profile',
@@ -41,8 +34,8 @@ const translations = {
     lastName: 'Last Name',
     email: 'Email',
     phone: 'Phone Number',
-    wilaya: 'Wilaya',
-    selectWilaya: 'Select wilaya',
+    city: 'City',
+    selectCity: 'Select city',
     language: 'Preferred Language',
     arabic: 'العربية',
     english: 'English',
@@ -50,9 +43,9 @@ const translations = {
     saving: 'Saving...',
     saved: 'Saved successfully',
     role: 'Account Type',
-    patient: 'Patient',
-    doctor: 'Doctor',
-    clinic: 'Clinic',
+    tourist: 'Tourist',
+    business_owner: 'Business Owner',
+    service_provider: 'Service Provider',
   }
 }
 
@@ -66,7 +59,7 @@ export default function ProfileSection({ lang = 'ar', user }) {
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     phone: user?.phone || '',
-    wilaya: user?.wilaya || '',
+    city: user?.city || '',
     preferredLanguage: user?.preferredLanguage || 'ar',
   })
   const [saving, setSaving] = useState(false)
@@ -80,7 +73,7 @@ export default function ProfileSection({ lang = 'ar', user }) {
         firstName: form.firstName || undefined,
         lastName: form.lastName || undefined,
         phone: form.phone || undefined,
-        wilaya: form.wilaya || undefined,
+        city: form.city || undefined,
         preferredLanguage: form.preferredLanguage,
       })
       setSaved(true)
@@ -92,9 +85,9 @@ export default function ProfileSection({ lang = 'ar', user }) {
   }
 
   const roleLabel = (role) => {
-    if (role === 'patient') return t.patient
-    if (role === 'doctor') return t.doctor
-    if (role === 'clinic') return t.clinic
+    if (role === 'tourist') return t.tourist
+    if (role === 'business_owner') return t.business_owner
+    if (role === 'service_provider') return t.service_provider
     return role
   }
 
@@ -139,21 +132,21 @@ export default function ProfileSection({ lang = 'ar', user }) {
           <input
             value={form.phone}
             onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))}
-            placeholder="+213 XX XXX XXXX"
+            placeholder="+966 55 123 4567"
             dir="ltr"
           />
         </div>
 
-        {/* Wilaya */}
+        {/* City */}
         <div className="form-group">
-          <label>{t.wilaya}</label>
+          <label>{t.city}</label>
           <select
-            value={form.wilaya}
-            onChange={e => setForm(prev => ({ ...prev, wilaya: e.target.value }))}
+            value={form.city}
+            onChange={e => setForm(prev => ({ ...prev, city: e.target.value }))}
           >
-            <option value="">{t.selectWilaya}</option>
-            {WILAYAS.map((w, i) => (
-              <option key={w} value={w}>{`${String(i + 1).padStart(2, '0')} - ${w}`}</option>
+            <option value="">{t.selectCity}</option>
+            {SAUDI_CITIES.map(c => (
+              <option key={c} value={c}>{c}</option>
             ))}
           </select>
         </div>

@@ -6,48 +6,50 @@ import BookingForm from '../appointments/BookingForm'
 
 const translations = {
   ar: {
-    title: 'المواعيد',
-    upcoming: 'المواعيد القادمة',
-    past: 'المواعيد السابقة',
-    bookNew: 'حجز موعد جديد',
-    noUpcoming: 'لا توجد مواعيد قادمة',
-    noPast: 'لا توجد مواعيد سابقة',
-    bookFirst: 'احجز موعدك الأول مع طبيب',
+    title: 'الحجوزات',
+    upcoming: 'الحجوزات القادمة',
+    past: 'الحجوزات السابقة',
+    bookNew: 'حجز جديد',
+    noUpcoming: 'لا توجد حجوزات قادمة',
+    noPast: 'لا توجد حجوزات سابقة',
+    bookFirst: 'احجز أول تجربة لك في السعودية',
     cancel: 'إلغاء',
-    cancelConfirm: 'هل تريد إلغاء هذا الموعد؟',
+    cancelConfirm: 'هل تريد إلغاء هذا الحجز؟',
     cancelling: 'جاري الإلغاء...',
     cancelled: 'تم الإلغاء',
     pending: 'قيد الانتظار',
     confirmed: 'مؤكد',
     completed: 'مكتمل',
     no_show: 'لم يحضر',
-    showPast: 'عرض المواعيد السابقة',
-    hidePast: 'إخفاء المواعيد السابقة',
-    consultation: 'استشارة',
-    followup: 'متابعة',
-    checkup: 'فحص',
+    showPast: 'عرض الحجوزات السابقة',
+    hidePast: 'إخفاء الحجوزات السابقة',
+    reservation: 'حجز',
+    tour_booking: 'جولة سياحية',
+    event_ticket: 'تذكرة فعالية',
+    guests: 'ضيوف',
   },
   en: {
-    title: 'Appointments',
-    upcoming: 'Upcoming Appointments',
-    past: 'Past Appointments',
-    bookNew: 'Book New Appointment',
-    noUpcoming: 'No upcoming appointments',
-    noPast: 'No past appointments',
-    bookFirst: 'Book your first appointment with a doctor',
+    title: 'Bookings',
+    upcoming: 'Upcoming Bookings',
+    past: 'Past Bookings',
+    bookNew: 'New Booking',
+    noUpcoming: 'No upcoming bookings',
+    noPast: 'No past bookings',
+    bookFirst: 'Book your first experience in Saudi Arabia',
     cancel: 'Cancel',
-    cancelConfirm: 'Are you sure you want to cancel this appointment?',
+    cancelConfirm: 'Are you sure you want to cancel this booking?',
     cancelling: 'Cancelling...',
     cancelled: 'Cancelled',
     pending: 'Pending',
     confirmed: 'Confirmed',
     completed: 'Completed',
     no_show: 'No Show',
-    showPast: 'Show past appointments',
-    hidePast: 'Hide past appointments',
-    consultation: 'Consultation',
-    followup: 'Follow-up',
-    checkup: 'Check-up',
+    showPast: 'Show past bookings',
+    hidePast: 'Hide past bookings',
+    reservation: 'Reservation',
+    tour_booking: 'Tour Booking',
+    event_ticket: 'Event Ticket',
+    guests: 'guests',
   }
 }
 
@@ -58,24 +60,24 @@ export default function AppointmentsSection({ lang = 'ar' }) {
   const [showPast, setShowPast] = useState(false)
   const [cancellingId, setCancellingId] = useState(null)
 
-  const appointments = useQuery(api.appointments.queries.getUserAppointments, {})
-  const cancelAppointment = useMutation(api.appointments.mutations.cancelAppointment)
+  const bookings = useQuery(api.bookings.queries.getUserBookings, {})
+  const cancelBooking = useMutation(api.bookings.mutations.cancelBooking)
 
   const today = new Date().toISOString().split('T')[0]
 
-  const upcoming = (appointments || []).filter(
+  const upcoming = (bookings || []).filter(
     a => (a.status === 'pending' || a.status === 'confirmed') && a.date >= today
   ).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
 
-  const past = (appointments || []).filter(
+  const past = (bookings || []).filter(
     a => a.status === 'completed' || a.status === 'cancelled' || a.date < today
   ).sort((a, b) => b.date.localeCompare(a.date))
 
-  const handleCancel = async (appointmentId) => {
+  const handleCancel = async (bookingId) => {
     if (!confirm(t.cancelConfirm)) return
-    setCancellingId(appointmentId)
+    setCancellingId(bookingId)
     try {
-      await cancelAppointment({ appointmentId })
+      await cancelBooking({ bookingId })
     } catch (err) {
       console.error('Cancel error:', err)
     }
@@ -84,7 +86,7 @@ export default function AppointmentsSection({ lang = 'ar' }) {
 
   const formatDate = (dateStr) => {
     const date = new Date(dateStr + 'T00:00:00')
-    return date.toLocaleDateString(isRTL ? 'ar-DZ' : 'en-US', {
+    return date.toLocaleDateString(isRTL ? 'ar-SA' : 'en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
@@ -96,10 +98,10 @@ export default function AppointmentsSection({ lang = 'ar' }) {
   const statusLabel = (status) => t[status] || status
 
   const typeLabel = (type) => {
-    if (type === 'consultation') return t.consultation
-    if (type === 'followup') return t.followup
-    if (type === 'checkup') return t.checkup
-    return type || t.consultation
+    if (type === 'reservation') return t.reservation
+    if (type === 'tour_booking') return t.tour_booking
+    if (type === 'event_ticket') return t.event_ticket
+    return type || t.reservation
   }
 
   return (
@@ -146,7 +148,7 @@ export default function AppointmentsSection({ lang = 'ar' }) {
       {/* Upcoming */}
       <div className="subsection">
         <h3 className="subsection-title">{t.upcoming}</h3>
-        {appointments === undefined ? (
+        {bookings === undefined ? (
           <div className="dash-card" style={{ textAlign: 'center', color: '#9ca3af' }}>
             {isRTL ? 'جاري التحميل...' : 'Loading...'}
           </div>
@@ -160,35 +162,36 @@ export default function AppointmentsSection({ lang = 'ar' }) {
             </button>
           </div>
         ) : (
-          upcoming.map(apt => (
-            <div key={apt._id} className="dash-card">
+          upcoming.map(booking => (
+            <div key={booking._id} className="dash-card">
               <div className="apt-card">
                 <div className="apt-info">
-                  <h3>{isRTL ? apt.doctor?.name_ar : apt.doctor?.name_en}</h3>
+                  <h3>{isRTL ? booking.listing?.name_ar : booking.listing?.name_en}</h3>
                   <p>
-                    {isRTL ? apt.doctor?.specialty_ar : apt.doctor?.specialty}
+                    {isRTL ? booking.listing?.category_ar : booking.listing?.category}
                     {' · '}
-                    {typeLabel(apt.type)}
+                    {typeLabel(booking.type)}
+                    {booking.partySize > 1 && ` · ${booking.partySize} ${t.guests}`}
                   </p>
                   <p className="apt-datetime">
-                    {formatDate(apt.date)} · {apt.time}
+                    {formatDate(booking.date)} · {booking.time}
                   </p>
-                  {apt.notes && (
+                  {booking.notes && (
                     <p style={{ fontSize: '0.8125rem', color: '#9ca3af', marginTop: '0.25rem' }}>
-                      {apt.notes}
+                      {booking.notes}
                     </p>
                   )}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                  <span className={statusClass(apt.status)}>
-                    {statusLabel(apt.status)}
+                  <span className={statusClass(booking.status)}>
+                    {statusLabel(booking.status)}
                   </span>
                   <button
                     className="apt-action-btn danger"
-                    onClick={() => handleCancel(apt._id)}
-                    disabled={cancellingId === apt._id}
+                    onClick={() => handleCancel(booking._id)}
+                    disabled={cancellingId === booking._id}
                   >
-                    {cancellingId === apt._id ? t.cancelling : t.cancel}
+                    {cancellingId === booking._id ? t.cancelling : t.cancel}
                   </button>
                 </div>
               </div>
@@ -197,7 +200,7 @@ export default function AppointmentsSection({ lang = 'ar' }) {
         )}
       </div>
 
-      {/* Past appointments toggle */}
+      {/* Past bookings toggle */}
       {past.length > 0 && (
         <div className="subsection">
           <button
@@ -216,18 +219,18 @@ export default function AppointmentsSection({ lang = 'ar' }) {
                 exit={{ height: 0, opacity: 0 }}
                 style={{ overflow: 'hidden' }}
               >
-                {past.map(apt => (
-                  <div key={apt._id} className="dash-card" style={{ opacity: 0.7 }}>
+                {past.map(booking => (
+                  <div key={booking._id} className="dash-card" style={{ opacity: 0.7 }}>
                     <div className="apt-card">
                       <div className="apt-info">
-                        <h3>{isRTL ? apt.doctor?.name_ar : apt.doctor?.name_en}</h3>
-                        <p>{isRTL ? apt.doctor?.specialty_ar : apt.doctor?.specialty}</p>
+                        <h3>{isRTL ? booking.listing?.name_ar : booking.listing?.name_en}</h3>
+                        <p>{isRTL ? booking.listing?.category_ar : booking.listing?.category}</p>
                         <p className="apt-datetime">
-                          {formatDate(apt.date)} · {apt.time}
+                          {formatDate(booking.date)} · {booking.time}
                         </p>
                       </div>
-                      <span className={statusClass(apt.status)}>
-                        {statusLabel(apt.status)}
+                      <span className={statusClass(booking.status)}>
+                        {statusLabel(booking.status)}
                       </span>
                     </div>
                   </div>

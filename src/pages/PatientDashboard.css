@@ -26,7 +26,7 @@
 .dashboard-header .auth-logo {
   font-family: 'Instrument Serif', serif;
   font-size: 1.5rem;
-  color: #DC2626;
+  color: #0D7A5F;
   text-decoration: none;
 }
 
@@ -54,8 +54,8 @@
 }
 
 .dashboard-signout:hover {
-  border-color: #DC2626;
-  color: #DC2626;
+  border-color: #0D7A5F;
+  color: #0D7A5F;
 }
 
 /* Layout */
@@ -112,8 +112,8 @@
 }
 
 .sidebar-btn.active {
-  background: #fef2f2;
-  color: #DC2626;
+  background: #ECFDF5;
+  color: #0D7A5F;
   font-weight: 600;
 }
 
@@ -176,7 +176,7 @@
 }
 
 .bottom-tab.active {
-  color: #DC2626;
+  color: #0D7A5F;
 }
 
 .bottom-tab svg {
@@ -223,8 +223,8 @@
 }
 
 .status-cancelled {
-  background: #fee2e2;
-  color: #991b1b;
+  background: #D1FAE5;
+  color: #064E3B;
 }
 
 /* Appointment card */
@@ -275,17 +275,17 @@
 }
 
 .apt-action-btn:hover {
-  border-color: #DC2626;
-  color: #DC2626;
+  border-color: #0D7A5F;
+  color: #0D7A5F;
 }
 
 .apt-action-btn.danger {
-  border-color: #fca5a5;
-  color: #DC2626;
+  border-color: #86EFAC;
+  color: #0D7A5F;
 }
 
 .apt-action-btn.danger:hover {
-  background: #fef2f2;
+  background: #ECFDF5;
 }
 
 .apt-action-btn.confirm {
@@ -331,7 +331,7 @@
   padding: 0.625rem 1.25rem;
   border: none;
   border-radius: 8px;
-  background: #DC2626;
+  background: #0D7A5F;
   color: white;
   font-size: 0.875rem;
   font-weight: 500;
@@ -341,7 +341,7 @@
 }
 
 .btn-primary:hover {
-  background: #b91c1c;
+  background: #065F46;
 }
 
 .btn-primary:disabled {
@@ -372,7 +372,7 @@
 
 /* Health Card Visual — ID Card Style */
 .health-card-visual {
-  background: linear-gradient(135deg, #DC2626 0%, #991b1b 100%);
+  background: linear-gradient(135deg, #0D7A5F 0%, #064E3B 100%);
   border-radius: 16px;
   padding: 1.5rem;
   color: white;
@@ -565,8 +565,8 @@
 }
 
 .tag-red {
-  background: rgba(220, 38, 38, 0.1);
-  color: #DC2626;
+  background: rgba(13, 122, 95, 0.1);
+  color: #0D7A5F;
 }
 
 .tag-blue {
@@ -611,7 +611,7 @@
 
 .filter-tab.active {
   background: white;
-  color: #DC2626;
+  color: #0D7A5F;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
@@ -701,8 +701,8 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #DC2626;
-  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+  border-color: #0D7A5F;
+  box-shadow: 0 0 0 3px rgba(13, 122, 95, 0.1);
 }
 
 .form-row {
@@ -767,7 +767,7 @@
 }
 
 .record-delete:hover {
-  color: #DC2626;
+  color: #0D7A5F;
 }
 
 /* Profile form */
@@ -788,7 +788,7 @@
   padding-right: 1rem;
 }
 
-.urgency-emergency { border-color: #DC2626; }
+.urgency-emergency { border-color: #0D7A5F; }
 .urgency-urgent { border-color: #f59e0b; }
 .urgency-routine { border-color: #3b82f6; }
 .urgency-self_care { border-color: #10b981; }

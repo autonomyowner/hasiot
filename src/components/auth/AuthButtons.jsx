@@ -30,8 +30,8 @@ export default function AuthButtons({ lang = 'ar' }) {
   }
 
   if (isAuthenticated && user) {
-    const dashboardPath = user.role === 'doctor' || user.role === 'clinic'
-      ? '/doctor-dashboard'
+    const dashboardPath = user.role === 'business_owner' || user.role === 'service_provider'
+      ? '/business'
       : '/dashboard'
 
     return (
