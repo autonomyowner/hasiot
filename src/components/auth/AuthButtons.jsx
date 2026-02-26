@@ -46,7 +46,7 @@ export default function AuthButtons({ lang = 'ar' }) {
           className="btn btn-outline-auth"
           onClick={async () => {
             await authClient.signOut()
-            window.location.href = '/'
+            window.location.href = '/home'
           }}
         >
           {t.signOut}

@@ -57,7 +57,7 @@ export default function SignInPage() {
       }
 
       // Redirect to home — the app will check role and redirect as needed
-      window.location.href = '/'
+      window.location.href = '/home'
     } catch {
       setError(t.error)
       setLoading(false)

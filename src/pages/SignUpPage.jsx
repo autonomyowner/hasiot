@@ -128,7 +128,7 @@ export default function SignUpPage() {
         if (role === 'business_owner') {
           window.location.href = '/business'
         } else {
-          window.location.href = '/'
+          window.location.href = '/home'
         }
       }, 1500)
     } catch (err) {

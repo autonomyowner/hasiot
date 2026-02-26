@@ -51,7 +51,7 @@ export default function PatientDashboard() {
             </span>
             <button
               className="dashboard-signout"
-              onClick={async () => { await authClient.signOut(); window.location.href = '/' }}
+              onClick={async () => { await authClient.signOut(); window.location.href = '/home' }}
             >
               {isRTL ? 'خروج' : 'Sign out'}
             </button>

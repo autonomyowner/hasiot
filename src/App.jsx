@@ -393,7 +393,7 @@ const staggerContainer = {
 }
 
 function App() {
-  const [lang, setLang] = useState('ar') // Default to Arabic
+  const [lang, setLang] = useState(() => localStorage.getItem('hasio_lang') || 'ar')
   const [scrolled, setScrolled] = useState(false)
   const [chatStep, setChatStep] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)

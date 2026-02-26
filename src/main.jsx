@@ -1,6 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { ConvexReactClient, ConvexProvider } from 'convex/react'
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react'
 import { authClient } from './lib/auth-client'
@@ -8,6 +8,7 @@ import './index.css'
 import App from './App.jsx'
 import MapPage from './MapPage.jsx'
 import AdminPage from './AdminPage.jsx'
+import OnboardingPage from './pages/OnboardingPage.jsx'
 import SignInPage from './pages/SignInPage.jsx'
 import SignUpPage from './pages/SignUpPage.jsx'
 import BusinessDashboard from './pages/DoctorDashboard.jsx'
@@ -29,6 +30,12 @@ function AdminRoutes() {
   )
 }
 
+// Redirect from / based on onboarding status
+function RootRedirect() {
+  const done = localStorage.getItem('hasio_onboarding_done')
+  return done ? <Navigate to="/home" replace /> : <Navigate to="/welcome" replace />
+}
+
 // Main app routes with Better-Auth
 function MainRoutes() {
   if (!convex) {
@@ -41,7 +48,9 @@ function MainRoutes() {
   return (
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
       <Routes>
-        <Route path="/" element={<App />} />
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="/welcome" element={<OnboardingPage />} />
+        <Route path="/home" element={<App />} />
         <Route path="/explore" element={<MapPage />} />
         <Route path="/sign-in" element={<SignInPage />} />
         <Route path="/sign-up" element={<SignUpPage />} />
