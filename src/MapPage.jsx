@@ -515,7 +515,7 @@ function MapPage() {
       {/* Header */}
       <header className="map-header">
         <div className="map-header-inner">
-          <Link to="/" className="back-link">
+          <Link to="/home" className="back-link">
             {t.backHome}
           </Link>
           <h1 className="map-title">{t.title}</h1>

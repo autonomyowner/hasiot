@@ -2224,89 +2224,221 @@
 
 /* Map Page Responsive */
 @media (max-width: 768px) {
-  .map-content {
-    flex-direction: column-reverse;
+  .map-header {
+    padding: 0.75rem 0;
   }
 
-  .map-sidebar {
+  .map-header-inner {
+    padding: 0 0.75rem;
+  }
+
+  .map-title {
+    font-size: 1.1rem;
+  }
+
+  .map-content {
+    flex-direction: column;
+    margin-top: 52px;
+    height: calc(100vh - 52px);
+  }
+
+  /* Map takes full remaining height */
+  .map-container {
+    flex: 1;
     width: 100%;
-    height: 35vh;
+    min-height: 0;
+  }
+
+  /* Sidebar as bottom sheet overlay */
+  .map-sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    max-height: 42vh;
+    z-index: 80;
     border-right: none;
-    border-top: 1px solid var(--gray-200);
-    border-bottom: none;
+    border-top: none;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
   }
 
   .rtl .map-sidebar {
     border-left: none;
-    border-top: 1px solid var(--gray-200);
   }
 
-  .map-container {
-    height: 65vh;
+  /* Drag handle indicator */
+  .map-sidebar::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: var(--gray-300);
+    border-radius: 2px;
+    margin: 8px auto 4px;
   }
 
-  .location-popup {
-    bottom: 36vh;
-    left: 1rem;
+  /* Compact search */
+  .search-box {
+    padding: 0.5rem 0.75rem;
+    border-bottom: none;
+  }
+
+  .search-box input {
+    padding: 0.65rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: 10px;
+  }
+
+  /* Horizontal scroll filter tabs */
+  .filter-tabs {
+    padding: 0.25rem 0.75rem 0.5rem;
+    gap: 0.375rem;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--gray-100);
+  }
+
+  .filter-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .filter-tab {
+    flex: none;
+    white-space: nowrap;
+    padding: 0.5rem 0.875rem;
+    font-size: 0.8rem;
+  }
+
+  /* Hide stats on mobile */
+  .map-stats {
+    display: none;
+  }
+
+  /* Hide add button from sidebar — becomes FAB */
+  .add-btn {
+    position: fixed;
     right: 1rem;
+    bottom: calc(42vh + 12px);
+    width: auto;
+    margin: 0;
+    padding: 0.65rem 1rem;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    z-index: 85;
+    box-shadow: 0 4px 16px rgba(13, 122, 95, 0.3);
+  }
+
+  .rtl .add-btn {
+    right: auto;
+    left: 1rem;
+  }
+
+  /* Scrollable location list */
+  .location-list {
+    padding: 0.375rem 0.75rem 0.75rem;
+    max-height: calc(42vh - 110px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .location-card {
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 10px;
+  }
+
+  .location-card h3 {
+    font-size: 0.9rem;
+  }
+
+  .location-specialty {
+    font-size: 0.8rem;
+  }
+
+  .location-address {
+    font-size: 0.75rem;
+  }
+
+  .location-type-badge {
+    font-size: 0.6rem;
+    padding: 0.2rem 0.5rem;
+    margin-bottom: 0.375rem;
+  }
+
+  /* Location popup above the bottom sheet */
+  .location-popup {
+    bottom: calc(42vh + 8px);
+    left: 0.75rem;
+    right: 0.75rem;
     transform: none;
     width: auto;
     max-width: none;
     padding: 1rem;
-    max-height: 50vh;
+    border-radius: 14px;
+    max-height: 45vh;
     overflow-y: auto;
+    box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.18);
   }
 
   .location-popup h3 {
-    font-size: 1.25rem;
-    padding-right: 2.5rem;
+    font-size: 1.15rem;
+    padding-right: 2.25rem;
+    margin-bottom: 0.75rem;
   }
 
   .rtl .location-popup h3 {
     padding-right: 0;
-    padding-left: 2.5rem;
+    padding-left: 2.25rem;
+  }
+
+  .popup-row {
+    font-size: 0.825rem;
+    padding: 0.375rem 0;
+  }
+
+  .popup-label {
+    min-width: 65px;
+    font-size: 0.8rem;
+  }
+
+  .popup-details {
+    margin-bottom: 1rem;
   }
 
   .popup-actions {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
-  .map-header-inner {
-    padding: 0 1rem;
+  .popup-actions .btn {
+    flex: 1 1 calc(50% - 0.25rem);
+    padding: 0.6rem 0.5rem;
+    font-size: 0.8rem;
+    min-width: 0;
   }
 
-  .map-title {
-    font-size: 1.25rem;
+  .popup-actions .btn:last-child {
+    flex: 1 1 100%;
   }
 
-  .map-stats {
+  /* Selection mode indicator */
+  .selection-message {
     padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    border-radius: 10px;
   }
 
-  .map-stats .stat {
-    padding: 0.5rem;
-  }
-
-  .map-stats .stat-number {
-    font-size: 1.25rem;
-  }
-
-  .add-btn {
-    margin: 0.75rem 1rem;
-    width: calc(100% - 2rem);
-    padding: 0.75rem 1.5rem;
-  }
-
-  .location-list {
-    padding: 0.5rem 1rem;
-  }
-
-  .search-box {
-    padding: 0.75rem 1rem;
-  }
-
-  .filter-tabs {
-    padding: 0.5rem 1rem;
+  /* Loading indicator */
+  .loading-indicator {
+    padding: 6px !important;
+    font-size: 0.8rem;
   }
 }
 
