@@ -40,7 +40,7 @@ Email/password only (no OAuth). Auth API runs on Convex HTTP backend, requiring 
 - **HTTP routes**: `convex/http.ts` — `authComponent.registerRoutes(http, createAuth, { cors: true })`
 - **Client**: `src/lib/auth-client.js` — `createAuthClient()` with `baseURL` pointing to `VITE_CONVEX_SITE_URL` and `credentials: "include"`
 - **Hooks**: `src/hooks/useCurrentUser.js` — `useCurrentUser()` and `useConvexAuth()` combine `authClient.useSession()` with Convex user query
-- **Provider**: `src/main.jsx` — `ConvexBetterAuthProvider` wraps main routes; admin routes use plain `ConvexProvider`
+- **Provider**: `src/main.jsx` — `ConvexBetterAuthProvider` wraps all routes (including admin)
 
 **Auth pattern in all Convex functions:**
 ```ts
@@ -60,11 +60,14 @@ const user = await getAuthenticatedAppUser(ctx); // returns null if not authenti
 
 ### Frontend (React + Vite)
 
-- `src/main.jsx` — Routing: `/`, `/explore`, `/sign-in`, `/sign-up`, `/dashboard`, `/business`, `/admin`
-- `src/App.jsx` — Landing page with `translations` object for AR/EN. Lazy-loads Convex-dependent components.
+- `src/main.jsx` — Routing: `/`, `/explore`, `/listings`, `/services`, `/sign-in`, `/sign-up`, `/dashboard`, `/business`, `/admin`. All routes lazy-loaded with `Suspense`.
+- `src/App.jsx` — Landing page with `translations` object for AR/EN. Lazy-loads Convex-dependent components. Has a **mobile-only fixed bottom nav** (bottom-left, above chat FAB) with Destinations and Services buttons.
 - `src/MapPage.jsx` — Mapbox GL map centered on Riyadh (24.7136, 46.6753). Token loaded at runtime from Convex via `config.queries.getPublicConfig`.
 - `src/AdminPage.jsx` — Arabic RTL admin dashboard with session auth. Tabs: stats, listings, content approval, services approval, pending businesses, knowledge base, bookings, emails.
 - `src/pages/DoctorDashboard.jsx` — **Business/service provider dashboard**. Role-adaptive tabs: service providers see services tab, business owners see listings tab. Includes `ImageUploader` component for multi-image upload to Convex storage.
+- `src/pages/ListingsPage.jsx` — **Public browse page** for approved hotels, restaurants, attractions, events, tours. Filter by type/city/search. Bilingual. Uses `api.listings.queries.listListings` and `searchListings`.
+- `src/pages/ServicesPage.jsx` — **Public browse page** for approved freelancer services. Filter by service type/city/search. Expandable cards with contact info. Uses `api.services.queries.listServices` and `searchServices`.
+- `src/components/ImageCarousel.jsx` — Reusable image carousel with dot indicators, prev/next arrows, fallback placeholder. Used in ListingsPage and ServicesPage cards.
 - `src/pages/PatientDashboard.jsx` — **Tourist dashboard**. Tabs: bookings, favorites, profile, trips, upgrade (role upgrade to business/service).
 
 **File naming caveat**: `PatientDashboard.jsx` is the tourist dashboard, `DoctorDashboard.jsx` is the business dashboard. Legacy names — `main.jsx` imports them with aliases (`BusinessDashboard`, `TouristDashboard`).
@@ -149,6 +152,8 @@ Both follow the same approval flow: pending → admin approves/rejects → appro
 ### Image Upload Pattern
 
 Website uses Convex file storage: `generateUploadUrl()` → POST file → get storageId → resolve URL via `getStorageUrl` query. Mobile app uses R2 external storage via `uploadMultipleToR2()`, storing URL strings directly.
+
+**Seed listing images**: `convex/listings/seedImages.ts` contains curated Unsplash URLs for all 88 seeded listings. Run `npx convex run listings/seedImages:addImagesToListings --prod` to populate images on listings that don't have any. The `patchListings` mutation was a one-time fix (King Fahd Fountain image + Saudi Cup deletion).
 
 ### Trip Itinerary Builder
 
