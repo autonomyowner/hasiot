@@ -13,6 +13,8 @@ import SignInPage from './pages/SignInPage.jsx'
 import SignUpPage from './pages/SignUpPage.jsx'
 import BusinessDashboard from './pages/DoctorDashboard.jsx'
 import TouristDashboard from './pages/PatientDashboard.jsx'
+import ListingsPage from './pages/ListingsPage.jsx'
+import ServicesPage from './pages/ServicesPage.jsx'
 
 // Convex client — needs VITE_CONVEX_URL to be set
 const convexUrl = import.meta.env.VITE_CONVEX_URL
@@ -56,6 +58,8 @@ function MainRoutes() {
         <Route path="/sign-up" element={<SignUpPage />} />
         <Route path="/dashboard" element={<TouristDashboard />} />
         <Route path="/business" element={<BusinessDashboard />} />
+        <Route path="/listings" element={<ListingsPage />} />
+        <Route path="/services" element={<ServicesPage />} />
       </Routes>
     </ConvexBetterAuthProvider>
   )

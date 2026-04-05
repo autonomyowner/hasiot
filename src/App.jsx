@@ -21,6 +21,8 @@ const translations = {
       howItWorks: 'كيف يعمل',
       services: 'الخدمات',
       map: 'استكشف',
+      listings: 'الوجهات',
+      freelancers: 'المستقلين',
       contact: 'تواصل معنا',
       getStarted: 'ابدأ الآن',
       langSwitch: 'EN'
@@ -202,6 +204,8 @@ const translations = {
       howItWorks: 'How it Works',
       services: 'Services',
       map: 'Explore',
+      listings: 'Destinations',
+      freelancers: 'Services',
       contact: 'Contact',
       getStarted: 'Get Started',
       langSwitch: 'عربي'
@@ -446,6 +450,8 @@ function App() {
               <li><a href="#how-it-works" className="nav-link">{t.nav.howItWorks}</a></li>
               <li><a href="#services" className="nav-link">{t.nav.services}</a></li>
               <li><Link to="/explore" className="nav-link">{t.nav.map}</Link></li>
+              <li><Link to="/listings" className="nav-link">{t.nav.listings}</Link></li>
+              <li><Link to="/services" className="nav-link">{t.nav.freelancers}</Link></li>
               <li><a href="#contact" className="nav-link">{t.nav.contact}</a></li>
             </ul>
             <button onClick={toggleLang} className="btn btn-lang">
@@ -482,6 +488,8 @@ function App() {
               <li><a href="#how-it-works" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t.nav.howItWorks}</a></li>
               <li><a href="#services" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t.nav.services}</a></li>
               <li><Link to="/explore" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t.nav.map}</Link></li>
+              <li><Link to="/listings" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t.nav.listings}</Link></li>
+              <li><Link to="/services" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t.nav.freelancers}</Link></li>
               <li><a href="#contact" className="mobile-nav-link" onClick={() => setMobileMenuOpen(false)}>{t.nav.contact}</a></li>
             </ul>
             <a href="#" className="btn btn-primary mobile-cta" onClick={() => setMobileMenuOpen(false)}>{t.nav.getStarted}</a>
