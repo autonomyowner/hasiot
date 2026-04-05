@@ -161,7 +161,7 @@ const translations = {
     // Footer
     footer: {
       description: 'نجعل السفر واستكشاف السعودية أسهل. حلول سفر مدعومة بالذكاء الاصطناعي في متناول يدك.',
-      phone: '+966 50 000 0000',
+      phone: '+966 55 244 2119',
       product: {
         title: 'المنتج',
         links: ['مخطط الرحلات الذكي', 'استكشف الوجهات', 'حجز الفنادق', 'المعالم السياحية']
@@ -342,7 +342,7 @@ const translations = {
     // Footer
     footer: {
       description: 'Making travel and exploring Saudi Arabia easier. AI-powered travel solutions at your fingertips.',
-      phone: '+966 50 000 0000',
+      phone: '+966 55 244 2119',
       product: {
         title: 'Product',
         links: ['AI Travel Planner', 'Explore Destinations', 'Book Hotels', 'Attractions']
