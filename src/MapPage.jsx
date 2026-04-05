@@ -7,6 +7,7 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import ChatWidget from './components/chat/ChatWidget'
 import SaveToTripModal from './components/trips/SaveToTripModal'
+import { useCurrentUser } from './hooks/useCurrentUser'
 
 // Translations for the map page
 const mapTranslations = {
@@ -156,6 +157,8 @@ function MapPage() {
   const config = useQuery(api.config.queries.getPublicConfig, {})
 
   // Fetch listings from Convex
+  const { user } = useCurrentUser()
+  const isAdmin = user?.role === 'admin'
   const listingsFromDb = useQuery(api.listings.queries.listListings, {})
   const createListing = useMutation(api.listings.mutations.createListing)
 
@@ -594,13 +597,15 @@ function MapPage() {
             </div>
           </div>
 
-          {/* Add New Button */}
-          <button
-            className="btn btn-primary add-btn"
-            onClick={() => setShowAddForm(true)}
-          >
-            {t.addNew}
-          </button>
+          {/* Add New Button - Admin only */}
+          {isAdmin && (
+            <button
+              className="btn btn-primary add-btn"
+              onClick={() => setShowAddForm(true)}
+            >
+              {t.addNew}
+            </button>
+          )}
 
           {/* Location List */}
           <div className="location-list">
