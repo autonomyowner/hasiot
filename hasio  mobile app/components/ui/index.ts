@@ -3,3 +3,4 @@ export { Card } from "./Card";
 export { FilterChip } from "./FilterChip";
 export { SearchBar } from "./SearchBar";
 export { CategoryCard } from "./CategoryCard";
+export { ThemedTextInput } from "./ThemedTextInput";

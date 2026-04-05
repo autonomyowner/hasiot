@@ -25,8 +25,7 @@ import { useAction } from "convex/react";
 import { api } from "@/convex";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAppStore } from "@/stores/appStore";
-import { ChatBubble, VoiceAssistant } from "@/components/planner";
-import { voiceService } from "@/lib/voiceService";
+import { ChatBubble } from "@/components/planner";
 import type { ChatMessage } from "@/types";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -46,11 +45,6 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
 
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  // Initialize text mode on mount
-  useEffect(() => {
-    voiceService.initializeTextMode();
-  }, []);
 
   // Handle reporting AI messages (no reports table yet — local feedback only)
   const handleReportMessage = async (messageId: string) => {
@@ -165,11 +159,38 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
       }, 100);
 
       try {
-        const aiResponse = await voiceService.getTextChatResponse(label);
+        const conversationHistory = chatMessages
+          .map((m) => ({
+            role: m.isUser ? "user" : "assistant",
+            content: m.text,
+          }));
+
+        const result = await planTravel({
+          userInput: label,
+          language,
+          conversationHistory,
+        });
+
+        let responseText = "";
+        if (result.success) {
+          if (result.ready && result.plan) {
+            responseText = result.plan.itinerary || result.message || "";
+            if (result.plan.travelTips) {
+              responseText += "\n\n" + (language === "ar" ? result.plan.travelTips_ar || result.plan.travelTips : result.plan.travelTips);
+            }
+            if (result.plan.estimatedBudget) {
+              responseText += "\n\n" + (language === "ar" ? result.plan.estimatedBudget_ar || result.plan.estimatedBudget : result.plan.estimatedBudget);
+            }
+          } else {
+            responseText = (language === "ar" ? result.message_ar : result.message) || result.message || "";
+          }
+        } else {
+          responseText = result.error || "Something went wrong";
+        }
 
         const botMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
-          text: aiResponse,
+          text: responseText,
           isUser: false,
           timestamp: new Date().toISOString(),
         };
@@ -184,35 +205,6 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
         setIsLoading(false);
       }
     }
-  };
-
-  const handleVoiceTranscript = (text: string, isUser: boolean) => {
-    const message: ChatMessage = {
-      id: Date.now().toString(),
-      text,
-      isUser,
-      timestamp: new Date().toISOString(),
-    };
-    addChatMessage(message);
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-  };
-
-  const voiceTranslations = {
-    tapToSpeak: t("tapToSpeak"),
-    listening: t("listening"),
-    thinking: t("thinking"),
-    speaking: t("speaking"),
-    connecting: t("connecting"),
-    tapToStop: t("tapToStop"),
-    voiceAssistant: t("voiceAssistant"),
-    close: t("close"),
-    voiceDataConsentTitle: t("voiceDataConsentTitle"),
-    voiceDataConsentMessage: t("voiceDataConsentMessage"),
-    voiceDataConsentLearnMore: t("voiceDataConsentLearnMore"),
-    voiceDataConsentAccept: t("voiceDataConsentAccept"),
-    voiceDataConsentDecline: t("voiceDataConsentDecline"),
   };
 
   return (
@@ -331,12 +323,6 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
           </Pressable>
         </View>
 
-        {/* Voice Assistant */}
-        <VoiceAssistant
-          isRTL={isRTL}
-          translations={voiceTranslations}
-          onTranscript={handleVoiceTranscript}
-        />
       </View>
     </KeyboardAvoidingView>
   );

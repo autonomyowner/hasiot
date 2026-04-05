@@ -1,5 +1,6 @@
 import React from "react";
-import { View, TextInput, StyleSheet, I18nManager } from "react-native";
+import { View, TextInput, Pressable, StyleSheet } from "react-native";
+import { Feather } from "@expo/vector-icons";
 
 interface SearchBarProps {
   placeholder: string;
@@ -15,7 +16,7 @@ export function SearchBar({
   isRTL = false,
 }: SearchBarProps) {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, isRTL && styles.containerRTL]}>
       <TextInput
         style={[styles.input, isRTL && styles.inputRTL]}
         placeholder={placeholder}
@@ -24,12 +25,23 @@ export function SearchBar({
         onChangeText={onChangeText}
         textAlign={isRTL ? "right" : "left"}
       />
+      {value.length > 0 && (
+        <Pressable
+          onPress={() => onChangeText("")}
+          style={styles.clearButton}
+          hitSlop={8}
+        >
+          <Feather name="x-circle" size={18} color="#A3A3A3" />
+        </Pressable>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#FFFFFF",
     borderRadius: 10,
     paddingHorizontal: 14,
@@ -42,7 +54,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(13, 122, 95, 0.15)",
   },
+  containerRTL: {
+    flexDirection: "row-reverse",
+  },
   input: {
+    flex: 1,
     fontSize: 14,
     color: "#1A1A1A",
     paddingVertical: 10,
@@ -50,5 +66,8 @@ const styles = StyleSheet.create({
   },
   inputRTL: {
     writingDirection: "rtl",
+  },
+  clearButton: {
+    paddingLeft: 8,
   },
 });

@@ -1,8 +1,12 @@
 import * as SecureStore from "expo-secure-store";
 
-const CONVEX_SITE_URL =
-  process.env.EXPO_PUBLIC_CONVEX_SITE_URL ||
-  "https://dazzling-mosquito-29.eu-west-1.convex.site";
+const CONVEX_SITE_URL = process.env.EXPO_PUBLIC_CONVEX_SITE_URL;
+if (!CONVEX_SITE_URL) {
+  throw new Error(
+    "Missing EXPO_PUBLIC_CONVEX_SITE_URL environment variable. " +
+    "Set it in your .env or eas.json build config."
+  );
+}
 
 const TOKEN_KEY = "hasio_auth_token";
 const SESSION_KEY = "hasio_session";

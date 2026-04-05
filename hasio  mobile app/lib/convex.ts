@@ -2,9 +2,13 @@ import { ConvexReactClient } from "convex/react";
 import { useCallback, useMemo, useState, useEffect } from "react";
 import { getStoredToken, validateSession } from "./auth";
 
-const CONVEX_URL =
-  process.env.EXPO_PUBLIC_CONVEX_URL ||
-  "https://dazzling-mosquito-29.eu-west-1.convex.cloud";
+const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL;
+if (!CONVEX_URL) {
+  throw new Error(
+    "Missing EXPO_PUBLIC_CONVEX_URL environment variable. " +
+    "Set it in your .env or eas.json build config."
+  );
+}
 
 export const convex = new ConvexReactClient(CONVEX_URL);
 

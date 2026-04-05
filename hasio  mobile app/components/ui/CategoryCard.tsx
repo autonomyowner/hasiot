@@ -46,7 +46,7 @@ export function CategoryCard({
       onPressOut={handlePressOut}
     >
       <Image
-        source={{ uri: imageUrl }}
+        source={imageUrl ? { uri: imageUrl } : undefined}
         style={styles.image}
         contentFit="cover"
         transition={300}
@@ -74,6 +74,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     position: "absolute",
+    backgroundColor: "#E8DFD4",
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

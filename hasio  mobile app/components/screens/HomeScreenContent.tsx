@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   View,
   Text,
@@ -38,6 +39,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
   const insets = useSafeAreaInsets();
   const { t, language, isRTL } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedQuery = useDebounce(searchQuery, 300);
   const [refreshing, setRefreshing] = useState(false);
   const scrollY = useSharedValue(0);
 
@@ -87,9 +89,9 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
 
   // Search functionality
   const searchResults = useMemo(() => {
-    if (!searchQuery.trim()) return null;
+    if (!debouncedQuery.trim()) return null;
 
-    const query = searchQuery.toLowerCase();
+    const query = debouncedQuery.toLowerCase();
 
     const lodgingResults = allLodging.filter((item) =>
       item.name.toLowerCase().includes(query) ||
@@ -126,7 +128,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
       destinations: destinationResults,
       total: lodgingResults.length + foodResults.length + eventResults.length + destinationResults.length,
     };
-  }, [searchQuery, allLodging, allFood, allEvents]);
+  }, [debouncedQuery, allLodging, allFood, allEvents]);
 
   const handleScroll = (event: any) => {
     scrollY.value = event.nativeEvent.contentOffset.y;
@@ -417,7 +419,7 @@ function SearchResultItem({ name, subtitle, image, isRTL, index }: SearchResultI
         onPressOut={handlePressOut}
       >
         <Image
-          source={{ uri: image }}
+          source={image ? { uri: image } : undefined}
           style={styles.searchResultImage}
           contentFit="cover"
           transition={200}
@@ -680,6 +682,7 @@ const styles = StyleSheet.create({
   searchResultImage: {
     width: 80,
     height: 80,
+    backgroundColor: "#E8DFD4",
   },
   searchResultContent: {
     flex: 1,

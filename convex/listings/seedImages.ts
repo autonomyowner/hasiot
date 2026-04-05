@@ -284,7 +284,7 @@ const imageMap: Record<string, string[]> = {
     "https://images.unsplash.com/photo-1519046904884-53103b34b206?w=800&q=80",
   ],
   "King Fahd Fountain": [
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&q=80",
+    "https://images.unsplash.com/photo-1504880874748-2a7a1b1824a4?w=800&q=80",
     "https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800&q=80",
   ],
   "Al Wahbah Crater": [
@@ -394,5 +394,31 @@ export const addImagesToListings = mutation({
     }
 
     return { total: listings.length, updated };
+  },
+});
+
+// Patch: fix King Fahd Fountain image + delete Saudi Cup Horse Race
+export const patchListings = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const listings = await ctx.db.query("listings").collect();
+    const results: string[] = [];
+
+    for (const listing of listings) {
+      if (listing.name_en === "King Fahd Fountain") {
+        await ctx.db.patch(listing._id, {
+          images: [
+            "https://images.unsplash.com/photo-1504880874748-2a7a1b1824a4?w=800&q=80",
+            "https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800&q=80",
+          ],
+        });
+        results.push("Fixed King Fahd Fountain images");
+      }
+      if (listing.name_en === "Saudi Cup Horse Race") {
+        await ctx.db.delete(listing._id);
+        results.push("Deleted Saudi Cup Horse Race");
+      }
+    }
+    return results;
   },
 });

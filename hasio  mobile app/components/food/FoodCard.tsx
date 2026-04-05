@@ -63,7 +63,7 @@ export function FoodCard({
       {/* Image */}
       <View style={styles.imageContainer}>
         <Image
-          source={{ uri: food.images[0] }}
+          source={food.images?.[0] ? { uri: food.images[0] } : undefined}
           style={styles.image}
           contentFit="cover"
           transition={300}
@@ -128,6 +128,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     height: 160,
     position: "relative",
+    backgroundColor: "#E8DFD4",
   },
   image: {
     width: "100%",

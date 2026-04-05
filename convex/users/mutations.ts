@@ -156,6 +156,89 @@ export const approveBusinessAccount = mutation({
   },
 });
 
+// Delete user account and all associated data (Google Play requirement)
+export const deleteMyAccount = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+
+    // Delete user's listings
+    const listings = await ctx.db
+      .query("listings")
+      .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
+      .collect();
+    for (const listing of listings) {
+      // Delete availability schedules for this listing
+      const schedules = await ctx.db
+        .query("availabilitySchedules")
+        .withIndex("by_listingId", (q) => q.eq("listingId", listing._id))
+        .collect();
+      for (const schedule of schedules) {
+        await ctx.db.delete(schedule._id);
+      }
+      await ctx.db.delete(listing._id);
+    }
+
+    // Delete user's services
+    const services = await ctx.db
+      .query("services")
+      .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
+      .collect();
+    for (const service of services) {
+      await ctx.db.delete(service._id);
+    }
+
+    // Delete user's bookings
+    const bookings = await ctx.db
+      .query("bookings")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+    for (const booking of bookings) {
+      await ctx.db.delete(booking._id);
+    }
+
+    // Delete user's trips
+    const trips = await ctx.db
+      .query("trips")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+    for (const trip of trips) {
+      await ctx.db.delete(trip._id);
+    }
+
+    // Delete user's travel plans
+    const travelPlans = await ctx.db
+      .query("travelPlans")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+    for (const plan of travelPlans) {
+      await ctx.db.delete(plan._id);
+    }
+
+    // Delete user's reviews
+    const reviews = await ctx.db
+      .query("reviews")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+    for (const review of reviews) {
+      await ctx.db.delete(review._id);
+    }
+
+    // Delete uploaded business document from storage
+    if (user.cvFileId) {
+      await ctx.storage.delete(user.cvFileId);
+    }
+
+    // Delete the user record
+    await ctx.db.delete(user._id);
+
+    return { success: true };
+  },
+});
+
 // Create user record
 export const createUser = mutation({
   args: {

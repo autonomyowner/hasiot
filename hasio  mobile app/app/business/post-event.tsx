@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   Pressable,
   Alert,
   ActivityIndicator,
   Image,
 } from "react-native";
+import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -17,7 +17,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation } from "convex/react";
 import { api } from "@/convex";
 import { useLanguage } from "@/hooks/useLanguage";
-import { uploadMultipleToR2 } from "@/lib/r2Upload";
+import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { Button } from "@/components/ui";
 import { EventCategory } from "@/types";
 
@@ -64,6 +64,8 @@ export default function PostEventScreen() {
   };
 
   const handleSubmit = async () => {
+    if (isLoading) return;
+
     if (!title.trim() || !titleAr.trim() || !date.trim()) {
       Alert.alert(t("error"), t("fillRequiredFields"));
       return;
@@ -73,7 +75,7 @@ export default function PostEventScreen() {
 
     try {
       const uploadedImages = images.length > 0
-        ? await uploadMultipleToR2(images, "events")
+        ? await uploadMultipleToConvex(images)
         : [];
 
       await submitListing({
@@ -156,8 +158,9 @@ export default function PostEventScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingName")} *
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={title}
             onChangeText={setTitle}
             placeholder="Event title in English"
@@ -167,8 +170,9 @@ export default function PostEventScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingNameAr")} *
           </Text>
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={titleAr}
             onChangeText={setTitleAr}
             placeholder="عنوان الفعالية بالعربية"
@@ -180,8 +184,9 @@ export default function PostEventScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("eventDate")} *
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={date}
             onChangeText={setDate}
             placeholder="YYYY-MM-DD"
@@ -191,8 +196,9 @@ export default function PostEventScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("eventTime")} *
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={time}
             onChangeText={setTime}
             placeholder="e.g., 6:00 PM"
@@ -203,16 +209,18 @@ export default function PostEventScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("location")}
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={location}
             onChangeText={setLocation}
             placeholder="Location in English"
             placeholderTextColor="#A3A3A3"
           />
 
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={locationAr}
             onChangeText={setLocationAr}
             placeholder="الموقع بالعربية"
@@ -224,8 +232,9 @@ export default function PostEventScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingDescription")}
           </Text>
-          <TextInput
-            style={[styles.input, styles.textArea, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input, styles.textArea]}
+            isRTL={isRTL}
             value={description}
             onChangeText={setDescription}
             placeholder="Description in English"
@@ -234,8 +243,9 @@ export default function PostEventScreen() {
             numberOfLines={4}
           />
 
-          <TextInput
-            style={[styles.input, styles.textArea, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input, styles.textArea]}
+            isRTL={true}
             value={descriptionAr}
             onChangeText={setDescriptionAr}
             placeholder="الوصف بالعربية"

@@ -36,7 +36,7 @@ npx convex run <path> --prod     # Run a function against production
 
 Email/password only (no OAuth). Auth API runs on Convex HTTP backend, requiring cross-origin setup:
 
-- **Server**: `convex/auth.ts` — `createAuth()` with `betterAuth()`, `getAuthenticatedAppUser(ctx)` helper. Cookies use `SameSite=None; Secure`. `trustedOrigins` must include all frontend domains.
+- **Server**: `convex/auth.ts` — `createAuth()` with `betterAuth()`, `getAuthenticatedAppUser(ctx)` helper, `requireAdmin(ctx)` guard. Cookies use `SameSite=None; Secure`. `trustedOrigins` must include all frontend domains.
 - **HTTP routes**: `convex/http.ts` — `authComponent.registerRoutes(http, createAuth, { cors: true })`
 - **Client**: `src/lib/auth-client.js` — `createAuthClient()` with `baseURL` pointing to `VITE_CONVEX_SITE_URL` and `credentials: "include"`
 - **Hooks**: `src/hooks/useCurrentUser.js` — `useCurrentUser()` and `useConvexAuth()` combine `authClient.useSession()` with Convex user query
@@ -47,6 +47,13 @@ Email/password only (no OAuth). Auth API runs on Convex HTTP backend, requiring 
 import { getAuthenticatedAppUser } from "../auth";
 const user = await getAuthenticatedAppUser(ctx); // returns null if not authenticated
 ```
+
+**Admin-only Convex functions:**
+```ts
+import { requireAdmin } from "../auth";
+await requireAdmin(ctx); // throws if not authenticated or role !== "admin"
+```
+All admin queries/mutations in `convex/admin/` and `approveBusinessAccount` in `convex/users/mutations.ts` are guarded with `requireAdmin()`.
 
 **CORS gotcha**: When adding a new frontend domain, add it to `trustedOrigins` in `convex/auth.ts` AND redeploy Convex.
 
@@ -63,7 +70,7 @@ const user = await getAuthenticatedAppUser(ctx); // returns null if not authenti
 - `src/main.jsx` — Routing: `/`, `/explore`, `/listings`, `/services`, `/sign-in`, `/sign-up`, `/dashboard`, `/business`, `/admin`. All routes lazy-loaded with `Suspense`.
 - `src/App.jsx` — Landing page with `translations` object for AR/EN. Lazy-loads Convex-dependent components. Has a **mobile-only fixed bottom nav** (bottom-left, above chat FAB) with Destinations and Services buttons.
 - `src/MapPage.jsx` — Mapbox GL map centered on Riyadh (24.7136, 46.6753). Token loaded at runtime from Convex via `config.queries.getPublicConfig`.
-- `src/AdminPage.jsx` — Arabic RTL admin dashboard with session auth. Tabs: stats, listings, content approval, services approval, pending businesses, knowledge base, bookings, emails.
+- `src/AdminPage.jsx` — Arabic RTL admin dashboard. Auth via Better-Auth (`useCurrentUser()` + `role === "admin"` check). Redirects to `/sign-in` if not logged in, shows "access denied" if not admin. Tabs: stats, listings, content approval, services approval, pending businesses, knowledge base, bookings, emails.
 - `src/pages/DoctorDashboard.jsx` — **Business/service provider dashboard**. Role-adaptive tabs: service providers see services tab, business owners see listings tab. Includes `ImageUploader` component for multi-image upload to Convex storage.
 - `src/pages/ListingsPage.jsx` — **Public browse page** for approved hotels, restaurants, attractions, events, tours. Filter by type/city/search. Bilingual. Uses `api.listings.queries.listListings` and `searchListings`.
 - `src/pages/ServicesPage.jsx` — **Public browse page** for approved freelancer services. Filter by service type/city/search. Expandable cards with contact info. Uses `api.services.queries.listServices` and `searchServices`.
@@ -178,6 +185,10 @@ npx convex run listings/mutations:seedListings --prod    # production
 
 Each component defines its own `translations` object with `ar` and `en` keys. No global i18n library — keep translations co-located with the component that uses them.
 
+### Bundle & Code Splitting
+
+All routes in `src/main.jsx` are lazy-loaded with `React.lazy()` + `<Suspense>`. Vite config (`vite.config.js`) splits vendor chunks: `mapbox-gl` (~1.6MB, only loads on `/explore`), `framer-motion`, `convex`, `better-auth`. Main bundle is ~235KB.
+
 ## Key Technologies
 
 - **React 19** with Vite 7 (website)
@@ -216,9 +227,51 @@ VITE_CONVEX_SITE_URL=https://your-deployment.convex.site
 ## Admin Panel
 
 - **URL**: `/admin`
-- **Auth**: Session-based — Username: `admin`, Password: `admin2026`
+- **Auth**: Better-Auth role-based — user must have `role: "admin"` in `users` table. Set via Convex Dashboard Data tab.
+- **Backend**: All admin queries/mutations require `requireAdmin(ctx)` — throws if not admin. No unauthenticated access possible.
+- **Frontend**: `useCurrentUser()` checks role client-side. Not logged in → redirect to `/sign-in`. Logged in but not admin → "access denied" page.
 - **Features**: Dashboard stats, listing CRUD, content approval (listings), services approval, pending business account approvals (with doc review), travel knowledge data, bookings, email captures
-- **Note**: Admin route uses plain `ConvexProvider` (bypasses Better-Auth)
+- **Setup**: To grant admin access, edit user's `role` field to `"admin"` in Convex Dashboard → Data → `users` table. No redeploy needed.
+
+## Mobile App Production Patterns
+
+The mobile app (`hasio  mobile app/`) includes these reliability features:
+
+- **Error Boundary**: `components/ErrorBoundary.tsx` wraps root layout. Class component, reads language from Zustand outside React tree (`useAppStore.getState().language`). Bilingual fallback UI with retry button.
+- **Search Debounce**: `hooks/useDebounce.ts` (300ms default). Used in `HomeScreenContent.tsx` — raw query drives the input, debounced query drives filtering.
+- **ThemedTextInput**: `components/ui/ThemedTextInput.tsx` — wraps `TextInput` with focus state (green `#0D7A5F` border on focus, `#E5E5E5` default). Used in all business/provider form screens and auth. Exported from `components/ui/index.ts`.
+- **Image Fallbacks**: All card components (`LodgingCard`, `FoodCard`, `EventCard`, `MomentCard`, `CategoryCard`) use `backgroundColor: "#E8DFD4"` (warm sand) on image containers + safe access (`images?.[0] ? { uri: ... } : undefined`).
+- **Double-Submit Guard**: All form `handleSubmit` functions start with `if (isLoading) return;` before validation.
+- **Email Validation**: `auth.tsx` validates with `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` after empty check.
+- **Dark Mode**: Toggle replaced with "Coming Soon" subtitle in settings. Zustand `isDarkMode` state preserved for future use.
+
+## Mobile App Play Store Deployment
+
+**Status**: v1.0.0 published via EAS to Google Play (closed internal testing track, 14-day period required before production for new developer accounts).
+
+### Key Decisions (v1)
+- **Voice assistant disabled** — removed `expo-av`, `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS` permissions, VoiceAssistant component, voiceService, and ElevenLabs/Groq integrations. Text-based AI planner remains fully functional via Convex `planTravel` action.
+- **Images use Convex storage (not R2)** — `lib/convexUpload.ts` uploads via `generateUploadUrl` → `FileSystem.uploadAsync` → `getStorageUrl`. All 5 posting screens (`post-lodging`, `post-food`, `post-event`, `post-destination`, `post-service`) use `uploadMultipleToConvex()`. The old `lib/r2Upload.ts` is unused.
+- **Auth env var is strict** — `lib/auth.ts` throws if `EXPO_PUBLIC_CONVEX_SITE_URL` is missing (no silent fallback).
+
+### EAS Build & Submit
+```bash
+cd "hasio  mobile app"
+npx eas build -p android --profile production   # Builds AAB, auto-increments versionCode
+npx eas submit -p android --profile production   # Uploads to Play Store (track set in eas.json)
+npx eas update --channel production --message "description"  # OTA update (JS-only, no review)
+```
+
+- `eas.json` production profile has `EXPO_PUBLIC_CONVEX_URL` and `EXPO_PUBLIC_CONVEX_SITE_URL` env vars baked in.
+- Submit track is `"internal"` for initial closed testing. Change to `"production"` after 14-day testing period + production access granted.
+- Service account key: `google-service-account.json` (gitignored).
+
+### Legal Documents (3 locations in mobile app)
+- `docs/terms-of-service.html` — Terms of Service
+- `docs/privacy-policy.html` — Privacy Policy
+- `assets/privacy-policy.html` — Privacy Policy (bundled in app)
+- `docs/DATA_SAFETY_ANSWERS.md` — Google Play Data Safety form answers
+- All updated April 2026: no voice/audio references, no Groq/ElevenLabs, email is `support@hasio.xyz`.
 
 ## Design Constraints
 

@@ -62,7 +62,7 @@ export function EventCard({
       {/* Image */}
       <View style={styles.imageContainer}>
         <Image
-          source={{ uri: event.images[0] }}
+          source={event.images?.[0] ? { uri: event.images[0] } : undefined}
           style={styles.image}
           contentFit="cover"
           transition={300}
@@ -121,6 +121,7 @@ const styles = StyleSheet.create({
   imageContainer: {
     height: 180,
     position: "relative",
+    backgroundColor: "#E8DFD4",
   },
   image: {
     width: "100%",

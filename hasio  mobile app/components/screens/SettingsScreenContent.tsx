@@ -10,6 +10,7 @@ import {
   Alert,
   Linking,
   ActivityIndicator,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -21,6 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation } from "convex/react";
+import Constants from "expo-constants";
 import { api } from "@/convex";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAppStore } from "@/stores/appStore";
@@ -86,13 +88,18 @@ export function SettingsScreenContent() {
     }
   };
 
+  const deleteMyAccount = useMutation(api.users.mutations.deleteMyAccount);
+
   const handleDeleteAccount = async () => {
     setIsDeleting(true);
     try {
+      // Delete all server-side data first
+      await deleteMyAccount();
+
+      // Then sign out and clear local data
       await authSignOut();
       refreshAuth();
 
-      // Clear ALL local storage data
       clearUserData();
       clearMoments();
 
@@ -134,6 +141,37 @@ export function SettingsScreenContent() {
     } finally {
       setIsUpgrading(false);
     }
+  };
+
+  const handleRateApp = async () => {
+    const androidPackage = "com.hasio.travel";
+    const url = Platform.select({
+      android: `market://details?id=${androidPackage}`,
+      ios: "https://apps.apple.com/app/hasio/id0000000000", // Update with real App Store ID
+      default: `https://play.google.com/store/apps/details?id=${androidPackage}`,
+    });
+    try {
+      const supported = await Linking.canOpenURL(url!);
+      if (supported) {
+        await Linking.openURL(url!);
+      } else {
+        await Linking.openURL(`https://play.google.com/store/apps/details?id=${androidPackage}`);
+      }
+    } catch (error) {
+      console.error("Failed to open store:", error);
+    }
+  };
+
+  const handleAbout = () => {
+    const version = Constants.expoConfig?.version || "1.0.0";
+    const buildNumber = Platform.OS === "android"
+      ? Constants.expoConfig?.android?.versionCode
+      : Constants.expoConfig?.ios?.buildNumber;
+    Alert.alert(
+      "Hasio",
+      `${t("appDescription")}\n\n${t("version")}: ${version}${buildNumber ? ` (${buildNumber})` : ""}`,
+      [{ text: "OK" }]
+    );
   };
 
   const getUserTypeLabel = (type?: UserType) => {
@@ -278,12 +316,14 @@ export function SettingsScreenContent() {
             label={t("rateApp")}
             subtitle={t("shareFeedback")}
             isRTL={isRTL}
+            onPress={handleRateApp}
           />
 
           <SettingRow
             label={t("about")}
             subtitle={t("appVersionInfo")}
             isRTL={isRTL}
+            onPress={handleAbout}
           />
         </Animated.View>
 

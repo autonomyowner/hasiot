@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   Pressable,
   Alert,
   ActivityIndicator,
   Image,
 } from "react-native";
+import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -17,7 +17,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation } from "convex/react";
 import { api } from "@/convex";
 import { useLanguage } from "@/hooks/useLanguage";
-import { uploadMultipleToR2 } from "@/lib/r2Upload";
+import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { Button } from "@/components/ui";
 import { DestinationCategory } from "@/types";
 
@@ -64,6 +64,8 @@ export default function PostDestinationScreen() {
   };
 
   const handleSubmit = async () => {
+    if (isLoading) return;
+
     if (!name.trim() || !nameAr.trim()) {
       Alert.alert(t("error"), t("fillRequiredFields"));
       return;
@@ -73,7 +75,7 @@ export default function PostDestinationScreen() {
 
     try {
       const uploadedImages = images.length > 0
-        ? await uploadMultipleToR2(images, "destinations")
+        ? await uploadMultipleToConvex(images)
         : [];
 
       await submitListing({
@@ -156,8 +158,9 @@ export default function PostDestinationScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingName")} *
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={name}
             onChangeText={setName}
             placeholder="Name in English"
@@ -167,8 +170,9 @@ export default function PostDestinationScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingNameAr")} *
           </Text>
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={nameAr}
             onChangeText={setNameAr}
             placeholder="الاسم بالعربية"
@@ -180,16 +184,18 @@ export default function PostDestinationScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("city")} *
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={city}
             onChangeText={setCity}
             placeholder="City in English"
             placeholderTextColor="#A3A3A3"
           />
 
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={cityAr}
             onChangeText={setCityAr}
             placeholder="المدينة بالعربية"
@@ -201,16 +207,18 @@ export default function PostDestinationScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("address")}
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={address}
             onChangeText={setAddress}
             placeholder="Address in English"
             placeholderTextColor="#A3A3A3"
           />
 
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={addressAr}
             onChangeText={setAddressAr}
             placeholder="العنوان بالعربية"
@@ -222,8 +230,9 @@ export default function PostDestinationScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingDescription")}
           </Text>
-          <TextInput
-            style={[styles.input, styles.textArea, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input, styles.textArea]}
+            isRTL={isRTL}
             value={description}
             onChangeText={setDescription}
             placeholder="Description in English"
@@ -232,8 +241,9 @@ export default function PostDestinationScreen() {
             numberOfLines={4}
           />
 
-          <TextInput
-            style={[styles.input, styles.textArea, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input, styles.textArea]}
+            isRTL={true}
             value={descriptionAr}
             onChangeText={setDescriptionAr}
             placeholder="الوصف بالعربية"

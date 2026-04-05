@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   Pressable,
   Alert,
   ActivityIndicator,
   Image,
 } from "react-native";
+import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -17,7 +17,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation } from "convex/react";
 import { api } from "@/convex";
 import { useLanguage } from "@/hooks/useLanguage";
-import { uploadMultipleToR2 } from "@/lib/r2Upload";
+import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { Button } from "@/components/ui";
 import { FoodCategory } from "@/types";
 
@@ -63,6 +63,8 @@ export default function PostFoodScreen() {
   };
 
   const handleSubmit = async () => {
+    if (isLoading) return;
+
     if (!name.trim() || !nameAr.trim()) {
       Alert.alert(t("error"), t("fillRequiredFields"));
       return;
@@ -72,7 +74,7 @@ export default function PostFoodScreen() {
 
     try {
       const uploadedImages = images.length > 0
-        ? await uploadMultipleToR2(images, "food")
+        ? await uploadMultipleToConvex(images)
         : [];
 
       await submitListing({
@@ -157,8 +159,9 @@ export default function PostFoodScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingName")} *
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={name}
             onChangeText={setName}
             placeholder="Name in English"
@@ -168,8 +171,9 @@ export default function PostFoodScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingNameAr")} *
           </Text>
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={nameAr}
             onChangeText={setNameAr}
             placeholder="الاسم بالعربية"
@@ -181,16 +185,18 @@ export default function PostFoodScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("cuisine")} *
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={cuisine}
             onChangeText={setCuisine}
             placeholder="e.g., Saudi, International"
             placeholderTextColor="#A3A3A3"
           />
 
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={cuisineAr}
             onChangeText={setCuisineAr}
             placeholder="مثال: سعودي، عالمي"
@@ -202,8 +208,9 @@ export default function PostFoodScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("averagePrice")}
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={avgPrice}
             onChangeText={setAvgPrice}
             placeholder="e.g., 50-100 SAR"
@@ -214,8 +221,9 @@ export default function PostFoodScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("hours")}
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={hours}
             onChangeText={setHours}
             placeholder="e.g., 10 AM - 11 PM"
@@ -226,8 +234,9 @@ export default function PostFoodScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingDescription")}
           </Text>
-          <TextInput
-            style={[styles.input, styles.textArea, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input, styles.textArea]}
+            isRTL={isRTL}
             value={description}
             onChangeText={setDescription}
             placeholder="Description in English"
@@ -236,8 +245,9 @@ export default function PostFoodScreen() {
             numberOfLines={4}
           />
 
-          <TextInput
-            style={[styles.input, styles.textArea, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input, styles.textArea]}
+            isRTL={true}
             value={descriptionAr}
             onChangeText={setDescriptionAr}
             placeholder="الوصف بالعربية"

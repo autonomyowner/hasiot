@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   Pressable,
   Alert,
   ActivityIndicator,
   Image,
 } from "react-native";
+import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -17,7 +17,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation } from "convex/react";
 import { api } from "@/convex";
 import { useLanguage } from "@/hooks/useLanguage";
-import { uploadMultipleToR2 } from "@/lib/r2Upload";
+import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { Button } from "@/components/ui";
 import { LodgingType } from "@/types";
 
@@ -66,6 +66,8 @@ export default function PostLodgingScreen() {
   };
 
   const handleSubmit = async () => {
+    if (isLoading) return;
+
     // Validation
     if (!name.trim() || !nameAr.trim() || !city.trim() || !cityAr.trim()) {
       Alert.alert(t("error"), t("fillRequiredFields"));
@@ -76,7 +78,7 @@ export default function PostLodgingScreen() {
 
     try {
       const uploadedImages = images.length > 0
-        ? await uploadMultipleToR2(images, "lodging")
+        ? await uploadMultipleToConvex(images)
         : [];
 
       await submitListing({
@@ -162,8 +164,9 @@ export default function PostLodgingScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingName")} *
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={name}
             onChangeText={setName}
             placeholder="Name in English"
@@ -173,8 +176,9 @@ export default function PostLodgingScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingNameAr")} *
           </Text>
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={nameAr}
             onChangeText={setNameAr}
             placeholder="الاسم بالعربية"
@@ -186,16 +190,18 @@ export default function PostLodgingScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("city")} *
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={city}
             onChangeText={setCity}
             placeholder="City in English"
             placeholderTextColor="#A3A3A3"
           />
 
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={cityAr}
             onChangeText={setCityAr}
             placeholder="المدينة بالعربية"
@@ -207,16 +213,18 @@ export default function PostLodgingScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("neighborhood")}
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={neighborhood}
             onChangeText={setNeighborhood}
             placeholder="Neighborhood in English"
             placeholderTextColor="#A3A3A3"
           />
 
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={neighborhoodAr}
             onChangeText={setNeighborhoodAr}
             placeholder="الحي بالعربية"
@@ -228,8 +236,9 @@ export default function PostLodgingScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("priceRange")}
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={priceRange}
             onChangeText={setPriceRange}
             placeholder="e.g., 200-500 SAR"
@@ -240,8 +249,9 @@ export default function PostLodgingScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingDescription")}
           </Text>
-          <TextInput
-            style={[styles.input, styles.textArea, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input, styles.textArea]}
+            isRTL={isRTL}
             value={description}
             onChangeText={setDescription}
             placeholder="Description in English"
@@ -250,8 +260,9 @@ export default function PostLodgingScreen() {
             numberOfLines={4}
           />
 
-          <TextInput
-            style={[styles.input, styles.textArea, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input, styles.textArea]}
+            isRTL={true}
             value={descriptionAr}
             onChangeText={setDescriptionAr}
             placeholder="الوصف بالعربية"
@@ -265,16 +276,18 @@ export default function PostLodgingScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("amenities")} (comma separated)
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={amenities}
             onChangeText={setAmenities}
             placeholder="WiFi, Pool, Spa, Parking"
             placeholderTextColor="#A3A3A3"
           />
 
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={amenitiesAr}
             onChangeText={setAmenitiesAr}
             placeholder="واي فاي، مسبح، سبا، موقف سيارات"

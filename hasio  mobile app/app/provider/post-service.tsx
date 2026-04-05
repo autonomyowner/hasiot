@@ -4,12 +4,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TextInput,
   Pressable,
   Alert,
   ActivityIndicator,
   Image,
 } from "react-native";
+import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
@@ -17,7 +17,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation } from "convex/react";
 import { api } from "@/convex";
 import { useLanguage } from "@/hooks/useLanguage";
-import { uploadMultipleToR2 } from "@/lib/r2Upload";
+import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { Button } from "@/components/ui";
 import { ServiceType, PriceUnit } from "@/types";
 
@@ -77,6 +77,8 @@ export default function PostServiceScreen() {
   };
 
   const handleSubmit = async () => {
+    if (isLoading) return;
+
     if (!title.trim() || !titleAr.trim() || !description.trim() || !descriptionAr.trim()) {
       Alert.alert(t("error"), t("fillRequiredFields"));
       return;
@@ -86,7 +88,7 @@ export default function PostServiceScreen() {
 
     try {
       const uploadedImages = images.length > 0
-        ? await uploadMultipleToR2(images, "services")
+        ? await uploadMultipleToConvex(images)
         : [];
 
       await submitService({
@@ -172,8 +174,9 @@ export default function PostServiceScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingName")} *
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={title}
             onChangeText={setTitle}
             placeholder="Service title in English"
@@ -183,8 +186,9 @@ export default function PostServiceScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingNameAr")} *
           </Text>
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={titleAr}
             onChangeText={setTitleAr}
             placeholder="عنوان الخدمة بالعربية"
@@ -196,8 +200,9 @@ export default function PostServiceScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingDescription")} *
           </Text>
-          <TextInput
-            style={[styles.input, styles.textArea, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input, styles.textArea]}
+            isRTL={isRTL}
             value={description}
             onChangeText={setDescription}
             placeholder="Describe your service in English"
@@ -206,8 +211,9 @@ export default function PostServiceScreen() {
             numberOfLines={4}
           />
 
-          <TextInput
-            style={[styles.input, styles.textArea, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input, styles.textArea]}
+            isRTL={true}
             value={descriptionAr}
             onChangeText={setDescriptionAr}
             placeholder="وصف الخدمة بالعربية"
@@ -221,8 +227,9 @@ export default function PostServiceScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("priceRange")}
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={priceRange}
             onChangeText={setPriceRange}
             placeholder="e.g., 100-200 SAR"
@@ -256,16 +263,18 @@ export default function PostServiceScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("availability")}
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={availability}
             onChangeText={setAvailability}
             placeholder="e.g., Weekends, Daily 9AM-6PM"
             placeholderTextColor="#A3A3A3"
           />
 
-          <TextInput
-            style={[styles.input, styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={true}
             value={availabilityAr}
             onChangeText={setAvailabilityAr}
             placeholder="مثال: عطلة نهاية الأسبوع"
@@ -277,8 +286,9 @@ export default function PostServiceScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("contactPhone")}
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={contactPhone}
             onChangeText={setContactPhone}
             placeholder="+966 5XX XXX XXXX"
@@ -289,8 +299,9 @@ export default function PostServiceScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("contactEmail")}
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={contactEmail}
             onChangeText={setContactEmail}
             placeholder="email@example.com"
@@ -303,8 +314,9 @@ export default function PostServiceScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("languages")} (comma separated)
           </Text>
-          <TextInput
-            style={[styles.input, isRTL && styles.inputRTL]}
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
             value={languages}
             onChangeText={setLanguages}
             placeholder="Arabic, English, French"

@@ -50,7 +50,7 @@ export function MomentCard({ moment, isRTL, onPress, onDelete }: MomentCardProps
       onPressOut={handlePressOut}
     >
       <Image
-        source={{ uri: moment.image }}
+        source={moment.image ? { uri: moment.image } : undefined}
         style={styles.image}
         contentFit="cover"
         transition={300}
@@ -111,6 +111,7 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: cardWidth,
+    backgroundColor: "#E8DFD4",
   },
   dateOverlay: {
     position: "absolute",

@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -32,8 +33,15 @@ export default function AuthScreen() {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async () => {
+    if (loading) return;
+
     if (!email.trim()) {
       Alert.alert(t("error"), t("emailRequired"));
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      Alert.alert(t("error"), t("invalidEmail"));
       return;
     }
     if (!password.trim() || password.length < 6) {
@@ -104,10 +112,10 @@ export default function AuthScreen() {
               <Text style={[styles.label, isRTL && styles.textRTL]}>
                 {t("fullName")}
               </Text>
-              <TextInput
-                style={[styles.input, isRTL && styles.inputRTL]}
+              <ThemedTextInput
+                style={[styles.input]}
+                isRTL={isRTL}
                 placeholder={t("fullNamePlaceholder")}
-                placeholderTextColor="#A3A3A3"
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
@@ -120,10 +128,10 @@ export default function AuthScreen() {
             <Text style={[styles.label, isRTL && styles.textRTL]}>
               {t("email")}
             </Text>
-            <TextInput
-              style={[styles.input, isRTL && styles.inputRTL]}
+            <ThemedTextInput
+              style={[styles.input]}
+              isRTL={isRTL}
               placeholder={t("emailPlaceholder")}
-              placeholderTextColor="#A3A3A3"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"

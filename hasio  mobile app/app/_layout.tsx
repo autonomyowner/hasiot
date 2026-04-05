@@ -14,8 +14,10 @@ import {
   PlusJakartaSans_700Bold,
 } from "@expo-google-fonts/plus-jakarta-sans";
 import "react-native-reanimated";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ConvexProviderWithAuth } from "convex/react";
 import { convex, useAuthFromSecureStore } from "@/lib/convex";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 import "../global.css";
 
@@ -65,8 +67,12 @@ function InnerLayout() {
 
 export default function RootLayout() {
   return (
-    <ConvexProviderWithAuth client={convex} useAuth={useAuthFromSecureStore}>
-      <InnerLayout />
-    </ConvexProviderWithAuth>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <ConvexProviderWithAuth client={convex} useAuth={useAuthFromSecureStore}>
+          <InnerLayout />
+        </ConvexProviderWithAuth>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }
