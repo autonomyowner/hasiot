@@ -967,9 +967,9 @@ function App() {
           <div className="footer-bottom">
             <p className="footer-hadith">{t.footer.bottom.quote}</p>
             <div className="footer-legal">
-              <a href="#">{t.footer.bottom.privacy}</a>
-              <a href="#">{t.footer.bottom.terms}</a>
-              <a href="#">{t.footer.bottom.cookies}</a>
+              <a href="/privacy-policy.html">{t.footer.bottom.privacy}</a>
+              <a href="/terms-of-service.html">{t.footer.bottom.terms}</a>
+              <a href="/privacy-policy.html">{t.footer.bottom.cookies}</a>
             </div>
           </div>
         </div>

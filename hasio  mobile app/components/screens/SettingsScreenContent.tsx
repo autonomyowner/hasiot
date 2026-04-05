@@ -30,7 +30,8 @@ import { signOut as authSignOut } from "@/lib/auth";
 import { refreshAuth } from "@/lib/convex";
 import { UserType } from "@/types";
 
-const PRIVACY_POLICY_URL = "https://hasio.xyz/privacy-policy.html";
+const PRIVACY_POLICY_URL = "https://www.hasio.xyz/privacy-policy.html";
+const TERMS_OF_SERVICE_URL = "https://www.hasio.xyz/terms-of-service.html";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -73,6 +74,15 @@ export function SettingsScreenContent() {
     } catch (error) {
       console.error("Failed to open privacy policy:", error);
       Alert.alert(t("error"), "Could not open privacy policy");
+    }
+  };
+
+  const handleOpenTermsOfService = async () => {
+    try {
+      await Linking.openURL(TERMS_OF_SERVICE_URL);
+    } catch (error) {
+      console.error("Failed to open terms of service:", error);
+      Alert.alert(t("error"), "Could not open terms of service");
     }
   };
 
@@ -172,11 +182,10 @@ export function SettingsScreenContent() {
             onToggle={toggleNotifications}
           />
 
-          <SettingRowWithSwitch
+          <SettingRow
             label={t("darkMode")}
-            value={isDarkMode}
+            subtitle={t("comingSoon")}
             isRTL={isRTL}
-            onToggle={toggleDarkMode}
           />
         </Animated.View>
 
@@ -233,6 +242,13 @@ export function SettingsScreenContent() {
             subtitle={t("privacyPolicySubtitle")}
             isRTL={isRTL}
             onPress={handleOpenPrivacyPolicy}
+          />
+
+          <SettingRow
+            label={t("termsOfService")}
+            subtitle={t("termsOfServiceSubtitle")}
+            isRTL={isRTL}
+            onPress={handleOpenTermsOfService}
           />
 
           <SettingRow

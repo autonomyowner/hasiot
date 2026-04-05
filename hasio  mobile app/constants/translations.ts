@@ -314,6 +314,8 @@ export const translations = {
     // Privacy & Account Deletion
     privacyPolicy: "Privacy Policy",
     privacyPolicySubtitle: "View our privacy policy",
+    termsOfService: "Terms of Service",
+    termsOfServiceSubtitle: "View our terms of service",
     deleteAccount: "Delete Account",
     deleteAccountSubtitle: "Permanently delete your account and data",
     deleteAccountConfirmTitle: "Delete Account?",
@@ -328,6 +330,15 @@ export const translations = {
     voiceDataConsentLearnMore: "Learn more in our Privacy Policy",
     voiceDataConsentAccept: "I Understand & Accept",
     voiceDataConsentDecline: "Cancel",
+
+    // Production fixes
+    invalidEmail: "Please enter a valid email address",
+    comingSoon: "Coming Soon",
+    somethingWentWrong: "Something went wrong",
+    tryAgain: "Try Again",
+    fillRequiredFields: "Please fill in all required fields",
+    success: "Success",
+    listingSubmittedForReview: "Your listing has been submitted for review",
   },
 
   ar: {
@@ -645,6 +656,8 @@ export const translations = {
     // Privacy & Account Deletion
     privacyPolicy: "سياسة الخصوصية",
     privacyPolicySubtitle: "عرض سياسة الخصوصية",
+    termsOfService: "شروط الخدمة",
+    termsOfServiceSubtitle: "عرض شروط الخدمة",
     deleteAccount: "حذف الحساب",
     deleteAccountSubtitle: "حذف حسابك وبياناتك نهائياً",
     deleteAccountConfirmTitle: "حذف الحساب؟",
@@ -659,6 +672,15 @@ export const translations = {
     voiceDataConsentLearnMore: "اعرف المزيد في سياسة الخصوصية",
     voiceDataConsentAccept: "أفهم وأوافق",
     voiceDataConsentDecline: "إلغاء",
+
+    // Production fixes
+    invalidEmail: "يرجى إدخال بريد إلكتروني صالح",
+    comingSoon: "قريباً",
+    somethingWentWrong: "حدث خطأ ما",
+    tryAgain: "إعادة المحاولة",
+    fillRequiredFields: "يرجى ملء جميع الحقول المطلوبة",
+    success: "تم بنجاح",
+    listingSubmittedForReview: "تم إرسال إعلانك للمراجعة",
   },
 } as const;
 
