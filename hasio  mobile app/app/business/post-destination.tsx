@@ -32,7 +32,7 @@ const DESTINATION_CATEGORIES: { value: DestinationCategory; labelKey: string }[]
 export default function PostDestinationScreen() {
   const router = useRouter();
   const { t, isRTL } = useLanguage();
-  const createListing = useMutation(api.listings.mutations.createListing);
+  const submitListing = useMutation(api.listings.mutations.submitListing);
 
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
@@ -76,7 +76,7 @@ export default function PostDestinationScreen() {
         ? await uploadMultipleToR2(images, "destinations")
         : [];
 
-      await createListing({
+      await submitListing({
         type: "attraction",
         name_en: name.trim(),
         name_ar: nameAr.trim(),

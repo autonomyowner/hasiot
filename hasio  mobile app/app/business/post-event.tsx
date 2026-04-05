@@ -32,7 +32,7 @@ const EVENT_CATEGORIES: { value: EventCategory; labelKey: string }[] = [
 export default function PostEventScreen() {
   const router = useRouter();
   const { t, isRTL } = useLanguage();
-  const createListing = useMutation(api.listings.mutations.createListing);
+  const submitListing = useMutation(api.listings.mutations.submitListing);
 
   const [isLoading, setIsLoading] = useState(false);
   const [title, setTitle] = useState("");
@@ -76,7 +76,7 @@ export default function PostEventScreen() {
         ? await uploadMultipleToR2(images, "events")
         : [];
 
-      await createListing({
+      await submitListing({
         type: "event",
         name_en: title.trim(),
         name_ar: titleAr.trim(),

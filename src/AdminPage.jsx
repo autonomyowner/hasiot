@@ -131,6 +131,7 @@ export default function AdminPage() {
             { id: 'dashboard', label: 'الإحصائيات' },
             { id: 'listings', label: 'الأماكن' },
             { id: 'content', label: 'محتوى معلق' },
+            { id: 'services', label: 'خدمات معلقة' },
             { id: 'pending', label: 'حسابات معلقة' },
             { id: 'knowledge', label: 'قاعدة المعرفة' },
             { id: 'bookings', label: 'الحجوزات' },
@@ -152,6 +153,7 @@ export default function AdminPage() {
           {activeTab === 'dashboard' && <DashboardTab key="dashboard" />}
           {activeTab === 'listings' && <ListingsTab key="listings" />}
           {activeTab === 'content' && <ContentApprovalTab key="content" />}
+          {activeTab === 'services' && <ServiceApprovalTab key="services" />}
           {activeTab === 'pending' && <PendingBusinessesTab key="pending" />}
           {activeTab === 'knowledge' && <KnowledgeTab key="knowledge" />}
           {activeTab === 'bookings' && <BookingsTab key="bookings" />}
@@ -223,6 +225,8 @@ function DashboardTab() {
     { label: 'الأماكن النشطة', value: stats.activeListings, color: 'green' },
     { label: 'الموثقة', value: stats.verifiedListings, color: 'purple' },
     { label: 'محتوى معلق', value: stats.pendingContent ?? 0, color: 'yellow' },
+    { label: 'إجمالي الخدمات', value: stats.totalServices ?? 0, color: 'cyan' },
+    { label: 'خدمات معلقة', value: stats.pendingServices ?? 0, color: 'amber' },
     { label: 'إجمالي المستخدمين', value: stats.totalUsers, color: 'orange' },
     { label: 'الحجوزات', value: stats.totalBookings, color: 'pink' },
     { label: 'قاعدة المعرفة', value: stats.totalKnowledgeData, color: 'indigo' },
@@ -1306,6 +1310,170 @@ function ContentApprovalTab() {
                     className="admin-form-textarea"
                     rows={3}
                     placeholder="أدخل سبب الرفض ليراه صاحب المحتوى..."
+                  />
+                </div>
+              </div>
+              <div className="admin-modal-footer">
+                <button
+                  onClick={() => setRejectModal(null)}
+                  className="admin-btn admin-btn-secondary"
+                >
+                  إلغاء
+                </button>
+                <button
+                  onClick={() => handleReject(rejectModal)}
+                  className="admin-btn admin-btn-primary"
+                  style={{ background: '#ef4444' }}
+                  disabled={actionId === rejectModal}
+                >
+                  {actionId === rejectModal ? 'جاري...' : 'تأكيد الرفض'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
+const SERVICE_TYPE_LABELS = {
+  tour_guide: 'مرشد سياحي',
+  photographer: 'مصور',
+  driver: 'سائق',
+  translator: 'مترجم',
+  event_planner: 'منظم فعاليات',
+  catering: 'تقديم طعام',
+  equipment_rental: 'تأجير معدات',
+  other: 'أخرى',
+}
+
+function ServiceApprovalTab() {
+  const pendingServices = useQuery(api.admin.queries.listPendingServices)
+  const approveService = useMutation(api.admin.mutations.approveService)
+  const rejectService = useMutation(api.admin.mutations.rejectService)
+  const [actionId, setActionId] = useState(null)
+  const [rejectModal, setRejectModal] = useState(null)
+  const [rejectReason, setRejectReason] = useState('')
+
+  const handleApprove = async (id) => {
+    setActionId(id)
+    try {
+      await approveService({ id })
+    } catch (err) {
+      console.error('Error approving service:', err)
+    }
+    setActionId(null)
+  }
+
+  const handleReject = async (id) => {
+    setActionId(id)
+    try {
+      await rejectService({ id, reason: rejectReason || undefined })
+      setRejectModal(null)
+      setRejectReason('')
+    } catch (err) {
+      console.error('Error rejecting service:', err)
+    }
+    setActionId(null)
+  }
+
+  if (pendingServices === undefined) return <LoadingState />
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <div className="admin-section-header">
+        <h2 className="admin-section-title">خدمات معلقة للمراجعة</h2>
+        <span className="admin-badge admin-badge-warning">{pendingServices.length} خدمة</span>
+      </div>
+
+      {pendingServices.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+          لا توجد خدمات معلقة للمراجعة
+        </div>
+      ) : (
+        <div className="admin-table-wrapper">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>العنوان</th>
+                <th>نوع الخدمة</th>
+                <th>مقدم الخدمة</th>
+                <th>المدينة</th>
+                <th>السعر</th>
+                <th>تاريخ الإرسال</th>
+                <th style={{ textAlign: 'left' }}>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pendingServices.map(service => (
+                <tr key={service._id}>
+                  <td>
+                    <div className="admin-table-name">{service.title_ar}</div>
+                    <div className="admin-table-sub">{service.title_en}</div>
+                  </td>
+                  <td>{SERVICE_TYPE_LABELS[service.serviceType] || service.serviceType}</td>
+                  <td>
+                    <div className="admin-table-name">{service.ownerName}</div>
+                    <div className="admin-table-sub">{service.ownerEmail}</div>
+                  </td>
+                  <td>{SAUDI_CITIES_AR[service.city] || service.city || '-'}</td>
+                  <td>{service.priceRange || '-'}</td>
+                  <td>{new Date(service.createdAt).toLocaleDateString('ar-SA')}</td>
+                  <td>
+                    <div className="admin-actions">
+                      <button
+                        onClick={() => handleApprove(service._id)}
+                        className="admin-action-btn edit"
+                        disabled={actionId === service._id}
+                      >
+                        {actionId === service._id ? 'جاري...' : 'موافقة'}
+                      </button>
+                      <button
+                        onClick={() => setRejectModal(service._id)}
+                        className="admin-action-btn delete"
+                        disabled={actionId === service._id}
+                      >
+                        رفض
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <AnimatePresence>
+        {rejectModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="admin-modal-overlay"
+            onClick={() => setRejectModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="admin-modal"
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '500px' }}
+            >
+              <div className="admin-modal-header">
+                <h3 className="admin-modal-title">رفض الخدمة</h3>
+              </div>
+              <div className="admin-modal-body">
+                <div className="admin-form-group">
+                  <label className="admin-form-label">سبب الرفض (اختياري)</label>
+                  <textarea
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    className="admin-form-textarea"
+                    rows={3}
+                    placeholder="أدخل سبب الرفض ليراه مقدم الخدمة..."
                   />
                 </div>
               </div>

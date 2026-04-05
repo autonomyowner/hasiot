@@ -218,6 +218,41 @@ export const rejectContent = mutation({
   },
 });
 
+// Approve a pending service
+export const approveService = mutation({
+  args: { id: v.id("services") },
+  handler: async (ctx, args) => {
+    const service = await ctx.db.get(args.id);
+    if (!service) throw new Error("Service not found");
+
+    await ctx.db.patch(args.id, {
+      status: "approved",
+      rejectionReason: undefined,
+      updatedAt: Date.now(),
+    });
+    return { success: true };
+  },
+});
+
+// Reject a pending service
+export const rejectService = mutation({
+  args: {
+    id: v.id("services"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const service = await ctx.db.get(args.id);
+    if (!service) throw new Error("Service not found");
+
+    await ctx.db.patch(args.id, {
+      status: "rejected",
+      rejectionReason: args.reason,
+      updatedAt: Date.now(),
+    });
+    return { success: true };
+  },
+});
+
 // Bulk import listings
 export const bulkImportListings = mutation({
   args: {

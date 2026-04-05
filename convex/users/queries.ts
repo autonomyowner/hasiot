@@ -47,3 +47,11 @@ export const getBusinessDocUrl = query({
     return await ctx.storage.getUrl(args.fileId);
   },
 });
+
+// Get public URL for a Convex storage ID (for image display)
+export const getStorageUrl = query({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});

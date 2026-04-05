@@ -27,15 +27,10 @@ export default function MyServicesScreen() {
   const { t, isRTL, language } = useLanguage();
   const [filter, setFilter] = useState<"all" | string>("all");
 
-  const allListings = useQuery(api.listings.queries.getMyListings, {});
-  const isLoading = allListings === undefined;
+  const myServices = useQuery(api.services.queries.getMyServices, {});
+  const isLoading = myServices === undefined;
 
-  // Filter to service-type listings only
-  const services = (allListings ?? []).filter((l: any) =>
-    l.type === "service" || l.category === "tour_guide" || l.category === "photographer" ||
-    l.category === "driver" || l.category === "translator" || l.category === "event_planner" ||
-    l.category === "catering" || l.category === "equipment_rental"
-  );
+  const services = myServices ?? [];
 
   const filteredServices = filter === "all"
     ? services
@@ -115,10 +110,10 @@ export default function MyServicesScreen() {
                 )}
                 <View style={styles.listingInfo}>
                   <Text style={[styles.listingName, isRTL && styles.textRTL]}>
-                    {language === "ar" ? (service.name_ar || service.name_en) : service.name_en}
+                    {language === "ar" ? (service.title_ar || service.title_en) : service.title_en}
                   </Text>
                   <Text style={[styles.listingType, isRTL && styles.textRTL]}>
-                    {service.category}
+                    {service.serviceType}
                   </Text>
                   <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[service.status] || "#737373" }]}>
                     <Text style={styles.statusText}>

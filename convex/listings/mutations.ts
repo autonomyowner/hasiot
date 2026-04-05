@@ -376,6 +376,8 @@ export const submitListing = mutation({
     email: v.optional(v.string()),
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
+    amenities: v.optional(v.array(v.string())),
+    images: v.optional(v.array(v.string())),
     workingHours: v.optional(
       v.array(
         v.object({
@@ -448,6 +450,8 @@ export const updateMyListing = mutation({
     email: v.optional(v.string()),
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
+    amenities: v.optional(v.array(v.string())),
+    images: v.optional(v.array(v.string())),
     workingHours: v.optional(
       v.array(
         v.object({

@@ -11,6 +11,7 @@ export const getDashboardStats = query({
     const knowledgeData = await ctx.db.query("travelKnowledge").collect();
     const travelPlans = await ctx.db.query("travelPlans").collect();
     const emailCaptures = await ctx.db.query("emailCaptures").collect();
+    const services = await ctx.db.query("services").collect();
 
     const bookingsByStatus = {
       pending: bookings.filter(b => b.status === "pending").length,
@@ -39,6 +40,8 @@ export const getDashboardStats = query({
       activeListings: listings.filter(l => l.isActive !== false).length,
       verifiedListings: listings.filter(l => l.isVerified === true).length,
       pendingContent: listings.filter(l => l.status === "pending").length,
+      totalServices: services.length,
+      pendingServices: services.filter(s => s.status === "pending").length,
     };
   },
 });
@@ -181,6 +184,31 @@ export const listPendingContent = query({
           }
         }
         return { ...listing, ownerName, ownerEmail };
+      })
+    );
+
+    return enriched;
+  },
+});
+
+// List pending services awaiting approval
+export const listPendingServices = query({
+  args: {},
+  handler: async (ctx) => {
+    const services = await ctx.db
+      .query("services")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .order("desc")
+      .collect();
+
+    const enriched = await Promise.all(
+      services.map(async (service) => {
+        const owner = await ctx.db.get(service.ownerId);
+        return {
+          ...service,
+          ownerName: owner ? `${owner.firstName || ""} ${owner.lastName || ""}`.trim() || owner.email : "",
+          ownerEmail: owner?.email || "",
+        };
       })
     );
 

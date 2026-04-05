@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { useQuery, useMutation } from 'convex/react'
+import { useQuery, useMutation, useConvex } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { useCurrentUser } from '../hooks/useCurrentUser'
 import { authClient } from '../lib/auth-client'
@@ -18,20 +18,34 @@ const DAYS = [
   { key: 'friday', ar: 'الجمعة', en: 'Friday' },
 ]
 
-const tabs = [
-  { id: 'listings', label: 'قوائمي' },
-  { id: 'bookings', label: 'الحجوزات' },
-  { id: 'schedule', label: 'جدول العمل' },
-  { id: 'profile', label: 'الملف الشخصي' },
-]
-
 export default function DoctorDashboard() {
   const { user, isLoading, isAuthenticated } = useCurrentUser()
   const generateUploadUrl = useMutation(api.users.mutations.generateUploadUrl)
   const saveBusinessDoc = useMutation(api.users.mutations.saveBusinessDoc)
   const [uploading, setUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
-  const [activeTab, setActiveTab] = useState('listings')
+  const [activeTab, setActiveTab] = useState(null)
+
+  // Role-adaptive tabs
+  const tabs = user?.role === 'service_provider'
+    ? [
+        { id: 'services', label: 'خدماتي' },
+        { id: 'bookings', label: 'الحجوزات' },
+        { id: 'profile', label: 'الملف الشخصي' },
+      ]
+    : [
+        { id: 'listings', label: 'قوائمي' },
+        { id: 'bookings', label: 'الحجوزات' },
+        { id: 'schedule', label: 'جدول العمل' },
+        { id: 'profile', label: 'الملف الشخصي' },
+      ]
+
+  // Set default active tab based on role
+  useEffect(() => {
+    if (user && activeTab === null) {
+      setActiveTab(user.role === 'service_provider' ? 'services' : 'listings')
+    }
+  }, [user, activeTab])
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -158,6 +172,7 @@ export default function DoctorDashboard() {
           </div>
 
           {activeTab === 'listings' && <MyListingsTab user={user} />}
+          {activeTab === 'services' && <MyServicesTab user={user} />}
           {activeTab === 'bookings' && <BusinessBookingsTab />}
           {activeTab === 'schedule' && <ScheduleTab user={user} />}
           {activeTab === 'profile' && <BusinessProfileTab user={user} />}
@@ -389,7 +404,100 @@ function MyListingsTab({ user }) {
   )
 }
 
+// === Image Uploader Component ===
+function ImageUploader({ images, setImages }) {
+  const generateUploadUrl = useMutation(api.users.mutations.generateUploadUrl)
+  const convex = useConvex()
+  const [uploading, setUploading] = useState(false)
+
+  const handleFileSelect = async (e) => {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    const remaining = 5 - images.length
+    if (remaining <= 0) return
+    const toUpload = files.slice(0, remaining)
+
+    setUploading(true)
+    try {
+      for (const file of toUpload) {
+        const postUrl = await generateUploadUrl()
+        const result = await fetch(postUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        })
+        const { storageId } = await result.json()
+        const url = await convex.query(api.users.queries.getStorageUrl, { storageId })
+        if (url) {
+          setImages(prev => [...prev, { storageId, url }])
+        }
+      }
+    } catch (err) {
+      console.error('Image upload error:', err)
+    }
+    setUploading(false)
+    e.target.value = ''
+  }
+
+  const removeImage = (index) => {
+    setImages(prev => prev.filter((_, i) => i !== index))
+  }
+
+  return (
+    <div className="form-group">
+      <label>الصور (حتى 5)</label>
+      {images.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          {images.map((img, i) => (
+            <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
+              <img src={img.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <button
+                type="button"
+                onClick={() => removeImage(i)}
+                style={{
+                  position: 'absolute', top: '2px', left: '2px',
+                  width: '20px', height: '20px', borderRadius: '50%',
+                  background: 'rgba(220,38,38,0.85)', color: '#fff',
+                  border: 'none', cursor: 'pointer', fontSize: '0.75rem',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  lineHeight: 1,
+                }}
+              >
+                &times;
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {images.length < 5 && (
+        <label style={{
+          display: 'inline-block', padding: '0.5rem 1rem',
+          background: '#f3f4f6', border: '1px dashed #d1d5db',
+          borderRadius: '10px', cursor: 'pointer', fontSize: '0.8125rem',
+          color: '#6b7280', textAlign: 'center',
+        }}>
+          {uploading ? 'جاري الرفع...' : `اختر صور (${images.length}/5)`}
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFileSelect}
+            disabled={uploading}
+            style={{ display: 'none' }}
+          />
+        </label>
+      )}
+    </div>
+  )
+}
+
 function CreateListingForm({ onSubmit, submitting, initialData, allowedTypes, categories, cities, citiesAr }) {
+  const [images, setImages] = useState(
+    (initialData?.images || []).map(url => ({ storageId: null, url }))
+  )
+  const [amenitiesInput, setAmenitiesInput] = useState(
+    (initialData?.amenities || []).join('، ')
+  )
   const [form, setForm] = useState({
     type: initialData?.type || allowedTypes[0]?.value || 'hotel',
     category: initialData?.category || categories[0]?.value || '',
@@ -412,9 +520,15 @@ function CreateListingForm({ onSubmit, submitting, initialData, allowedTypes, ca
   const handleSubmit = (e) => {
     e.preventDefault()
     const { lat, lng, ...rest } = form
+    const amenities = amenitiesInput
+      .split(/[,،]/)
+      .map(s => s.trim())
+      .filter(Boolean)
     onSubmit({
       ...rest,
       coordinates: { lat: parseFloat(lat), lng: parseFloat(lng) },
+      images: images.map(i => i.url).filter(Boolean),
+      amenities: amenities.length > 0 ? amenities : undefined,
       priceRange: rest.priceRange || undefined,
       website: rest.website || undefined,
       region: rest.region || undefined,
@@ -427,6 +541,17 @@ function CreateListingForm({ onSubmit, submitting, initialData, allowedTypes, ca
   }
 
   const u = (field, value) => setForm(p => ({ ...p, [field]: value }))
+
+  // Parse amenities for chips display
+  const amenitiesChips = amenitiesInput
+    .split(/[,،]/)
+    .map(s => s.trim())
+    .filter(Boolean)
+
+  const removeAmenity = (index) => {
+    const updated = amenitiesChips.filter((_, i) => i !== index)
+    setAmenitiesInput(updated.join('، '))
+  }
 
   return (
     <form onSubmit={handleSubmit}>
@@ -525,6 +650,379 @@ function CreateListingForm({ onSubmit, submitting, initialData, allowedTypes, ca
           <label>الوصف (بالإنجليزية)</label>
           <textarea value={form.description_en} onChange={e => u('description_en', e.target.value)} rows={3} dir="ltr" />
         </div>
+
+        {/* Image Upload */}
+        <ImageUploader images={images} setImages={setImages} />
+
+        {/* Amenities */}
+        <div className="form-group">
+          <label>المرافق والخدمات (مفصولة بفاصلة)</label>
+          <input
+            value={amenitiesInput}
+            onChange={e => setAmenitiesInput(e.target.value)}
+            placeholder="واي فاي، مسبح، موقف سيارات، مطعم"
+          />
+          {amenitiesChips.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem', marginTop: '0.5rem' }}>
+              {amenitiesChips.map((chip, i) => (
+                <span
+                  key={i}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
+                    padding: '0.25rem 0.625rem', background: '#ecfdf5',
+                    color: '#065f46', borderRadius: '9999px', fontSize: '0.75rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  {chip}
+                  <button
+                    type="button"
+                    onClick={() => removeAmenity(i)}
+                    style={{
+                      background: 'none', border: 'none', color: '#065f46',
+                      cursor: 'pointer', fontSize: '0.875rem', lineHeight: 1,
+                      padding: '0 0.125rem',
+                    }}
+                  >
+                    &times;
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <button className="btn-primary" type="submit" disabled={submitting} style={{ width: '100%', justifyContent: 'center' }}>
+          {submitting ? 'جاري الإرسال...' : initialData ? 'تحديث (سيعاد للمراجعة)' : 'إرسال للمراجعة'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// === My Services Tab (Service Providers) ===
+const SERVICE_TYPES = [
+  { value: 'tour_guide', label: 'مرشد سياحي' },
+  { value: 'photographer', label: 'مصور' },
+  { value: 'driver', label: 'سائق' },
+  { value: 'translator', label: 'مترجم' },
+  { value: 'event_planner', label: 'منظم فعاليات' },
+  { value: 'catering', label: 'تقديم طعام' },
+  { value: 'equipment_rental', label: 'تأجير معدات' },
+  { value: 'other', label: 'أخرى' },
+]
+const PRICE_UNITS = [
+  { value: 'per_hour', label: 'بالساعة' },
+  { value: 'per_day', label: 'باليوم' },
+  { value: 'per_event', label: 'للفعالية' },
+  { value: 'fixed', label: 'سعر ثابت' },
+]
+
+function MyServicesTab({ user }) {
+  const myServices = useQuery(api.services.queries.getMyServices, {})
+  const submitService = useMutation(api.services.mutations.submitService)
+  const updateMyService = useMutation(api.services.mutations.updateMyService)
+  const deleteMyService = useMutation(api.services.mutations.deleteMyService)
+  const [showForm, setShowForm] = useState(false)
+  const [editingService, setEditingService] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [filter, setFilter] = useState('all')
+
+  const statusConfig = {
+    pending: { label: 'قيد المراجعة', color: '#f59e0b', bg: '#fef3c7' },
+    approved: { label: 'معتمد', color: '#059669', bg: '#d1fae5' },
+    rejected: { label: 'مرفوض', color: '#dc2626', bg: '#fee2e2' },
+  }
+
+  const serviceTypeLabels = Object.fromEntries(SERVICE_TYPES.map(t => [t.value, t.label]))
+  const priceUnitLabels = Object.fromEntries(PRICE_UNITS.map(u => [u.value, u.label]))
+
+  const handleSubmit = async (formData) => {
+    setSubmitting(true)
+    try {
+      if (editingService) {
+        await updateMyService({ serviceId: editingService._id, ...formData })
+      } else {
+        await submitService(formData)
+      }
+      setShowForm(false)
+      setEditingService(null)
+    } catch (error) {
+      alert('خطأ: ' + error.message)
+    }
+    setSubmitting(false)
+  }
+
+  const handleDelete = async (id) => {
+    if (!confirm('هل أنت متأكد من حذف هذه الخدمة؟')) return
+    try {
+      await deleteMyService({ serviceId: id })
+    } catch (error) {
+      alert('خطأ: ' + error.message)
+    }
+  }
+
+  const all = myServices || []
+  const pending = all.filter(s => s.status === 'pending').length
+  const approved = all.filter(s => s.status === 'approved').length
+  const rejected = all.filter(s => s.status === 'rejected').length
+
+  const filtered = filter === 'all' ? all : all.filter(s => s.status === filter)
+
+  return (
+    <div>
+      {/* Stats */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        {[
+          { label: 'الإجمالي', value: all.length, color: '#6b7280' },
+          { label: 'قيد المراجعة', value: pending, color: '#f59e0b' },
+          { label: 'معتمد', value: approved, color: '#059669' },
+          { label: 'مرفوض', value: rejected, color: '#dc2626' },
+        ].map((stat, i) => (
+          <div key={i} className="dash-card" style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: stat.color, margin: '0 0 0.25rem' }}>{stat.value}</p>
+            <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>{stat.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Add New + Filter */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <button
+          className="btn-primary"
+          onClick={() => { setShowForm(true); setEditingService(null); }}
+        >
+          نشر خدمة جديدة
+        </button>
+        <div className="filter-tabs">
+          {[
+            { id: 'all', label: 'الكل' },
+            { id: 'pending', label: 'قيد المراجعة' },
+            { id: 'approved', label: 'معتمد' },
+            { id: 'rejected', label: 'مرفوض' },
+          ].map(f => (
+            <button
+              key={f.id}
+              className={`filter-tab ${filter === f.id ? 'active' : ''}`}
+              onClick={() => setFilter(f.id)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Service Cards */}
+      {myServices === undefined ? (
+        <div className="dash-card" style={{ textAlign: 'center', color: '#9ca3af' }}>جاري التحميل...</div>
+      ) : filtered.length === 0 ? (
+        <div className="empty-state" style={{ padding: '2rem' }}>
+          <p>{filter === 'all' ? 'لم تقم بإضافة أي خدمات بعد. اضغط "نشر خدمة جديدة" للبدء.' : 'لا توجد خدمات بهذه الحالة.'}</p>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {filtered.map(service => {
+            const sc = statusConfig[service.status] || statusConfig.pending
+            return (
+              <div key={service._id} className="dash-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <span style={{
+                        padding: '0.125rem 0.5rem',
+                        borderRadius: '9999px',
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        color: sc.color,
+                        background: sc.bg,
+                      }}>
+                        {sc.label}
+                      </span>
+                      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                        {serviceTypeLabels[service.serviceType] || service.serviceType}
+                      </span>
+                    </div>
+                    <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>{service.title_ar}</h3>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>{service.title_en}</p>
+                    {service.price != null && (
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#059669', fontWeight: 500 }}>
+                        {service.price} ر.س {priceUnitLabels[service.priceUnit] || ''}
+                      </p>
+                    )}
+                    {service.city && (
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#9ca3af' }}>
+                        {service.city}
+                      </p>
+                    )}
+                    {service.status === 'rejected' && service.rejectionReason && (
+                      <div style={{
+                        marginTop: '0.5rem', padding: '0.5rem 0.75rem',
+                        background: '#fee2e2', borderRadius: '8px',
+                        fontSize: '0.8125rem', color: '#991b1b'
+                      }}>
+                        سبب الرفض: {service.rejectionReason}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button
+                      className="apt-action-btn"
+                      onClick={() => { setEditingService(service); setShowForm(true); }}
+                      style={{ fontSize: '0.8125rem' }}
+                    >
+                      تعديل
+                    </button>
+                    <button
+                      className="apt-action-btn danger"
+                      onClick={() => handleDelete(service._id)}
+                      style={{ fontSize: '0.8125rem' }}
+                    >
+                      حذف
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* Create/Edit Service Modal */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            className="modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => e.target === e.currentTarget && setShowForm(false)}
+          >
+            <motion.div
+              className="modal-content"
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'auto' }}
+            >
+              <div className="modal-header">
+                <h2>{editingService ? 'تعديل الخدمة' : 'نشر خدمة جديدة'}</h2>
+                <button className="modal-close" onClick={() => { setShowForm(false); setEditingService(null); }}>&times;</button>
+              </div>
+              <CreateServiceForm
+                onSubmit={handleSubmit}
+                submitting={submitting}
+                initialData={editingService}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function CreateServiceForm({ onSubmit, submitting, initialData }) {
+  const [images, setImages] = useState(
+    (initialData?.images || []).map(url => ({ storageId: null, url }))
+  )
+  const [form, setForm] = useState({
+    serviceType: initialData?.serviceType || SERVICE_TYPES[0].value,
+    title_ar: initialData?.title_ar || '',
+    title_en: initialData?.title_en || '',
+    description_ar: initialData?.description_ar || '',
+    description_en: initialData?.description_en || '',
+    price: initialData?.price ?? '',
+    priceUnit: initialData?.priceUnit || PRICE_UNITS[0].value,
+    city: initialData?.city || '',
+    phone: initialData?.phone || '',
+    email: initialData?.email || '',
+  })
+
+  const u = (field, value) => setForm(p => ({ ...p, [field]: value }))
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    onSubmit({
+      ...form,
+      price: form.price !== '' ? parseFloat(form.price) : undefined,
+      priceUnit: form.price !== '' ? form.priceUnit : undefined,
+      images: images.map(i => i.url).filter(Boolean),
+      phone: form.phone || undefined,
+      email: form.email || undefined,
+      description_en: form.description_en || undefined,
+      description_ar: form.description_ar || undefined,
+    })
+  }
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', padding: '0 0 1rem' }}>
+        <div className="form-group">
+          <label>نوع الخدمة *</label>
+          <select value={form.serviceType} onChange={e => u('serviceType', e.target.value)}>
+            {SERVICE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>عنوان الخدمة (بالعربية) *</label>
+            <input value={form.title_ar} onChange={e => u('title_ar', e.target.value)} required />
+          </div>
+          <div className="form-group">
+            <label>عنوان الخدمة (بالإنجليزية) *</label>
+            <input value={form.title_en} onChange={e => u('title_en', e.target.value)} dir="ltr" required />
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>السعر (ر.س)</label>
+            <input
+              type="number"
+              step="any"
+              min="0"
+              value={form.price}
+              onChange={e => u('price', e.target.value)}
+              dir="ltr"
+              placeholder="مثال: 250"
+            />
+          </div>
+          <div className="form-group">
+            <label>وحدة السعر</label>
+            <select value={form.priceUnit} onChange={e => u('priceUnit', e.target.value)}>
+              {PRICE_UNITS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="form-row">
+          <div className="form-group">
+            <label>المدينة</label>
+            <input value={form.city} onChange={e => u('city', e.target.value)} placeholder="مثال: الرياض" />
+          </div>
+          <div className="form-group">
+            <label>الهاتف</label>
+            <input value={form.phone} onChange={e => u('phone', e.target.value)} dir="ltr" placeholder="+966 5X XXX XXXX" />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>البريد الإلكتروني</label>
+          <input type="email" value={form.email} onChange={e => u('email', e.target.value)} dir="ltr" />
+        </div>
+
+        <div className="form-group">
+          <label>الوصف (بالعربية)</label>
+          <textarea value={form.description_ar} onChange={e => u('description_ar', e.target.value)} rows={3} />
+        </div>
+        <div className="form-group">
+          <label>الوصف (بالإنجليزية)</label>
+          <textarea value={form.description_en} onChange={e => u('description_en', e.target.value)} rows={3} dir="ltr" />
+        </div>
+
+        {/* Image Upload */}
+        <ImageUploader images={images} setImages={setImages} />
 
         <button className="btn-primary" type="submit" disabled={submitting} style={{ width: '100%', justifyContent: 'center' }}>
           {submitting ? 'جاري الإرسال...' : initialData ? 'تحديث (سيعاد للمراجعة)' : 'إرسال للمراجعة'}

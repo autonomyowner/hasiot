@@ -42,7 +42,7 @@ const PRICE_UNITS: { value: PriceUnit; labelKey: string }[] = [
 export default function PostServiceScreen() {
   const router = useRouter();
   const { t, isRTL } = useLanguage();
-  const createListing = useMutation(api.listings.mutations.createListing);
+  const submitService = useMutation(api.services.mutations.submitService);
 
   const [isLoading, setIsLoading] = useState(false);
   const [title, setTitle] = useState("");
@@ -89,17 +89,19 @@ export default function PostServiceScreen() {
         ? await uploadMultipleToR2(images, "services")
         : [];
 
-      await createListing({
-        type: "service" as any,
-        name_en: title.trim(),
-        name_ar: titleAr.trim(),
-        category: serviceType,
+      await submitService({
+        serviceType,
+        title_en: title.trim(),
+        title_ar: titleAr.trim(),
         description_en: description.trim() || undefined,
         description_ar: descriptionAr.trim() || undefined,
-        address: title.trim(),
-        city: "Saudi Arabia",
-        coordinates: { lat: 24.7136, lng: 46.6753 },
-        priceRange: priceRange.trim() ? `${priceRange.trim()} (${priceUnit})` : undefined,
+        priceRange: priceRange.trim() || undefined,
+        priceUnit: priceUnit,
+        availability_en: availability.trim() || undefined,
+        availability_ar: availabilityAr.trim() || undefined,
+        contactPhone: contactPhone.trim() || undefined,
+        contactEmail: contactEmail.trim() || undefined,
+        languages: languages.trim() ? languages.split(",").map((l) => l.trim()).filter(Boolean) : undefined,
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
       });
 

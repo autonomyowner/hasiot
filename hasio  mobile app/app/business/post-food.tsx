@@ -31,7 +31,7 @@ const FOOD_CATEGORIES: { value: FoodCategory; labelKey: string }[] = [
 export default function PostFoodScreen() {
   const router = useRouter();
   const { t, isRTL } = useLanguage();
-  const createListing = useMutation(api.listings.mutations.createListing);
+  const submitListing = useMutation(api.listings.mutations.submitListing);
 
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
@@ -75,7 +75,7 @@ export default function PostFoodScreen() {
         ? await uploadMultipleToR2(images, "food")
         : [];
 
-      await createListing({
+      await submitListing({
         type: "restaurant",
         name_en: name.trim(),
         name_ar: nameAr.trim(),

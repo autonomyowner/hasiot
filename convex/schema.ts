@@ -78,6 +78,44 @@ export default defineSchema({
       filterFields: ["type", "category", "city"],
     }),
 
+  // Freelancer services (photographers, drivers, guides, etc.)
+  services: defineTable({
+    ownerId: v.id("users"),
+    serviceType: v.string(), // "tour_guide" | "photographer" | "driver" | "translator" | "event_planner" | "catering" | "equipment_rental" | "other"
+    title_en: v.string(),
+    title_ar: v.string(),
+    description_en: v.optional(v.string()),
+    description_ar: v.optional(v.string()),
+    priceRange: v.optional(v.string()), // e.g., "100-200 SAR"
+    priceUnit: v.optional(v.string()), // "per_hour" | "per_day" | "per_event" | "fixed"
+    availability_en: v.optional(v.string()),
+    availability_ar: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    languages: v.optional(v.array(v.string())),
+    images: v.optional(v.array(v.string())),
+    city: v.optional(v.string()),
+    region: v.optional(v.string()),
+    coordinates: v.optional(v.object({
+      lat: v.number(),
+      lng: v.number(),
+    })),
+    rating: v.optional(v.number()),
+    reviewCount: v.optional(v.number()),
+    status: v.string(), // "pending" | "approved" | "rejected"
+    rejectionReason: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_ownerId", ["ownerId"])
+    .index("by_status", ["status"])
+    .index("by_serviceType", ["serviceType"])
+    .index("by_owner_and_status", ["ownerId", "status"])
+    .searchIndex("search_services", {
+      searchField: "title_en",
+      filterFields: ["serviceType", "city"],
+    }),
+
   // Availability schedules for listings
   availabilitySchedules: defineTable({
     listingId: v.id("listings"),
