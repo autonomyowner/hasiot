@@ -2529,33 +2529,38 @@
   .mobile-bottom-nav {
     display: flex;
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 80px;
+    left: 12px;
+    right: auto;
     z-index: 100;
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
-    padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
-    gap: 8px;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 14px;
+    padding: 4px;
+    gap: 4px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   }
 
   .mobile-bottom-nav-btn {
-    flex: 1;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 4px;
-    padding: 10px 0;
-    border-radius: 14px;
+    gap: 5px;
+    padding: 7px 12px;
+    border-radius: 11px;
     background: rgba(13, 122, 95, 0.08);
     color: #0D7A5F;
     text-decoration: none;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     transition: background 0.2s, transform 0.15s;
+    white-space: nowrap;
+  }
+
+  .mobile-bottom-nav-btn svg {
+    width: 16px;
+    height: 16px;
   }
 
   .mobile-bottom-nav-btn:active {
