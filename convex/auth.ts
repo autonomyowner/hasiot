@@ -37,6 +37,15 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
   });
 };
 
+// Require admin role — throws if not authenticated or not admin
+export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
+  const user = await getAuthenticatedAppUser(ctx);
+  if (!user || user.role !== "admin") {
+    throw new Error("Unauthorized: admin access required");
+  }
+  return user;
+}
+
 // Get authenticated user from the app's users table (not better-auth's internal table)
 // IMPORTANT: Wrap in try-catch — authComponent.getAuthUser throws when unauthenticated
 export async function getAuthenticatedAppUser(ctx: QueryCtx | MutationCtx) {

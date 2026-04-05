@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedAppUser } from "../auth";
+import { getAuthenticatedAppUser, requireAdmin } from "../auth";
 
 // Generate an upload URL for business document
 export const generateUploadUrl = mutation({
@@ -137,6 +137,7 @@ export const setUserRole = mutation({
 export const approveBusinessAccount = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const targetUser = await ctx.db.get(args.userId);
     if (!targetUser) {
       throw new Error("User not found");

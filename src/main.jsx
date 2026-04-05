@@ -1,34 +1,37 @@
-import { StrictMode } from 'react'
+import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { ConvexReactClient, ConvexProvider } from 'convex/react'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { ConvexReactClient } from 'convex/react'
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react'
 import { authClient } from './lib/auth-client'
 import './index.css'
-import App from './App.jsx'
-import MapPage from './MapPage.jsx'
-import AdminPage from './AdminPage.jsx'
-import OnboardingPage from './pages/OnboardingPage.jsx'
-import SignInPage from './pages/SignInPage.jsx'
-import SignUpPage from './pages/SignUpPage.jsx'
-import BusinessDashboard from './pages/DoctorDashboard.jsx'
-import TouristDashboard from './pages/PatientDashboard.jsx'
-import ListingsPage from './pages/ListingsPage.jsx'
-import ServicesPage from './pages/ServicesPage.jsx'
+
+// Lazy-load all route components
+const App = lazy(() => import('./App.jsx'))
+const MapPage = lazy(() => import('./MapPage.jsx'))
+const AdminPage = lazy(() => import('./AdminPage.jsx'))
+const OnboardingPage = lazy(() => import('./pages/OnboardingPage.jsx'))
+const SignInPage = lazy(() => import('./pages/SignInPage.jsx'))
+const SignUpPage = lazy(() => import('./pages/SignUpPage.jsx'))
+const BusinessDashboard = lazy(() => import('./pages/DoctorDashboard.jsx'))
+const TouristDashboard = lazy(() => import('./pages/PatientDashboard.jsx'))
+const ListingsPage = lazy(() => import('./pages/ListingsPage.jsx'))
+const ServicesPage = lazy(() => import('./pages/ServicesPage.jsx'))
 
 // Convex client — needs VITE_CONVEX_URL to be set
 const convexUrl = import.meta.env.VITE_CONVEX_URL
 const convex = convexUrl ? new ConvexReactClient(convexUrl) : null
 
-// Admin routes use ConvexProvider without auth (has its own session auth)
-function AdminRoutes() {
-  if (!convex) return <NoBackend />
+// Simple page loader (not lazy-loaded)
+function PageLoader() {
   return (
-    <ConvexProvider client={convex}>
-      <Routes>
-        <Route path="/admin" element={<AdminPage />} />
-      </Routes>
-    </ConvexProvider>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', fontFamily: 'system-ui' }}>
+      <div style={{
+        width: 40, height: 40, border: '3px solid #e5e7eb', borderTopColor: '#0D7A5F',
+        borderRadius: '50%', animation: 'spin 0.8s linear infinite'
+      }} />
+      <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+    </div>
   )
 }
 
@@ -38,29 +41,34 @@ function RootRedirect() {
   return done ? <Navigate to="/home" replace /> : <Navigate to="/welcome" replace />
 }
 
-// Main app routes with Better-Auth
+// All routes under Better-Auth provider (including admin)
 function MainRoutes() {
   if (!convex) {
     return (
-      <Routes>
-        <Route path="*" element={<App />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="*" element={<App />} />
+        </Routes>
+      </Suspense>
     )
   }
   return (
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
-      <Routes>
-        <Route path="/" element={<RootRedirect />} />
-        <Route path="/welcome" element={<OnboardingPage />} />
-        <Route path="/home" element={<App />} />
-        <Route path="/explore" element={<MapPage />} />
-        <Route path="/sign-in" element={<SignInPage />} />
-        <Route path="/sign-up" element={<SignUpPage />} />
-        <Route path="/dashboard" element={<TouristDashboard />} />
-        <Route path="/business" element={<BusinessDashboard />} />
-        <Route path="/listings" element={<ListingsPage />} />
-        <Route path="/services" element={<ServicesPage />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<RootRedirect />} />
+          <Route path="/welcome" element={<OnboardingPage />} />
+          <Route path="/home" element={<App />} />
+          <Route path="/explore" element={<MapPage />} />
+          <Route path="/sign-in" element={<SignInPage />} />
+          <Route path="/sign-up" element={<SignUpPage />} />
+          <Route path="/dashboard" element={<TouristDashboard />} />
+          <Route path="/business" element={<BusinessDashboard />} />
+          <Route path="/listings" element={<ListingsPage />} />
+          <Route path="/services" element={<ServicesPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+        </Routes>
+      </Suspense>
     </ConvexBetterAuthProvider>
   )
 }
@@ -76,28 +84,10 @@ function NoBackend() {
   )
 }
 
-// Router component that decides which provider to use
-function AppRouter() {
-  const location = useLocation()
-
-  // Admin routes bypass auth provider entirely
-  if (location.pathname.startsWith('/admin')) {
-    return <AdminRoutes />
-  }
-
-  return <MainRoutes />
-}
-
-function AppWithProviders() {
-  return (
-    <BrowserRouter>
-      <AppRouter />
-    </BrowserRouter>
-  )
-}
-
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AppWithProviders />
+    <BrowserRouter>
+      <MainRoutes />
+    </BrowserRouter>
   </StrictMode>,
 )

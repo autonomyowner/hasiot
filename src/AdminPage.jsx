@@ -3,11 +3,9 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '../convex/_generated/api'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useCurrentUser } from './hooks/useCurrentUser'
+import { authClient } from './lib/auth-client'
 import './AdminPage.css'
-
-// Admin credentials
-const ADMIN_USERNAME = 'admin'
-const ADMIN_PASSWORD = 'admin2026'
 
 // Saudi cities
 const SAUDI_CITIES = [
@@ -71,44 +69,48 @@ const KNOWLEDGE_CATEGORIES = [
 ]
 
 export default function AdminPage() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [loginError, setLoginError] = useState('')
+  const { user, isLoading, isAuthenticated } = useCurrentUser()
   const [activeTab, setActiveTab] = useState('dashboard')
 
   useEffect(() => {
-    const session = sessionStorage.getItem('hasio_admin_auth')
-    if (session === 'authenticated') {
-      setIsAuthenticated(true)
+    if (!isLoading && !isAuthenticated) {
+      window.location.href = '/sign-in'
     }
-  }, [])
+  }, [isLoading, isAuthenticated])
 
-  const handleLogin = (e) => {
-    e.preventDefault()
-    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-      setIsAuthenticated(true)
-      sessionStorage.setItem('hasio_admin_auth', 'authenticated')
-      setLoginError('')
-    } else {
-      setLoginError('اسم المستخدم أو كلمة المرور غير صحيحة')
-    }
+  const handleLogout = async () => {
+    await authClient.signOut()
+    window.location.href = '/'
   }
 
-  const handleLogout = () => {
-    setIsAuthenticated(false)
-    sessionStorage.removeItem('hasio_admin_auth')
+  if (isLoading || (!isAuthenticated)) {
+    return (
+      <div className="admin-login" dir="rtl">
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+          <div className="admin-spinner" />
+        </div>
+      </div>
+    )
   }
 
-  if (!isAuthenticated) {
-    return <LoginForm
-      username={username}
-      setUsername={setUsername}
-      password={password}
-      setPassword={setPassword}
-      loginError={loginError}
-      handleLogin={handleLogin}
-    />
+  if (user?.role !== 'admin') {
+    return (
+      <div className="admin-login" dir="rtl">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="admin-login-card"
+        >
+          <div className="admin-login-header">
+            <h1 className="admin-login-title">غير مصرح</h1>
+            <p className="admin-login-subtitle">ليس لديك صلاحية الوصول إلى لوحة التحكم</p>
+          </div>
+          <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+            <Link to="/" className="admin-link">العودة للرئيسية</Link>
+          </div>
+        </motion.div>
+      </div>
+    )
   }
 
   return (
@@ -117,7 +119,7 @@ export default function AdminPage() {
         <div className="admin-header-inner">
           <Link to="/" className="admin-logo">لوحة تحكم هاسيو</Link>
           <div className="admin-header-right">
-            <span className="admin-header-user">مرحباً، المدير</span>
+            <span className="admin-header-user">مرحباً، {user.firstName || 'المدير'}</span>
             <button onClick={handleLogout} className="admin-btn admin-btn-secondary admin-btn-small">
               تسجيل الخروج
             </button>
@@ -164,56 +166,6 @@ export default function AdminPage() {
   )
 }
 
-function LoginForm({ username, setUsername, password, setPassword, loginError, handleLogin }) {
-  return (
-    <div className="admin-login" dir="rtl">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="admin-login-card"
-      >
-        <div className="admin-login-header">
-          <h1 className="admin-login-title">لوحة تحكم هاسيو</h1>
-          <p className="admin-login-subtitle">سجّل الدخول للوصول إلى لوحة التحكم</p>
-        </div>
-
-        <form onSubmit={handleLogin} className="admin-form">
-          {loginError && <div className="admin-error">{loginError}</div>}
-
-          <div className="admin-form-group">
-            <label className="admin-form-label">اسم المستخدم</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="admin-form-input"
-              placeholder="أدخل اسم المستخدم"
-            />
-          </div>
-
-          <div className="admin-form-group">
-            <label className="admin-form-label">كلمة المرور</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="admin-form-input"
-              placeholder="أدخل كلمة المرور"
-            />
-          </div>
-
-          <button type="submit" className="admin-btn admin-btn-primary">
-            تسجيل الدخول
-          </button>
-        </form>
-
-        <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-          <Link to="/" className="admin-link">العودة للرئيسية</Link>
-        </div>
-      </motion.div>
-    </div>
-  )
-}
 
 function DashboardTab() {
   const stats = useQuery(api.admin.queries.getDashboardStats)

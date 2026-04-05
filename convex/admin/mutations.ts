@@ -1,5 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAdmin } from "../auth";
 
 // Create a new listing
 export const createListing = mutation({
@@ -28,6 +29,7 @@ export const createListing = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const now = Date.now();
     const id = await ctx.db.insert("listings", {
       ...args,
@@ -71,6 +73,7 @@ export const updateListing = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const { id, ...updates } = args;
     const existing = await ctx.db.get(id);
     if (!existing) {
@@ -89,6 +92,7 @@ export const updateListing = mutation({
 export const deleteListing = mutation({
   args: { id: v.id("listings") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     await ctx.db.delete(args.id);
     return { success: true };
   },
@@ -111,6 +115,7 @@ export const createKnowledgeData = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const now = Date.now();
     const id = await ctx.db.insert("travelKnowledge", {
       ...args,
@@ -140,6 +145,7 @@ export const updateKnowledgeData = mutation({
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const { id, ...updates } = args;
     const existing = await ctx.db.get(id);
     if (!existing) {
@@ -158,6 +164,7 @@ export const updateKnowledgeData = mutation({
 export const deleteKnowledgeData = mutation({
   args: { id: v.id("travelKnowledge") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     await ctx.db.delete(args.id);
     return { success: true };
   },
@@ -170,6 +177,7 @@ export const updateBookingStatus = mutation({
     status: v.string(),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const existing = await ctx.db.get(args.id);
     if (!existing) {
       throw new Error("Booking not found");
@@ -187,6 +195,7 @@ export const updateBookingStatus = mutation({
 export const approveContent = mutation({
   args: { id: v.id("listings") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const listing = await ctx.db.get(args.id);
     if (!listing) throw new Error("Listing not found");
 
@@ -206,6 +215,7 @@ export const rejectContent = mutation({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const listing = await ctx.db.get(args.id);
     if (!listing) throw new Error("Listing not found");
 
@@ -222,6 +232,7 @@ export const rejectContent = mutation({
 export const approveService = mutation({
   args: { id: v.id("services") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const service = await ctx.db.get(args.id);
     if (!service) throw new Error("Service not found");
 
@@ -241,6 +252,7 @@ export const rejectService = mutation({
     reason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const service = await ctx.db.get(args.id);
     if (!service) throw new Error("Service not found");
 
@@ -273,6 +285,7 @@ export const bulkImportListings = mutation({
     })),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     const now = Date.now();
     const ids = [];
 

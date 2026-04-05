@@ -1,10 +1,12 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { requireAdmin } from "../auth";
 
 // Get dashboard statistics
 export const getDashboardStats = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const listings = await ctx.db.query("listings").collect();
     const bookings = await ctx.db.query("bookings").collect();
     const users = await ctx.db.query("users").collect();
@@ -53,6 +55,7 @@ export const listAllListings = query({
     city: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     let q = ctx.db.query("listings");
 
     if (args.type) {
@@ -76,6 +79,7 @@ export const listKnowledgeData = query({
     activeOnly: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     let q = ctx.db.query("travelKnowledge");
 
     if (args.category) {
@@ -96,6 +100,7 @@ export const listKnowledgeData = query({
 export const getKnowledgeData = query({
   args: { id: v.id("travelKnowledge") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     return await ctx.db.get(args.id);
   },
 });
@@ -104,6 +109,7 @@ export const getKnowledgeData = query({
 export const getListing = query({
   args: { id: v.id("listings") },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     return await ctx.db.get(args.id);
   },
 });
@@ -115,6 +121,7 @@ export const listAllBookings = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    await requireAdmin(ctx);
     let bookings = await ctx.db
       .query("bookings")
       .order("desc")
@@ -146,6 +153,7 @@ export const listAllBookings = query({
 export const getCities = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const listings = await ctx.db.query("listings").collect();
     const cities = [...new Set(listings.map(l => l.city))].sort();
     return cities;
@@ -156,6 +164,7 @@ export const getCities = query({
 export const getCategories = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const listings = await ctx.db.query("listings").collect();
     const categories = [...new Set(listings.map(l => l.category))].sort();
     return categories;
@@ -166,6 +175,7 @@ export const getCategories = query({
 export const listPendingContent = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const listings = await ctx.db
       .query("listings")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
@@ -195,6 +205,7 @@ export const listPendingContent = query({
 export const listPendingServices = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const services = await ctx.db
       .query("services")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
@@ -220,6 +231,7 @@ export const listPendingServices = query({
 export const listPendingBusinesses = query({
   args: {},
   handler: async (ctx) => {
+    await requireAdmin(ctx);
     const pendingOwners = await ctx.db
       .query("users")
       .withIndex("by_role_and_approval", (q) =>
