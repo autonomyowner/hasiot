@@ -11,3 +11,7 @@ dist/
 web-build/
 ios/
 android/
+
+# Allow icon assets inside IconKitchen-Output
+!assets/IconKitchen-Output/android/
+!assets/IconKitchen-Output/android/**

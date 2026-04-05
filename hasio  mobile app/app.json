@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.hasio.travel",
-      "icon": "./assets/IconKitchen-Output/ios/AppIcon@2x.png",
+      "icon": "./assets/IconKitchen-Output/android/play_store_512.png",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Hasio needs access to your photos to save and share your travel moments.",
         "NSCameraUsageDescription": "Hasio needs access to your camera to capture travel moments.",
@@ -30,7 +30,7 @@
         "backgroundColor": "#F5A623"
       },
       "package": "com.hasio.travel",
-      "versionCode": 7,
+      "versionCode": 8,
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES"
@@ -52,13 +52,16 @@
       "expo-font",
       "expo-image-picker",
       "expo-updates",
-      ["expo-build-properties", {
-        "android": {
-          "compileSdkVersion": 35,
-          "targetSdkVersion": 35,
-          "buildToolsVersion": "35.0.0"
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
+          }
         }
-      }]
+      ]
     ],
     "experiments": {
       "typedRoutes": true
