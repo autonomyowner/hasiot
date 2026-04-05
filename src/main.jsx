@@ -4,11 +4,15 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ConvexReactClient } from 'convex/react'
 import { ConvexBetterAuthProvider } from '@convex-dev/better-auth/react'
 import { authClient } from './lib/auth-client'
+import ErrorBoundary from './components/ErrorBoundary'
 import './index.css'
 
 // Lazy-load all route components
 const App = lazy(() => import('./App.jsx'))
-const MapPage = lazy(() => import('./MapPage.jsx'))
+const MapPage = lazy(() => import('./MapPage.jsx').catch(() => {
+  // Retry once on chunk load failure (common with slow connections)
+  return new Promise(resolve => setTimeout(resolve, 1500)).then(() => import('./MapPage.jsx'))
+}))
 const AdminPage = lazy(() => import('./AdminPage.jsx'))
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage.jsx'))
 const SignInPage = lazy(() => import('./pages/SignInPage.jsx'))
@@ -54,6 +58,7 @@ function MainRoutes() {
   }
   return (
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+      <ErrorBoundary>
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<RootRedirect />} />
@@ -69,6 +74,7 @@ function MainRoutes() {
           <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </Suspense>
+      </ErrorBoundary>
     </ConvexBetterAuthProvider>
   )
 }
