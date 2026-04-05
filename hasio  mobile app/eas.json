@@ -24,6 +24,10 @@
       },
       "ios": {
         "distribution": "internal"
+      },
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://dazzling-mosquito-29.eu-west-1.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://dazzling-mosquito-29.eu-west-1.convex.site"
       }
     },
     "production": {
