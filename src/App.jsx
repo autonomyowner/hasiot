@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { useMutation } from 'convex/react'
 import { api } from '../convex/_generated/api'
+import { authClient } from './lib/auth-client'
 import './App.css'
 
 const hasConvex = !!import.meta.env.VITE_CONVEX_URL
@@ -402,10 +403,13 @@ function App() {
   const [chatStep, setChatStep] = useState(0)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [showTravelPlanner, setShowTravelPlanner] = useState(false)
+  const [showMobileChat, setShowMobileChat] = useState(false)
   const [earlyEmail, setEarlyEmail] = useState('')
   const [earlyStatus, setEarlyStatus] = useState(null) // null | 'submitting' | 'success' | 'duplicate' | 'error'
   const captureEmail = hasConvex ? useMutation(api.emailCaptures.mutations.captureEmail) : null
 
+  const session = hasConvex ? authClient.useSession() : { data: null }
+  const isLoggedIn = !!session?.data
   const t = translations[lang]
   const isRTL = lang === 'ar'
 
@@ -971,8 +975,10 @@ function App() {
         </div>
       </footer>
 
-      {/* Floating Chat Widget */}
-      <Suspense fallback={null}><ChatWidget lang={lang} /></Suspense>
+      {/* Chat Widget (hidden on mobile - triggered from bottom nav) */}
+      <div className="chat-widget-desktop">
+        <Suspense fallback={null}><ChatWidget lang={lang} /></Suspense>
+      </div>
 
       {/* Travel Planner Modal */}
       <AnimatePresence>
@@ -1012,17 +1018,59 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* Mobile bottom nav - Destinations & Services */}
-      <div className="mobile-bottom-nav">
-        <Link to="/listings" className="mobile-bottom-nav-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="mobile-bottom-nav">
+        <Link to="/listings" className="mobile-bottom-nav-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           <span>{t.nav.listings}</span>
         </Link>
-        <Link to="/services" className="mobile-bottom-nav-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <Link to="/services" className="mobile-bottom-nav-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           <span>{t.nav.freelancers}</span>
         </Link>
-      </div>
+        <Link to="/home" className="mobile-bottom-nav-item mobile-bottom-nav-home">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>{lang === 'ar' ? 'الرئيسية' : 'Home'}</span>
+        </Link>
+        <button className="mobile-bottom-nav-item" onClick={() => setShowMobileChat(!showMobileChat)}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>{lang === 'ar' ? 'المحادثة' : 'Chat'}</span>
+        </button>
+        <Link to={isLoggedIn ? '/dashboard' : '/sign-in'} className="mobile-bottom-nav-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span>{lang === 'ar' ? 'حسابي' : 'Profile'}</span>
+        </Link>
+      </nav>
+
+      {/* Mobile Chat Panel */}
+      <AnimatePresence>
+        {showMobileChat && (
+          <motion.div
+            className="mobile-chat-panel"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          >
+            <div className="mobile-chat-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 32, height: 32, background: '#fff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                  <img src="/logo.png" alt="Hasio" style={{ width: 22, height: 22, objectFit: 'contain' }} />
+                </div>
+                <span style={{ fontWeight: 600, fontSize: 15 }}>Hasio</span>
+              </div>
+              <button onClick={() => setShowMobileChat(false)} className="mobile-chat-close">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            <div className="mobile-chat-body">
+              <Suspense fallback={null}>
+                <TravelPlanner lang={lang} onBookListing={(data) => { console.log('Book:', data); setShowMobileChat(false) }} />
+              </Suspense>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
