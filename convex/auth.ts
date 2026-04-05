@@ -33,6 +33,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       },
     },
     plugins: [convex({ authConfig })],
+    // Google OAuth removed — using email/password only
   });
 };
 
