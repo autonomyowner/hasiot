@@ -15,7 +15,7 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation } from "convex/react";
-import { api } from "@/convex";
+import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { Button } from "@/components/ui";
@@ -86,8 +86,8 @@ export default function PostDestinationScreen() {
         description_en: description.trim() || undefined,
         description_ar: descriptionAr.trim() || undefined,
         address: address.trim() || name.trim(),
-        city: city.trim() || "Saudi Arabia",
-        coordinates: { lat: 24.7136, lng: 46.6753 },
+        city: city.trim() || "Al-Ahsa",
+        coordinates: { lat: 25.3854, lng: 49.5683 },
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
       });
 

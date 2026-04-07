@@ -8,7 +8,7 @@ import ImageCarousel from '../components/ImageCarousel'
 const translations = {
   ar: {
     title: 'الوجهات',
-    subtitle: 'استكشف الفنادق والمطاعم والمعالم السياحية في السعودية',
+    subtitle: 'استكشف الفنادق والمطاعم والمعالم السياحية في الأحساء',
     search: 'ابحث...',
     allTypes: 'الكل',
     allCities: 'كل المدن',
@@ -23,7 +23,7 @@ const translations = {
   },
   en: {
     title: 'Destinations',
-    subtitle: 'Explore hotels, restaurants, and attractions across Saudi Arabia',
+    subtitle: 'Explore hotels, restaurants, and attractions across Al-Ahsa',
     search: 'Search...',
     allTypes: 'All',
     allCities: 'All Cities',

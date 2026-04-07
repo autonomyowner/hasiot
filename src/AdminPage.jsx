@@ -9,32 +9,27 @@ import './AdminPage.css'
 
 // Saudi cities
 const SAUDI_CITIES = [
-  "Riyadh", "Jeddah", "Mecca", "Medina", "Dammam", "Al Khobar", "Dhahran",
-  "Tabuk", "Taif", "Abha", "Khamis Mushait", "Jizan", "Najran", "Hail",
-  "Al Baha", "Arar", "Sakaka", "AlUla", "Yanbu", "Al Jubail"
+  "Hofuf", "Mubarraz", "Al Oyoun", "Al Omran", "Al Jafer",
+  "Al Battaliyah", "Al Taraf", "Al Shuqaiq", "Al Qarah", "Al Kilabiyah",
+  "Al Jishshah", "Al Fudhool", "Al Marah", "Al Hulaila", "Al Salhiyah"
 ]
 
 const SAUDI_CITIES_AR = {
-  "Riyadh": "الرياض",
-  "Jeddah": "جدة",
-  "Mecca": "مكة المكرمة",
-  "Medina": "المدينة المنورة",
-  "Dammam": "الدمام",
-  "Al Khobar": "الخبر",
-  "Dhahran": "الظهران",
-  "Tabuk": "تبوك",
-  "Taif": "الطائف",
-  "Abha": "أبها",
-  "Khamis Mushait": "خميس مشيط",
-  "Jizan": "جازان",
-  "Najran": "نجران",
-  "Hail": "حائل",
-  "Al Baha": "الباحة",
-  "Arar": "عرعر",
-  "Sakaka": "سكاكا",
-  "AlUla": "العلا",
-  "Yanbu": "ينبع",
-  "Al Jubail": "الجبيل"
+  "Hofuf": "الهفوف",
+  "Mubarraz": "المبرز",
+  "Al Oyoun": "العيون",
+  "Al Omran": "العمران",
+  "Al Jafer": "الجفر",
+  "Al Battaliyah": "البطالية",
+  "Al Taraf": "الطرف",
+  "Al Shuqaiq": "الشقيق",
+  "Al Qarah": "القارة",
+  "Al Kilabiyah": "الكلابية",
+  "Al Jishshah": "الجشة",
+  "Al Fudhool": "الفضول",
+  "Al Marah": "المراح",
+  "Al Hulaila": "الحليلة",
+  "Al Salhiyah": "الصالحية"
 }
 
 const CATEGORIES = [
@@ -426,10 +421,10 @@ function ListingForm({ onSubmit, onClose, initialData }) {
     description_en: initialData?.description_en || '',
     description_ar: initialData?.description_ar || '',
     address: initialData?.address || '',
-    city: initialData?.city || 'Riyadh',
+    city: initialData?.city || 'Hofuf',
     region: initialData?.region || '',
-    lat: initialData?.coordinates?.lat || 24.7136,
-    lng: initialData?.coordinates?.lng || 46.6753,
+    lat: initialData?.coordinates?.lat || 25.3854,
+    lng: initialData?.coordinates?.lng || 49.5683,
     phone: initialData?.phone || '',
     email: initialData?.email || '',
     website: initialData?.website || '',

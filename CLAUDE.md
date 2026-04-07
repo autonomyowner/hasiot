@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hasio is a Saudi Arabia travel guide platform with two codebases in this repo: a **React + Vite website** and a **React Native (Expo) mobile app**. Both share the same Convex backend. Features include an AI travel planner, hotel/restaurant/attraction directory with interactive map, booking system, trip itinerary builder, freelancer services marketplace, and favorite listings.
+Hasio is an **Al-Ahsa travel guide platform** with two codebases in this repo: a **React + Vite website** and a **React Native (Expo) mobile app**. Both share the same Convex backend. Features include an AI travel planner, hotel/restaurant/attraction directory with interactive map, booking system, trip itinerary builder, freelancer services marketplace, and favorite listings.
+
+**Al-Ahsa Focus:** The app is specifically for Al-Ahsa (الأحساء), the largest governorate in Saudi Arabia's Eastern Province, named after the Al-Ahsa Oasis. In Classical Arabic, 'Ahsa' means the sound of water underground. All content, city dropdowns, map center, AI planner, and seed data should reference Al-Ahsa area locations — NOT all of Saudi Arabia.
 
 Three user roles: tourists (immediate access), business owners (post listings — hotels/restaurants/events/attractions), and service providers (post freelancer services — photographer/driver/guide/etc.). Business and service accounts require document upload + admin approval.
 
@@ -69,7 +71,7 @@ All admin queries/mutations in `convex/admin/` and `approveBusinessAccount` in `
 
 - `src/main.jsx` — Routing: `/`, `/explore`, `/listings`, `/services`, `/sign-in`, `/sign-up`, `/dashboard`, `/business`, `/admin`. All routes lazy-loaded with `Suspense`.
 - `src/App.jsx` — Landing page with `translations` object for AR/EN. Lazy-loads Convex-dependent components. Has a **mobile-only fixed bottom nav** (bottom-left, above chat FAB) with Destinations and Services buttons.
-- `src/MapPage.jsx` — Mapbox GL map centered on Riyadh (24.7136, 46.6753). Token loaded at runtime from Convex via `config.queries.getPublicConfig`.
+- `src/MapPage.jsx` — Mapbox GL map centered on Al-Ahsa/Hofuf (25.3854, 49.5683). Token loaded at runtime from Convex via `config.queries.getPublicConfig`.
 - `src/AdminPage.jsx` — Arabic RTL admin dashboard. Auth via Better-Auth (`useCurrentUser()` + `role === "admin"` check). Redirects to `/sign-in` if not logged in, shows "access denied" if not admin. Tabs: stats, listings, content approval, services approval, pending businesses, knowledge base, bookings, emails.
 - `src/pages/DoctorDashboard.jsx` — **Business/service provider dashboard**. Role-adaptive tabs: service providers see services tab, business owners see listings tab. Includes `ImageUploader` component for multi-image upload to Convex storage.
 - `src/pages/ListingsPage.jsx` — **Public browse page** for approved hotels, restaurants, attractions, events, tours. Filter by type/city/search. Bilingual. Uses `api.listings.queries.listListings` and `searchListings`.
@@ -86,7 +88,9 @@ Located in `hasio  mobile app/` (note the double space in directory name). Share
 - `app/business/` — Business owner screens: `post-lodging.tsx`, `post-food.tsx`, `post-event.tsx`, `post-destination.tsx`, `my-listings.tsx`
 - `app/provider/` — Service provider screens: `post-service.tsx`, `my-services.tsx`
 - `app/(tabs)/` — Main tab navigation
-- Images uploaded via R2 (`lib/r2Upload.ts`), stored as URL strings
+- Images uploaded via Convex storage (`lib/convexUpload.ts`), stored as URL strings
+
+**Mobile API import**: The Convex `api` object is exported from `backend/index.ts` (NOT `convex/`). All mobile app files import it as `import { api } from "@/backend"`. The directory was renamed from `convex/` to `backend/` because Metro bundler resolves `@/convex` to the `convex` npm package instead of the local directory. **Never rename `backend/` back to `convex/`** — it will break all API calls at runtime with "Cannot read property of undefined" errors.
 
 **Mobile → Backend mapping**: Mobile business forms use `api.listings.mutations.submitListing` (auto-sets ownerId + pending status). Service provider forms use `api.services.mutations.submitService`.
 

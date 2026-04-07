@@ -30,10 +30,10 @@ const translations = {
     },
     // Hero
     hero: {
-      badge: 'اكتشف السعودية',
+      badge: 'اكتشف الأحساء',
       title: 'سفرك،',
       titleHighlight: 'أسهل',
-      description: 'هاسيو يربطك بمخطط رحلات ذكي، فنادق، مطاعم، ومعالم سياحية — كل ذلك في منصة واحدة مصممة لاستكشاف السعودية.',
+      description: 'هاسيو يربطك بمخطط رحلات ذكي، فنادق، مطاعم، ومعالم سياحية — كل ذلك في منصة واحدة مصممة لاستكشاف الأحساء.',
       btnPrimary: 'خطط رحلتك الآن',
       btnSecondary: 'استكشف الوجهات',
       stats: {
@@ -56,7 +56,7 @@ const translations = {
       label: 'المميزات',
       title: 'كل ما تحتاجه',
       titleHighlight: 'لرحلة مثالية',
-      description: 'من التخطيط الذكي إلى الحجز الفوري، هاسيو يجلب لك تجربة سفر متكاملة في السعودية.',
+      description: 'من التخطيط الذكي إلى الحجز الفوري، هاسيو يجلب لك تجربة سفر متكاملة في الأحساء.',
       items: [
         {
           number: '01',
@@ -66,7 +66,7 @@ const translations = {
         {
           number: '02',
           title: 'فنادق وإقامة',
-          description: 'اعثر على أفضل الفنادق والشاليهات والمنتجعات في جميع الـ13 منطقة. فلتر حسب السعر، التقييم، والموقع.'
+          description: 'اعثر على أفضل الفنادق والشاليهات والمنتجعات في الأحساء. فلتر حسب السعر، التقييم، والموقع.'
         },
         {
           number: '03',
@@ -81,7 +81,7 @@ const translations = {
         {
           number: '05',
           title: 'معالم سياحية',
-          description: 'استكشف المعالم والوجهات السياحية في كل منطقة. من المواقع التاريخية إلى المغامرات الطبيعية.'
+          description: 'استكشف المعالم والوجهات السياحية في الأحساء. من المواقع التاريخية إلى المغامرات الطبيعية.'
         },
         {
           number: '06',
@@ -108,10 +108,10 @@ const translations = {
       label: 'الخدمات',
       title: 'اكتشف',
       titleHighlight: 'خدماتنا الأساسية',
-      description: 'أدوات سفر شاملة مصممة خصيصاً لاستكشاف المملكة العربية السعودية.',
+      description: 'أدوات سفر شاملة مصممة خصيصاً لاستكشاف الأحساء.',
       directory: {
         title: 'دليل الفنادق والمنتجعات',
-        description: 'اعثر على الإقامة المثالية في أي مكان بالسعودية مع دليلنا الشامل.',
+        description: 'اعثر على الإقامة المثالية في أي مكان بالأحساء مع دليلنا الشامل.',
         features: [
           'عرض خريطة تفاعلية لجميع المواقع',
           'فلتر حسب السعر والتقييم والمرافق',
@@ -131,7 +131,7 @@ const translations = {
       },
       attractions: {
         title: 'المعالم السياحية',
-        description: 'اكتشف أجمل المعالم والوجهات السياحية في المملكة من تاريخ وثقافة وطبيعة.',
+        description: 'اكتشف أجمل المعالم والوجهات السياحية في الأحساء من تاريخ وثقافة وطبيعة.',
         features: [
           'دليل شامل لكل منطقة',
           'صور ومعلومات تفصيلية',
@@ -157,13 +157,13 @@ const translations = {
     cta: {
       title: 'كن من أوائل المستخدمين',
       titleHighlight: 'لهاسيو',
-      description: 'نعمل على بناء أفضل منصة سفر لاستكشاف السعودية. سجّل الآن لتكون من أوائل من يجرب هاسيو عند الإطلاق.',
+      description: 'نعمل على بناء أفضل منصة سفر لاستكشاف الأحساء. سجّل الآن لتكون من أوائل من يجرب هاسيو عند الإطلاق.',
       btnPrimary: 'سجّل للإطلاق المبكر',
       btnSecondary: 'تواصل معنا'
     },
     // Footer
     footer: {
-      description: 'نجعل السفر واستكشاف السعودية أسهل. حلول سفر مدعومة بالذكاء الاصطناعي في متناول يدك.',
+      description: 'نجعل السفر واستكشاف الأحساء أسهل. حلول سفر مدعومة بالذكاء الاصطناعي في متناول يدك.',
       phone: '+966 55 244 2119',
       product: {
         title: 'المنتج',
@@ -178,7 +178,7 @@ const translations = {
         links: ['مركز المساعدة', 'تواصل معنا', 'للفنادق', 'للمطاعم']
       },
       bottom: {
-        quote: '"السفر يُعلّمك أكثر مما تُعلّمك أي مدرسة" — المملكة العربية السعودية، أرض التاريخ والمستقبل',
+        quote: '"السفر يُعلّمك أكثر مما تُعلّمك أي مدرسة" — الأحساء، واحة التاريخ والحضارة',
         privacy: 'سياسة الخصوصية',
         terms: 'شروط الخدمة',
         cookies: 'سياسة ملفات تعريف الارتباط'
@@ -213,10 +213,10 @@ const translations = {
     },
     // Hero
     hero: {
-      badge: 'Discover Saudi Arabia',
+      badge: 'Discover Al-Ahsa',
       title: 'Your Travel,',
       titleHighlight: 'Simplified',
-      description: 'Hasio connects you with AI-powered trip planning, hotels, restaurants, and attractions — all in one platform designed to explore Saudi Arabia.',
+      description: 'Hasio connects you with AI-powered trip planning, hotels, restaurants, and attractions — all in one platform designed to explore Al-Ahsa.',
       btnPrimary: 'Plan Your Trip Now',
       btnSecondary: 'Explore Destinations',
       stats: {
@@ -229,17 +229,17 @@ const translations = {
     chat: {
       assistant: 'Hasio Assistant',
       online: 'Online now',
-      userMsg1: 'Where should I visit in Riyadh?',
-      botMsg1: 'Great choice! Riyadh has amazing spots. Would you like to explore historical sites like Diriyah or modern attractions like Boulevard City? Let me plan your trip.',
+      userMsg1: 'What should I visit in Al-Ahsa?',
+      botMsg1: 'Great choice! Al-Ahsa has amazing spots. Would you like to explore Al-Qarah caves or the historic Ibrahim Palace? Let me plan your trip.',
       userMsg2: 'Both! Plan me a 3-day trip',
-      botMsg2: 'Done! I\'ve created a 3-day itinerary covering Diriyah, Boulevard City, Kingdom Tower, and the National Museum, with 5 top-rated hotels and restaurants nearby.'
+      botMsg2: 'Done! I\'ve created a 3-day itinerary covering Al-Qarah caves, Ibrahim Palace, the Al-Ahsa Oasis, and Jawatha Mosque, with top-rated hotels and restaurants nearby.'
     },
     // Features
     features: {
       label: 'Features',
       title: 'Everything you need for',
       titleHighlight: 'the perfect trip',
-      description: 'From AI-powered planning to instant booking, Hasio brings a complete travel experience across Saudi Arabia.',
+      description: 'From AI-powered planning to instant booking, Hasio brings a complete travel experience across Al-Ahsa.',
       items: [
         {
           number: '01',
@@ -249,7 +249,7 @@ const translations = {
         {
           number: '02',
           title: 'Hotels & Stays',
-          description: 'Find the best hotels, chalets, and resorts across all 13 regions. Filter by price, rating, and location.'
+          description: 'Find the best hotels, chalets, and resorts across Al-Ahsa. Filter by price, rating, and location.'
         },
         {
           number: '03',
@@ -264,7 +264,7 @@ const translations = {
         {
           number: '05',
           title: 'Attractions',
-          description: 'Explore landmarks and tourist destinations in every region. From historical sites to natural adventures.'
+          description: 'Explore landmarks and tourist destinations across Al-Ahsa. From historical sites to natural adventures.'
         },
         {
           number: '06',
@@ -291,10 +291,10 @@ const translations = {
       label: 'Services',
       title: 'Explore our',
       titleHighlight: 'core services',
-      description: 'Comprehensive travel tools designed specifically for exploring Saudi Arabia.',
+      description: 'Comprehensive travel tools designed specifically for exploring Al-Ahsa.',
       directory: {
         title: 'Hotels & Resorts Directory',
-        description: 'Find the perfect stay anywhere in Saudi Arabia with our comprehensive directory.',
+        description: 'Find the perfect stay anywhere in Al-Ahsa with our comprehensive directory.',
         features: [
           'Interactive map view of all locations',
           'Filter by price, rating, and amenities',
@@ -314,7 +314,7 @@ const translations = {
       },
       attractions: {
         title: 'Tourist Attractions',
-        description: 'Discover the most beautiful landmarks and destinations across the Kingdom — history, culture, and nature.',
+        description: 'Discover the most beautiful landmarks and destinations across Al-Ahsa — history, culture, and nature.',
         features: [
           'Comprehensive guide for each region',
           'Photos and detailed information',
@@ -340,13 +340,13 @@ const translations = {
     cta: {
       title: 'Be among the first to use',
       titleHighlight: 'Hasio',
-      description: 'We are building the best travel platform for exploring Saudi Arabia. Sign up now to be among the first to try Hasio at launch.',
+      description: 'We are building the best travel platform for exploring Al-Ahsa. Sign up now to be among the first to try Hasio at launch.',
       btnPrimary: 'Sign Up for Early Access',
       btnSecondary: 'Contact Us'
     },
     // Footer
     footer: {
-      description: 'Making travel and exploring Saudi Arabia easier. AI-powered travel solutions at your fingertips.',
+      description: 'Making travel and exploring Al-Ahsa easier. AI-powered travel solutions at your fingertips.',
       phone: '+966 55 244 2119',
       product: {
         title: 'Product',
@@ -361,7 +361,7 @@ const translations = {
         links: ['Help Center', 'Contact Us', 'For Hotels', 'For Restaurants']
       },
       bottom: {
-        quote: '"Travel teaches you more than any school ever could" — Saudi Arabia, land of history and the future',
+        quote: '"Travel teaches you more than any school ever could" — Al-Ahsa, oasis of history and civilization',
         privacy: 'Privacy Policy',
         terms: 'Terms of Service',
         cookies: 'Cookie Policy'

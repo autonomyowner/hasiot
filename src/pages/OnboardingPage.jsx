@@ -6,14 +6,14 @@ import './OnboardingPage.css'
 const translations = {
   en: {
     greeting: 'Welcome to Hasio',
-    subtext: 'Your AI-powered travel companion for exploring Saudi Arabia. Discover hotels, restaurants, attractions, and plan the perfect trip.',
+    subtext: 'Your AI-powered travel companion for exploring Al-Ahsa. Discover hotels, restaurants, attractions, and plan the perfect trip.',
     selectLanguage: 'SELECT LANGUAGE',
     continueWithEmail: 'Continue with Email',
     skip: 'Skip and explore',
   },
   ar: {
     greeting: 'مرحباً بك في Hasio',
-    subtext: 'رفيق سفرك الذكي لاستكشاف المملكة العربية السعودية. اكتشف الفنادق والمطاعم والمعالم السياحية وخطط لرحلة مثالية.',
+    subtext: 'رفيق سفرك الذكي لاستكشاف الأحساء. اكتشف الفنادق والمطاعم والمعالم السياحية وخطط لرحلة مثالية.',
     selectLanguage: 'اختر اللغة',
     continueWithEmail: 'المتابعة بالبريد الإلكتروني',
     skip: 'تخطي واستكشف',

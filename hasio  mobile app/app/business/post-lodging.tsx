@@ -15,7 +15,7 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation } from "convex/react";
-import { api } from "@/convex";
+import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { Button } from "@/components/ui";
@@ -91,7 +91,7 @@ export default function PostLodgingScreen() {
         address: neighborhood.trim() || city.trim(),
         city: city.trim(),
         region: neighborhood.trim() || undefined,
-        coordinates: { lat: 24.7136, lng: 46.6753 },
+        coordinates: { lat: 25.3854, lng: 49.5683 },
         priceRange: priceRange.trim() || undefined,
         amenities: amenities ? amenities.split(",").map((a) => a.trim()).filter(Boolean) : undefined,
         images: uploadedImages.length > 0 ? uploadedImages : undefined,

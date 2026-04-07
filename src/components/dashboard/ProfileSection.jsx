@@ -3,9 +3,9 @@ import { useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 
 const SAUDI_CITIES = [
-  'Riyadh', 'Jeddah', 'Mecca', 'Medina', 'Dammam', 'Khobar', 'Dhahran',
-  'Tabuk', 'Abha', 'Taif', 'Hail', 'Buraidah', 'Najran', 'Jizan',
-  'Yanbu', 'Al Kharj', 'AlUla', 'NEOM', 'Jubail', 'Khamis Mushait'
+  'Hofuf', 'Mubarraz', 'Al Oyoun', 'Al Omran', 'Al Jafer',
+  'Al Battaliyah', 'Al Taraf', 'Al Shuqaiq', 'Al Qarah', 'Al Kilabiyah',
+  'Al Jishshah', 'Al Fudhool', 'Al Marah', 'Al Hulaila', 'Al Salhiyah'
 ]
 
 const translations = {

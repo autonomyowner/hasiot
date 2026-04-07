@@ -13,7 +13,7 @@ import { useCurrentUser } from './hooks/useCurrentUser'
 // Translations for the map page
 const mapTranslations = {
   ar: {
-    title: 'استكشف السعودية',
+    title: 'استكشف الأحساء',
     backHome: 'الرئيسية',
     searchPlaceholder: 'ابحث عن فندق، مطعم، أو معلم...',
     addNew: 'إضافة موقع جديد',
@@ -38,7 +38,7 @@ const mapTranslations = {
       searchLocation: 'البحث عن موقع',
       searchPlaceholder: 'ابحث عن عنوان أو مكان...',
       city: 'المدينة',
-      cityPlaceholder: 'مثال: الرياض',
+      cityPlaceholder: 'مثال: الهفوف',
       phone: 'الهاتف',
       phonePlaceholder: '05XX XXX XXXX',
       hours: 'ساعات العمل',
@@ -71,7 +71,7 @@ const mapTranslations = {
     }
   },
   en: {
-    title: 'Explore Saudi Arabia',
+    title: 'Explore Al-Ahsa',
     backHome: 'Home',
     searchPlaceholder: 'Search for a hotel, restaurant, or attraction...',
     addNew: 'Add New Location',
@@ -96,7 +96,7 @@ const mapTranslations = {
       searchLocation: 'Search Location',
       searchPlaceholder: 'Search for an address or place...',
       city: 'City',
-      cityPlaceholder: 'e.g. Riyadh',
+      cityPlaceholder: 'e.g. Hofuf',
       phone: 'Phone',
       phonePlaceholder: '05XX XXX XXXX',
       hours: 'Working Hours',
@@ -207,8 +207,8 @@ function MapPage() {
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/light-v11',
-      center: [46.6753, 24.7136], // Center on Riyadh
-      zoom: 5
+      center: [49.5683, 25.3854], // Center on Al-Ahsa (Hofuf)
+      zoom: 10
     })
 
     map.current.on('load', () => {
