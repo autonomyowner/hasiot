@@ -1,6 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
-import { getAuthenticatedAppUser, requireAdmin } from "../auth";
+import { getAuthenticatedAppUser, requireAdmin, authComponent, createAuth } from "../auth";
 
 // Generate an upload URL for business document
 export const generateUploadUrl = mutation({
@@ -109,6 +109,11 @@ export const setUserRole = mutation({
     lastName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const ALLOWED_ROLES = ["tourist", "business_owner", "service_provider"];
+    if (!ALLOWED_ROLES.includes(args.role)) {
+      throw new Error("Invalid role");
+    }
+
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
       throw new Error("Not authenticated");
@@ -232,7 +237,16 @@ export const deleteMyAccount = mutation({
       await ctx.storage.delete(user.cvFileId);
     }
 
-    // Delete the user record
+    // Delete from Better-Auth internal tables (user, session, account)
+    // so the email can be re-registered
+    try {
+      const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
+      await auth.api.deleteUser({ headers });
+    } catch (e) {
+      console.error("Failed to delete Better-Auth user (continuing):", e);
+    }
+
+    // Delete the app user record
     await ctx.db.delete(user._id);
 
     return { success: true };
@@ -250,6 +264,9 @@ export const createUser = mutation({
     businessType: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const ALLOWED_ROLES = ["tourist", "business_owner", "service_provider"];
+    const safeRole = ALLOWED_ROLES.includes(args.role) ? args.role : "tourist";
+
     const existing = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))
@@ -264,9 +281,9 @@ export const createUser = mutation({
       firstName: args.firstName,
       lastName: args.lastName,
       phone: args.phone,
-      role: args.role,
-      businessType: args.role === "business_owner" || args.role === "service_provider" ? args.businessType : undefined,
-      isApproved: args.role === "tourist" ? undefined : false,
+      role: safeRole,
+      businessType: safeRole === "business_owner" || safeRole === "service_provider" ? args.businessType : undefined,
+      isApproved: safeRole === "tourist" ? undefined : false,
       preferredLanguage: "ar",
       favoriteListingIds: [],
       createdAt: Date.now(),

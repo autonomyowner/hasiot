@@ -19,8 +19,8 @@ import { Feather } from "@expo/vector-icons";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useMutation } from "convex/react";
 import { api } from "@/backend";
-import { signIn, signUp, signOut, getAuthErrorKey } from "@/lib/auth";
-import { convex, refreshAuth } from "@/lib/convex";
+import { signIn, signUp, getAuthErrorKey } from "@/lib/auth";
+import { refreshAuth } from "@/lib/convex";
 import { useAppStore } from "@/stores/appStore";
 
 export default function AuthScreen() {
@@ -59,18 +59,6 @@ export default function AuthScreen() {
     try {
       if (mode === "signIn") {
         await signIn(email.trim(), password);
-        // Verify the user still exists in our users table (may have been deleted)
-        refreshAuth();
-        // Give Convex a moment to authenticate with the new token
-        await new Promise((r) => setTimeout(r, 1500));
-        const appUser = await convex.query(api.users.queries.getCurrentUser, {});
-        if (!appUser) {
-          await signOut();
-          refreshAuth();
-          const err: any = new Error("No account found");
-          err.status = 404;
-          throw err;
-        }
       } else {
         await signUp(email.trim(), password, name.trim());
         // Create user record in app users table (Better-Auth only creates its own internal record)

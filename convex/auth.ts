@@ -20,6 +20,8 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       "https://www.hasio.xyz",
       "https://hasio.xyz",
       "https://hasio.vercel.app",
+      "https://limitless-mockingbird-449.eu-west-1.convex.site", // Mobile app auth (dev)
+      "https://hearty-ram-74.convex.site", // Mobile app auth (production)
     ],
     emailAndPassword: {
       enabled: true,
@@ -48,6 +50,8 @@ export async function requireAdmin(ctx: QueryCtx | MutationCtx) {
 
 // Get authenticated user from the app's users table (not better-auth's internal table)
 // IMPORTANT: Wrap in try-catch — authComponent.getAuthUser throws when unauthenticated
+// Returns null if: unauthenticated, no Better-Auth user, or no app users row
+// (deleted accounts have no app row even though Better-Auth may still have a record)
 export async function getAuthenticatedAppUser(ctx: QueryCtx | MutationCtx) {
   try {
     const authUser = await authComponent.getAuthUser(ctx);
@@ -56,6 +60,7 @@ export async function getAuthenticatedAppUser(ctx: QueryCtx | MutationCtx) {
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", authUser.email))
       .first();
+
     return user;
   } catch {
     return null;
