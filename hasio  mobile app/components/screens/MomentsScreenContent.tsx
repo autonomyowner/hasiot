@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -9,11 +9,8 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
-  Image,
-  ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import Animated, {
   FadeInDown,
@@ -22,6 +19,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useConvexUser } from "@/hooks/useConvexUser";
 import { useMomentsStore } from "@/stores/momentsStore";
 import { MomentCard } from "@/components/moments/MomentCard";
 import { Button } from "@/components/ui";
@@ -30,11 +28,11 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function MomentsScreenContent() {
   const insets = useSafeAreaInsets();
-  const { t, isRTL, language } = useLanguage();
-  const router = useRouter();
+  const { t, isRTL } = useLanguage();
 
-  // Moments are device-local (AsyncStorage) — available to all users
-  return <UserMomentsView insets={insets} t={t} isRTL={isRTL} />;
+  const { userId, isLoaded } = useConvexUser();
+
+  return <UserMomentsView insets={insets} t={t} isRTL={isRTL} userId={userId} isAuthLoaded={isLoaded} />;
 }
 
 // ============================================
@@ -42,12 +40,15 @@ export function MomentsScreenContent() {
 // ============================================
 interface UserMomentsViewProps {
   insets: any;
-  t: (key: string) => string;
+  t: (key: any) => string;
   isRTL: boolean;
+  userId: string | null;
+  isAuthLoaded: boolean;
 }
 
-function UserMomentsView({ insets, t, isRTL }: UserMomentsViewProps) {
-  const { moments, isLoading, fetchMoments, addMoment, deleteMoment } = useMomentsStore();
+function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMomentsViewProps) {
+  const { moments, isLoading, fetchMoments, addMoment, deleteMoment, setUserId } = useMomentsStore();
+  const mountedRef = useRef(true);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [newMomentImage, setNewMomentImage] = useState<string | null>(null);
@@ -56,8 +57,16 @@ function UserMomentsView({ insets, t, isRTL }: UserMomentsViewProps) {
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    fetchMoments();
-  }, []);
+    mountedRef.current = true;
+    setUserId(userId).catch((err) => {
+      if (mountedRef.current) {
+        console.error("Failed to set user / fetch moments:", err);
+      }
+    });
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [userId]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -73,7 +82,7 @@ function UserMomentsView({ insets, t, isRTL }: UserMomentsViewProps) {
   };
 
   const handleAddMoment = async () => {
-    if (!newMomentImage) return;
+    if (!newMomentImage || isSaving) return;
 
     setIsSaving(true);
 
@@ -82,6 +91,8 @@ function UserMomentsView({ insets, t, isRTL }: UserMomentsViewProps) {
       newMomentNote || undefined,
       newMomentLocation || undefined
     );
+
+    if (!mountedRef.current) return;
 
     setIsSaving(false);
 
@@ -141,11 +152,21 @@ function UserMomentsView({ insets, t, isRTL }: UserMomentsViewProps) {
         <Text style={[styles.title, isRTL && styles.textRTL]}>
           {t("myMoments")}
         </Text>
-        <AddButton label={t("addMoment")} onPress={() => setModalVisible(true)} />
+        {userId && <AddButton label={t("addMoment")} onPress={() => setModalVisible(true)} />}
       </Animated.View>
 
-      {/* Loading State */}
-      {isLoading && moments.length === 0 ? (
+      {/* Not logged in */}
+      {isAuthLoaded && !userId ? (
+        <View style={styles.emptyState}>
+          <Text style={[styles.emptyTitle, isRTL && styles.textRTL]}>
+            {t("myMoments")}
+          </Text>
+          <Text style={[styles.emptyMessage, isRTL && styles.textRTL]}>
+            {isRTL ? "سجل دخولك لحفظ لحظاتك" : "Sign in to save your moments"}
+          </Text>
+        </View>
+      ) : /* Loading State */
+      isLoading && moments.length === 0 ? (
         <View style={styles.loadingState}>
           <ActivityIndicator size="large" color="#0D7A5F" />
         </View>
@@ -276,20 +297,6 @@ function AddButton({ label, onPress }: AddButtonProps) {
   );
 }
 
-interface StatBoxProps {
-  label: string;
-  count: number;
-}
-
-function StatBox({ label, count }: StatBoxProps) {
-  return (
-    <View style={styles.statBox}>
-      <Text style={styles.statCount}>{count}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -326,99 +333,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
-  // Stats
-  statsRow: {
-    flexDirection: "row",
-    paddingHorizontal: 24,
-    marginBottom: 16,
-    gap: 8,
-  },
-  singleStatRow: {
-    flexDirection: "row",
-    paddingHorizontal: 24,
-    marginBottom: 16,
-    gap: 12,
-  },
-  statBox: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 12,
-    alignItems: "center",
-  },
-  statBoxLarge: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-  },
-  statCount: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#0D7A5F",
-  },
-  statLabel: {
-    fontSize: 11,
-    color: "#737373",
-    marginTop: 4,
-    textAlign: "center",
-  },
-  // Listings
+  // List
   listContent: {
     paddingHorizontal: 24,
     paddingBottom: 32,
-  },
-  listingCard: {
-    flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    marginBottom: 12,
-    overflow: "hidden",
-  },
-  listingImage: {
-    width: 80,
-    height: 80,
-  },
-  listingInfo: {
-    flex: 1,
-    padding: 12,
-    justifyContent: "center",
-  },
-  listingInfoRTL: {
-    alignItems: "flex-end",
-  },
-  listingHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  listingName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    flex: 1,
-    marginRight: 8,
-  },
-  listingType: {
-    fontSize: 13,
-    color: "#737373",
-  },
-  priceText: {
-    fontSize: 13,
-    color: "#0D7A5F",
-    fontWeight: "500",
-    marginTop: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "600",
   },
   // Moments
   row: {
