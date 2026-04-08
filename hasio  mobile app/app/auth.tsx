@@ -17,13 +17,19 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useLanguage } from "@/hooks/useLanguage";
-import { signIn, signUp } from "@/lib/auth";
-import { refreshAuth } from "@/lib/convex";
+import { useMutation } from "convex/react";
+import { api } from "@/backend";
+import { signIn, signUp, signOut, getAuthErrorKey } from "@/lib/auth";
+import { convex, refreshAuth } from "@/lib/convex";
+import { useAppStore } from "@/stores/appStore";
 
 export default function AuthScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, isRTL } = useLanguage();
+  const setOnboardingComplete = useAppStore((state) => state.setOnboardingComplete);
+
+  const createUser = useMutation(api.users.mutations.createUser);
 
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
   const [name, setName] = useState("");
@@ -44,7 +50,7 @@ export default function AuthScreen() {
       Alert.alert(t("error"), t("invalidEmail"));
       return;
     }
-    if (!password.trim() || password.length < 6) {
+    if (!password.trim() || password.length < 8) {
       Alert.alert(t("error"), t("passwordTooShort"));
       return;
     }
@@ -53,13 +59,35 @@ export default function AuthScreen() {
     try {
       if (mode === "signIn") {
         await signIn(email.trim(), password);
+        // Verify the user still exists in our users table (may have been deleted)
+        refreshAuth();
+        // Give Convex a moment to authenticate with the new token
+        await new Promise((r) => setTimeout(r, 1500));
+        const appUser = await convex.query(api.users.queries.getCurrentUser, {});
+        if (!appUser) {
+          await signOut();
+          refreshAuth();
+          const err: any = new Error("No account found");
+          err.status = 404;
+          throw err;
+        }
       } else {
         await signUp(email.trim(), password, name.trim());
+        // Create user record in app users table (Better-Auth only creates its own internal record)
+        const nameParts = name.trim().split(/\s+/);
+        await createUser({
+          email: email.trim(),
+          firstName: nameParts[0] || undefined,
+          lastName: nameParts.slice(1).join(" ") || undefined,
+          role: "tourist",
+        });
       }
+      setOnboardingComplete(true);
       refreshAuth();
       router.replace("/(tabs)");
     } catch (err: any) {
-      Alert.alert(t("error"), err.message || t("error"));
+      console.error("[Auth] Login error:", err?.message || err, "status:", err?.status);
+      Alert.alert(t("error"), t(getAuthErrorKey(err) as any));
     } finally {
       setLoading(false);
     }
@@ -69,6 +97,7 @@ export default function AuthScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
     >
       <ScrollView
         contentContainerStyle={[
@@ -81,6 +110,8 @@ export default function AuthScreen() {
         <Pressable
           onPress={() => router.back()}
           style={[styles.backButton, isRTL && styles.backButtonRTL]}
+          accessibilityRole="button"
+          accessibilityLabel={isRTL ? "رجوع" : "Go back"}
         >
           <Feather
             name={isRTL ? "arrow-right" : "arrow-left"}
@@ -158,6 +189,12 @@ export default function AuthScreen() {
               <Pressable
                 onPress={() => setShowPassword(!showPassword)}
                 style={[styles.eyeButton, isRTL && styles.eyeButtonRTL]}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  showPassword
+                    ? (isRTL ? "إخفاء كلمة المرور" : "Hide password")
+                    : (isRTL ? "إظهار كلمة المرور" : "Show password")
+                }
               >
                 <Feather
                   name={showPassword ? "eye-off" : "eye"}
@@ -173,6 +210,9 @@ export default function AuthScreen() {
             onPress={handleSubmit}
             disabled={loading}
             style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+            accessibilityRole="button"
+            accessibilityLabel={mode === "signIn" ? t("signIn") : t("signUp")}
+            accessibilityState={{ disabled: loading, busy: loading }}
           >
             {loading ? (
               <ActivityIndicator color="#FFFFFF" />
@@ -187,6 +227,12 @@ export default function AuthScreen() {
           <Pressable
             onPress={() => setMode(mode === "signIn" ? "signUp" : "signIn")}
             style={styles.toggleMode}
+            accessibilityRole="button"
+            accessibilityLabel={
+              mode === "signIn"
+                ? (isRTL ? "الانتقال إلى إنشاء حساب" : "Switch to sign up")
+                : (isRTL ? "الانتقال إلى تسجيل الدخول" : "Switch to sign in")
+            }
           >
             <Text style={[styles.toggleText, isRTL && styles.textRTL]}>
               {mode === "signIn" ? t("noAccount") : t("haveAccount")}{" "}
