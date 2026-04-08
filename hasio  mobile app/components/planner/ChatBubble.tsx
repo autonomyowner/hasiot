@@ -5,10 +5,11 @@ import type { ChatMessage } from "@/types";
 interface ChatBubbleProps {
   message: ChatMessage;
   isRTL: boolean;
+  t: (key: any) => string;
   onReport?: (messageId: string) => void;
 }
 
-export function ChatBubble({ message, isRTL, onReport }: ChatBubbleProps) {
+export function ChatBubble({ message, isRTL, t, onReport }: ChatBubbleProps) {
   const isUser = message.isUser;
   const [showReportButton, setShowReportButton] = useState(false);
 
@@ -27,28 +28,21 @@ export function ChatBubble({ message, isRTL, onReport }: ChatBubbleProps) {
   const handleReport = () => {
     if (onReport) {
       Alert.alert(
-        isRTL ? "الإبلاغ عن الرسالة" : "Report Message",
-        isRTL
-          ? "هل تريد الإبلاغ عن هذه الرسالة لأنها تحتوي على محتوى غير لائق؟"
-          : "Would you like to report this message for containing inappropriate content?",
+        t("reportMessage"),
+        t("reportConfirm"),
         [
           {
-            text: isRTL ? "إلغاء" : "Cancel",
+            text: t("cancel"),
             style: "cancel",
             onPress: () => setShowReportButton(false),
           },
           {
-            text: isRTL ? "إبلاغ" : "Report",
+            text: t("report"),
             style: "destructive",
             onPress: () => {
               onReport(message.id);
               setShowReportButton(false);
-              Alert.alert(
-                isRTL ? "شكراً" : "Thank You",
-                isRTL
-                  ? "شكراً للإبلاغ. سنراجع هذه الرسالة."
-                  : "Thank you for reporting. We will review this message."
-              );
+              Alert.alert(t("thankYou"), t("reportReceived"));
             },
           },
         ]
@@ -104,7 +98,7 @@ export function ChatBubble({ message, isRTL, onReport }: ChatBubbleProps) {
           {!isUser && showReportButton && (
             <Pressable onPress={handleReport} style={styles.reportButton}>
               <Text style={styles.reportButtonText}>
-                {isRTL ? "🚨 إبلاغ" : "🚨 Report"}
+                {t("report")}
               </Text>
             </Pressable>
           )}
@@ -116,7 +110,7 @@ export function ChatBubble({ message, isRTL, onReport }: ChatBubbleProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 10,
     maxWidth: "85%",
     flexDirection: "row",
   },
@@ -139,9 +133,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   botAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     backgroundColor: "#0D7A5F",
     justifyContent: "center",
     alignItems: "center",
@@ -155,9 +149,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bubble: {
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 18,
   },
   userBubble: {
     backgroundColor: "#0D7A5F",
@@ -180,8 +174,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   text: {
-    fontSize: 16,
-    lineHeight: 24,
+    fontSize: 15,
+    lineHeight: 22,
     letterSpacing: 0.1,
   },
   userText: {
