@@ -60,8 +60,19 @@ export default function AuthScreen() {
       if (mode === "signIn") {
         await signIn(email.trim(), password);
       } else {
-        await signUp(email.trim(), password, name.trim());
-        // Create user record in app users table (Better-Auth only creates its own internal record)
+        let signedUp = false;
+        try {
+          await signUp(email.trim(), password, name.trim());
+          signedUp = true;
+        } catch (signUpErr: any) {
+          // If email exists in Better-Auth (ghost from deleted account), try signing in
+          if (signUpErr?.status === 422 || /already exists/i.test(signUpErr?.message)) {
+            await signIn(email.trim(), password);
+          } else {
+            throw signUpErr;
+          }
+        }
+        // Create/ensure app user record exists
         const nameParts = name.trim().split(/\s+/);
         await createUser({
           email: email.trim(),
