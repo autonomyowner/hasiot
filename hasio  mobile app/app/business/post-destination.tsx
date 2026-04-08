@@ -8,6 +8,9 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  Linking,
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -47,6 +50,19 @@ export default function PostDestinationScreen() {
   const [images, setImages] = useState<string[]>([]);
 
   const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        t("permissionRequired"),
+        t("photoPermissionMessage"),
+        [
+          { text: t("cancel"), style: "cancel" },
+          { text: t("openSettings"), onPress: () => Linking.openSettings() },
+        ]
+      );
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -94,14 +110,10 @@ export default function PostDestinationScreen() {
       Alert.alert(
         t("success"),
         t("listingSubmittedForReview"),
-        [{ text: "OK", onPress: () => router.back() }]
+        [{ text: t("done"), onPress: () => router.back() }]
       );
     } catch (error) {
-      console.error("Error creating destination:", error);
-      Alert.alert(
-        t("error"),
-        error instanceof Error ? error.message : t("somethingWentWrong")
-      );
+      Alert.alert(t("error"), t("pleaseTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -109,6 +121,11 @@ export default function PostDestinationScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <Animated.View
@@ -163,7 +180,7 @@ export default function PostDestinationScreen() {
             isRTL={isRTL}
             value={name}
             onChangeText={setName}
-            placeholder="Name in English"
+            placeholder={t("placeholderNameEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -175,7 +192,7 @@ export default function PostDestinationScreen() {
             isRTL={true}
             value={nameAr}
             onChangeText={setNameAr}
-            placeholder="الاسم بالعربية"
+            placeholder={t("placeholderNameAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -189,7 +206,7 @@ export default function PostDestinationScreen() {
             isRTL={isRTL}
             value={city}
             onChangeText={setCity}
-            placeholder="City in English"
+            placeholder={t("placeholderCityEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -198,7 +215,7 @@ export default function PostDestinationScreen() {
             isRTL={true}
             value={cityAr}
             onChangeText={setCityAr}
-            placeholder="المدينة بالعربية"
+            placeholder={t("placeholderCityAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -212,7 +229,7 @@ export default function PostDestinationScreen() {
             isRTL={isRTL}
             value={address}
             onChangeText={setAddress}
-            placeholder="Address in English"
+            placeholder={t("placeholderAddressEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -221,7 +238,7 @@ export default function PostDestinationScreen() {
             isRTL={true}
             value={addressAr}
             onChangeText={setAddressAr}
-            placeholder="العنوان بالعربية"
+            placeholder={t("placeholderAddressAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -235,7 +252,7 @@ export default function PostDestinationScreen() {
             isRTL={isRTL}
             value={description}
             onChangeText={setDescription}
-            placeholder="Description in English"
+            placeholder={t("placeholderDescriptionEn")}
             placeholderTextColor="#A3A3A3"
             multiline
             numberOfLines={4}
@@ -246,7 +263,7 @@ export default function PostDestinationScreen() {
             isRTL={true}
             value={descriptionAr}
             onChangeText={setDescriptionAr}
-            placeholder="الوصف بالعربية"
+            placeholder={t("placeholderDescriptionAr")}
             placeholderTextColor="#A3A3A3"
             multiline
             numberOfLines={4}
@@ -299,6 +316,7 @@ export default function PostDestinationScreen() {
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

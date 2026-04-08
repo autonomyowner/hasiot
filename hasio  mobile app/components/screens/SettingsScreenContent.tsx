@@ -23,7 +23,8 @@ import Animated, {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation } from "convex/react";
 import Constants from "expo-constants";
-import { api } from "@/convex";
+import { Feather } from "@expo/vector-icons";
+import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAppStore } from "@/stores/appStore";
 import { useMomentsStore } from "@/stores/momentsStore";
@@ -41,8 +42,6 @@ export function SettingsScreenContent() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, language, changeLanguage, isRTL } = useLanguage();
-  const isDarkMode = useAppStore((state) => state.isDarkMode);
-  const toggleDarkMode = useAppStore((state) => state.toggleDarkMode);
   const notificationsEnabled = useAppStore((state) => state.notificationsEnabled);
   const toggleNotifications = useAppStore((state) => state.toggleNotifications);
   const setOnboardingComplete = useAppStore((state) => state.setOnboardingComplete);
@@ -57,25 +56,36 @@ export function SettingsScreenContent() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleSignOut = async () => {
-    try {
-      await authSignOut();
-      refreshAuth();
-      clearUserData();
-      setOnboardingComplete(false);
-      router.replace("/onboarding");
-    } catch (error) {
-      console.error("Sign out error:", error);
-      Alert.alert(t("error"), "Failed to sign out");
-    }
+  const handleSignOut = () => {
+    Alert.alert(
+      t("signOutConfirmTitle"),
+      t("signOutConfirmMessage"),
+      [
+        { text: t("cancel"), style: "cancel" },
+        {
+          text: t("confirm"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await authSignOut();
+              refreshAuth();
+              clearUserData();
+              setOnboardingComplete(false);
+              router.replace("/onboarding");
+            } catch (error) {
+              Alert.alert(t("error"), t("signOutFailed"));
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleOpenPrivacyPolicy = async () => {
     try {
       await Linking.openURL(PRIVACY_POLICY_URL);
     } catch (error) {
-      console.error("Failed to open privacy policy:", error);
-      Alert.alert(t("error"), "Could not open privacy policy");
+      Alert.alert(t("error"), t("couldNotOpenLink"));
     }
   };
 
@@ -83,8 +93,7 @@ export function SettingsScreenContent() {
     try {
       await Linking.openURL(TERMS_OF_SERVICE_URL);
     } catch (error) {
-      console.error("Failed to open terms of service:", error);
-      Alert.alert(t("error"), "Could not open terms of service");
+      Alert.alert(t("error"), t("couldNotOpenLink"));
     }
   };
 
@@ -108,8 +117,7 @@ export function SettingsScreenContent() {
       setShowDeleteModal(false);
       router.replace("/onboarding");
     } catch (error: any) {
-      console.error("Delete account error:", error);
-      Alert.alert(t("deleteAccountError"), error?.message || "Unknown error");
+      Alert.alert(t("deleteAccountError"), t("pleaseTryAgain"));
     } finally {
       setIsDeleting(false);
     }
@@ -129,15 +137,14 @@ export function SettingsScreenContent() {
       });
       Alert.alert(t("upgradeSuccess"), "", [
         {
-          text: "OK",
+          text: t("done"),
           onPress: () => {
             setShowUpgradeModal(false);
           },
         },
       ]);
     } catch (error: any) {
-      console.error("Upgrade error:", error);
-      Alert.alert(t("upgradeError"), error?.message || "Unknown error");
+      Alert.alert(t("upgradeError"), t("pleaseTryAgain"));
     } finally {
       setIsUpgrading(false);
     }
@@ -158,7 +165,6 @@ export function SettingsScreenContent() {
         await Linking.openURL(`https://play.google.com/store/apps/details?id=${androidPackage}`);
       }
     } catch (error) {
-      console.error("Failed to open store:", error);
     }
   };
 
@@ -170,7 +176,7 @@ export function SettingsScreenContent() {
     Alert.alert(
       "Hasio",
       `${t("appDescription")}\n\n${t("version")}: ${version}${buildNumber ? ` (${buildNumber})` : ""}`,
-      [{ text: "OK" }]
+      [{ text: t("done") }]
     );
   };
 
@@ -181,11 +187,125 @@ export function SettingsScreenContent() {
       case "provider":
         return t("userTypeProvider");
       case "admin":
-        return t("admin") || "Admin";
+        return t("admin");
       default:
         return t("userTypeUser");
     }
   };
+
+  // Guest view — not signed in
+  if (!isSignedIn) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <Animated.View
+            entering={FadeInDown.delay(100).duration(600)}
+            style={[styles.header, isRTL && styles.headerRTL]}
+          >
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              {t("settings")}
+            </Text>
+          </Animated.View>
+
+          {/* Guest CTA Card */}
+          <Animated.View
+            entering={FadeInDown.delay(200).duration(600)}
+            style={styles.guestCard}
+          >
+            <View style={styles.guestIconContainer}>
+              <Feather name="user" size={40} color="#0D7A5F" />
+            </View>
+            <Text style={[styles.guestTitle, isRTL && styles.textRTL]}>
+              {t("guestProfileTitle")}
+            </Text>
+            <Text style={[styles.guestMessage, isRTL && styles.textRTL]}>
+              {t("guestProfileMessage")}
+            </Text>
+            <Pressable
+              style={styles.guestSignInButton}
+              onPress={() => router.push("/auth")}
+              accessibilityRole="button"
+              accessibilityLabel={t("guestSignInButton")}
+            >
+              <Feather name="log-in" size={18} color="#FFFFFF" style={{ marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0 }} />
+              <Text style={styles.guestSignInButtonText}>
+                {t("guestSignInButton")}
+              </Text>
+            </Pressable>
+          </Animated.View>
+
+          {/* Preferences Section — available to guests */}
+          <Animated.View entering={FadeInDown.delay(300).duration(600)}>
+            <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
+              {t("preferences")}
+            </Text>
+
+            <SettingRow
+              label={t("language")}
+              value={language === "en" ? "English" : "العربية"}
+              isRTL={isRTL}
+              onPress={() => changeLanguage(language === "en" ? "ar" : "en")}
+            />
+
+          </Animated.View>
+
+          {/* Legal Section */}
+          <Animated.View entering={FadeInDown.delay(400).duration(600)}>
+            <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
+              {t("support")}
+            </Text>
+
+            <SettingRow
+              label={t("privacyPolicy")}
+              subtitle={t("privacyPolicySubtitle")}
+              isRTL={isRTL}
+              onPress={handleOpenPrivacyPolicy}
+            />
+
+            <SettingRow
+              label={t("termsOfService")}
+              subtitle={t("termsOfServiceSubtitle")}
+              isRTL={isRTL}
+              onPress={handleOpenTermsOfService}
+            />
+
+            <SettingRow
+              label={t("rateApp")}
+              subtitle={t("shareFeedback")}
+              isRTL={isRTL}
+              onPress={handleRateApp}
+            />
+
+            <SettingRow
+              label={t("about")}
+              subtitle={t("appVersionInfo")}
+              isRTL={isRTL}
+              onPress={handleAbout}
+            />
+          </Animated.View>
+
+          {/* App Info */}
+          <Animated.View
+            entering={FadeInDown.delay(500).duration(600)}
+            style={styles.appInfo}
+          >
+            <Text style={[styles.appName, isRTL && styles.textRTL]}>
+              {t("appName")}
+            </Text>
+            <Text style={[styles.version, isRTL && styles.textRTL]}>
+              {t("version")}
+            </Text>
+            <Text style={[styles.appDescription, isRTL && styles.textRTL]}>
+              {t("appDescription")}
+            </Text>
+          </Animated.View>
+
+          <View style={styles.bottomSpacing} />
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -220,11 +340,6 @@ export function SettingsScreenContent() {
             onToggle={toggleNotifications}
           />
 
-          <SettingRow
-            label={t("darkMode")}
-            subtitle={t("comingSoon")}
-            isRTL={isRTL}
-          />
         </Animated.View>
 
         {/* Account Section */}
@@ -366,6 +481,9 @@ export function SettingsScreenContent() {
               style={styles.upgradeOption}
               onPress={() => handleUpgrade("business")}
               disabled={isUpgrading}
+              accessibilityRole="button"
+              accessibilityLabel={t("userTypeBusiness")}
+              accessibilityState={{ disabled: isUpgrading }}
             >
               <Text style={[styles.upgradeOptionTitle, isRTL && styles.textRTL]}>
                 {t("userTypeBusiness")}
@@ -379,6 +497,9 @@ export function SettingsScreenContent() {
               style={styles.upgradeOption}
               onPress={() => handleUpgrade("provider")}
               disabled={isUpgrading}
+              accessibilityRole="button"
+              accessibilityLabel={t("userTypeProvider")}
+              accessibilityState={{ disabled: isUpgrading }}
             >
               <Text style={[styles.upgradeOptionTitle, isRTL && styles.textRTL]}>
                 {t("userTypeProvider")}
@@ -391,6 +512,8 @@ export function SettingsScreenContent() {
             <Pressable
               style={styles.cancelButton}
               onPress={() => setShowUpgradeModal(false)}
+              accessibilityRole="button"
+              accessibilityLabel={t("cancel")}
             >
               <Text style={styles.cancelButtonText}>{t("cancel")}</Text>
             </Pressable>
@@ -418,6 +541,9 @@ export function SettingsScreenContent() {
               style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
               onPress={handleDeleteAccount}
               disabled={isDeleting}
+              accessibilityRole="button"
+              accessibilityLabel={t("deleteAccount")}
+              accessibilityState={{ disabled: isDeleting, busy: isDeleting }}
             >
               {isDeleting ? (
                 <ActivityIndicator color="#FFFFFF" />
@@ -430,6 +556,9 @@ export function SettingsScreenContent() {
               style={styles.cancelButton}
               onPress={() => setShowDeleteModal(false)}
               disabled={isDeleting}
+              accessibilityRole="button"
+              accessibilityLabel={t("cancel")}
+              accessibilityState={{ disabled: isDeleting }}
             >
               <Text style={styles.cancelButtonText}>{t("cancel")}</Text>
             </Pressable>
@@ -482,6 +611,8 @@ function SettingRow({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={!onPress}
+      accessibilityRole={onPress ? "button" : "text"}
+      accessibilityLabel={subtitle ? `${label}, ${subtitle}` : label}
     >
       <View style={[styles.settingInfo, isRTL && styles.settingInfoRTL]}>
         <Text
@@ -529,6 +660,8 @@ function SettingRowWithSwitch({
         onValueChange={onToggle}
         trackColor={{ false: "#E8E5E0", true: "#0D7A5F" }}
         thumbColor="#FFFFFF"
+        accessibilityLabel={label}
+        accessibilityRole="switch"
       />
     </View>
   );
@@ -630,6 +763,64 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 32,
+  },
+  // Guest Card Styles
+  guestCard: {
+    marginHorizontal: 24,
+    marginTop: 16,
+    marginBottom: 8,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 32,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  guestIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(13, 122, 95, 0.1)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  guestTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  guestMessage: {
+    fontSize: 15,
+    color: "#737373",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 24,
+    paddingHorizontal: 8,
+  },
+  guestSignInButton: {
+    flexDirection: "row",
+    backgroundColor: "#0D7A5F",
+    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#0D7A5F",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  guestSignInButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   // Modal Styles
   modalOverlay: {

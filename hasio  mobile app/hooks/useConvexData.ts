@@ -1,5 +1,5 @@
 import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex";
+import { api } from "@/backend";
 import { useConvexAuth } from "convex/react";
 import type { Lodging, Food, Event } from "@/types";
 
@@ -274,7 +274,6 @@ export function useToggleFavorite() {
       // listingId from Convex is already the right type
       await toggleFavorite({ listingId: listingId as any });
     } catch (err) {
-      console.error("Failed to toggle favorite:", err);
     }
   };
 }

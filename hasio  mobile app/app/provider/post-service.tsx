@@ -8,6 +8,9 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  Linking,
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,7 +18,7 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation } from "convex/react";
-import { api } from "@/convex";
+import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { Button } from "@/components/ui";
@@ -60,6 +63,19 @@ export default function PostServiceScreen() {
   const [images, setImages] = useState<string[]>([]);
 
   const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        t("permissionRequired"),
+        t("photoPermissionMessage"),
+        [
+          { text: t("cancel"), style: "cancel" },
+          { text: t("openSettings"), onPress: () => Linking.openSettings() },
+        ]
+      );
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -110,14 +126,10 @@ export default function PostServiceScreen() {
       Alert.alert(
         t("success"),
         t("listingSubmittedForReview"),
-        [{ text: "OK", onPress: () => router.back() }]
+        [{ text: t("done"), onPress: () => router.back() }]
       );
     } catch (error) {
-      console.error("Error creating service:", error);
-      Alert.alert(
-        t("error"),
-        error instanceof Error ? error.message : t("somethingWentWrong")
-      );
+      Alert.alert(t("error"), t("pleaseTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -125,6 +137,11 @@ export default function PostServiceScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <Animated.View
@@ -179,7 +196,7 @@ export default function PostServiceScreen() {
             isRTL={isRTL}
             value={title}
             onChangeText={setTitle}
-            placeholder="Service title in English"
+            placeholder={t("placeholderServiceTitleEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -191,7 +208,7 @@ export default function PostServiceScreen() {
             isRTL={true}
             value={titleAr}
             onChangeText={setTitleAr}
-            placeholder="عنوان الخدمة بالعربية"
+            placeholder={t("placeholderServiceTitleAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -205,7 +222,7 @@ export default function PostServiceScreen() {
             isRTL={isRTL}
             value={description}
             onChangeText={setDescription}
-            placeholder="Describe your service in English"
+            placeholder={t("placeholderServiceDescEn")}
             placeholderTextColor="#A3A3A3"
             multiline
             numberOfLines={4}
@@ -216,7 +233,7 @@ export default function PostServiceScreen() {
             isRTL={true}
             value={descriptionAr}
             onChangeText={setDescriptionAr}
-            placeholder="وصف الخدمة بالعربية"
+            placeholder={t("placeholderServiceDescAr")}
             placeholderTextColor="#A3A3A3"
             multiline
             numberOfLines={4}
@@ -232,7 +249,7 @@ export default function PostServiceScreen() {
             isRTL={isRTL}
             value={priceRange}
             onChangeText={setPriceRange}
-            placeholder="e.g., 100-200 SAR"
+            placeholder={t("placeholderPriceService")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -268,7 +285,7 @@ export default function PostServiceScreen() {
             isRTL={isRTL}
             value={availability}
             onChangeText={setAvailability}
-            placeholder="e.g., Weekends, Daily 9AM-6PM"
+            placeholder={t("placeholderAvailabilityEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -277,7 +294,7 @@ export default function PostServiceScreen() {
             isRTL={true}
             value={availabilityAr}
             onChangeText={setAvailabilityAr}
-            placeholder="مثال: عطلة نهاية الأسبوع"
+            placeholder={t("placeholderAvailabilityAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -291,7 +308,7 @@ export default function PostServiceScreen() {
             isRTL={isRTL}
             value={contactPhone}
             onChangeText={setContactPhone}
-            placeholder="+966 5XX XXX XXXX"
+            placeholder={t("placeholderPhone")}
             placeholderTextColor="#A3A3A3"
             keyboardType="phone-pad"
           />
@@ -304,7 +321,7 @@ export default function PostServiceScreen() {
             isRTL={isRTL}
             value={contactEmail}
             onChangeText={setContactEmail}
-            placeholder="email@example.com"
+            placeholder={t("placeholderEmail")}
             placeholderTextColor="#A3A3A3"
             keyboardType="email-address"
             autoCapitalize="none"
@@ -319,7 +336,7 @@ export default function PostServiceScreen() {
             isRTL={isRTL}
             value={languages}
             onChangeText={setLanguages}
-            placeholder="Arabic, English, French"
+            placeholder={t("placeholderLanguages")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -369,6 +386,7 @@ export default function PostServiceScreen() {
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

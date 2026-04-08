@@ -1,5 +1,5 @@
 import { useQuery } from "convex/react";
-import { api } from "@/convex";
+import { api } from "@/backend";
 import { useConvexAuth } from "convex/react";
 
 /**
@@ -12,6 +12,7 @@ export function useConvexUser() {
     api.users.queries.getCurrentUser,
     isAuthenticated ? {} : "skip"
   );
+
 
   const isUserLoading = authLoading || (isAuthenticated && user === undefined);
 

@@ -8,6 +8,9 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  Linking,
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -47,6 +50,19 @@ export default function PostEventScreen() {
   const [images, setImages] = useState<string[]>([]);
 
   const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        t("permissionRequired"),
+        t("photoPermissionMessage"),
+        [
+          { text: t("cancel"), style: "cancel" },
+          { text: t("openSettings"), onPress: () => Linking.openSettings() },
+        ]
+      );
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -66,7 +82,7 @@ export default function PostEventScreen() {
   const handleSubmit = async () => {
     if (isLoading) return;
 
-    if (!title.trim() || !titleAr.trim() || !date.trim()) {
+    if (!title.trim() || !titleAr.trim() || !date.trim() || !time.trim()) {
       Alert.alert(t("error"), t("fillRequiredFields"));
       return;
     }
@@ -94,14 +110,10 @@ export default function PostEventScreen() {
       Alert.alert(
         t("success"),
         t("listingSubmittedForReview"),
-        [{ text: "OK", onPress: () => router.back() }]
+        [{ text: t("done"), onPress: () => router.back() }]
       );
     } catch (error) {
-      console.error("Error creating event:", error);
-      Alert.alert(
-        t("error"),
-        error instanceof Error ? error.message : t("somethingWentWrong")
-      );
+      Alert.alert(t("error"), t("pleaseTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -109,6 +121,11 @@ export default function PostEventScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <Animated.View
@@ -163,7 +180,7 @@ export default function PostEventScreen() {
             isRTL={isRTL}
             value={title}
             onChangeText={setTitle}
-            placeholder="Event title in English"
+            placeholder={t("placeholderEventTitleEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -175,7 +192,7 @@ export default function PostEventScreen() {
             isRTL={true}
             value={titleAr}
             onChangeText={setTitleAr}
-            placeholder="عنوان الفعالية بالعربية"
+            placeholder={t("placeholderEventTitleAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -189,7 +206,7 @@ export default function PostEventScreen() {
             isRTL={isRTL}
             value={date}
             onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
+            placeholder={t("placeholderEventDate")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -201,7 +218,7 @@ export default function PostEventScreen() {
             isRTL={isRTL}
             value={time}
             onChangeText={setTime}
-            placeholder="e.g., 6:00 PM"
+            placeholder={t("placeholderEventTime")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -214,7 +231,7 @@ export default function PostEventScreen() {
             isRTL={isRTL}
             value={location}
             onChangeText={setLocation}
-            placeholder="Location in English"
+            placeholder={t("placeholderLocationEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -223,7 +240,7 @@ export default function PostEventScreen() {
             isRTL={true}
             value={locationAr}
             onChangeText={setLocationAr}
-            placeholder="الموقع بالعربية"
+            placeholder={t("placeholderLocationAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -237,7 +254,7 @@ export default function PostEventScreen() {
             isRTL={isRTL}
             value={description}
             onChangeText={setDescription}
-            placeholder="Description in English"
+            placeholder={t("placeholderDescriptionEn")}
             placeholderTextColor="#A3A3A3"
             multiline
             numberOfLines={4}
@@ -248,7 +265,7 @@ export default function PostEventScreen() {
             isRTL={true}
             value={descriptionAr}
             onChangeText={setDescriptionAr}
-            placeholder="الوصف بالعربية"
+            placeholder={t("placeholderDescriptionAr")}
             placeholderTextColor="#A3A3A3"
             multiline
             numberOfLines={4}
@@ -301,6 +318,7 @@ export default function PostEventScreen() {
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

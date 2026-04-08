@@ -8,6 +8,9 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  Linking,
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -46,6 +49,19 @@ export default function PostFoodScreen() {
   const [images, setImages] = useState<string[]>([]);
 
   const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        t("permissionRequired"),
+        t("photoPermissionMessage"),
+        [
+          { text: t("cancel"), style: "cancel" },
+          { text: t("openSettings"), onPress: () => Linking.openSettings() },
+        ]
+      );
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -85,8 +101,8 @@ export default function PostFoodScreen() {
         category_ar: cuisineAr.trim() || undefined,
         description_en: description.trim() || undefined,
         description_ar: descriptionAr.trim() || undefined,
-        address: cuisine.trim() || name.trim(),
-        city: cuisine.trim() || "Al-Ahsa",
+        address: name.trim(),
+        city: "Al-Ahsa",
         coordinates: { lat: 25.3854, lng: 49.5683 },
         priceRange: avgPrice.trim() || undefined,
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
@@ -95,14 +111,10 @@ export default function PostFoodScreen() {
       Alert.alert(
         t("success"),
         t("listingSubmittedForReview"),
-        [{ text: "OK", onPress: () => router.back() }]
+        [{ text: t("done"), onPress: () => router.back() }]
       );
     } catch (error) {
-      console.error("Error creating food:", error);
-      Alert.alert(
-        t("error"),
-        error instanceof Error ? error.message : t("somethingWentWrong")
-      );
+      Alert.alert(t("error"), t("pleaseTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -110,6 +122,11 @@ export default function PostFoodScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <Animated.View
@@ -164,7 +181,7 @@ export default function PostFoodScreen() {
             isRTL={isRTL}
             value={name}
             onChangeText={setName}
-            placeholder="Name in English"
+            placeholder={t("placeholderNameEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -176,7 +193,7 @@ export default function PostFoodScreen() {
             isRTL={true}
             value={nameAr}
             onChangeText={setNameAr}
-            placeholder="الاسم بالعربية"
+            placeholder={t("placeholderNameAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -190,7 +207,7 @@ export default function PostFoodScreen() {
             isRTL={isRTL}
             value={cuisine}
             onChangeText={setCuisine}
-            placeholder="e.g., Saudi, International"
+            placeholder={t("placeholderCuisineEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -199,7 +216,7 @@ export default function PostFoodScreen() {
             isRTL={true}
             value={cuisineAr}
             onChangeText={setCuisineAr}
-            placeholder="مثال: سعودي، عالمي"
+            placeholder={t("placeholderCuisineAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -213,7 +230,7 @@ export default function PostFoodScreen() {
             isRTL={isRTL}
             value={avgPrice}
             onChangeText={setAvgPrice}
-            placeholder="e.g., 50-100 SAR"
+            placeholder={t("placeholderPriceFood")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -226,7 +243,7 @@ export default function PostFoodScreen() {
             isRTL={isRTL}
             value={hours}
             onChangeText={setHours}
-            placeholder="e.g., 10 AM - 11 PM"
+            placeholder={t("placeholderHours")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -239,7 +256,7 @@ export default function PostFoodScreen() {
             isRTL={isRTL}
             value={description}
             onChangeText={setDescription}
-            placeholder="Description in English"
+            placeholder={t("placeholderDescriptionEn")}
             placeholderTextColor="#A3A3A3"
             multiline
             numberOfLines={4}
@@ -250,7 +267,7 @@ export default function PostFoodScreen() {
             isRTL={true}
             value={descriptionAr}
             onChangeText={setDescriptionAr}
-            placeholder="الوصف بالعربية"
+            placeholder={t("placeholderDescriptionAr")}
             placeholderTextColor="#A3A3A3"
             multiline
             numberOfLines={4}
@@ -303,6 +320,7 @@ export default function PostFoodScreen() {
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

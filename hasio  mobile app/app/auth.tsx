@@ -96,7 +96,7 @@ export default function AuthScreen() {
       refreshAuth();
       router.replace("/(tabs)");
     } catch (err: any) {
-      console.error("[Auth] Login error:", err?.message || err, "status:", err?.status);
+
       Alert.alert(t("error"), t(getAuthErrorKey(err) as any));
     } finally {
       setLoading(false);

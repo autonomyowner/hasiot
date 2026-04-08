@@ -8,6 +8,9 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  Linking,
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -49,6 +52,19 @@ export default function PostLodgingScreen() {
   const [images, setImages] = useState<string[]>([]);
 
   const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        t("permissionRequired"),
+        t("photoPermissionMessage"),
+        [
+          { text: t("cancel"), style: "cancel" },
+          { text: t("openSettings"), onPress: () => Linking.openSettings() },
+        ]
+      );
+      return;
+    }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -93,21 +109,17 @@ export default function PostLodgingScreen() {
         region: neighborhood.trim() || undefined,
         coordinates: { lat: 25.3854, lng: 49.5683 },
         priceRange: priceRange.trim() || undefined,
-        amenities: amenities ? amenities.split(",").map((a) => a.trim()).filter(Boolean) : undefined,
+        amenities: amenities.trim() ? amenities.split(",").map((a) => a.trim()).filter(Boolean) : undefined,
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
       });
 
       Alert.alert(
         t("success"),
         t("listingSubmittedForReview"),
-        [{ text: "OK", onPress: () => router.back() }]
+        [{ text: t("done"), onPress: () => router.back() }]
       );
     } catch (error) {
-      console.error("Error creating lodging:", error);
-      Alert.alert(
-        t("error"),
-        error instanceof Error ? error.message : t("somethingWentWrong")
-      );
+      Alert.alert(t("error"), t("pleaseTryAgain"));
     } finally {
       setIsLoading(false);
     }
@@ -115,6 +127,11 @@ export default function PostLodgingScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      >
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Header */}
         <Animated.View
@@ -169,7 +186,7 @@ export default function PostLodgingScreen() {
             isRTL={isRTL}
             value={name}
             onChangeText={setName}
-            placeholder="Name in English"
+            placeholder={t("placeholderNameEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -181,7 +198,7 @@ export default function PostLodgingScreen() {
             isRTL={true}
             value={nameAr}
             onChangeText={setNameAr}
-            placeholder="الاسم بالعربية"
+            placeholder={t("placeholderNameAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -195,7 +212,7 @@ export default function PostLodgingScreen() {
             isRTL={isRTL}
             value={city}
             onChangeText={setCity}
-            placeholder="City in English"
+            placeholder={t("placeholderCityEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -204,7 +221,7 @@ export default function PostLodgingScreen() {
             isRTL={true}
             value={cityAr}
             onChangeText={setCityAr}
-            placeholder="المدينة بالعربية"
+            placeholder={t("placeholderCityAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -218,7 +235,7 @@ export default function PostLodgingScreen() {
             isRTL={isRTL}
             value={neighborhood}
             onChangeText={setNeighborhood}
-            placeholder="Neighborhood in English"
+            placeholder={t("placeholderNeighborhoodEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -227,7 +244,7 @@ export default function PostLodgingScreen() {
             isRTL={true}
             value={neighborhoodAr}
             onChangeText={setNeighborhoodAr}
-            placeholder="الحي بالعربية"
+            placeholder={t("placeholderNeighborhoodAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -241,7 +258,7 @@ export default function PostLodgingScreen() {
             isRTL={isRTL}
             value={priceRange}
             onChangeText={setPriceRange}
-            placeholder="e.g., 200-500 SAR"
+            placeholder={t("placeholderPriceLodging")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -254,7 +271,7 @@ export default function PostLodgingScreen() {
             isRTL={isRTL}
             value={description}
             onChangeText={setDescription}
-            placeholder="Description in English"
+            placeholder={t("placeholderDescriptionEn")}
             placeholderTextColor="#A3A3A3"
             multiline
             numberOfLines={4}
@@ -265,7 +282,7 @@ export default function PostLodgingScreen() {
             isRTL={true}
             value={descriptionAr}
             onChangeText={setDescriptionAr}
-            placeholder="الوصف بالعربية"
+            placeholder={t("placeholderDescriptionAr")}
             placeholderTextColor="#A3A3A3"
             multiline
             numberOfLines={4}
@@ -281,7 +298,7 @@ export default function PostLodgingScreen() {
             isRTL={isRTL}
             value={amenities}
             onChangeText={setAmenities}
-            placeholder="WiFi, Pool, Spa, Parking"
+            placeholder={t("placeholderAmenitiesEn")}
             placeholderTextColor="#A3A3A3"
           />
 
@@ -290,7 +307,7 @@ export default function PostLodgingScreen() {
             isRTL={true}
             value={amenitiesAr}
             onChangeText={setAmenitiesAr}
-            placeholder="واي فاي، مسبح، سبا، موقف سيارات"
+            placeholder={t("placeholderAmenitiesAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
@@ -341,6 +358,7 @@ export default function PostLodgingScreen() {
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

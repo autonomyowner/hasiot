@@ -148,7 +148,6 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
-      console.error('Error getting AI response:', error);
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         text: t("pleaseTryAgain"),
@@ -228,7 +227,6 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
           scrollViewRef.current?.scrollToEnd({ animated: true });
         }, 100);
       } catch (error) {
-        console.error('Error getting AI response:', error);
         const errorMessage: ChatMessage = {
           id: (Date.now() + 1).toString(),
           text: t("pleaseTryAgain"),

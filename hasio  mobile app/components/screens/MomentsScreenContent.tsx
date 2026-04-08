@@ -61,7 +61,7 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
     mountedRef.current = true;
     setUserId(userId).catch((err) => {
       if (mountedRef.current) {
-        console.error("Failed to set user / fetch moments:", err);
+
       }
     });
     return () => {

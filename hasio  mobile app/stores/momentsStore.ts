@@ -60,7 +60,7 @@ export const useMomentsStore = create<MomentsState>((set, get) => ({
       const moments = stored ? JSON.parse(stored) : [];
       set({ moments, isLoading: false });
     } catch (error: any) {
-      console.error("Error fetching moments:", error.message);
+
       set({ error: error.message, isLoading: false });
     }
   },
@@ -93,7 +93,7 @@ export const useMomentsStore = create<MomentsState>((set, get) => ({
 
       return true;
     } catch (error: any) {
-      console.error("Error adding moment:", error.message);
+
       set({ error: error.message, isLoading: false });
       return false;
     }
@@ -118,7 +118,7 @@ export const useMomentsStore = create<MomentsState>((set, get) => ({
 
       return true;
     } catch (error: any) {
-      console.error("Error deleting moment:", error.message);
+
       set({ error: error.message, isLoading: false });
       return false;
     }
