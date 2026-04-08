@@ -55,6 +55,7 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
   const [newMomentNote, setNewMomentNote] = useState("");
   const [newMomentLocation, setNewMomentLocation] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  const [viewingMoment, setViewingMoment] = useState<{ image: string; note?: string; location?: string; timestamp: string } | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -137,6 +138,12 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
           timestamp: item.created_at,
         }}
         isRTL={isRTL}
+        onPress={() => setViewingMoment({
+          image: item.image_url,
+          note: item.note || undefined,
+          location: item.location || undefined,
+          timestamp: item.created_at,
+        })}
         onDelete={() => handleDeleteMoment(item.id, item.image_url)}
       />
     </Animated.View>
@@ -197,6 +204,41 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
           />
         </View>
       )}
+
+      {/* Image Viewer Modal */}
+      <Modal
+        visible={!!viewingMoment}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setViewingMoment(null)}
+      >
+        <Pressable style={styles.viewerOverlay} onPress={() => setViewingMoment(null)}>
+          <View style={[styles.viewerHeader, { paddingTop: insets.top + 8 }]}>
+            <Pressable onPress={() => setViewingMoment(null)} style={styles.viewerClose}>
+              <Text style={styles.viewerCloseText}>✕</Text>
+            </Pressable>
+          </View>
+          {viewingMoment && (
+            <View style={styles.viewerContent}>
+              <Animated.Image
+                source={{ uri: viewingMoment.image }}
+                style={styles.viewerImage}
+                resizeMode="contain"
+              />
+              {(viewingMoment.note || viewingMoment.location) && (
+                <View style={styles.viewerInfo}>
+                  {viewingMoment.note && (
+                    <Text style={[styles.viewerNote, isRTL && styles.textRTL]}>{viewingMoment.note}</Text>
+                  )}
+                  {viewingMoment.location && (
+                    <Text style={[styles.viewerLocation, isRTL && styles.textRTL]}>{viewingMoment.location}</Text>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+        </Pressable>
+      </Modal>
 
       {/* Add Moment Modal */}
       <Modal
@@ -431,5 +473,58 @@ const styles = StyleSheet.create({
   },
   inputRTL: {
     writingDirection: "rtl",
+  },
+  // Image Viewer
+  viewerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.95)",
+    justifyContent: "center",
+  },
+  viewerHeader: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    left: 0,
+    zIndex: 10,
+    alignItems: "flex-end",
+    paddingHorizontal: 16,
+  },
+  viewerClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewerCloseText: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "600",
+  },
+  viewerContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  viewerImage: {
+    width: "100%",
+    height: "70%",
+  },
+  viewerInfo: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    alignItems: "center",
+  },
+  viewerNote: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    lineHeight: 22,
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  viewerLocation: {
+    color: "rgba(255, 255, 255, 0.6)",
+    fontSize: 14,
   },
 });
