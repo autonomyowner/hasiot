@@ -8,10 +8,6 @@ interface AppState {
   language: Language;
   setLanguage: (lang: Language) => void;
 
-  // Theme
-  isDarkMode: boolean;
-  toggleDarkMode: () => void;
-
   // Onboarding
   hasCompletedOnboarding: boolean;
   setOnboardingComplete: (complete: boolean) => void;
@@ -52,10 +48,6 @@ export const useAppStore = create<AppState>()(
       // Language - default to English
       language: "en",
       setLanguage: (lang) => set({ language: lang }),
-
-      // Theme - default to light
-      isDarkMode: false,
-      toggleDarkMode: () => set((state) => ({ isDarkMode: !state.isDarkMode })),
 
       // Onboarding
       hasCompletedOnboarding: false,
@@ -127,7 +119,6 @@ export const useAppStore = create<AppState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         language: state.language,
-        isDarkMode: state.isDarkMode,
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         favorites: state.favorites,
         moments: state.moments,

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,13 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useQuery } from "convex/react";
-import { api } from "@/convex";
+import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { ApprovalStatus } from "@/types";
 
@@ -26,6 +27,12 @@ export default function MyListingsScreen() {
   const router = useRouter();
   const { t, isRTL, language } = useLanguage();
   const [filter, setFilter] = useState<"all" | string>("all");
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const allListings = useQuery(api.listings.queries.getMyListings, {});
   const isLoading = allListings === undefined;
@@ -36,7 +43,17 @@ export default function MyListingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#0D7A5F"
+            colors={["#0D7A5F"]}
+          />
+        }
+      >
         {/* Header */}
         <Animated.View
           entering={FadeInDown.delay(100).duration(600)}
@@ -108,14 +125,14 @@ export default function MyListingsScreen() {
                 )}
                 <View style={styles.listingInfo}>
                   <Text style={[styles.listingName, isRTL && styles.textRTL]}>
-                    {language === "ar" ? (listing.name_ar || listing.name_en) : listing.name_en}
+                    {language === "ar" ? (listing.name_ar || listing.name_en || "—") : (listing.name_en || "—")}
                   </Text>
                   <Text style={[styles.listingType, isRTL && styles.textRTL]}>
-                    {listing.type} • {listing.city}
+                    {listing.type === "hotel" ? t("lodging") : listing.type === "restaurant" ? t("food") : listing.type === "attraction" ? t("destination") : t("event")} • {listing.city}
                   </Text>
                   <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[listing.status] || "#737373" }]}>
                     <Text style={styles.statusText}>
-                      {listing.status}
+                      {listing.status === "pending" ? t("statusPending") : listing.status === "approved" ? t("statusApproved") : t("statusRejected")}
                     </Text>
                   </View>
                 </View>

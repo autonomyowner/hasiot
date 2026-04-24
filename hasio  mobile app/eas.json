@@ -26,8 +26,8 @@
         "distribution": "internal"
       },
       "env": {
-        "EXPO_PUBLIC_CONVEX_URL": "https://dazzling-mosquito-29.eu-west-1.convex.cloud",
-        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://dazzling-mosquito-29.eu-west-1.convex.site"
+        "EXPO_PUBLIC_CONVEX_URL": "https://limitless-mockingbird-449.eu-west-1.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://limitless-mockingbird-449.eu-west-1.convex.site"
       }
     },
     "production": {
@@ -41,8 +41,8 @@
       },
       "env": {
         "EXPO_NO_CAPABILITY_SYNC": "1",
-        "EXPO_PUBLIC_CONVEX_URL": "https://dazzling-mosquito-29.eu-west-1.convex.cloud",
-        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://dazzling-mosquito-29.eu-west-1.convex.site"
+        "EXPO_PUBLIC_CONVEX_URL": "https://hearty-ram-74.eu-west-1.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site"
       }
     }
   },

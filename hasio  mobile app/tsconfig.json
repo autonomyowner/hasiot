@@ -4,7 +4,8 @@
     "strict": true,
     "paths": {
       "@/*": ["./*"],
-      "convex/_generated/*": ["../convex/_generated/*"]
+      "convex/_generated/*": ["../convex/_generated/*"],
+      "@/backend/*": ["./backend/*"]
     }
   },
   "include": [

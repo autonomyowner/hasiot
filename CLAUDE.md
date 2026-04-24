@@ -134,7 +134,7 @@ convex/
 | Table | Purpose |
 |-------|---------|
 | `users` | User profiles with role (tourist/business_owner/service_provider/admin), isApproved, cvFileId |
-| `listings` | Hotels, restaurants, attractions, events, tours with geolocation (~88 seeded Saudi entries) |
+| `listings` | Hotels, restaurants, attractions, events, tours with geolocation (56 seeded Al-Ahsa entries) |
 | `services` | Freelancer services (photographer, driver, guide, etc.) with ownerId, serviceType, pricing, portfolio images |
 | `availabilitySchedules` | Time slots per listing |
 | `bookings` | Reservations, tour bookings, event tickets with status tracking |
@@ -164,7 +164,7 @@ Both follow the same approval flow: pending → admin approves/rejects → appro
 
 Website uses Convex file storage: `generateUploadUrl()` → POST file → get storageId → resolve URL via `getStorageUrl` query. Mobile app uses R2 external storage via `uploadMultipleToR2()`, storing URL strings directly.
 
-**Seed listing images**: `convex/listings/seedImages.ts` contains curated Unsplash URLs for all 88 seeded listings. Run `npx convex run listings/seedImages:addImagesToListings --prod` to populate images on listings that don't have any. The `patchListings` mutation was a one-time fix (King Fahd Fountain image + Saudi Cup deletion).
+**Seed listing images**: `convex/listings/seedImages.ts` contains curated Unsplash URLs for all 56 Al-Ahsa seeded listings. Run `npx convex run listings/seedImages:addImagesToListings --prod` to populate images on listings that don't have any.
 
 ### Trip Itinerary Builder
 
@@ -176,9 +176,12 @@ Trips have embedded `stops` arrays (not a separate table). Each stop references 
 
 ### Seeding Data
 
+Seed data contains **56 Al-Ahsa-only listings** (12 hotels, 16 restaurants, 18 attractions, 10 events/tours) across Hofuf, Mubarraz, Al Oyoun, and Al Omran. No listings from other Saudi cities. After seeding, run `addImagesToListings` to assign Unsplash images.
+
 ```bash
 npx convex run listings/mutations:seedListings          # dev
 npx convex run listings/mutations:seedListings --prod    # production
+npx convex run listings/seedImages:addImagesToListings --prod  # add images
 ```
 
 ### AI Travel Planner
@@ -227,6 +230,19 @@ MAPBOX_PUBLIC_TOKEN=pk.xxx
 VITE_CONVEX_URL=https://your-deployment.convex.cloud
 VITE_CONVEX_SITE_URL=https://your-deployment.convex.site
 ```
+
+### Mobile App Environment (.env, .env.local, eas.json)
+```
+EXPO_PUBLIC_CONVEX_URL=https://hearty-ram-74.eu-west-1.convex.cloud
+EXPO_PUBLIC_CONVEX_SITE_URL=https://hearty-ram-74.eu-west-1.convex.site
+```
+
+**CRITICAL — EU region prefix:** The production Convex deployment is in `eu-west-1`. All Convex URLs **must** include the region: `hearty-ram-74.eu-west-1.convex.cloud` (NOT `hearty-ram-74.convex.cloud`). Missing the region causes auth requests to hit the wrong endpoint → 401 errors. This applies to three files:
+- `hasio  mobile app/.env`
+- `hasio  mobile app/.env.local`
+- `hasio  mobile app/eas.json` (in `build.production.env`)
+
+**`.env.local` overrides `.env`** in Expo — if both exist, `.env.local` wins. Always keep them in sync or remove `.env.local` if not needed.
 
 ## Admin Panel
 

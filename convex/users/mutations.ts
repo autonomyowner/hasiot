@@ -241,7 +241,7 @@ export const deleteMyAccount = mutation({
     // so the email can be re-registered
     try {
       const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
-      await auth.api.deleteUser({ headers });
+      await auth.api.deleteUser({ body: {}, headers });
     } catch (e) {
       console.error("Failed to delete Better-Auth user (continuing):", e);
     }

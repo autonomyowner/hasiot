@@ -1,5 +1,5 @@
 import * as FileSystem from "expo-file-system";
-import { api } from "@/convex";
+import { api } from "@/backend";
 import { ConvexReactClient } from "convex/react";
 import { convex } from "./convex";
 
@@ -19,7 +19,7 @@ export async function uploadImageToConvex(
   // 2. Upload the file
   const response = await FileSystem.uploadAsync(uploadUrl, fileUri, {
     httpMethod: "POST",
-    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+    uploadType: (FileSystem as any).FileSystemUploadType?.BINARY_CONTENT ?? 0,
     headers: {
       "Content-Type": "image/jpeg",
     },

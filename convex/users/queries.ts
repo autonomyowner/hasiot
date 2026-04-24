@@ -44,6 +44,10 @@ export const isFavorite = query({
 export const getBusinessDocUrl = query({
   args: { fileId: v.id("_storage") },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user || user.role !== "admin") {
+      throw new Error("Not authorized");
+    }
     return await ctx.storage.getUrl(args.fileId);
   },
 });
@@ -52,6 +56,10 @@ export const getBusinessDocUrl = query({
 export const getStorageUrl = query({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
     return await ctx.storage.getUrl(args.storageId);
   },
 });

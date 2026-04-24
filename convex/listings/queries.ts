@@ -18,25 +18,26 @@ export const listListings = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("listings");
+    const buildQuery = () => {
+      if (args.city && args.category) {
+        return ctx.db.query("listings").withIndex("by_city_and_category", (q) =>
+          q.eq("city", args.city!).eq("category", args.category!)
+        );
+      } else if (args.type && args.category) {
+        return ctx.db.query("listings").withIndex("by_type_and_category", (q) =>
+          q.eq("type", args.type!).eq("category", args.category!)
+        );
+      } else if (args.type) {
+        return ctx.db.query("listings").withIndex("by_type", (q) => q.eq("type", args.type!));
+      } else if (args.category) {
+        return ctx.db.query("listings").withIndex("by_category", (q) => q.eq("category", args.category!));
+      } else if (args.city) {
+        return ctx.db.query("listings").withIndex("by_city", (q) => q.eq("city", args.city!));
+      }
+      return ctx.db.query("listings");
+    };
 
-    if (args.city && args.category) {
-      q = q.withIndex("by_city_and_category", (q) =>
-        q.eq("city", args.city!).eq("category", args.category!)
-      );
-    } else if (args.type && args.category) {
-      q = q.withIndex("by_type_and_category", (q) =>
-        q.eq("type", args.type!).eq("category", args.category!)
-      );
-    } else if (args.type) {
-      q = q.withIndex("by_type", (q) => q.eq("type", args.type!));
-    } else if (args.category) {
-      q = q.withIndex("by_category", (q) => q.eq("category", args.category!));
-    } else if (args.city) {
-      q = q.withIndex("by_city", (q) => q.eq("city", args.city!));
-    }
-
-    const listings = await q.collect();
+    const listings = await buildQuery().collect();
 
     const publicListings = listings.filter(isPublicListing);
 
@@ -80,11 +81,13 @@ export const searchListings = query({
   },
 });
 
-// Get a single listing by ID
+// Get a single listing by ID (public — only returns approved/seed listings)
 export const getListing = query({
   args: { listingId: v.id("listings") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.listingId);
+    const listing = await ctx.db.get(args.listingId);
+    if (!listing || !isPublicListing(listing)) return null;
+    return listing;
   },
 });
 

@@ -56,13 +56,14 @@ export const listAllListings = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    let q = ctx.db.query("listings");
+    const buildQuery = () => {
+      if (args.type) {
+        return ctx.db.query("listings").withIndex("by_type", (q) => q.eq("type", args.type!));
+      }
+      return ctx.db.query("listings");
+    };
 
-    if (args.type) {
-      q = q.withIndex("by_type", (q) => q.eq("type", args.type!));
-    }
-
-    const listings = await q.order("desc").collect();
+    const listings = await buildQuery().order("desc").collect();
 
     if (args.city) {
       return listings.filter(l => l.city === args.city);
@@ -80,13 +81,14 @@ export const listKnowledgeData = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    let q = ctx.db.query("travelKnowledge");
+    const buildQuery = () => {
+      if (args.category) {
+        return ctx.db.query("travelKnowledge").withIndex("by_category", (q) => q.eq("category", args.category!));
+      }
+      return ctx.db.query("travelKnowledge");
+    };
 
-    if (args.category) {
-      q = q.withIndex("by_category", (q) => q.eq("category", args.category!));
-    }
-
-    const data = await q.order("desc").collect();
+    const data = await buildQuery().order("desc").collect();
 
     if (args.activeOnly) {
       return data.filter(d => d.isActive);

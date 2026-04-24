@@ -8,6 +8,7 @@ import {
   RefreshControl,
   Pressable,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
@@ -77,7 +78,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
   ];
 
   // Get data from Convex with fallback to mock data
-  const { lodgings, foods, events, destinations } = useHomeData();
+  const { lodgings, foods, events, destinations, isLoading } = useHomeData();
 
   const featuredItems = destinations.filter((d) => d.featured);
   const moreDestinations = destinations.filter((d) => !d.featured);
@@ -128,7 +129,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
       destinations: destinationResults,
       total: lodgingResults.length + foodResults.length + eventResults.length + destinationResults.length,
     };
-  }, [debouncedQuery, allLodging, allFood, allEvents]);
+  }, [debouncedQuery, allLodging, allFood, allEvents, destinations]);
 
   const handleScroll = (event: any) => {
     scrollY.value = event.nativeEvent.contentOffset.y;
@@ -194,8 +195,15 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           />
         </Animated.View>
 
+        {/* Loading State */}
+        {isLoading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0D7A5F" />
+          </View>
+        )}
+
         {/* Search Results */}
-        {searchResults ? (
+        {!isLoading && searchResults ? (
           <View style={styles.searchResultsContainer}>
             {searchResults.total === 0 ? (
               <View style={styles.noResultsContainer}>
@@ -219,7 +227,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                         key={item.id}
                         name={getLocalizedText(item.name, item.nameAr, language)}
                         subtitle={`${getLocalizedText(item.city, item.cityAr, language)} • ${item.priceRange}`}
-                        image={item.images[0]}
+                        image={item.images?.[0]}
                         isRTL={isRTL}
                         index={index}
                       />
@@ -237,7 +245,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                         key={item.id}
                         name={getLocalizedText(item.name, item.nameAr, language)}
                         subtitle={getLocalizedText(item.cuisine, item.cuisineAr, language)}
-                        image={item.images[0]}
+                        image={item.images?.[0]}
                         isRTL={isRTL}
                         index={index}
                       />
@@ -255,7 +263,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                         key={item.id}
                         name={getLocalizedText(item.title, item.titleAr, language)}
                         subtitle={`${getLocalizedText(item.location, item.locationAr, language)} • ${item.date}`}
-                        image={item.images[0]}
+                        image={item.images?.[0]}
                         isRTL={isRTL}
                         index={index}
                       />
@@ -266,7 +274,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                 {searchResults.destinations.length > 0 && (
                   <View style={styles.resultSection}>
                     <Text style={[styles.resultSectionTitle, isRTL && styles.textRTL]}>
-                      Destinations ({searchResults.destinations.length})
+                      {t("destinations")} ({searchResults.destinations.length})
                     </Text>
                     {searchResults.destinations.map((item, index) => (
                       <SearchResultItem
@@ -283,7 +291,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
               </>
             )}
           </View>
-        ) : (
+        ) : !isLoading ? (
           <>
             {/* Category Cards */}
         <Animated.View
@@ -318,32 +326,43 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           entering={FadeInDown.delay(400).duration(600)}
           style={styles.section}
         >
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, isRTL && styles.sectionHeaderRTL]}>
             <Text
               style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
             >
               {t("featuredDestinations")}
             </Text>
-            <View style={styles.decorativeLine} />
+            <View style={[styles.decorativeLine, isRTL && styles.decorativeLineRTL]} />
           </View>
 
-          <View style={styles.gridContainer}>
-            {featuredItems.map((dest, index) => (
-              <DestinationGridCard
-                key={dest.id}
-                name={getLocalizedText(dest.name, dest.nameAr, language)}
-                subtitle={getLocalizedText(
-                  dest.subtitle,
-                  dest.subtitleAr,
-                  language
-                )}
-                image={dest.image}
-                isRTL={isRTL}
-                index={index}
-                isTall={index % 3 === 0}
-              />
-            ))}
-          </View>
+          {featuredItems.length > 0 ? (
+            <View style={[styles.gridContainer, isRTL && styles.gridContainerRTL]}>
+              {featuredItems.map((dest, index) => (
+                <DestinationGridCard
+                  key={dest.id}
+                  name={getLocalizedText(dest.name, dest.nameAr, language)}
+                  subtitle={getLocalizedText(
+                    dest.subtitle,
+                    dest.subtitleAr,
+                    language
+                  )}
+                  image={dest.image}
+                  isRTL={isRTL}
+                  index={index}
+                  isTall={index % 3 === 0}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyStateContainer}>
+              <Text style={[styles.emptyStateTitle, isRTL && styles.textRTL]}>
+                {t("emptyDestinationsTitle")}
+              </Text>
+              <Text style={[styles.emptyStateMessage, isRTL && styles.textRTL]}>
+                {t("emptyDestinationsMessage")}
+              </Text>
+            </View>
+          )}
         </Animated.View>
 
         {/* More Destinations - 2 Column Grid */}
@@ -351,38 +370,49 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           entering={FadeInDown.delay(500).duration(600)}
           style={styles.section}
         >
-          <View style={styles.sectionHeader}>
+          <View style={[styles.sectionHeader, isRTL && styles.sectionHeaderRTL]}>
             <Text
               style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
             >
-              More Destinations
+              {t("moreDestinations")}
             </Text>
-            <View style={styles.decorativeLine} />
+            <View style={[styles.decorativeLine, isRTL && styles.decorativeLineRTL]} />
           </View>
 
-          <View style={styles.gridContainer}>
-            {moreDestinations.map((dest, index) => (
-              <DestinationGridCard
-                key={dest.id}
-                name={getLocalizedText(dest.name, dest.nameAr, language)}
-                subtitle={getLocalizedText(
-                  dest.subtitle,
-                  dest.subtitleAr,
-                  language
-                )}
-                image={dest.image}
-                isRTL={isRTL}
-                index={index}
-                isTall={index % 3 === 1}
-              />
-            ))}
-          </View>
+          {moreDestinations.length > 0 ? (
+            <View style={[styles.gridContainer, isRTL && styles.gridContainerRTL]}>
+              {moreDestinations.map((dest, index) => (
+                <DestinationGridCard
+                  key={dest.id}
+                  name={getLocalizedText(dest.name, dest.nameAr, language)}
+                  subtitle={getLocalizedText(
+                    dest.subtitle,
+                    dest.subtitleAr,
+                    language
+                  )}
+                  image={dest.image}
+                  isRTL={isRTL}
+                  index={index}
+                  isTall={index % 3 === 1}
+                />
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyStateContainer}>
+              <Text style={[styles.emptyStateTitle, isRTL && styles.textRTL]}>
+                {t("emptyDestinationsTitle")}
+              </Text>
+              <Text style={[styles.emptyStateMessage, isRTL && styles.textRTL]}>
+                {t("emptyDestinationsMessage")}
+              </Text>
+            </View>
+          )}
         </Animated.View>
 
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
           </>
-        )}
+        ) : null}
       </ScrollView>
     </View>
   );
@@ -414,7 +444,7 @@ function SearchResultItem({ name, subtitle, image, isRTL, index }: SearchResultI
   return (
     <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
       <AnimatedPressable
-        style={[styles.searchResultItem, animatedStyle]}
+        style={[styles.searchResultItem, isRTL && styles.searchResultItemRTL, animatedStyle]}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
       >
@@ -553,6 +583,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: CONTAINER_PADDING,
     marginBottom: 12,
   },
+  sectionHeaderRTL: {
+    alignItems: "flex-end",
+  },
   sectionTitle: {
     fontSize: 24,
     fontWeight: "700",
@@ -569,6 +602,9 @@ const styles = StyleSheet.create({
     backgroundColor: "#B85C38",
     borderRadius: 2,
   },
+  decorativeLineRTL: {
+    alignSelf: "flex-end",
+  },
   categoryCardsContainer: {
     paddingHorizontal: CONTAINER_PADDING,
   },
@@ -580,6 +616,9 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     paddingHorizontal: CONTAINER_PADDING,
     gap: CARD_GAP,
+  },
+  gridContainerRTL: {
+    flexDirection: "row-reverse",
   },
   gridCardWrapper: {
     width: CARD_WIDTH,
@@ -679,6 +718,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  searchResultItemRTL: {
+    flexDirection: "row-reverse",
+  },
   searchResultImage: {
     width: 80,
     height: 80,
@@ -701,5 +743,26 @@ const styles = StyleSheet.create({
   searchResultSubtitle: {
     fontSize: 13,
     color: "#737373",
+  },
+  loadingContainer: {
+    paddingTop: 40,
+    alignItems: "center",
+  },
+  emptyStateContainer: {
+    paddingHorizontal: 24,
+    paddingTop: 40,
+    alignItems: "center",
+  },
+  emptyStateTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptyStateMessage: {
+    fontSize: 14,
+    color: "#737373",
+    textAlign: "center",
   },
 });

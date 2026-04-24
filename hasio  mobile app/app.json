@@ -30,7 +30,7 @@
         "backgroundColor": "#F5A623"
       },
       "package": "com.hasio.travel",
-      "versionCode": 9,
+      "versionCode": 10,
       "permissions": [
         "android.permission.READ_MEDIA_IMAGES"
       ]

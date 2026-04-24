@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -7,12 +7,13 @@ import {
   Pressable,
   Image,
   ActivityIndicator,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useQuery } from "convex/react";
-import { api } from "@/convex";
+import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { ApprovalStatus } from "@/types";
 
@@ -26,6 +27,12 @@ export default function MyServicesScreen() {
   const router = useRouter();
   const { t, isRTL, language } = useLanguage();
   const [filter, setFilter] = useState<"all" | string>("all");
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 1000);
+  }, []);
 
   const myServices = useQuery(api.services.queries.getMyServices, {});
   const isLoading = myServices === undefined;
@@ -38,7 +45,17 @@ export default function MyServicesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#0D7A5F"
+            colors={["#0D7A5F"]}
+          />
+        }
+      >
         {/* Header */}
         <Animated.View
           entering={FadeInDown.delay(100).duration(600)}
@@ -110,14 +127,14 @@ export default function MyServicesScreen() {
                 )}
                 <View style={styles.listingInfo}>
                   <Text style={[styles.listingName, isRTL && styles.textRTL]}>
-                    {language === "ar" ? (service.title_ar || service.title_en) : service.title_en}
+                    {language === "ar" ? (service.title_ar || service.title_en || "—") : (service.title_en || "—")}
                   </Text>
                   <Text style={[styles.listingType, isRTL && styles.textRTL]}>
-                    {service.serviceType}
+                    {service.serviceType === "tour_guide" ? t("tourGuide") : service.serviceType === "photographer" ? t("photographer") : service.serviceType === "driver" ? t("driver") : service.serviceType === "translator" ? t("translator") : service.serviceType === "event_planner" ? t("eventPlanner") : service.serviceType === "catering" ? t("catering") : service.serviceType === "equipment_rental" ? t("equipmentRental") : t("otherService")}
                   </Text>
                   <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[service.status] || "#737373" }]}>
                     <Text style={styles.statusText}>
-                      {service.status}
+                      {service.status === "pending" ? t("statusPending") : service.status === "approved" ? t("statusApproved") : t("statusRejected")}
                     </Text>
                   </View>
                 </View>

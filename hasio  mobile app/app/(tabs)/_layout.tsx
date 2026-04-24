@@ -193,7 +193,7 @@ interface TabButtonProps {
   icon: keyof typeof Feather.glyphMap;
   isActive: boolean;
   isHome: boolean;
-  scrollPosition: Animated.SharedValue<number>;
+  scrollPosition: { value: number };
   tabIndex: number;
   elevation: number;
   tabWidth: number;

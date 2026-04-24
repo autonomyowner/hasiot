@@ -33,13 +33,14 @@ export const listServices = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    let q = ctx.db.query("services");
+    const buildQuery = () => {
+      if (args.serviceType) {
+        return ctx.db.query("services").withIndex("by_serviceType", (q) => q.eq("serviceType", args.serviceType!));
+      }
+      return ctx.db.query("services");
+    };
 
-    if (args.serviceType) {
-      q = q.withIndex("by_serviceType", (q) => q.eq("serviceType", args.serviceType!));
-    }
-
-    const services = await q.collect();
+    const services = await buildQuery().collect();
 
     let filtered = services.filter((s) => s.status === "approved");
 
@@ -55,11 +56,13 @@ export const listServices = query({
   },
 });
 
-// Get a single service by ID (public)
+// Get a single service by ID (public — only returns approved services)
 export const getService = query({
   args: { serviceId: v.id("services") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.serviceId);
+    const service = await ctx.db.get(args.serviceId);
+    if (!service || service.status !== "approved") return null;
+    return service;
   },
 });
 
