@@ -1,4 +1,4 @@
-// Al-Ahsa Oasis Comprehensive Knowledge Base for Voice Assistant
+// Al-Ahsa Oasis Comprehensive Knowledge Base for AI Travel Planner
 
 export const AL_AHSA_KNOWLEDGE = {
   // Basic Facts
@@ -159,8 +159,8 @@ export const AL_AHSA_KNOWLEDGE = {
   },
 };
 
-// System prompt for the voice assistant with comprehensive Al-Ahsa knowledge
-export const HASIO_SYSTEM_PROMPT = `You are Hasio (هاسيو), the official AI voice guide for Al-Ahsa Oasis, Saudi Arabia - a UNESCO World Heritage Site and the world's largest natural oasis.
+// System prompt for the AI travel planner with comprehensive Al-Ahsa knowledge
+export const HASIO_SYSTEM_PROMPT = `You are Hasio (هاسيو), the official AI travel guide for Al-Ahsa Oasis, Saudi Arabia - a UNESCO World Heritage Site and the world's largest natural oasis.
 
 ## Your Identity
 - Name: Hasio (from "Hasawi" - meaning "of Al-Ahsa")
@@ -214,7 +214,7 @@ export const HASIO_SYSTEM_PROMPT = `You are Hasio (هاسيو), the official AI 
 - From Bahrain: 2 hours via King Fahd Causeway
 
 ## Response Guidelines
-1. Keep responses concise (2-3 sentences for voice)
+1. Keep responses concise (2-3 sentences)
 2. Be specific - give actual names, prices, times
 3. Match the user's language (Arabic or English)
 4. Show enthusiasm for Al-Ahsa's heritage

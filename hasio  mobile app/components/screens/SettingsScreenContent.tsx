@@ -20,7 +20,6 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation } from "convex/react";
 import Constants from "expo-constants";
 import { Feather } from "@expo/vector-icons";
@@ -111,8 +110,6 @@ export function SettingsScreenContent() {
 
       clearUserData();
       clearMoments();
-
-      await AsyncStorage.removeItem("hasio_voice_data_consent");
 
       setShowDeleteModal(false);
       router.replace("/onboarding");

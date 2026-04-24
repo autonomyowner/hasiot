@@ -35,6 +35,8 @@ export const translations = {
     eveningGreeting: "Good Evening",
     exploreOasis: "Explore the Oasis",
     featuredDestinations: "Featured Destinations",
+    moreDestinations: "More Destinations",
+    destinations: "Destinations",
 
     // Lodging
     all: "All",
@@ -75,16 +77,11 @@ export const translations = {
     suggestItinerary: "Plan a full day itinerary",
     chatPlaceholder: "Ask me anything about your trip...",
     sendMessage: "Send",
+    plannerSubtitle: "Powered by AI - Al-Ahsa Expert",
+    quickSuggestions: "Quick suggestions:",
 
-    // Voice Assistant
-    tapToSpeak: "Tap to speak",
-    listening: "Listening...",
-    thinking: "Thinking...",
-    speaking: "Speaking...",
-    connecting: "Connecting...",
-    tapToStop: "Tap to stop",
-    voiceAssistant: "Voice Assistant",
     close: "Close",
+    done: "Done",
 
     // Moments
     myMoments: "My Moments",
@@ -101,7 +98,6 @@ export const translations = {
     preferences: "Preferences",
     account: "Account",
     support: "Support",
-    darkMode: "Dark Mode",
     enabled: "Enabled",
     disabled: "Disabled",
     manageProfile: "Manage your profile",
@@ -128,7 +124,6 @@ export const translations = {
     location: "Location",
     description: "Description",
     cancel: "Cancel",
-    done: "Done",
     save: "Save",
     delete: "Delete",
     loading: "Loading...",
@@ -149,10 +144,15 @@ export const translations = {
     emptyMomentsAction: "Add Moment",
     emptyPlannerTitle: "No plans yet",
     emptyPlannerMessage: "Start planning your Al-Ahsa adventure",
+    emptyDestinationsTitle: "No destinations found",
+    emptyDestinationsMessage: "Check back later for new destinations",
 
     // Auth
     signInRequired: "Sign in to continue",
     signInRequiredMessage: "Create an account to save your moments and plans",
+    guestProfileTitle: "Welcome to Hasio",
+    guestProfileMessage: "Sign in to access your profile, save favorites, plan trips, and upgrade your account.",
+    guestSignInButton: "Sign In or Create Account",
     signIn: "Sign In",
     signUp: "Sign Up",
     continueAsGuest: "Continue as Guest",
@@ -169,7 +169,7 @@ export const translations = {
     passwordPlaceholder: "Enter your password",
     emailRequired: "Email is required",
     passwordRequired: "Password is required",
-    passwordTooShort: "Password must be at least 6 characters",
+    passwordTooShort: "Password must be at least 8 characters",
     noAccount: "Don't have an account?",
     haveAccount: "Already have an account?",
     back: "Back",
@@ -300,6 +300,41 @@ export const translations = {
     eventDate: "Event Date",
     eventTime: "Event Time",
 
+    // Form Placeholders
+    placeholderNameEn: "Name in English",
+    placeholderNameAr: "الاسم بالعربية",
+    placeholderCityEn: "City in English",
+    placeholderCityAr: "المدينة بالعربية",
+    placeholderAddressEn: "Address in English",
+    placeholderAddressAr: "العنوان بالعربية",
+    placeholderDescriptionEn: "Description in English",
+    placeholderDescriptionAr: "الوصف بالعربية",
+    placeholderNeighborhoodEn: "Neighborhood in English",
+    placeholderNeighborhoodAr: "الحي بالعربية",
+    placeholderPriceLodging: "e.g., 200-500 SAR",
+    placeholderPriceFood: "e.g., 50-100 SAR",
+    placeholderPriceService: "e.g., 100-200 SAR",
+    placeholderAmenitiesEn: "WiFi, Pool, Spa, Parking",
+    placeholderAmenitiesAr: "واي فاي، مسبح، سبا، موقف سيارات",
+    placeholderCuisineEn: "e.g., Saudi, International",
+    placeholderCuisineAr: "مثال: سعودي، عالمي",
+    placeholderHours: "e.g., 10 AM - 11 PM",
+    placeholderEventTitleEn: "Event title in English",
+    placeholderEventTitleAr: "عنوان الفعالية بالعربية",
+    placeholderEventDate: "YYYY-MM-DD",
+    placeholderEventTime: "e.g., 6:00 PM",
+    placeholderLocationEn: "Location in English",
+    placeholderLocationAr: "الموقع بالعربية",
+    placeholderServiceTitleEn: "Service title in English",
+    placeholderServiceTitleAr: "عنوان الخدمة بالعربية",
+    placeholderServiceDescEn: "Describe your service in English",
+    placeholderServiceDescAr: "وصف الخدمة بالعربية",
+    placeholderAvailabilityEn: "e.g., Weekends, Daily 9AM-6PM",
+    placeholderAvailabilityAr: "مثال: عطلة نهاية الأسبوع",
+    placeholderPhone: "+966 5XX XXX XXXX",
+    placeholderEmail: "email@example.com",
+    placeholderLanguages: "Arabic, English, French",
+
     // Upgrade
     upgradeAccount: "Upgrade Account",
     currentAccountType: "Current Account Type",
@@ -324,21 +359,40 @@ export const translations = {
     deleteAccountError: "Failed to delete account",
     deleting: "Deleting...",
 
-    // Voice Data Consent
-    voiceDataConsentTitle: "Voice Assistant Data Notice",
-    voiceDataConsentMessage: "Your voice recordings are processed by third-party services (Groq for transcription, ElevenLabs for speech) to provide the voice assistant feature. By continuing, you agree to this data processing.",
-    voiceDataConsentLearnMore: "Learn more in our Privacy Policy",
-    voiceDataConsentAccept: "I Understand & Accept",
-    voiceDataConsentDecline: "Cancel",
-
     // Production fixes
     invalidEmail: "Please enter a valid email address",
-    comingSoon: "Coming Soon",
     somethingWentWrong: "Something went wrong",
     tryAgain: "Try Again",
     fillRequiredFields: "Please fill in all required fields",
     success: "Success",
     listingSubmittedForReview: "Your listing has been submitted for review",
+
+    // Error messages
+    wrongCredentials: "Incorrect email or password",
+    accountNotFound: "No account found with this email",
+    emailAlreadyExists: "An account with this email already exists",
+    networkError: "Please check your internet connection",
+    signOutFailed: "Failed to sign out. Please try again.",
+    couldNotOpenLink: "Could not open the link",
+    uploadFailed: "Failed to upload images. Please try again.",
+    pleaseTryAgain: "Please try again later",
+
+    // Permission alerts
+    permissionRequired: "Permission Required",
+    photoPermissionMessage: "Please allow photo library access in Settings to add images.",
+    openSettings: "Settings",
+
+    // Report
+    reportMessage: "Report Message",
+    reportConfirm: "Would you like to report this message for containing inappropriate content?",
+    report: "Report",
+    thankYou: "Thank You",
+    reportReceived: "Thank you for reporting. We will review this message.",
+
+    // Sign out confirmation
+    signOutConfirmTitle: "Sign Out",
+    signOutConfirmMessage: "Are you sure you want to sign out?",
+    confirm: "Confirm",
   },
 
   ar: {
@@ -377,6 +431,8 @@ export const translations = {
     eveningGreeting: "مساء الخير",
     exploreOasis: "استكشف الأحساء",
     featuredDestinations: "وجهات مميزة",
+    moreDestinations: "المزيد من الوجهات",
+    destinations: "الوجهات",
 
     // Lodging
     all: "الكل",
@@ -417,16 +473,11 @@ export const translations = {
     suggestItinerary: "خطط ليوم كامل",
     chatPlaceholder: "اسألني أي شيء عن رحلتك...",
     sendMessage: "إرسال",
+    plannerSubtitle: "مدعوم بالذكاء الاصطناعي - خبير الأحساء",
+    quickSuggestions: "اقتراحات سريعة:",
 
-    // Voice Assistant
-    tapToSpeak: "انقر للتحدث",
-    listening: "أستمع...",
-    thinking: "أفكر...",
-    speaking: "أتحدث...",
-    connecting: "جاري الاتصال...",
-    tapToStop: "انقر للإيقاف",
-    voiceAssistant: "المساعد الصوتي",
     close: "إغلاق",
+    done: "تم",
 
     // Moments
     myMoments: "لحظاتي",
@@ -443,7 +494,6 @@ export const translations = {
     preferences: "التفضيلات",
     account: "الحساب",
     support: "الدعم",
-    darkMode: "الوضع الليلي",
     enabled: "مفعل",
     disabled: "معطل",
     manageProfile: "إدارة ملفك الشخصي",
@@ -470,7 +520,6 @@ export const translations = {
     location: "الموقع",
     description: "الوصف",
     cancel: "إلغاء",
-    done: "تم",
     save: "حفظ",
     delete: "حذف",
     loading: "جاري التحميل...",
@@ -491,10 +540,15 @@ export const translations = {
     emptyMomentsAction: "إضافة ذكرى",
     emptyPlannerTitle: "لا توجد خطط",
     emptyPlannerMessage: "ابدأ التخطيط لمغامرتك في الأحساء",
+    emptyDestinationsTitle: "لا توجد وجهات",
+    emptyDestinationsMessage: "تحقق لاحقاً من الوجهات الجديدة",
 
     // Auth
     signInRequired: "سجل الدخول للمتابعة",
     signInRequiredMessage: "أنشئ حساباً لحفظ لحظاتك وخططك",
+    guestProfileTitle: "مرحباً بك في Hasio",
+    guestProfileMessage: "سجل الدخول للوصول إلى ملفك الشخصي، حفظ المفضلات، تخطيط الرحلات، وترقية حسابك.",
+    guestSignInButton: "تسجيل الدخول أو إنشاء حساب",
     signIn: "تسجيل الدخول",
     signUp: "إنشاء حساب",
     continueAsGuest: "المتابعة كضيف",
@@ -511,7 +565,7 @@ export const translations = {
     passwordPlaceholder: "أدخل كلمة المرور",
     emailRequired: "البريد الإلكتروني مطلوب",
     passwordRequired: "كلمة المرور مطلوبة",
-    passwordTooShort: "كلمة المرور يجب أن تكون 6 أحرف على الأقل",
+    passwordTooShort: "كلمة المرور يجب أن تكون 8 أحرف على الأقل",
     noAccount: "ليس لديك حساب؟",
     haveAccount: "لديك حساب بالفعل؟",
     back: "رجوع",
@@ -642,6 +696,41 @@ export const translations = {
     eventDate: "تاريخ الفعالية",
     eventTime: "وقت الفعالية",
 
+    // Form Placeholders
+    placeholderNameEn: "الاسم بالإنجليزية",
+    placeholderNameAr: "الاسم بالعربية",
+    placeholderCityEn: "المدينة بالإنجليزية",
+    placeholderCityAr: "المدينة بالعربية",
+    placeholderAddressEn: "العنوان بالإنجليزية",
+    placeholderAddressAr: "العنوان بالعربية",
+    placeholderDescriptionEn: "الوصف بالإنجليزية",
+    placeholderDescriptionAr: "الوصف بالعربية",
+    placeholderNeighborhoodEn: "الحي بالإنجليزية",
+    placeholderNeighborhoodAr: "الحي بالعربية",
+    placeholderPriceLodging: "مثال: ٢٠٠-٥٠٠ ريال",
+    placeholderPriceFood: "مثال: ٥٠-١٠٠ ريال",
+    placeholderPriceService: "مثال: ١٠٠-٢٠٠ ريال",
+    placeholderAmenitiesEn: "واي فاي، مسبح، سبا، موقف سيارات",
+    placeholderAmenitiesAr: "واي فاي، مسبح، سبا، موقف سيارات",
+    placeholderCuisineEn: "مثال: سعودي، عالمي",
+    placeholderCuisineAr: "مثال: سعودي، عالمي",
+    placeholderHours: "مثال: ١٠ ص - ١١ م",
+    placeholderEventTitleEn: "عنوان الفعالية بالإنجليزية",
+    placeholderEventTitleAr: "عنوان الفعالية بالعربية",
+    placeholderEventDate: "YYYY-MM-DD",
+    placeholderEventTime: "مثال: ٦:٠٠ م",
+    placeholderLocationEn: "الموقع بالإنجليزية",
+    placeholderLocationAr: "الموقع بالعربية",
+    placeholderServiceTitleEn: "عنوان الخدمة بالإنجليزية",
+    placeholderServiceTitleAr: "عنوان الخدمة بالعربية",
+    placeholderServiceDescEn: "صف خدمتك بالإنجليزية",
+    placeholderServiceDescAr: "وصف الخدمة بالعربية",
+    placeholderAvailabilityEn: "مثال: عطلة نهاية الأسبوع، يومياً ٩ص-٦م",
+    placeholderAvailabilityAr: "مثال: عطلة نهاية الأسبوع",
+    placeholderPhone: "+966 5XX XXX XXXX",
+    placeholderEmail: "email@example.com",
+    placeholderLanguages: "العربية، الإنجليزية، الفرنسية",
+
     // Upgrade
     upgradeAccount: "ترقية الحساب",
     currentAccountType: "نوع الحساب الحالي",
@@ -666,21 +755,40 @@ export const translations = {
     deleteAccountError: "فشل في حذف الحساب",
     deleting: "جاري الحذف...",
 
-    // Voice Data Consent
-    voiceDataConsentTitle: "إشعار بيانات المساعد الصوتي",
-    voiceDataConsentMessage: "تتم معالجة تسجيلاتك الصوتية بواسطة خدمات خارجية (Groq للنسخ، ElevenLabs للكلام) لتوفير ميزة المساعد الصوتي. بالمتابعة، أنت توافق على معالجة البيانات هذه.",
-    voiceDataConsentLearnMore: "اعرف المزيد في سياسة الخصوصية",
-    voiceDataConsentAccept: "أفهم وأوافق",
-    voiceDataConsentDecline: "إلغاء",
-
     // Production fixes
     invalidEmail: "يرجى إدخال بريد إلكتروني صالح",
-    comingSoon: "قريباً",
     somethingWentWrong: "حدث خطأ ما",
     tryAgain: "إعادة المحاولة",
     fillRequiredFields: "يرجى ملء جميع الحقول المطلوبة",
     success: "تم بنجاح",
     listingSubmittedForReview: "تم إرسال إعلانك للمراجعة",
+
+    // Error messages
+    wrongCredentials: "البريد الإلكتروني أو كلمة المرور غير صحيحة",
+    accountNotFound: "لا يوجد حساب بهذا البريد الإلكتروني",
+    emailAlreadyExists: "يوجد حساب بهذا البريد الإلكتروني بالفعل",
+    networkError: "يرجى التحقق من اتصالك بالإنترنت",
+    signOutFailed: "فشل تسجيل الخروج. يرجى المحاولة مرة أخرى.",
+    couldNotOpenLink: "تعذر فتح الرابط",
+    uploadFailed: "فشل رفع الصور. يرجى المحاولة مرة أخرى.",
+    pleaseTryAgain: "يرجى المحاولة لاحقاً",
+
+    // Permission alerts
+    permissionRequired: "إذن مطلوب",
+    photoPermissionMessage: "يرجى السماح بالوصول إلى معرض الصور من الإعدادات",
+    openSettings: "الإعدادات",
+
+    // Report
+    reportMessage: "الإبلاغ عن الرسالة",
+    reportConfirm: "هل تريد الإبلاغ عن هذه الرسالة لأنها تحتوي على محتوى غير لائق؟",
+    report: "إبلاغ",
+    thankYou: "شكراً",
+    reportReceived: "شكراً للإبلاغ. سنراجع هذه الرسالة.",
+
+    // Sign out confirmation
+    signOutConfirmTitle: "تسجيل الخروج",
+    signOutConfirmMessage: "هل أنت متأكد من تسجيل الخروج؟",
+    confirm: "تأكيد",
   },
 } as const;
 
