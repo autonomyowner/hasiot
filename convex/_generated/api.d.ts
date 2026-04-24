@@ -20,6 +20,8 @@ import type * as http from "../http.js";
 import type * as listings_mutations from "../listings/mutations.js";
 import type * as listings_queries from "../listings/queries.js";
 import type * as listings_seedImages from "../listings/seedImages.js";
+import type * as moderation_mutations from "../moderation/mutations.js";
+import type * as moderation_queries from "../moderation/queries.js";
 import type * as services_mutations from "../services/mutations.js";
 import type * as services_queries from "../services/queries.js";
 import type * as travelPlanner_actions from "../travelPlanner/actions.js";
@@ -49,6 +51,8 @@ declare const fullApi: ApiFromModules<{
   "listings/mutations": typeof listings_mutations;
   "listings/queries": typeof listings_queries;
   "listings/seedImages": typeof listings_seedImages;
+  "moderation/mutations": typeof moderation_mutations;
+  "moderation/queries": typeof moderation_queries;
   "services/mutations": typeof services_mutations;
   "services/queries": typeof services_queries;
   "travelPlanner/actions": typeof travelPlanner_actions;

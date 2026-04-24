@@ -1,6 +1,17 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
+import { QueryCtx } from "../_generated/server";
+
+async function getBlockedIds(ctx: QueryCtx): Promise<Set<string>> {
+  const user = await getAuthenticatedAppUser(ctx);
+  if (!user) return new Set();
+  const blocks = await ctx.db
+    .query("userBlocks")
+    .withIndex("by_blocker", (q) => q.eq("blockerId", user._id))
+    .collect();
+  return new Set(blocks.map((b) => b.blockedUserId as string));
+}
 
 // Get authenticated user's own services
 export const getMyServices = query({
@@ -42,7 +53,10 @@ export const listServices = query({
 
     const services = await buildQuery().collect();
 
-    let filtered = services.filter((s) => s.status === "approved");
+    const blockedIds = await getBlockedIds(ctx);
+    let filtered = services
+      .filter((s) => s.status === "approved")
+      .filter((s) => !blockedIds.has(s.ownerId as string));
 
     if (args.city) {
       filtered = filtered.filter((s) => s.city === args.city);
@@ -86,7 +100,10 @@ export const searchServices = query({
 
     const results = await searchBuilder.collect();
 
-    const approved = results.filter((s) => s.status === "approved");
+    const blockedIds = await getBlockedIds(ctx);
+    const approved = results
+      .filter((s) => s.status === "approved")
+      .filter((s) => !blockedIds.has(s.ownerId as string));
 
     if (args.limit) {
       return approved.slice(0, args.limit);

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import Animated, {
@@ -9,6 +9,8 @@ import Animated, {
 import type { Event, Language } from "@/types";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { categoryColors } from "@/constants/colors";
+import { ReportSheet } from "@/components/ReportSheet";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -34,6 +36,7 @@ export function EventCard({
   onPress,
 }: EventCardProps) {
   const scale = useSharedValue(1);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -56,6 +59,7 @@ export function EventCard({
     <AnimatedPressable
       style={[styles.container, animatedStyle]}
       onPress={onPress}
+      onLongPress={() => setReportOpen(true)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
     >
@@ -77,7 +81,24 @@ export function EventCard({
         <View style={[styles.categoryBadge, { backgroundColor: categoryColor }]}>
           <Text style={styles.categoryText}>{categoryLabel}</Text>
         </View>
+
+        {/* More actions */}
+        <Pressable
+          style={styles.moreButton}
+          onPress={() => setReportOpen(true)}
+          hitSlop={10}
+        >
+          <Text style={styles.moreText}>⋯</Text>
+        </Pressable>
       </View>
+
+      <ReportSheet
+        visible={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="listing"
+        targetId={event.id}
+        ownerId={event.owner_id ? (event.owner_id as Id<"users">) : null}
+      />
 
       {/* Content */}
       <View style={[styles.content, isRTL && styles.contentRTL]}>
@@ -153,6 +174,23 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "600",
+  },
+  moreButton: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  moreText: {
+    fontSize: 18,
+    color: "#FFFFFF",
+    fontWeight: "700",
+    lineHeight: 18,
   },
   content: {
     padding: 16,

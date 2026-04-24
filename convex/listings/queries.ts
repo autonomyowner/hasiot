@@ -1,12 +1,25 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
+import { QueryCtx } from "../_generated/server";
+import { Id } from "../_generated/dataModel";
 
 // Helper: check if listing is publicly visible (approved or no status = seed data)
 function isPublicListing(listing: { isActive?: boolean; status?: string }) {
   if (listing.isActive === false) return false;
   if (listing.status && listing.status !== "approved") return false;
   return true;
+}
+
+// Helper: fetch blocked user IDs for the current user (empty set if anonymous)
+async function getBlockedIds(ctx: QueryCtx): Promise<Set<string>> {
+  const user = await getAuthenticatedAppUser(ctx);
+  if (!user) return new Set();
+  const blocks = await ctx.db
+    .query("userBlocks")
+    .withIndex("by_blocker", (q) => q.eq("blockerId", user._id))
+    .collect();
+  return new Set(blocks.map((b) => b.blockedUserId as string));
 }
 
 // List all listings with optional filters
@@ -39,7 +52,10 @@ export const listListings = query({
 
     const listings = await buildQuery().collect();
 
-    const publicListings = listings.filter(isPublicListing);
+    const blockedIds = await getBlockedIds(ctx);
+    const publicListings = listings
+      .filter(isPublicListing)
+      .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string)));
 
     if (args.limit) {
       return publicListings.slice(0, args.limit);
@@ -71,7 +87,10 @@ export const searchListings = query({
 
     const results = await searchBuilder.collect();
 
-    const publicListings = results.filter(isPublicListing);
+    const blockedIds = await getBlockedIds(ctx);
+    const publicListings = results
+      .filter(isPublicListing)
+      .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string)));
 
     if (args.limit) {
       return publicListings.slice(0, args.limit);

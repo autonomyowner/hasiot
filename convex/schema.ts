@@ -225,6 +225,31 @@ export default defineSchema({
   })
     .index("by_email", ["email"]),
 
+  // User-submitted content reports (UGC compliance)
+  contentReports: defineTable({
+    reporterId: v.id("users"),
+    targetType: v.string(), // "listing" | "service" | "review"
+    targetId: v.string(), // polymorphic — id of listing/service/review
+    reason: v.string(), // "spam" | "inappropriate" | "offensive" | "fraud" | "other"
+    details: v.optional(v.string()),
+    status: v.string(), // "pending" | "reviewed" | "dismissed" | "actioned"
+    reviewedByAdminId: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_target", ["targetType", "targetId"])
+    .index("by_reporter", ["reporterId"])
+    .index("by_status", ["status"]),
+
+  // User blocks — user-to-user hiding (UGC compliance)
+  userBlocks: defineTable({
+    blockerId: v.id("users"),
+    blockedUserId: v.id("users"),
+    createdAt: v.number(),
+  })
+    .index("by_blocker", ["blockerId"])
+    .index("by_blocker_and_blocked", ["blockerId", "blockedUserId"]),
+
   // Travel Knowledge Base — for AI travel planner
   travelKnowledge: defineTable({
     category: v.string(), // "destinations" | "hotels" | "restaurants" | "culture" | "transport" | "tips" | "events" | "general"

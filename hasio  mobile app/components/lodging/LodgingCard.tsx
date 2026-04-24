@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import Animated, {
@@ -12,6 +12,7 @@ import { getLocalizedText } from "@/hooks/useLanguage";
 import { categoryColors } from "@/constants/colors";
 import { useAppStore } from "@/stores/appStore";
 import { useToggleFavorite, useFavorites } from "@/hooks/useConvexData";
+import { ReportSheet } from "@/components/ReportSheet";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -31,6 +32,7 @@ export function LodgingCard({
   perNightText,
 }: LodgingCardProps) {
   const scale = useSharedValue(1);
+  const [reportOpen, setReportOpen] = useState(false);
   const { isAuthenticated } = useConvexAuth();
   const convexToggleFavorite = useToggleFavorite();
   const { favorites } = useFavorites();
@@ -73,6 +75,7 @@ export function LodgingCard({
     <AnimatedPressable
       style={[styles.container, animatedStyle]}
       onPress={onPress}
+      onLongPress={() => setReportOpen(true)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
     >
@@ -90,11 +93,27 @@ export function LodgingCard({
           <Text style={styles.ratingText}>{lodging.rating.toFixed(1)}</Text>
         </View>
 
+        {/* More actions */}
+        <Pressable
+          style={styles.moreButton}
+          onPress={() => setReportOpen(true)}
+          hitSlop={10}
+        >
+          <Text style={styles.moreText}>⋯</Text>
+        </Pressable>
+
         {/* Favorite Button */}
         <Pressable style={styles.favoriteButton} onPress={toggleFavorite}>
           <Text style={styles.favoriteText}>{isFavorite ? "♥" : "♡"}</Text>
         </Pressable>
       </View>
+
+      <ReportSheet
+        visible={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="listing"
+        targetId={lodging.id}
+      />
 
       {/* Content */}
       <View style={[styles.content, isRTL && styles.contentRTL]}>
@@ -178,6 +197,23 @@ const styles = StyleSheet.create({
   favoriteText: {
     fontSize: 18,
     color: "#DC6B5A",
+  },
+  moreButton: {
+    position: "absolute",
+    top: 12,
+    right: 56,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  moreText: {
+    fontSize: 18,
+    color: "#FFFFFF",
+    fontWeight: "700",
+    lineHeight: 18,
   },
   content: {
     padding: 16,

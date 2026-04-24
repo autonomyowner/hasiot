@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import Animated, {
@@ -9,6 +9,8 @@ import Animated, {
 import type { Food, Language } from "@/types";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { categoryColors } from "@/constants/colors";
+import { ReportSheet } from "@/components/ReportSheet";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -35,6 +37,7 @@ export function FoodCard({
   avgPriceText,
 }: FoodCardProps) {
   const scale = useSharedValue(1);
+  const [reportOpen, setReportOpen] = useState(false);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -57,6 +60,7 @@ export function FoodCard({
     <AnimatedPressable
       style={[styles.container, animatedStyle]}
       onPress={onPress}
+      onLongPress={() => setReportOpen(true)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
     >
@@ -73,7 +77,24 @@ export function FoodCard({
         <View style={styles.ratingBadge}>
           <Text style={styles.ratingText}>{food.rating.toFixed(1)}</Text>
         </View>
+
+        {/* More actions */}
+        <Pressable
+          style={styles.moreButton}
+          onPress={() => setReportOpen(true)}
+          hitSlop={10}
+        >
+          <Text style={styles.moreText}>⋯</Text>
+        </Pressable>
       </View>
+
+      <ReportSheet
+        visible={reportOpen}
+        onClose={() => setReportOpen(false)}
+        targetType="listing"
+        targetId={food.id}
+        ownerId={food.owner_id ? (food.owner_id as Id<"users">) : null}
+      />
 
       {/* Content */}
       <View style={[styles.content, isRTL && styles.contentRTL]}>
@@ -147,6 +168,23 @@ const styles = StyleSheet.create({
     color: "#D97706",
     fontSize: 14,
     fontWeight: "700",
+  },
+  moreButton: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  moreText: {
+    fontSize: 18,
+    color: "#FFFFFF",
+    fontWeight: "700",
+    lineHeight: 18,
   },
   content: {
     padding: 16,
