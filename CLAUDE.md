@@ -267,7 +267,12 @@ The mobile app (`hasio  mobile app/`) includes these reliability features:
 
 ## Mobile App Play Store Deployment
 
-**Status**: v1.0.0 published via EAS to Google Play (closed internal testing track, 14-day period required before production for new developer accounts).
+**Status**: v1.0.0 published via EAS to Google Play. Passed 14-day closed testing (12 testers) and granted production access. Promoted tested build to Production track.
+
+### Production Target Countries (8)
+Algeria, Australia, Bahrain, Kuwait, Oman, Qatar, Saudi Arabia, United Arab Emirates.
+
+**No EU/UK distribution** — intentionally skipped to avoid EU Digital Services Act (DSA) trader status requirements, GDPR data-controller obligations, and UK Online Safety Act compliance overhead. Same 8 countries used in both closed testing and production tracks.
 
 ### Key Decisions (v1)
 - **Voice assistant disabled** — removed `expo-av`, `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS` permissions, VoiceAssistant component, voiceService, and ElevenLabs/Groq integrations. Text-based AI planner remains fully functional via Convex `planTravel` action.

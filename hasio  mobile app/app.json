@@ -30,10 +30,8 @@
         "backgroundColor": "#F5A623"
       },
       "package": "com.hasio.travel",
-      "versionCode": 10,
-      "permissions": [
-        "android.permission.READ_MEDIA_IMAGES"
-      ]
+      "versionCode": 11,
+      "permissions": []
     },
     "web": {
       "bundler": "metro",
@@ -49,7 +47,14 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-image-picker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": false,
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
       "expo-updates",
       [
         "expo-build-properties",
