@@ -3,6 +3,7 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState, useEffect } from "react";
 import ImageCarousel from "../components/ImageCarousel";
+import Navbar from "../components/Navbar";
 import "./ListingDetailPage.css";
 
 const AMENITIES = [
@@ -93,6 +94,7 @@ export default function ListingDetailPage() {
 
   return (
     <div className="detail-page">
+      <Navbar />
       {/* Breadcrumb */}
       <nav className="detail-breadcrumb">
         <Link to="/home">Home</Link>

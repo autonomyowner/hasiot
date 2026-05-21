@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1024px;
+    height: 500px;
+    overflow: hidden;
+    font-family: 'Segoe UI', Arial, sans-serif;
+  }
+  .container {
+    width: 1024px;
+    height: 500px;
+    background: linear-gradient(135deg, #0D7A5F 0%, #0a6b53 40%, #085a45 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  /* Decorative circles */
+  .circle1 {
+    position: absolute;
+    width: 400px;
+    height: 400px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+    top: -100px;
+    right: -50px;
+  }
+  .circle2 {
+    position: absolute;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.04);
+    bottom: -80px;
+    left: -60px;
+  }
+  .circle3 {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.03);
+    top: 50px;
+    left: 200px;
+  }
+  /* Palm tree decorative elements */
+  .palm-left {
+    position: absolute;
+    left: 30px;
+    bottom: 0;
+    font-size: 120px;
+    opacity: 0.12;
+    transform: scaleX(-1);
+  }
+  .palm-right {
+    position: absolute;
+    right: 30px;
+    bottom: 0;
+    font-size: 120px;
+    opacity: 0.12;
+  }
+  /* Content */
+  .content {
+    text-align: center;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+  .logo-icon {
+    width: 80px;
+    height: 80px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    margin-bottom: 4px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.2);
+  }
+  .app-name {
+    font-size: 72px;
+    font-weight: 800;
+    color: #FFFFFF;
+    letter-spacing: -2px;
+    text-shadow: 0 2px 20px rgba(0,0,0,0.15);
+  }
+  .tagline {
+    font-size: 24px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.9);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .divider {
+    width: 60px;
+    height: 3px;
+    background: rgba(255,255,255,0.4);
+    border-radius: 2px;
+  }
+  .features {
+    display: flex;
+    gap: 32px;
+    margin-top: 8px;
+  }
+  .feature {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: rgba(255,255,255,0.8);
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .dot {
+    width: 6px;
+    height: 6px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 50%;
+  }
+  /* Subtle pattern overlay */
+  .pattern {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+    background-size: 20px 20px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="pattern"></div>
+  <div class="circle1"></div>
+  <div class="circle2"></div>
+  <div class="circle3"></div>
+
+  <div class="content">
+    <div class="app-name">Hasio</div>
+    <div class="divider"></div>
+    <div class="tagline">Your Al-Ahsa Travel Guide</div>
+    <div class="features">
+      <div class="feature"><div class="dot"></div>Hotels &amp; Restaurants</div>
+      <div class="feature"><div class="dot"></div>AI Trip Planner</div>
+      <div class="feature"><div class="dot"></div>Local Services</div>
+      <div class="feature"><div class="dot"></div>Travel Moments</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

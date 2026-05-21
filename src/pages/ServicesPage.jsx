@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from 'convex/react'
 import { motion as Motion } from 'framer-motion'
 import { api } from '../../convex/_generated/api'
+import Navbar from '../components/Navbar'
 import './ServicesPage.css'
 
 const FALLBACK_AVATARS = [
@@ -230,6 +231,7 @@ export default function ServicesPage() {
   return (
     <div className="services-page" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="services-grain" aria-hidden="true" />
+      <Navbar lang={isAr ? 'ar' : 'en'} onLangToggle={toggleLang} />
 
       {/* Hero bar */}
       <div className="services-hero-bar">

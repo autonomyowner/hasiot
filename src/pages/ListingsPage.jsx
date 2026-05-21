@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useQuery } from 'convex/react'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
+import Navbar from '../components/Navbar'
 import './ListingsPage.css'
 
 const AIDA_FALLBACKS = [
@@ -112,6 +113,8 @@ export default function ListingsPage() {
       dir={isRtl ? 'rtl' : 'ltr'}
       style={{ fontFamily: isRtl ? "'Cairo', sans-serif" : "'Outfit', sans-serif" }}
     >
+      <Navbar lang={lang} onLangToggle={toggleLang} />
+
       {/* Sticky search bar */}
       <div className="listings-header">
         <div className="listings-header-inner">
