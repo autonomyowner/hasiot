@@ -299,6 +299,17 @@ function App() {
 
       {/* ===== HERO ===== */}
       <section className="hero">
+        <img
+          className="hero-bg-img"
+          src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbX7vXhYqLLXG70k0_Yw40zZ7LHFTvsNXOOVekLkapmi1Z-U89-wacUWQLneWNoLmtqcfgqhF8SVRvSQVKufq0Hc-sKOmk4S457rGfXUERQzsbgmBajMcj8YVdjckDV8O56zDpOVF9TCw8_2FLQQ1ESZuMswxeZZGkGATlkrH1AGlavzjy9FaxLD1AoU5mh3pxGyF1y1yEllCPWPjRo7mBLBIkiIySqiprXLVLACa-jJuXZtjMW2TlilFawFnvXWRozPv4Fae8zVHD"
+          alt="Al-Ahsa Oasis"
+        />
+        <img
+          className="hero-sand-texture"
+          src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvOn0-_6WExpjjjZDIGtJ4emLgSGeiYQvV49lEBVEkRNzsBLGoqqDCgXfEJsCW6AhW4WjfU93nGcqIjn_4e7ZI3vTZJjCuz6xx1QynlXgtqBQIDQcMkjVBd3AbJiocfJUzQVz3eUNOduG8inDUaGKTrcrIv0tCr9D9VvteFSK96a8__JRXY8wohXTTNkTMwb6JlbSXw4tIN8cExmHdqYDK0V7tPIqR2bJzBEdzk4-m09Wst9QbILz03YFsPUif48h0UfBgA2jDzBAt"
+          alt=""
+          aria-hidden="true"
+        />
         <div className="hero-overlay" />
         <div className="hero-content">
           <motion.div
@@ -445,10 +456,11 @@ function App() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <div className="atlas-map-visual">
-              <div className="atlas-map-icon">🗺</div>
-              <div className="atlas-map-label">{t.atlas.mapLabel}</div>
-            </div>
+            <img
+              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAFLcKzcmHKb6IZIuHRfHdJjjXN2onOYhdwPg1JHPg25v4u8FN3gfAGIYdrruxfXdqsuGrtsBQF84uh0xhEYyk8csI55bM65ZgWrW4VDXdiJzI6wENdnzj6Nbw-pzlp55Lonw1gSVSo42mCoOSjfHTvATuDC8fpBBkW3SiqBeFC-TkcfIC5IKC-EfPw5U6gVz6lHZWtbRSjN5Z9vXKMhZ0ZBzDS9j9LqBc7moRCc86Ah0GJ6NzaDCgXX7E8I3Hr_uIR8YKrG6xKY"
+              alt="Al-Ahsa interactive map"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           </motion.div>
         </div>
       </section>

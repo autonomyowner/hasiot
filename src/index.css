@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&family=Instrument+Serif:ital@0;1&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Cairo:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
 
 :root {
   --primary: #0D7A5F;
@@ -12,7 +12,8 @@
   --gray-400: #A3A3A3;
   --gray-600: #525252;
 
-  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-heading: 'Playfair Display', Georgia, serif;
   --font-body: 'Outfit', system-ui, sans-serif;
   --font-arabic: 'Cairo', 'Outfit', system-ui, sans-serif;
 
@@ -20,16 +21,16 @@
   --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* New design system tokens */
-  --color-primary:       #0D7A5F;
-  --color-primary-dark:  #0A6550;
-  --color-primary-light: #E8F5F1;
-  --color-gold:          #C9A84C;
+  --color-primary:       #005f49;
+  --color-primary-dark:  #004d3b;
+  --color-primary-light: #98f4d3;
+  --color-gold:          #D4AF37;
   --color-sand:          #E8DFD4;
-  --color-bg:            #FAFAF8;
-  --color-surface:       #FFFFFF;
-  --color-text:          #1A1A1A;
-  --color-text-muted:    #6B7280;
-  --color-border:        #E5E7EB;
+  --color-bg:            #fcf9f8;
+  --color-surface:       #fcf9f8;
+  --color-text:          #1c1b1b;
+  --color-text-muted:    #6e7a74;
+  --color-border:        #bdc9c2;
   --color-success:       #059669;
   --color-warning:       #D97706;
   --color-error:         #DC2626;
@@ -126,4 +127,21 @@ h1, h2, h3, h4 {
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 4px;
+}
+
+/* Material Symbols Outlined icon font */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
 }
