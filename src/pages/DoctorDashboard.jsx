@@ -5,8 +5,7 @@ import { api } from '../../convex/_generated/api'
 import { useCurrentUser } from '../hooks/useCurrentUser'
 import { authClient } from '../lib/auth-client'
 import { motion, AnimatePresence } from 'framer-motion'
-import './AuthPages.css'
-import '../pages/PatientDashboard.css'
+import './DoctorDashboard.css'
 
 const DAYS = [
   { key: 'saturday', ar: 'السبت', en: 'Saturday' },
@@ -26,24 +25,10 @@ export default function DoctorDashboard() {
   const [uploadSuccess, setUploadSuccess] = useState(false)
   const [activeTab, setActiveTab] = useState(null)
 
-  // Role-adaptive tabs
-  const tabs = user?.role === 'service_provider'
-    ? [
-        { id: 'services', label: 'خدماتي' },
-        { id: 'bookings', label: 'الحجوزات' },
-        { id: 'profile', label: 'الملف الشخصي' },
-      ]
-    : [
-        { id: 'listings', label: 'قوائمي' },
-        { id: 'bookings', label: 'الحجوزات' },
-        { id: 'schedule', label: 'جدول العمل' },
-        { id: 'profile', label: 'الملف الشخصي' },
-      ]
-
   // Set default active tab based on role
   useEffect(() => {
     if (user && activeTab === null) {
-      setActiveTab(user.role === 'service_provider' ? 'services' : 'listings')
+      setActiveTab(user.role === 'service_provider' ? 'services' : 'overview')
     }
   }, [user, activeTab])
 
@@ -75,12 +60,8 @@ export default function DoctorDashboard() {
 
   if (isLoading) {
     return (
-      <div className="auth-page" dir="rtl">
-        <div className="auth-container">
-          <div className="auth-card">
-            <p style={{ textAlign: 'center', color: '#6b7280' }}>جاري التحميل...</p>
-          </div>
-        </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--color-bg)' }}>
+        <p style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-arabic)' }}>جاري التحميل...</p>
       </div>
     )
   }
@@ -90,44 +71,113 @@ export default function DoctorDashboard() {
   const needsDoc = !user.isApproved && !user.cvFileId && !uploadSuccess
   const pendingReview = !user.isApproved && (user.cvFileId || uploadSuccess)
   const isApproved = user.isApproved === true
+  const isServiceProvider = user.role === 'service_provider'
 
   return (
-    <div className="patient-dashboard" dir="rtl">
-      {/* Header */}
-      <header className="dashboard-header">
-        <div className="dashboard-header-inner">
-          <Link to="/" className="auth-logo">Hasio</Link>
-          <div className="dashboard-user-info">
-            <span className="dashboard-user-name">
-              مرحباً، {user.firstName || user.email}
-            </span>
-            <button
-              className="dashboard-signout"
-              onClick={async () => { await authClient.signOut(); window.location.href = '/home' }}
-            >
-              تسجيل الخروج
-            </button>
-          </div>
+    <div className="partner-dashboard" dir="rtl">
+      {/* Sidebar */}
+      <aside className="partner-sidebar">
+        <div className="sidebar-logo">
+          <Link to="/">Hasio</Link>
         </div>
-      </header>
 
-      <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '1.5rem 1rem' }}>
+        <nav className="sidebar-nav">
+          {/* Overview only for business owners */}
+          {!isServiceProvider && (
+            <button
+              className={`sidebar-nav-item ${activeTab === 'overview' ? 'active' : ''}`}
+              onClick={() => setActiveTab('overview')}
+            >
+              <span className="nav-icon">📊</span>
+              نظرة عامة
+            </button>
+          )}
+
+          {/* Listings tab for business owners */}
+          {!isServiceProvider && (
+            <button
+              className={`sidebar-nav-item ${activeTab === 'listings' ? 'active' : ''}`}
+              onClick={() => setActiveTab('listings')}
+            >
+              <span className="nav-icon">🏛️</span>
+              قوائمي
+            </button>
+          )}
+
+          {/* Services tab for service providers */}
+          {isServiceProvider && (
+            <button
+              className={`sidebar-nav-item ${activeTab === 'services' ? 'active' : ''}`}
+              onClick={() => setActiveTab('services')}
+            >
+              <span className="nav-icon">⚙️</span>
+              خدماتي
+            </button>
+          )}
+
+          <button
+            className={`sidebar-nav-item ${activeTab === 'bookings' ? 'active' : ''}`}
+            onClick={() => setActiveTab('bookings')}
+          >
+            <span className="nav-icon">📅</span>
+            الحجوزات
+          </button>
+
+          {/* Schedule tab only for business owners */}
+          {!isServiceProvider && (
+            <button
+              className={`sidebar-nav-item ${activeTab === 'schedule' ? 'active' : ''}`}
+              onClick={() => setActiveTab('schedule')}
+            >
+              <span className="nav-icon">🕐</span>
+              جدول العمل
+            </button>
+          )}
+
+          <button
+            className={`sidebar-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
+            onClick={() => setActiveTab('profile')}
+          >
+            <span className="nav-icon">👤</span>
+            الملف الشخصي
+          </button>
+        </nav>
+
+        <div className="sidebar-bottom">
+          <button
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', marginBottom: '8px', width: '100%' }}
+            onClick={async () => { await authClient.signOut(); window.location.href = '/home' }}
+          >
+            <span>🚪</span>
+            تسجيل الخروج
+          </button>
+          <Link to="/" className="back-link">
+            <span>→</span>
+            العودة للرئيسية
+          </Link>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="partner-main">
         {/* Document Upload Banner */}
         {needsDoc && (
           <div style={{
-            background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: '12px',
-            padding: '1.5rem', marginBottom: '1.5rem'
+            background: '#fef3c7', border: '1px solid #f59e0b', borderRadius: 'var(--radius-lg)',
+            padding: '1.25rem 1.5rem', marginBottom: '24px'
           }}>
-            <h3 style={{ color: '#92400e', margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: '600' }}>
+            <h3 style={{ color: '#92400e', margin: '0 0 0.375rem', fontSize: '0.9375rem', fontWeight: 600 }}>
               مطلوب: رفع وثيقة العمل
             </h3>
-            <p style={{ color: '#92400e', margin: '0 0 1rem', fontSize: '0.875rem', lineHeight: '1.6' }}>
+            <p style={{ color: '#92400e', margin: '0 0 0.875rem', fontSize: '0.875rem', lineHeight: 1.6 }}>
               لتفعيل حسابك، يرجى رفع رخصة العمل أو وثيقة تثبت نشاطك التجاري.
               سيقوم فريق الإدارة بمراجعتها والموافقة على حسابك.
             </p>
             <label style={{
-              display: 'inline-block', padding: '0.625rem 1.25rem', background: '#0D7A5F',
-              color: 'white', borderRadius: '8px', cursor: 'pointer', fontSize: '0.875rem', fontWeight: '500'
+              display: 'inline-block', padding: '0.5rem 1.125rem',
+              background: 'var(--color-primary)', color: 'white',
+              borderRadius: 'var(--radius-md)', cursor: 'pointer',
+              fontSize: '0.875rem', fontWeight: 600
             }}>
               {uploading ? 'جاري الرفع...' : 'رفع وثيقة العمل (PDF)'}
               <input
@@ -144,40 +194,127 @@ export default function DoctorDashboard() {
         {/* Pending Review Banner */}
         {pendingReview && (
           <div style={{
-            background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: '12px',
-            padding: '1.5rem', marginBottom: '1.5rem'
+            background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 'var(--radius-lg)',
+            padding: '1.25rem 1.5rem', marginBottom: '24px'
           }}>
-            <h3 style={{ color: '#1e40af', margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: '600' }}>
+            <h3 style={{ color: '#1e40af', margin: '0 0 0.375rem', fontSize: '0.9375rem', fontWeight: 600 }}>
               حسابك قيد المراجعة
             </h3>
-            <p style={{ color: '#1e40af', margin: '0', fontSize: '0.875rem', lineHeight: '1.6' }}>
+            <p style={{ color: '#1e40af', margin: 0, fontSize: '0.875rem', lineHeight: 1.6 }}>
               تم استلام وثيقتك بنجاح. فريق الإدارة يراجع طلبك حالياً.
               سيتم تفعيل حسابك بعد الموافقة.
             </p>
           </div>
         )}
 
-        {/* Tab Navigation */}
+        {/* Tab content — disabled overlay if not approved */}
         <div style={{ opacity: isApproved ? 1 : 0.5, pointerEvents: isApproved ? 'auto' : 'none' }}>
-          <div className="filter-tabs" style={{ marginBottom: '1.5rem' }}>
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                className={`filter-tab ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {activeTab === 'listings' && <MyListingsTab user={user} />}
-          {activeTab === 'services' && <MyServicesTab user={user} />}
+          {activeTab === 'overview' && !isServiceProvider && <OverviewTab user={user} setActiveTab={setActiveTab} />}
+          {activeTab === 'listings' && !isServiceProvider && <MyListingsTab user={user} />}
+          {activeTab === 'services' && isServiceProvider && <MyServicesTab user={user} />}
           {activeTab === 'bookings' && <BusinessBookingsTab />}
-          {activeTab === 'schedule' && <ScheduleTab user={user} />}
+          {activeTab === 'schedule' && !isServiceProvider && <ScheduleTab user={user} />}
           {activeTab === 'profile' && <BusinessProfileTab user={user} />}
         </div>
       </main>
+    </div>
+  )
+}
+
+// === Overview Tab ===
+function OverviewTab({ user, setActiveTab }) {
+  const myListings = useQuery(api.listings.queries.getMyListings, {})
+
+  const total = myListings?.length ?? 0
+  const approved = myListings?.filter(l => l.status === 'approved').length ?? 0
+  const pending = myListings?.filter(l => l.status === 'pending').length ?? 0
+  const rejected = myListings?.filter(l => l.status === 'rejected').length ?? 0
+
+  const typeLabels = { hotel: 'فندق', restaurant: 'مطعم', attraction: 'معلم سياحي', event: 'فعالية', tour: 'جولة' }
+
+  return (
+    <div>
+      <div className="partner-main-header">
+        <h1>مرحباً، {user?.firstName || user?.email} 👋</h1>
+        <p>نظرة عامة على نشاطك التجاري</p>
+      </div>
+
+      <div className="stats-row">
+        <div className="stat-card">
+          <div className="stat-card-icon">🏛️</div>
+          <div className="stat-card-label">إجمالي القوائم</div>
+          <div className="stat-card-value">{total}</div>
+          <div className="stat-card-trend neutral">جميع الحالات</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-icon">✅</div>
+          <div className="stat-card-label">معتمدة</div>
+          <div className="stat-card-value">{approved}</div>
+          <div className="stat-card-trend up">نشطة</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-icon">⏳</div>
+          <div className="stat-card-label">قيد المراجعة</div>
+          <div className="stat-card-value">{pending}</div>
+          <div className="stat-card-trend neutral">بانتظار الموافقة</div>
+        </div>
+      </div>
+
+      {/* Recent listings table */}
+      <div className="section-card">
+        <div className="section-card-header">
+          <h2>آخر القوائم</h2>
+          <button className="btn-sm primary" onClick={() => setActiveTab('listings')}>
+            عرض الكل
+          </button>
+        </div>
+        <div className="section-card-body">
+          {myListings === undefined ? (
+            <p style={{ padding: '20px 24px', color: 'var(--color-text-muted)', fontSize: '14px' }}>جاري التحميل...</p>
+          ) : myListings.length === 0 ? (
+            <p style={{ padding: '20px 24px', color: 'var(--color-text-muted)', fontSize: '14px' }}>لا توجد قوائم بعد.</p>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>المدينة</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myListings.slice(0, 5).map(l => (
+                  <tr key={l._id}>
+                    <td>
+                      <div className="table-listing-name">{l.name_ar || l.name_en}</div>
+                      <div className="table-listing-type">{typeLabels[l.type] || l.type}</div>
+                    </td>
+                    <td>{l.city}</td>
+                    <td>
+                      <span className={`status-badge ${l.status || 'pending'}`}>
+                        {l.status === 'approved' ? 'معتمد' : l.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Rejection summary */}
+      {rejected > 0 && (
+        <div style={{
+          background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 'var(--radius-lg)',
+          padding: '16px 20px', fontSize: '14px', color: '#991B1B'
+        }}>
+          لديك {rejected} قائمة مرفوضة. راجع <button
+            onClick={() => setActiveTab('listings')}
+            style={{ background: 'none', border: 'none', color: '#991B1B', fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', fontSize: '14px' }}
+          >قوائمي</button> لمعرفة السبب وإعادة التقديم.
+        </div>
+      )}
     </div>
   )
 }
@@ -268,102 +405,117 @@ function MyListingsTab({ user }) {
 
   const pending = (myListings || []).filter(l => l.status === 'pending').length
   const approved = (myListings || []).filter(l => l.status === 'approved').length
-  const rejected = (myListings || []).filter(l => l.status === 'rejected').length
 
   return (
     <div>
+      <div className="partner-main-header">
+        <h1>قوائمي</h1>
+        <p>إدارة قوائم الفنادق والمطاعم والمعالم السياحية</p>
+      </div>
+
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        {[
-          { label: 'الإجمالي', value: (myListings || []).length, color: '#6b7280' },
-          { label: 'قيد المراجعة', value: pending, color: '#f59e0b' },
-          { label: 'معتمد', value: approved, color: '#059669' },
-          { label: 'مرفوض', value: rejected, color: '#dc2626' },
-        ].map((stat, i) => (
-          <div key={i} className="dash-card" style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: stat.color, margin: '0 0 0.25rem' }}>{stat.value}</p>
-            <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>{stat.label}</p>
-          </div>
-        ))}
+      <div className="stats-row">
+        <div className="stat-card">
+          <div className="stat-card-icon">🏛️</div>
+          <div className="stat-card-label">الإجمالي</div>
+          <div className="stat-card-value">{(myListings || []).length}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-icon">✅</div>
+          <div className="stat-card-label">معتمدة</div>
+          <div className="stat-card-value">{approved}</div>
+          <div className="stat-card-trend up">نشطة</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-icon">⏳</div>
+          <div className="stat-card-label">قيد المراجعة</div>
+          <div className="stat-card-value">{pending}</div>
+        </div>
       </div>
 
-      {/* Add New Button */}
-      <div style={{ marginBottom: '1.5rem' }}>
-        <button
-          className="btn-primary"
-          onClick={() => { setShowForm(true); setEditingListing(null); }}
-        >
-          إضافة جديد
-        </button>
+      {/* Listings table */}
+      <div className="section-card">
+        <div className="section-card-header">
+          <h2>القوائم ({(myListings || []).length})</h2>
+          <button
+            className="btn-sm primary"
+            onClick={() => { setShowForm(true); setEditingListing(null) }}
+          >
+            + إضافة جديد
+          </button>
+        </div>
+        <div className="section-card-body">
+          {myListings === undefined ? (
+            <p style={{ padding: '20px 24px', color: 'var(--color-text-muted)', fontSize: '14px' }}>جاري التحميل...</p>
+          ) : myListings.length === 0 ? (
+            <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+              <p style={{ fontSize: '15px' }}>لم تقم بإضافة أي قوائم بعد.</p>
+              <button
+                className="btn-sm primary"
+                style={{ marginTop: '12px' }}
+                onClick={() => { setShowForm(true); setEditingListing(null) }}
+              >
+                إضافة أول قائمة
+              </button>
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>المدينة</th>
+                  <th>الحالة</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {myListings.map(listing => {
+                  const sc = statusConfig[listing.status] || statusConfig.pending
+                  return (
+                    <tr key={listing._id}>
+                      <td>
+                        <div className="table-listing-name">{listing.name_ar}</div>
+                        <div className="table-listing-type">{typeLabels[listing.type] || listing.type}</div>
+                        {listing.status === 'rejected' && listing.rejectionReason && (
+                          <div style={{
+                            marginTop: '4px', padding: '4px 8px',
+                            background: '#fee2e2', borderRadius: '6px',
+                            fontSize: '12px', color: '#991b1b'
+                          }}>
+                            سبب الرفض: {listing.rejectionReason}
+                          </div>
+                        )}
+                      </td>
+                      <td>{SAUDI_CITIES_AR[listing.city] || listing.city}</td>
+                      <td>
+                        <span className={`status-badge ${listing.status || 'pending'}`}>
+                          {sc.label}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            className="btn-sm primary"
+                            onClick={() => { setEditingListing(listing); setShowForm(true) }}
+                          >
+                            تعديل
+                          </button>
+                          <button
+                            className="btn-sm danger"
+                            onClick={() => handleDelete(listing._id)}
+                          >
+                            حذف
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
-
-      {/* Listing Cards */}
-      {myListings === undefined ? (
-        <div className="dash-card" style={{ textAlign: 'center', color: '#9ca3af' }}>جاري التحميل...</div>
-      ) : myListings.length === 0 ? (
-        <div className="empty-state" style={{ padding: '2rem' }}>
-          <p>لم تقم بإضافة أي قوائم بعد. اضغط "إضافة جديد" للبدء.</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {myListings.map(listing => {
-            const sc = statusConfig[listing.status] || statusConfig.pending
-            return (
-              <div key={listing._id} className="dash-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <span style={{
-                        padding: '0.125rem 0.5rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.75rem',
-                        fontWeight: 500,
-                        color: sc.color,
-                        background: sc.bg,
-                      }}>
-                        {sc.label}
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                        {typeLabels[listing.type] || listing.type}
-                      </span>
-                    </div>
-                    <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>{listing.name_ar}</h3>
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>{listing.name_en}</p>
-                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#9ca3af' }}>
-                      {SAUDI_CITIES_AR[listing.city] || listing.city} · {listing.address}
-                    </p>
-                    {listing.status === 'rejected' && listing.rejectionReason && (
-                      <div style={{
-                        marginTop: '0.5rem', padding: '0.5rem 0.75rem',
-                        background: '#fee2e2', borderRadius: '8px',
-                        fontSize: '0.8125rem', color: '#991b1b'
-                      }}>
-                        سبب الرفض: {listing.rejectionReason}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      className="apt-action-btn"
-                      onClick={() => { setEditingListing(listing); setShowForm(true); }}
-                      style={{ fontSize: '0.8125rem' }}
-                    >
-                      تعديل
-                    </button>
-                    <button
-                      className="apt-action-btn danger"
-                      onClick={() => handleDelete(listing._id)}
-                      style={{ fontSize: '0.8125rem' }}
-                    >
-                      حذف
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
 
       {/* Create/Edit Form Modal */}
       <AnimatePresence>
@@ -374,17 +526,35 @@ function MyListingsTab({ user }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={(e) => e.target === e.currentTarget && setShowForm(false)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 1000, padding: '20px'
+            }}
           >
             <motion.div
-              className="modal-content"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'auto' }}
+              style={{
+                background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
+                width: '100%', maxWidth: '600px', maxHeight: '85vh',
+                overflow: 'auto', boxShadow: 'var(--shadow-lg)'
+              }}
             >
-              <div className="modal-header">
-                <h2>{editingListing ? 'تعديل القائمة' : 'إضافة قائمة جديدة'}</h2>
-                <button className="modal-close" onClick={() => { setShowForm(false); setEditingListing(null); }}>&times;</button>
+              <div style={{
+                padding: '20px 24px', borderBottom: '1px solid var(--color-border)',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)' }}>
+                  {editingListing ? 'تعديل القائمة' : 'إضافة قائمة جديدة'}
+                </h2>
+                <button
+                  onClick={() => { setShowForm(false); setEditingListing(null) }}
+                  style={{ fontSize: '22px', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}
+                >
+                  &times;
+                </button>
               </div>
               <CreateListingForm
                 onSubmit={handleSubmit}
@@ -554,7 +724,7 @@ function CreateListingForm({ onSubmit, submitting, initialData, allowedTypes, ca
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', padding: '0 0 1rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', padding: '20px 24px 24px' }}>
         <div className="form-row">
           <div className="form-group">
             <label>النوع *</label>
@@ -691,7 +861,12 @@ function CreateListingForm({ onSubmit, submitting, initialData, allowedTypes, ca
           )}
         </div>
 
-        <button className="btn-primary" type="submit" disabled={submitting} style={{ width: '100%', justifyContent: 'center' }}>
+        <button
+          className="btn-submit"
+          type="submit"
+          disabled={submitting}
+          style={{ width: '100%' }}
+        >
           {submitting ? 'جاري الإرسال...' : initialData ? 'تحديث (سيعاد للمراجعة)' : 'إرسال للمراجعة'}
         </button>
       </div>
@@ -764,148 +939,178 @@ function MyServicesTab({ user }) {
   const all = myServices || []
   const pending = all.filter(s => s.status === 'pending').length
   const approved = all.filter(s => s.status === 'approved').length
-  const rejected = all.filter(s => s.status === 'rejected').length
 
   const filtered = filter === 'all' ? all : all.filter(s => s.status === filter)
 
   return (
     <div>
+      <div className="partner-main-header">
+        <h1>خدماتي</h1>
+        <p>إدارة الخدمات السياحية المقدمة</p>
+      </div>
+
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        {[
-          { label: 'الإجمالي', value: all.length, color: '#6b7280' },
-          { label: 'قيد المراجعة', value: pending, color: '#f59e0b' },
-          { label: 'معتمد', value: approved, color: '#059669' },
-          { label: 'مرفوض', value: rejected, color: '#dc2626' },
-        ].map((stat, i) => (
-          <div key={i} className="dash-card" style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: stat.color, margin: '0 0 0.25rem' }}>{stat.value}</p>
-            <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>{stat.label}</p>
-          </div>
-        ))}
+      <div className="stats-row">
+        <div className="stat-card">
+          <div className="stat-card-icon">⚙️</div>
+          <div className="stat-card-label">الإجمالي</div>
+          <div className="stat-card-value">{all.length}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-icon">✅</div>
+          <div className="stat-card-label">معتمدة</div>
+          <div className="stat-card-value">{approved}</div>
+          <div className="stat-card-trend up">نشطة</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-icon">⏳</div>
+          <div className="stat-card-label">قيد المراجعة</div>
+          <div className="stat-card-value">{pending}</div>
+        </div>
       </div>
 
-      {/* Add New + Filter */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <button
-          className="btn-primary"
-          onClick={() => { setShowForm(true); setEditingService(null); }}
-        >
-          نشر خدمة جديدة
-        </button>
-        <div className="filter-tabs">
-          {[
-            { id: 'all', label: 'الكل' },
-            { id: 'pending', label: 'قيد المراجعة' },
-            { id: 'approved', label: 'معتمد' },
-            { id: 'rejected', label: 'مرفوض' },
-          ].map(f => (
+      {/* Table card */}
+      <div className="section-card">
+        <div className="section-card-header">
+          <h2>الخدمات ({all.length})</h2>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {/* Filter buttons */}
+            {[
+              { id: 'all', label: 'الكل' },
+              { id: 'pending', label: 'مراجعة' },
+              { id: 'approved', label: 'معتمد' },
+              { id: 'rejected', label: 'مرفوض' },
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                style={{
+                  padding: '4px 10px', fontSize: '12px', fontWeight: 600,
+                  borderRadius: '20px', border: 'none', cursor: 'pointer',
+                  background: filter === f.id ? 'var(--color-primary)' : 'var(--color-bg)',
+                  color: filter === f.id ? 'white' : 'var(--color-text-muted)',
+                }}
+              >
+                {f.label}
+              </button>
+            ))}
             <button
-              key={f.id}
-              className={`filter-tab ${filter === f.id ? 'active' : ''}`}
-              onClick={() => setFilter(f.id)}
+              className="btn-sm primary"
+              onClick={() => { setShowForm(true); setEditingService(null) }}
             >
-              {f.label}
+              + نشر خدمة
             </button>
-          ))}
+          </div>
+        </div>
+        <div className="section-card-body">
+          {myServices === undefined ? (
+            <p style={{ padding: '20px 24px', color: 'var(--color-text-muted)', fontSize: '14px' }}>جاري التحميل...</p>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+              <p style={{ fontSize: '15px' }}>
+                {filter === 'all' ? 'لم تقم بإضافة أي خدمات بعد.' : 'لا توجد خدمات بهذه الحالة.'}
+              </p>
+            </div>
+          ) : (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>الخدمة</th>
+                  <th>النوع</th>
+                  <th>السعر</th>
+                  <th>الحالة</th>
+                  <th>إجراءات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(service => {
+                  const sc = statusConfig[service.status] || statusConfig.pending
+                  return (
+                    <tr key={service._id}>
+                      <td>
+                        <div className="table-listing-name">{service.title_ar}</div>
+                        <div className="table-listing-type">{service.title_en}</div>
+                        {service.status === 'rejected' && service.rejectionReason && (
+                          <div style={{
+                            marginTop: '4px', padding: '4px 8px',
+                            background: '#fee2e2', borderRadius: '6px',
+                            fontSize: '12px', color: '#991b1b'
+                          }}>
+                            سبب الرفض: {service.rejectionReason}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ fontSize: '13px' }}>{serviceTypeLabels[service.serviceType] || service.serviceType}</td>
+                      <td style={{ fontSize: '13px', color: 'var(--color-success)', fontWeight: 600 }}>
+                        {service.price != null ? `${service.price} ر.س ${priceUnitLabels[service.priceUnit] || ''}` : '—'}
+                      </td>
+                      <td>
+                        <span className={`status-badge ${service.status || 'pending'}`}>
+                          {sc.label}
+                        </span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <button
+                            className="btn-sm primary"
+                            onClick={() => { setEditingService(service); setShowForm(true) }}
+                          >
+                            تعديل
+                          </button>
+                          <button
+                            className="btn-sm danger"
+                            onClick={() => handleDelete(service._id)}
+                          >
+                            حذف
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
-
-      {/* Service Cards */}
-      {myServices === undefined ? (
-        <div className="dash-card" style={{ textAlign: 'center', color: '#9ca3af' }}>جاري التحميل...</div>
-      ) : filtered.length === 0 ? (
-        <div className="empty-state" style={{ padding: '2rem' }}>
-          <p>{filter === 'all' ? 'لم تقم بإضافة أي خدمات بعد. اضغط "نشر خدمة جديدة" للبدء.' : 'لا توجد خدمات بهذه الحالة.'}</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {filtered.map(service => {
-            const sc = statusConfig[service.status] || statusConfig.pending
-            return (
-              <div key={service._id} className="dash-card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <span style={{
-                        padding: '0.125rem 0.5rem',
-                        borderRadius: '9999px',
-                        fontSize: '0.75rem',
-                        fontWeight: 500,
-                        color: sc.color,
-                        background: sc.bg,
-                      }}>
-                        {sc.label}
-                      </span>
-                      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                        {serviceTypeLabels[service.serviceType] || service.serviceType}
-                      </span>
-                    </div>
-                    <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>{service.title_ar}</h3>
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>{service.title_en}</p>
-                    {service.price != null && (
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#059669', fontWeight: 500 }}>
-                        {service.price} ر.س {priceUnitLabels[service.priceUnit] || ''}
-                      </p>
-                    )}
-                    {service.city && (
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#9ca3af' }}>
-                        {service.city}
-                      </p>
-                    )}
-                    {service.status === 'rejected' && service.rejectionReason && (
-                      <div style={{
-                        marginTop: '0.5rem', padding: '0.5rem 0.75rem',
-                        background: '#fee2e2', borderRadius: '8px',
-                        fontSize: '0.8125rem', color: '#991b1b'
-                      }}>
-                        سبب الرفض: {service.rejectionReason}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button
-                      className="apt-action-btn"
-                      onClick={() => { setEditingService(service); setShowForm(true); }}
-                      style={{ fontSize: '0.8125rem' }}
-                    >
-                      تعديل
-                    </button>
-                    <button
-                      className="apt-action-btn danger"
-                      onClick={() => handleDelete(service._id)}
-                      style={{ fontSize: '0.8125rem' }}
-                    >
-                      حذف
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
 
       {/* Create/Edit Service Modal */}
       <AnimatePresence>
         {showForm && (
           <motion.div
-            className="modal-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={(e) => e.target === e.currentTarget && setShowForm(false)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 1000, padding: '20px'
+            }}
           >
             <motion.div
-              className="modal-content"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              style={{ maxWidth: '600px', maxHeight: '80vh', overflow: 'auto' }}
+              style={{
+                background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
+                width: '100%', maxWidth: '600px', maxHeight: '85vh',
+                overflow: 'auto', boxShadow: 'var(--shadow-lg)'
+              }}
             >
-              <div className="modal-header">
-                <h2>{editingService ? 'تعديل الخدمة' : 'نشر خدمة جديدة'}</h2>
-                <button className="modal-close" onClick={() => { setShowForm(false); setEditingService(null); }}>&times;</button>
+              <div style={{
+                padding: '20px 24px', borderBottom: '1px solid var(--color-border)',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)' }}>
+                  {editingService ? 'تعديل الخدمة' : 'نشر خدمة جديدة'}
+                </h2>
+                <button
+                  onClick={() => { setShowForm(false); setEditingService(null) }}
+                  style={{ fontSize: '22px', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}
+                >
+                  &times;
+                </button>
               </div>
               <CreateServiceForm
                 onSubmit={handleSubmit}
@@ -955,7 +1160,7 @@ function CreateServiceForm({ onSubmit, submitting, initialData }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', padding: '0 0 1rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.875rem', padding: '20px 24px 24px' }}>
         <div className="form-group">
           <label>نوع الخدمة *</label>
           <select value={form.serviceType} onChange={e => u('serviceType', e.target.value)}>
@@ -1023,7 +1228,12 @@ function CreateServiceForm({ onSubmit, submitting, initialData }) {
         {/* Image Upload */}
         <ImageUploader images={images} setImages={setImages} />
 
-        <button className="btn-primary" type="submit" disabled={submitting} style={{ width: '100%', justifyContent: 'center' }}>
+        <button
+          className="btn-submit"
+          type="submit"
+          disabled={submitting}
+          style={{ width: '100%' }}
+        >
           {submitting ? 'جاري الإرسال...' : initialData ? 'تحديث (سيعاد للمراجعة)' : 'إرسال للمراجعة'}
         </button>
       </div>
@@ -1090,97 +1300,135 @@ function BusinessBookingsTab() {
 
   return (
     <div>
+      <div className="partner-main-header">
+        <h1>الحجوزات</h1>
+        <p>إدارة حجوزات العملاء</p>
+      </div>
+
       {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-        {[
-          { label: 'في الانتظار', value: pending.length, color: '#f59e0b' },
-          { label: 'حجوزات اليوم', value: todaysBookings.length, color: '#3b82f6' },
-          { label: 'مؤكدة اليوم', value: confirmedToday, color: '#059669' },
-          { label: 'مكتملة هذا الأسبوع', value: thisWeekCompleted, color: '#6366f1' },
-        ].map((stat, i) => (
-          <div key={i} className="dash-card" style={{ textAlign: 'center' }}>
-            <p style={{ fontSize: '1.5rem', fontWeight: 700, color: stat.color, margin: '0 0 0.25rem' }}>{stat.value}</p>
-            <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>{stat.label}</p>
-          </div>
-        ))}
+      <div className="stats-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+        <div className="stat-card">
+          <div className="stat-card-icon">🕐</div>
+          <div className="stat-card-label">في الانتظار</div>
+          <div className="stat-card-value">{pending.length}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-icon">📅</div>
+          <div className="stat-card-label">حجوزات اليوم</div>
+          <div className="stat-card-value">{todaysBookings.length}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-icon">✅</div>
+          <div className="stat-card-label">مؤكدة اليوم</div>
+          <div className="stat-card-value">{confirmedToday}</div>
+          <div className="stat-card-trend up">نشطة</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-card-icon">🏆</div>
+          <div className="stat-card-label">مكتملة (أسبوع)</div>
+          <div className="stat-card-value">{thisWeekCompleted}</div>
+        </div>
       </div>
 
       {/* Today's bookings */}
       {todaysBookings.length > 0 && (
-        <div className="subsection">
-          <h3 className="subsection-title">حجوزات اليوم</h3>
-          {todaysBookings.map(booking => (
-            <BookingRow
-              key={booking._id}
-              booking={booking}
-              statusLabel={statusLabel}
-              actionId={actionId}
-              onConfirm={handleConfirm}
-              onComplete={(id) => setShowCompleteModal(id)}
-              onCancel={handleCancel}
-            />
-          ))}
+        <div className="section-card" style={{ marginBottom: '24px' }}>
+          <div className="section-card-header">
+            <h2>حجوزات اليوم</h2>
+          </div>
+          <div className="section-card-body" style={{ padding: '8px 0' }}>
+            {todaysBookings.map(booking => (
+              <BookingRow
+                key={booking._id}
+                booking={booking}
+                statusLabel={statusLabel}
+                actionId={actionId}
+                onConfirm={handleConfirm}
+                onComplete={(id) => setShowCompleteModal(id)}
+                onCancel={handleCancel}
+              />
+            ))}
+          </div>
         </div>
       )}
 
       {/* Upcoming */}
-      <div className="subsection">
-        <h3 className="subsection-title">الحجوزات القادمة</h3>
-        {bookings === undefined ? (
-          <div className="dash-card" style={{ textAlign: 'center', color: '#9ca3af' }}>جاري التحميل...</div>
-        ) : upcoming.length === 0 ? (
-          <div className="empty-state" style={{ padding: '2rem' }}>
-            <p>لا توجد حجوزات قادمة</p>
-          </div>
-        ) : (
-          upcoming.map(booking => (
-            <BookingRow
-              key={booking._id}
-              booking={booking}
-              statusLabel={statusLabel}
-              actionId={actionId}
-              onConfirm={handleConfirm}
-              onComplete={(id) => setShowCompleteModal(id)}
-              onCancel={handleCancel}
-            />
-          ))
-        )}
+      <div className="section-card">
+        <div className="section-card-header">
+          <h2>الحجوزات القادمة</h2>
+        </div>
+        <div className="section-card-body" style={{ padding: '8px 0' }}>
+          {bookings === undefined ? (
+            <p style={{ padding: '20px 24px', color: 'var(--color-text-muted)', fontSize: '14px' }}>جاري التحميل...</p>
+          ) : upcoming.length === 0 ? (
+            <p style={{ padding: '20px 24px', color: 'var(--color-text-muted)', fontSize: '14px' }}>لا توجد حجوزات قادمة.</p>
+          ) : (
+            upcoming.map(booking => (
+              <BookingRow
+                key={booking._id}
+                booking={booking}
+                statusLabel={statusLabel}
+                actionId={actionId}
+                onConfirm={handleConfirm}
+                onComplete={(id) => setShowCompleteModal(id)}
+                onCancel={handleCancel}
+              />
+            ))
+          )}
+        </div>
       </div>
 
       {/* Complete modal */}
       <AnimatePresence>
         {showCompleteModal && (
           <motion.div
-            className="modal-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={(e) => e.target === e.currentTarget && setShowCompleteModal(null)}
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 1000, padding: '20px'
+            }}
           >
             <motion.div
-              className="modal-content"
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
+              style={{
+                background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)',
+                width: '100%', maxWidth: '440px', padding: '24px',
+                boxShadow: 'var(--shadow-lg)'
+              }}
             >
-              <div className="modal-header">
-                <h2>إتمام الحجز</h2>
-                <button className="modal-close" onClick={() => setShowCompleteModal(null)}>&times;</button>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                marginBottom: '16px'
+              }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--color-text)' }}>إتمام الحجز</h2>
+                <button
+                  onClick={() => setShowCompleteModal(null)}
+                  style={{ fontSize: '22px', color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}
+                >
+                  &times;
+                </button>
               </div>
-              <div className="form-group">
+              <div className="form-group" style={{ marginBottom: '16px' }}>
                 <label>ملاحظات (اختياري)</label>
                 <textarea
                   value={completeNotes}
                   onChange={e => setCompleteNotes(e.target.value)}
                   rows={3}
                   placeholder="أضف ملاحظات..."
+                  style={{ width: '100%', padding: '10px 14px', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '14px', fontFamily: 'inherit', resize: 'vertical' }}
                 />
               </div>
               <button
-                className="btn-primary"
+                className="btn-submit"
                 onClick={() => handleComplete(showCompleteModal)}
                 disabled={actionId === showCompleteModal}
-                style={{ width: '100%', justifyContent: 'center' }}
+                style={{ width: '100%' }}
               >
                 {actionId === showCompleteModal ? 'جاري الإتمام...' : 'تأكيد الإتمام'}
               </button>
@@ -1199,49 +1447,70 @@ function BookingRow({ booking, statusLabel, actionId, onConfirm, onComplete, onC
     })
   }
 
+  const statusClass = {
+    pending: 'pending',
+    confirmed: 'approved',
+    completed: 'approved',
+    cancelled: 'rejected',
+  }
+
   return (
-    <div className="dash-card">
-      <div className="apt-card">
-        <div className="apt-info">
-          <h3>{booking.tourist?.firstName} {booking.tourist?.lastName || booking.tourist?.email}</h3>
-          <p>{booking.tourist?.phone || ''}</p>
-          <p className="apt-datetime">{formatDate(booking.date)} · {booking.time}</p>
-          {booking.partySize && <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>عدد الأشخاص: {booking.partySize}</p>}
-          {booking.notes && <p style={{ fontSize: '0.8125rem', color: '#9ca3af', marginTop: '0.25rem' }}>{booking.notes}</p>}
+    <div style={{
+      padding: '16px 24px', borderBottom: '1px solid var(--color-border)',
+      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px'
+    }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 600, fontSize: '15px', marginBottom: '4px' }}>
+          {booking.tourist?.firstName} {booking.tourist?.lastName || booking.tourist?.email}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-          <span className={`status-badge status-${booking.status}`}>
-            {statusLabel[booking.status] || booking.status}
-          </span>
-          <div className="apt-actions">
-            {booking.status === 'pending' && (
+        {booking.tourist?.phone && (
+          <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', marginBottom: '2px' }}>
+            {booking.tourist.phone}
+          </div>
+        )}
+        <div style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>
+          {formatDate(booking.date)} · {booking.time}
+          {booking.partySize && ` · ${booking.partySize} أشخاص`}
+        </div>
+        {booking.notes && (
+          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: '4px', fontStyle: 'italic' }}>
+            {booking.notes}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+        <span className={`status-badge ${statusClass[booking.status] || 'pending'}`}>
+          {statusLabel[booking.status] || booking.status}
+        </span>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {booking.status === 'pending' && (
+            <button
+              className="btn-sm primary"
+              onClick={() => onConfirm(booking._id)}
+              disabled={actionId === booking._id}
+            >
+              تأكيد
+            </button>
+          )}
+          {(booking.status === 'pending' || booking.status === 'confirmed') && (
+            <>
               <button
-                className="apt-action-btn confirm"
-                onClick={() => onConfirm(booking._id)}
+                className="btn-sm primary"
+                onClick={() => onComplete(booking._id)}
+                disabled={actionId === booking._id}
+                style={{ background: '#059669' }}
+              >
+                إتمام
+              </button>
+              <button
+                className="btn-sm danger"
+                onClick={() => onCancel(booking._id)}
                 disabled={actionId === booking._id}
               >
-                تأكيد
+                إلغاء
               </button>
-            )}
-            {(booking.status === 'pending' || booking.status === 'confirmed') && (
-              <>
-                <button
-                  className="apt-action-btn"
-                  onClick={() => onComplete(booking._id)}
-                  disabled={actionId === booking._id}
-                >
-                  إتمام
-                </button>
-                <button
-                  className="apt-action-btn danger"
-                  onClick={() => onCancel(booking._id)}
-                  disabled={actionId === booking._id}
-                >
-                  إلغاء
-                </button>
-              </>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1296,87 +1565,95 @@ function ScheduleTab({ user }) {
     setSaving(false)
   }
 
-  if (!listing) {
-    return (
-      <div className="empty-state" style={{ padding: '2rem' }}>
-        <p>لم يتم ربط حسابك بقائمة أعمال بعد. تواصل مع الإدارة.</p>
-      </div>
-    )
-  }
-
   return (
     <div>
-      <div className="section-header">
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 600, margin: 0 }}>جدول العمل الأسبوعي</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          {saved && <span style={{ color: '#059669', fontSize: '0.875rem' }}>تم الحفظ</span>}
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'جاري الحفظ...' : 'حفظ الجدول'}
-          </button>
+      <div className="partner-main-header">
+        <h1>جدول العمل</h1>
+        <p>ضبط أوقات الدوام الأسبوعي</p>
+      </div>
+
+      {!listing ? (
+        <div className="section-card">
+          <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: '15px' }}>
+            لم يتم ربط حسابك بقائمة أعمال بعد. تواصل مع الإدارة.
+          </div>
         </div>
-      </div>
-
-      <div className="dash-card" style={{ marginBottom: '1.5rem' }}>
-        {schedule.map((day, index) => {
-          const dayInfo = DAYS.find(d => d.key === day.day)
-          return (
-            <div
-              key={day.day}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '1rem',
-                padding: '0.75rem 0',
-                borderBottom: index < schedule.length - 1 ? '1px solid #f3f4f6' : 'none',
-              }}
-            >
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '120px', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={!day.isClosed}
-                  onChange={e => updateDay(index, 'isClosed', !e.target.checked)}
-                  style={{ accentColor: '#0D7A5F' }}
-                />
-                <span style={{ fontSize: '0.875rem', fontWeight: 500, color: day.isClosed ? '#9ca3af' : '#111827' }}>
-                  {dayInfo?.ar}
-                </span>
-              </label>
-
-              {!day.isClosed ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input
-                    type="time"
-                    value={day.open}
-                    onChange={e => updateDay(index, 'open', e.target.value)}
-                    style={{
-                      padding: '0.375rem 0.5rem',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem',
-                      fontFamily: 'inherit',
-                    }}
-                  />
-                  <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>—</span>
-                  <input
-                    type="time"
-                    value={day.close}
-                    onChange={e => updateDay(index, 'close', e.target.value)}
-                    style={{
-                      padding: '0.375rem 0.5rem',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '6px',
-                      fontSize: '0.875rem',
-                      fontFamily: 'inherit',
-                    }}
-                  />
-                </div>
-              ) : (
-                <span style={{ fontSize: '0.8125rem', color: '#d1d5db' }}>مغلق</span>
-              )}
+      ) : (
+        <div className="section-card">
+          <div className="section-card-header">
+            <h2>جدول العمل الأسبوعي</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {saved && <span style={{ color: 'var(--color-success)', fontSize: '14px' }}>تم الحفظ ✓</span>}
+              <button className="btn-sm primary" onClick={handleSave} disabled={saving}>
+                {saving ? 'جاري الحفظ...' : 'حفظ الجدول'}
+              </button>
             </div>
-          )
-        })}
-      </div>
+          </div>
+          <div className="section-card-body" style={{ padding: '8px 24px 24px' }}>
+            {schedule.map((day, index) => {
+              const dayInfo = DAYS.find(d => d.key === day.day)
+              return (
+                <div
+                  key={day.day}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '1rem',
+                    padding: '12px 0',
+                    borderBottom: index < schedule.length - 1 ? '1px solid var(--color-border)' : 'none',
+                  }}
+                >
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '120px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={!day.isClosed}
+                      onChange={e => updateDay(index, 'isClosed', !e.target.checked)}
+                      style={{ accentColor: 'var(--color-primary)' }}
+                    />
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: day.isClosed ? '#9ca3af' : 'var(--color-text)' }}>
+                      {dayInfo?.ar}
+                    </span>
+                  </label>
+
+                  {!day.isClosed ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input
+                        type="time"
+                        value={day.open}
+                        onChange={e => updateDay(index, 'open', e.target.value)}
+                        style={{
+                          padding: '0.375rem 0.5rem',
+                          border: '1.5px solid var(--color-border)',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.875rem',
+                          fontFamily: 'inherit',
+                          outline: 'none',
+                        }}
+                      />
+                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.875rem' }}>—</span>
+                      <input
+                        type="time"
+                        value={day.close}
+                        onChange={e => updateDay(index, 'close', e.target.value)}
+                        style={{
+                          padding: '0.375rem 0.5rem',
+                          border: '1.5px solid var(--color-border)',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.875rem',
+                          fontFamily: 'inherit',
+                          outline: 'none',
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.8125rem', color: '#d1d5db' }}>مغلق</span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1410,59 +1687,86 @@ function BusinessProfileTab({ user }) {
 
   return (
     <div>
-      <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1.25rem' }}>الملف الشخصي</h2>
+      <div className="partner-main-header">
+        <h1>الملف الشخصي</h1>
+        <p>إدارة معلومات حسابك</p>
+      </div>
 
-      <div className="dash-card">
-        <div className="form-group">
-          <label>البريد الإلكتروني</label>
-          <input value={user?.email || ''} disabled style={{ background: '#f9fafb', color: '#9ca3af' }} />
+      <div className="section-card">
+        <div className="section-card-header">
+          <h2>معلومات الحساب</h2>
         </div>
+        <div className="section-card-body" style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div className="form-group">
+              <label>البريد الإلكتروني</label>
+              <input
+                value={user?.email || ''}
+                disabled
+                style={{ padding: '10px 14px', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '15px', background: 'var(--color-bg)', color: 'var(--color-text-muted)', width: '100%' }}
+              />
+            </div>
 
-        <div className="form-group">
-          <label>نوع العمل</label>
-          <input value={user?.businessType || '-'} disabled style={{ background: '#f9fafb', color: '#9ca3af' }} />
-        </div>
+            <div className="form-group">
+              <label>نوع العمل</label>
+              <input
+                value={user?.businessType || '-'}
+                disabled
+                style={{ padding: '10px 14px', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '15px', background: 'var(--color-bg)', color: 'var(--color-text-muted)', width: '100%' }}
+              />
+            </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label>الاسم الأول</label>
-            <input value={form.firstName} onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="form-group">
+                <label>الاسم الأول</label>
+                <input
+                  value={form.firstName}
+                  onChange={e => setForm(p => ({ ...p, firstName: e.target.value }))}
+                  style={{ padding: '10px 14px', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '15px', fontFamily: 'inherit', outline: 'none', width: '100%' }}
+                />
+              </div>
+              <div className="form-group">
+                <label>اسم العائلة</label>
+                <input
+                  value={form.lastName}
+                  onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))}
+                  style={{ padding: '10px 14px', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '15px', fontFamily: 'inherit', outline: 'none', width: '100%' }}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>رقم الهاتف</label>
+              <input
+                value={form.phone}
+                onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
+                placeholder="+966 5X XXX XXXX"
+                dir="ltr"
+                style={{ padding: '10px 14px', border: '1.5px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: '15px', fontFamily: 'inherit', outline: 'none', width: '100%' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingTop: '8px' }}>
+              <button className="btn-submit" onClick={handleSave} disabled={saving}>
+                {saving ? 'جاري الحفظ...' : 'حفظ التعديلات'}
+              </button>
+              {saved && <span style={{ color: 'var(--color-success)', fontSize: '14px' }}>تم الحفظ ✓</span>}
+            </div>
+
+            <div style={{ marginTop: '8px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
+              <p style={{ fontSize: '14px', color: 'var(--color-text-muted)' }}>
+                حالة الحساب:{' '}
+                <span style={{ fontWeight: 600, color: user?.isApproved ? 'var(--color-success)' : '#f59e0b' }}>
+                  {user?.isApproved ? 'مفعّل' : 'قيد المراجعة'}
+                </span>
+              </p>
+              {user?.cvFileId && (
+                <p style={{ fontSize: '14px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+                  وثيقة العمل: مرفوعة
+                </p>
+              )}
+            </div>
           </div>
-          <div className="form-group">
-            <label>اسم العائلة</label>
-            <input value={form.lastName} onChange={e => setForm(p => ({ ...p, lastName: e.target.value }))} />
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label>رقم الهاتف</label>
-          <input
-            value={form.phone}
-            onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
-            placeholder="+966 5X XXX XXXX"
-            dir="ltr"
-          />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button className="btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? 'جاري الحفظ...' : 'حفظ التعديلات'}
-          </button>
-          {saved && <span style={{ color: '#059669', fontSize: '0.875rem' }}>تم الحفظ</span>}
-        </div>
-
-        <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #f3f4f6' }}>
-          <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-            حالة الحساب: {' '}
-            <span style={{ fontWeight: 500, color: user?.isApproved ? '#059669' : '#f59e0b' }}>
-              {user?.isApproved ? 'مفعّل' : 'قيد المراجعة'}
-            </span>
-          </p>
-          {user?.cvFileId && (
-            <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
-              وثيقة العمل: مرفوعة
-            </p>
-          )}
         </div>
       </div>
     </div>
