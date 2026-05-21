@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
-import { useMutation } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from '../convex/_generated/api'
 import { authClient } from './lib/auth-client'
 import './App.css'
@@ -58,7 +58,7 @@ const BENTO_CARDS = [
     badgeAr: 'تجربة طهي',
     desc: "A sensory journey through Al-Ahsa's rich agricultural heritage.",
     descAr: 'رحلة حسية عبر التراث الزراعي الغني للأحساء',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAueHTXCOOFF_YPQmVsG4IFULuqd7LKl-Ck8RT2bwGR8PSpGGQXCBvo6uEwZ2p4lfVFEKKIACx8OOFbtdpAVSkT8VM98axICt2ZKkesmM5ySpxeJlIiMx02nwbrMWiaEVcINd5GPCIJxOJcBcesqOg-9qYl3gufR40Qzc_2X56OxWZa24PMKjLL7NNQgfRGEMERJlQFRAPf3OZxVB2GKb4jBw9CGW6cBE5OCx4D5gp5Ig1_Z1kS-1tOsW3U92NoBN_XGc2VJqoK1hLz',
+    img: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800&q=80',
     wide: false,
     link: '/listings?type=restaurant'
   },
@@ -69,7 +69,7 @@ const BENTO_CARDS = [
     badgeAr: 'جولة في السوق',
     desc: "Discover traditional crafts in Al-Ahsa's historic bazaar.",
     descAr: 'اكتشف الحرف التقليدية في السوق التاريخي للأحساء',
-    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDg1Bo_aA64n3FA8sLKP0VyZiELLmc7XkMcnQ-StIb_BUDbNmfDuLjmxsldvhPfWrPEwQ9lbX_wpyema0F-231Hff__BNv5MhzEtjUtJJOh5-tOLHLVZGFnAdq6ISTDWCi7LjuJufWhmG5i7X3N0uyXVebyjjLqsp6dgpRHl67vuORfiSngGjK8bi5Z5aooW0g8mXtkTkv5c457SXVrMTiVRwLxWIVYOvKjbdkvxWAB1XBjNse6MzL8z06ihTGsc3qWsov_HN3Znqao',
+    img: 'https://images.unsplash.com/photo-1578895101408-1a36b834405b?w=800&q=80',
     wide: true,
     link: '/listings'
   }
@@ -244,6 +244,8 @@ function App() {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const captureEmail = hasConvex ? useMutation(api.emailCaptures.mutations.captureEmail) : null
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const publicConfig = hasConvex ? useQuery(api.config.queries.getPublicConfig, {}) : null
   const session = hasConvex ? authClient.useSession() : { data: null }
   const isLoggedIn = !!session?.data
 
@@ -457,11 +459,21 @@ function App() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            <img
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAFLcKzcmHKb6IZIuHRfHdJjjXN2onOYhdwPg1JHPg25v4u8FN3gfAGIYdrruxfXdqsuGrtsBQF84uh0xhEVYyk8csI55bM65ZgWrW4VDXdiJzI6wENdnzj6Nbw-pzlp55Lonw1gSVSo42mCoOSjfHTvATuDC8fpBBkW3SiqBeFC-TkcfIC5IKC-EfPw5U6gVz6lHZWtbRSjN5Z9vXKMhZ0ZBzDS9j9LqBc7moRCc86Ah0GJ6NzaDCgXX7E8I3Hr_uIR8YKrG6xKY"
-              alt="Al-Ahsa interactive map"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
+            {publicConfig?.mapboxToken ? (
+              <img
+                src={`https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/49.5683,25.3854,9,0/600x400@2x?access_token=${publicConfig.mapboxToken}`}
+                alt="Al-Ahsa map"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <iframe
+                title="Al-Ahsa map"
+                width="100%"
+                height="100%"
+                style={{ border: 'none' }}
+                src="https://www.openstreetmap.org/export/embed.html?bbox=49.0%2C25.0%2C50.2%2C25.8&layer=mapnik&marker=25.3854%2C49.5683"
+              />
+            )}
           </motion.div>
         </div>
       </section>
