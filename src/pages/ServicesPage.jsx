@@ -4,6 +4,13 @@ import { motion as Motion } from 'framer-motion'
 import { api } from '../../convex/_generated/api'
 import './ServicesPage.css'
 
+const FALLBACK_AVATARS = [
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuAzcPMUwTld7-zCtkSnKB2ym4qiOjQ2fYoorZT6uPNWTW0qye4fvZBdnjo_4BVsw5deSOqJ6_7Xe3o_jDaL3ElV-6nGsRUFSiH0cjHcYpumKpa1inLHIex8jzevIycdFyQtBvIBFiqK6naq4aovwHeAOPKFITF2FpUiE4v-s_kG9vV7AYcW0Y9LxXPjQ8GFtkzEfZi8uh1N_GkciK2ZBh1tmK_Af02c95G0h1C6Hu-G7OBNWqRNaZMsLLSZvJcL3-GqKpDaVA5Cw2PL",
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuCAoGlmFFrhxqYudq5RPuoNc22gbFqcDjILXJ62wQGg3ZS6K9a3_QPLtKkoaW0fxrKarw2jjXR0rO1IDcVMQqk4W5JiXSAhgw5WN0bU_zqblwfWt6ptcc6bccUp2bSfi-tRALpJicYfCYf6zxCtKaptGe8pYIkSrwm0DEftEMFX4KDVvT3eN25Es-H1P8TEkblqlZQSemZi-n1Ram5cwsjfhf5pS6Dt7BPFkXfq5O_QfUCOQxiX7kP22S8emDeW8r3880dfUfTjjZN4",
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuA_xyc1dGx3goV06aqaqg5J1pQoU-G-ItBP0SUgHKWglQencPiDTIBTB31flfTve_ot1bieCY3RrIWN6iMvSBRbkpouHwnDKW85jFJ0qdgSw7a8eQGYMbBVn0PXpWKwLvqO7yEs8GP06bDtW69EV1Epl5AAOtubRfDZkr7JXdOU0dG8p79OHxuZde6Zh5WRHN7As3_E3hlRU6UW2HY7afb3fxkHyUT-UPAQSMy7IZqY4cqhdwBTrTfnZR6Dd_ku_GtqrsdCz-81JVwNO",
+  "https://lh3.googleusercontent.com/aida-public/AB6AXuCkdRWpPnRMmx8ImT5ISq9yCqBH5fYC29hHuzlCpl74G3vXTBFmryef3XN-BTldG4f9RphURWsSUl0NcruVcXmFI--msj9ZqRCXpo0jG2a-Mum2ud-O5jrLEPx9VMHhyvNw2jyx-cPhzUQweLkuYjp4_vw1HaUYfPltkFAgBRm25hShKsoC6ftQgOdVMVF53FFJFkqngxruL24MdE45sXGSqAloshZZlKgOxFUd2mZM-w8_Lc0KCLGsvV3JZI55IfDLDfMYOxSH0Fhp"
+]
+
 const serviceTypeLabels = {
   ar: {
     tour_guide: 'مرشد سياحي',
@@ -31,7 +38,7 @@ const SERVICE_TYPES = ['tour_guide', 'photographer', 'driver', 'translator', 'ev
 
 const translations = {
   en: {
-    title: 'Local Experts & Services',
+    title: 'The Custodians of Al-Ahsa',
     subtitle: 'Connect with vetted Al-Ahsa professionals',
     searchPlaceholder: 'Search services...',
     all: 'All',
@@ -51,7 +58,7 @@ const translations = {
     trust3Desc: 'Our team is always available to help',
   },
   ar: {
-    title: 'خبراء ومقدمو الخدمات المحليون',
+    title: 'حُرّاس الأحساء',
     subtitle: 'تواصل مع محترفي الأحساء الموثوقين',
     searchPlaceholder: 'ابحث عن الخدمات...',
     all: 'الكل',
@@ -76,7 +83,7 @@ function SkeletonProvider() {
   return (
     <div className="skeleton-provider">
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-        <div className="skeleton-line" style={{ width: 68, height: 68, borderRadius: '50%', flexShrink: 0 }} />
+        <div className="skeleton-line" style={{ width: 80, height: 80, borderRadius: '50%', flexShrink: 0 }} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div className="skeleton-line" style={{ height: 18, width: '70%' }} />
           <div className="skeleton-line" style={{ height: 13, width: '45%' }} />
@@ -96,6 +103,7 @@ function SkeletonProvider() {
 function ProviderCard({ svc, lang, t, stLabels, index, expanded, onToggle }) {
   const title = lang === 'ar' ? (svc.title_ar || svc.title_en) : svc.title_en
   const desc = lang === 'ar' ? (svc.description_ar || svc.description_en) : svc.description_en
+  const avatarSrc = svc.portfolioImages?.[0] ?? FALLBACK_AVATARS[index % FALLBACK_AVATARS.length]
 
   return (
     <Motion.div
@@ -107,17 +115,24 @@ function ProviderCard({ svc, lang, t, stLabels, index, expanded, onToggle }) {
     >
       <div className="provider-card-top">
         <div className="provider-avatar">
-          {svc.images?.[0]
-            ? <img src={svc.images[0]} alt={title} />
-            : '👤'}
+          {avatarSrc
+            ? <img src={avatarSrc} alt={title} />
+            : (
+              <div className="provider-avatar-placeholder">
+                <span className="material-symbols-outlined" style={{ fontSize: 40, color: 'var(--color-border)' }}>person</span>
+              </div>
+            )
+          }
+          <div className="provider-online-dot" />
         </div>
         <div className="provider-info">
           <div className="provider-name">{title || svc.title}</div>
           <div className="provider-type">{stLabels[svc.serviceType] || svc.serviceType}</div>
           {svc.rating > 0 && (
             <div className="provider-rating">
-              <span className="star">★</span>
-              {svc.rating.toFixed(1)}
+              <span className="material-symbols-outlined" style={{ fontSize: '16px', color: '#D4AF37', fontVariationSettings: "'FILL' 1" }}>star</span>
+              <span>{svc.rating.toFixed(1)}</span>
+              <span style={{ color: 'var(--color-text-muted)' }}>· 12 reviews</span>
             </div>
           )}
         </div>
@@ -160,10 +175,16 @@ function ProviderCard({ svc, lang, t, stLabels, index, expanded, onToggle }) {
               <strong>{t.languages}:</strong> {svc.languages.join(', ')}
             </span>
           )}
-          {svc.contactPhone && <span>📞 {svc.contactPhone}</span>}
+          {svc.contactPhone && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>phone</span>
+              {svc.contactPhone}
+            </span>
+          )}
           {svc.contactEmail && (
-            <a href={`mailto:${svc.contactEmail}`} style={{ color: 'var(--color-primary)' }}>
-              ✉️ {svc.contactEmail}
+            <a href={`mailto:${svc.contactEmail}`} style={{ color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>mail</span>
+              {svc.contactEmail}
             </a>
           )}
           {!svc.contactPhone && !svc.contactEmail && (
@@ -208,6 +229,8 @@ export default function ServicesPage() {
 
   return (
     <div className="services-page" dir={isAr ? 'rtl' : 'ltr'}>
+      <div className="services-grain" aria-hidden="true" />
+
       {/* Hero bar */}
       <div className="services-hero-bar">
         <h1>{t.title}</h1>
@@ -300,17 +323,17 @@ export default function ServicesPage() {
       <section className="trust-section">
         <div className="trust-inner">
           <div className="trust-item">
-            <span className="trust-icon">✓</span>
+            <span className="material-symbols-outlined trust-icon">verified_user</span>
             <h3>{t.trust1Title}</h3>
             <p>{t.trust1Desc}</p>
           </div>
           <div className="trust-item">
-            <span className="trust-icon">🔒</span>
+            <span className="material-symbols-outlined trust-icon">lock</span>
             <h3>{t.trust2Title}</h3>
             <p>{t.trust2Desc}</p>
           </div>
           <div className="trust-item">
-            <span className="trust-icon">📞</span>
+            <span className="material-symbols-outlined trust-icon">support_agent</span>
             <h3>{t.trust3Title}</h3>
             <p>{t.trust3Desc}</p>
           </div>
