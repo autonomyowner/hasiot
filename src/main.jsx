@@ -22,6 +22,7 @@ const TouristDashboard = lazy(() => import('./pages/PatientDashboard.jsx'))
 const ListingsPage = lazy(() => import('./pages/ListingsPage.jsx'))
 const ServicesPage = lazy(() => import('./pages/ServicesPage.jsx'))
 const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage.jsx'))
+const ListingDetailPage = lazy(() => import('./pages/ListingDetailPage.jsx'))
 
 // Convex client — needs VITE_CONVEX_URL to be set
 const convexUrl = import.meta.env.VITE_CONVEX_URL
@@ -71,6 +72,7 @@ function MainRoutes() {
           <Route path="/dashboard" element={<TouristDashboard />} />
           <Route path="/business" element={<BusinessDashboard />} />
           <Route path="/listings" element={<ListingsPage />} />
+          <Route path="/listings/:id" element={<Suspense fallback={<div style={{padding:'80px',textAlign:'center'}}>Loading...</div>}><ListingDetailPage /></Suspense>} />
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/delete-account" element={<DeleteAccountPage />} />
