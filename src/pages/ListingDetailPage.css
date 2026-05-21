@@ -1,33 +1,53 @@
 /* ListingDetailPage.css */
 .detail-page { min-height: 100vh; background: var(--color-bg); }
 
+.detail-loading,
+.detail-not-found {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 80px 32px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+.detail-not-found h2 { margin-bottom: 16px; }
+
 /* Breadcrumb */
-.detail-breadcrumb { max-width: 1200px; margin: 0 auto; padding: 20px 32px 0; font-size: 14px; color: var(--color-text-muted); display: flex; align-items: center; gap: 8px; }
+.detail-breadcrumb { max-width: 1200px; margin: 0 auto; padding: 20px 32px 0; font-size: 14px; color: var(--color-text-muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .detail-breadcrumb a { color: var(--color-primary); text-decoration: none; }
 .detail-breadcrumb a:hover { text-decoration: underline; }
 
-/* Hero carousel */
+/* Hero */
 .detail-hero { max-width: 1200px; margin: 0 auto; padding: 20px 32px; }
 .detail-hero-carousel { border-radius: var(--radius-xl); overflow: hidden; aspect-ratio: 16/7; background: var(--color-sand); position: relative; }
 .detail-hero-carousel img { width: 100%; height: 100%; object-fit: cover; }
-.detail-hero-carousel .carousel-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 48px; color: var(--color-text-muted); }
 
 /* Main layout */
 .detail-layout { display: grid; grid-template-columns: 1fr 380px; gap: 48px; max-width: 1200px; margin: 0 auto; padding: 32px; align-items: start; }
 
-/* Left column */
-.detail-left {}
-.detail-title-row { margin-bottom: 24px; }
-.detail-title-row h1 { font-family: var(--font-display, 'Instrument Serif', serif); font-size: clamp(24px, 3vw, 36px); color: var(--color-text); margin-bottom: 8px; }
+/* Sections */
+.detail-section { margin-bottom: 40px; padding-bottom: 40px; border-bottom: 1px solid var(--color-border); }
+.detail-section:last-child { border-bottom: none; }
+.detail-section h2 { font-size: 20px; font-weight: 700; color: var(--color-text); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+
+/* Title */
+.detail-title-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+.detail-title-top h1 { font-family: var(--font-display, "Instrument Serif", serif); font-size: clamp(22px, 3vw, 34px); color: var(--color-text); flex: 1; }
+.detail-title-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding-top: 4px; }
+
+.detail-fav-btn { background: var(--color-surface); border: 1.5px solid var(--color-border); border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; color: var(--color-text-muted); }
+.detail-fav-btn:hover { border-color: #e05252; color: #e05252; }
+.detail-fav-btn.active { border-color: #e05252; color: #e05252; background: #fef2f2; }
+.detail-fav-btn .material-symbols-outlined { font-size: 20px; }
+
+.detail-trip-btn { display: flex; align-items: center; gap: 6px; background: var(--color-surface); border: 1.5px solid var(--color-border); border-radius: var(--radius-md); padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--color-text); transition: all 0.15s; white-space: nowrap; }
+.detail-trip-btn:hover { border-color: var(--color-primary); color: var(--color-primary); }
+
 .detail-meta { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; font-size: 15px; color: var(--color-text-muted); }
 .detail-rating { display: flex; align-items: center; gap: 4px; font-weight: 600; color: var(--color-text); }
 .detail-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: var(--color-primary-light); color: var(--color-primary); }
 .detail-type-badge { padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; background: rgba(201,168,76,0.15); color: #8B6914; text-transform: capitalize; }
 
-/* About */
-.detail-section { margin-bottom: 40px; padding-bottom: 40px; border-bottom: 1px solid var(--color-border); }
-.detail-section:last-child { border-bottom: none; }
-.detail-section h2 { font-size: 20px; font-weight: 700; color: var(--color-text); margin-bottom: 16px; }
+/* Description */
 .detail-description { font-size: 16px; color: var(--color-text-muted); line-height: 1.8; }
 
 /* Amenities */
@@ -35,26 +55,55 @@
 .amenity-item { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: 14px; color: var(--color-text); }
 .amenity-icon { font-size: 20px; }
 
-/* Location placeholder */
-.location-map-placeholder { height: 200px; background: var(--color-sand); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; color: var(--color-text-muted); font-size: 15px; border: 1px solid var(--color-border); }
+/* Map */
+.detail-address { font-size: 14px; color: var(--color-text-muted); margin-bottom: 14px; display: flex; align-items: center; gap: 4px; }
+.listing-map { border-radius: var(--radius-lg); overflow: hidden; border: 1px solid var(--color-border); margin-bottom: 12px; }
+.listing-map iframe { display: block; width: 100%; }
+.detail-map-link { font-size: 13px; color: var(--color-primary); text-decoration: none; display: inline-flex; align-items: center; gap: 4px; }
+.detail-map-link:hover { text-decoration: underline; }
+
+/* Contact */
+.contact-info { display: flex; flex-direction: column; gap: 10px; }
+.contact-row { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--color-text); text-decoration: none; padding: 10px 14px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); transition: border-color 0.15s; }
+.contact-row:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.contact-row .material-symbols-outlined { font-size: 18px; color: var(--color-text-muted); flex-shrink: 0; }
+
+/* Reviews */
+.reviews-count-badge { display: inline-flex; align-items: center; justify-content: center; background: var(--color-sand); color: var(--color-text-muted); font-size: 12px; font-weight: 600; border-radius: 12px; padding: 2px 10px; font-family: var(--font-body, "Outfit", sans-serif); }
+.reviews-list { display: flex; flex-direction: column; gap: 20px; }
+.review-card { padding: 16px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+.review-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.review-avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--color-primary-light); color: var(--color-primary); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
+.review-author { font-size: 14px; font-weight: 600; color: var(--color-text); margin-bottom: 4px; }
+.review-stars { display: flex; align-items: center; gap: 1px; }
+.review-content { font-size: 14px; color: var(--color-text-muted); line-height: 1.7; }
 
 /* Booking widget */
 .booking-widget { background: var(--color-surface); border: 1.5px solid var(--color-border); border-radius: var(--radius-xl); padding: 28px; box-shadow: var(--shadow-lg); position: sticky; top: 90px; }
-.booking-widget-price { font-size: 28px; font-weight: 700; color: var(--color-text); margin-bottom: 4px; }
-.booking-widget-price span { font-size: 15px; font-weight: 400; color: var(--color-text-muted); }
-.booking-widget-rating { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--color-text-muted); margin-bottom: 20px; }
-.booking-guests { width: 100%; padding: 12px 16px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); font-size: 15px; font-family: var(--font-body); outline: none; margin-bottom: 16px; background: var(--color-bg); }
-.booking-guests:focus { border-color: var(--color-primary); }
-.book-now-btn { width: 100%; padding: 14px; background: var(--color-primary); color: white; border: none; border-radius: var(--radius-md); font-size: 16px; font-weight: 700; cursor: pointer; transition: background 0.15s; }
+.booking-widget-price { font-size: 26px; font-weight: 700; color: var(--color-text); margin-bottom: 2px; letter-spacing: 1px; }
+.booking-price-label { font-size: 13px; font-weight: 400; color: var(--color-text-muted); letter-spacing: 0; }
+.booking-widget-rating { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--color-text-muted); margin-bottom: 4px; }
+.booking-widget-divider { height: 1px; background: var(--color-border); margin: 18px 0; }
+
+/* Booking form */
+.booking-form { display: flex; flex-direction: column; gap: 14px; }
+.booking-label { display: flex; flex-direction: column; gap: 5px; font-size: 13px; font-weight: 600; color: var(--color-text); }
+.booking-input { padding: 10px 14px; border: 1.5px solid var(--color-border); border-radius: var(--radius-md); font-size: 14px; font-family: inherit; background: var(--color-bg); color: var(--color-text); outline: none; width: 100%; box-sizing: border-box; transition: border-color 0.15s; }
+.booking-input:focus { border-color: var(--color-primary); }
+.booking-textarea { resize: none; }
+.booking-error { font-size: 13px; color: #e05252; background: #fef2f2; border-radius: var(--radius-sm); padding: 8px 12px; }
+.book-now-btn { width: 100%; padding: 14px; background: var(--color-primary); color: white; border: none; border-radius: var(--radius-md); font-size: 16px; font-weight: 700; cursor: pointer; transition: background 0.15s; font-family: inherit; margin-top: 4px; }
 .book-now-btn:hover { background: var(--color-primary-dark); }
-.booking-breakdown { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; }
-.breakdown-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--color-text-muted); }
-.breakdown-row.total { font-weight: 700; color: var(--color-text); border-top: 1px solid var(--color-border); padding-top: 12px; font-size: 16px; }
-.booking-form-wrapper { margin-top: 20px; }
+.book-now-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Booking success */
+.booking-success { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 20px 0; }
+.booking-success-title { font-size: 16px; font-weight: 700; color: var(--color-text); }
+.booking-success-sub { font-size: 13px; color: var(--color-text-muted); }
 
 /* Similar listings */
 .similar-section { max-width: 1200px; margin: 0 auto; padding: 0 32px 64px; }
-.similar-section h2 { font-size: 24px; font-weight: 700; margin-bottom: 24px; color: var(--color-text); font-family: var(--font-display, 'Instrument Serif', serif); }
+.similar-section h2 { font-size: 24px; font-weight: 700; margin-bottom: 24px; color: var(--color-text); font-family: var(--font-display, "Instrument Serif", serif); }
 .similar-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
 .similar-card { background: var(--color-surface); border-radius: var(--radius-lg); overflow: hidden; cursor: pointer; border: 1px solid var(--color-border); box-shadow: var(--shadow-sm); transition: transform 0.2s; }
 .similar-card:hover { transform: translateY(-3px); }
@@ -64,7 +113,6 @@
 .similar-card-body h4 { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
 .similar-card-body p { font-size: 13px; color: var(--color-text-muted); }
 
-/* Footer */
 .detail-footer-spacer { height: 80px; }
 
 /* Responsive */
@@ -79,9 +127,14 @@
   .detail-hero { padding: 12px; }
   .similar-grid { grid-template-columns: 1fr; }
   .amenities-grid { grid-template-columns: 1fr; }
+  .detail-title-top { flex-direction: column; gap: 12px; }
+  .detail-title-actions { align-self: flex-start; }
 }
 
 /* RTL */
-html[dir="rtl"] .detail-layout,
-html[dir="rtl"] .detail-title-row,
-html[dir="rtl"] .detail-meta { direction: rtl; text-align: right; }
+[dir="rtl"] .detail-breadcrumb,
+[dir="rtl"] .detail-layout,
+[dir="rtl"] .detail-title-row,
+[dir="rtl"] .detail-meta,
+[dir="rtl"] .detail-section,
+[dir="rtl"] .reviews-list { text-align: right; }

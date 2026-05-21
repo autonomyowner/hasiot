@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useQuery } from 'convex/react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import Navbar from '../components/Navbar'
 import './ListingsPage.css'
@@ -75,9 +75,10 @@ function SkeletonCard() {
 }
 
 export default function ListingsPage() {
+  const [searchParams] = useSearchParams()
   const [lang, setLang] = useState(() => localStorage.getItem('hasio_lang') || 'ar')
   const [search, setSearch] = useState('')
-  const [type, setType] = useState('')
+  const [type, setType] = useState(() => searchParams.get('type') || '')
   const [city, setCity] = useState('')
   const t = translations[lang]
   const isRtl = lang === 'ar'
