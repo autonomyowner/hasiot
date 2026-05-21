@@ -223,7 +223,7 @@ function ListingCard({ item, lang, t }) {
   return (
     <div
       className="listing-card"
-      onClick={() => navigate('/explore')}
+      onClick={() => navigate(`/listings/${item._id}`)}
     >
       <div className="listing-card-img">
         {item.images?.[0] ? (
