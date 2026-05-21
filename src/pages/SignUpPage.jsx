@@ -41,6 +41,9 @@ const translations = {
     pendingMessage: 'حسابك قيد المراجعة من قبل الإدارة. سيتم إعلامك عند الموافقة على حسابك.',
     touristSuccess: 'تم إنشاء حسابك بنجاح! جاري التحويل...',
     goHome: 'الذهاب للرئيسية',
+    emailPlaceholder: 'name@example.com',
+    passwordPlaceholder: '••••••••',
+    confirmPasswordPlaceholder: '••••••••',
   },
   en: {
     title: 'Create Account',
@@ -66,6 +69,9 @@ const translations = {
     pendingMessage: 'Your account is pending admin review. You will be notified when approved.',
     touristSuccess: 'Account created! Redirecting...',
     goHome: 'Go to Home',
+    emailPlaceholder: 'name@example.com',
+    passwordPlaceholder: '••••••••',
+    confirmPasswordPlaceholder: '••••••••',
   }
 }
 
@@ -131,7 +137,7 @@ export default function SignUpPage() {
           window.location.href = '/home'
         }
       }, 1500)
-    } catch (err) {
+    } catch {
       setError(t.error)
       setLoading(false)
     }
@@ -140,26 +146,26 @@ export default function SignUpPage() {
   if (success) {
     return (
       <div className="auth-page" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-        <div className="auth-container">
-          <div className="auth-card">
-            <div className="auth-header">
-              <button className="auth-lang-toggle" onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')}>
-                {lang === 'ar' ? 'EN' : 'عربي'}
-              </button>
-              <Link to="/" className="auth-logo">Hasio</Link>
-              <h1 className="auth-title">{t.pendingTitle}</h1>
-            </div>
-            <div className="auth-success">
-              {role === 'tourist' ? (
-                <p>{t.touristSuccess}</p>
-              ) : (
-                <p>{t.pendingMessage}</p>
-              )}
-            </div>
-            <div className="auth-footer">
-              <Link to="/" className="auth-link-secondary">{t.goHome}</Link>
-            </div>
+        <div className="auth-card">
+          <button
+            className="auth-lang-toggle"
+            type="button"
+            onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')}
+          >
+            {lang === 'ar' ? 'EN' : 'عربي'}
+          </button>
+          <Link to="/" className="auth-logo">Hasio</Link>
+          <h1>{t.pendingTitle}</h1>
+          <div className="auth-success">
+            {role === 'tourist' ? (
+              <p>{t.touristSuccess}</p>
+            ) : (
+              <p>{t.pendingMessage}</p>
+            )}
           </div>
+          <p className="auth-footer-text">
+            <Link to="/">{t.goHome}</Link>
+          </p>
         </div>
       </div>
     )
@@ -167,143 +173,151 @@ export default function SignUpPage() {
 
   return (
     <div className="auth-page" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <div className="auth-container">
-        <div className="auth-card">
-          <div className="auth-header">
-            <button className="auth-lang-toggle" onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')}>
-              {lang === 'ar' ? 'EN' : 'عربي'}
-            </button>
-            <Link to="/" className="auth-logo">Hasio</Link>
-            <h1 className="auth-title">{t.title}</h1>
-            <p className="auth-subtitle">{t.subtitle}</p>
-          </div>
+      <div className="auth-card">
+        <button
+          className="auth-lang-toggle"
+          type="button"
+          onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')}
+        >
+          {lang === 'ar' ? 'EN' : 'عربي'}
+        </button>
 
-          {/* Role Toggle */}
-          <div className="auth-role-toggle">
-            <button
-              type="button"
-              className={`role-btn ${role === 'tourist' ? 'active' : ''}`}
-              onClick={() => setRole('tourist')}
-            >
-              {t.tourist}
-            </button>
-            <button
-              type="button"
-              className={`role-btn ${role === 'business_owner' ? 'active' : ''}`}
-              onClick={() => setRole('business_owner')}
-            >
-              {t.business}
-            </button>
-          </div>
+        <Link to="/" className="auth-logo">Hasio</Link>
+        <h1>{t.title}</h1>
+        <p className="auth-subtitle">{t.subtitle}</p>
 
-          {error && <div className="auth-error">{error}</div>}
-
-          <form onSubmit={handleSubmit} className="auth-form">
-            <div className="auth-row">
-              <div className="auth-field">
-                <label>{t.firstName}</label>
-                <input
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="auth-field">
-                <label>{t.lastName}</label>
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="auth-field">
-              <label>{t.email}</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                placeholder="name@example.com"
-              />
-            </div>
-
-            <div className="auth-field">
-              <label>{t.phone}</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-                autoComplete="tel"
-                placeholder="+966 55 123 4567"
-                dir="ltr"
-              />
-            </div>
-
-            <div className="auth-field">
-              <label>{t.password}</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-                minLength={8}
-              />
-            </div>
-
-            <div className="auth-field">
-              <label>{t.confirmPassword}</label>
-              <input
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                autoComplete="new-password"
-                minLength={8}
-              />
-            </div>
-
-            {role === 'business_owner' && (
-              <div className="auth-field">
-                <label>{t.businessType}</label>
-                <select
-                  value={businessType}
-                  onChange={(e) => setBusinessType(e.target.value)}
-                  required
-                >
-                  <option value="">{t.selectBusinessType}</option>
-                  {BUSINESS_TYPES.map(b => (
-                    <option key={b.value} value={b.value}>
-                      {lang === 'ar' ? b.label_ar : b.label_en}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              className="auth-submit"
-              disabled={loading}
-            >
-              {loading ? t.loading : t.signUp}
-            </button>
-          </form>
-
-          <div className="auth-footer">
-            <p>
-              {t.hasAccount}{' '}
-              <Link to="/sign-in" className="auth-link">{t.signIn}</Link>
-            </p>
-            <Link to="/" className="auth-link-secondary">{t.backHome}</Link>
-          </div>
+        {/* Role Toggle */}
+        <div className="auth-role-toggle">
+          <button
+            type="button"
+            className={`role-btn ${role === 'tourist' ? 'active' : ''}`}
+            onClick={() => setRole('tourist')}
+          >
+            {t.tourist}
+          </button>
+          <button
+            type="button"
+            className={`role-btn ${role === 'business_owner' ? 'active' : ''}`}
+            onClick={() => setRole('business_owner')}
+          >
+            {t.business}
+          </button>
         </div>
+
+        {error && <div className="auth-error">{error}</div>}
+
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <div className="auth-row">
+            <div className="form-group-auth">
+              <label className="form-label-auth">{t.firstName}</label>
+              <input
+                className="form-input-auth"
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="form-group-auth">
+              <label className="form-label-auth">{t.lastName}</label>
+              <input
+                className="form-input-auth"
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="form-group-auth">
+            <label className="form-label-auth">{t.email}</label>
+            <input
+              className="form-input-auth"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder={t.emailPlaceholder}
+            />
+          </div>
+
+          <div className="form-group-auth">
+            <label className="form-label-auth">{t.phone}</label>
+            <input
+              className="form-input-auth"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              required
+              autoComplete="tel"
+              placeholder="+966 55 123 4567"
+              dir="ltr"
+            />
+          </div>
+
+          <div className="form-group-auth">
+            <label className="form-label-auth">{t.password}</label>
+            <input
+              className="form-input-auth"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              minLength={8}
+              placeholder={t.passwordPlaceholder}
+            />
+          </div>
+
+          <div className="form-group-auth">
+            <label className="form-label-auth">{t.confirmPassword}</label>
+            <input
+              className="form-input-auth"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              autoComplete="new-password"
+              minLength={8}
+              placeholder={t.confirmPasswordPlaceholder}
+            />
+          </div>
+
+          {role === 'business_owner' && (
+            <div className="form-group-auth">
+              <label className="form-label-auth">{t.businessType}</label>
+              <select
+                className="form-input-auth"
+                value={businessType}
+                onChange={(e) => setBusinessType(e.target.value)}
+                required
+              >
+                <option value="">{t.selectBusinessType}</option>
+                {BUSINESS_TYPES.map(b => (
+                  <option key={b.value} value={b.value}>
+                    {lang === 'ar' ? b.label_ar : b.label_en}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <button className="auth-btn-primary" type="submit" disabled={loading}>
+            {loading ? t.loading : t.signUp}
+          </button>
+        </form>
+
+        <p className="auth-footer-text">
+          {t.hasAccount}{' '}
+          <Link to="/sign-in">{t.signIn}</Link>
+        </p>
+        <p className="auth-legal">
+          By continuing, you agree to our{' '}
+          <Link to="/terms-of-service.html">Terms of Service</Link> and{' '}
+          <Link to="/privacy-policy.html">Privacy Policy</Link>
+        </p>
       </div>
     </div>
   )
