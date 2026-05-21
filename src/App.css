@@ -328,87 +328,82 @@
   color: white;
 }
 
-.gems-grid {
+/* ===== BENTO GRID ===== */
+.gems-bento {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 28px;
+  gap: 16px;
 }
 
-.gem-card {
-  background: var(--color-surface);
+.bento-card {
+  position: relative;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-md);
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-  text-decoration: none;
-  color: inherit;
   display: block;
+  text-decoration: none;
+  min-height: 340px;
 }
 
-.gem-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+.bento-card--wide {
+  grid-column: span 2;
 }
 
-.gem-card-img {
-  position: relative;
-  aspect-ratio: 4/3;
-  overflow: hidden;
-  background: #E8DFD4;
-}
-
-.gem-card-img img {
+.bento-card-img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.4s;
+  transition: transform 0.5s;
 }
 
-.gem-card:hover .gem-card-img img {
-  transform: scale(1.05);
+.bento-card:hover .bento-card-img {
+  transform: scale(1.04);
 }
 
-.gem-card-img-placeholder {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #E8DFD4 0%, #D4C9BB 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-muted);
-  font-size: 32px;
-}
-
-.gem-card-badge {
+.bento-card-overlay {
   position: absolute;
-  top: 12px;
-  left: 12px;
-  background: var(--color-gold, #C9A84C);
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.18) 55%, transparent 100%);
+}
+
+.bento-card-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px;
   color: white;
-  border-radius: var(--radius-sm);
-  padding: 4px 10px;
+}
+
+.bento-card-badge {
+  display: inline-block;
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.3);
+  color: white;
+  border-radius: 20px;
+  padding: 4px 12px;
   font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.gem-card-body {
-  padding: 20px;
-}
-
-.gem-card-body h3 {
-  font-size: 18px;
   font-weight: 600;
-  margin-bottom: 6px;
-  color: var(--color-text);
-  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
 }
 
-.gem-card-desc {
+.bento-card-content h3 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  color: white;
+  line-height: 1.25;
+  margin-bottom: 6px;
+}
+
+.bento-card-content p {
   font-size: 14px;
-  color: var(--color-text-muted);
+  color: rgba(255,255,255,0.8);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -416,28 +411,21 @@
   overflow: hidden;
 }
 
-.gem-card-meta {
+.bento-card-rating {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-top: 12px;
+  gap: 6px;
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
 }
 
-.gem-location {
+.bento-card-price {
+  margin-left: auto;
   font-size: 13px;
-  color: var(--color-text-muted);
-}
-
-.gem-price {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--color-primary);
-}
-
-.gem-price small {
-  font-weight: 400;
-  color: var(--color-text-muted);
-  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.85);
 }
 
 /* ===== OASIS ATLAS (green section) ===== */

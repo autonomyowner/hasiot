@@ -6,12 +6,18 @@ import ImageCarousel from "../components/ImageCarousel";
 import "./ListingDetailPage.css";
 
 const AMENITIES = [
-  { icon: "🏊", label: "Swimming Pool" },
-  { icon: "🌐", label: "Free WiFi" },
-  { icon: "🅿️", label: "Free Parking" },
-  { icon: "🍽️", label: "Restaurant" },
-  { icon: "❄️", label: "Air Conditioning" },
-  { icon: "🚗", label: "Airport Transfer" },
+  { icon: "pool", label: "Swimming Pool" },
+  { icon: "wifi", label: "Free WiFi" },
+  { icon: "local_parking", label: "Free Parking" },
+  { icon: "restaurant", label: "Restaurant" },
+  { icon: "ac_unit", label: "Air Conditioning" },
+  { icon: "directions_car", label: "Airport Transfer" },
+];
+
+const AIDA_CAROUSEL = [
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuCxMYFVCmhwmNLaE7gi0aqViFuGsWlf4fN4Ii7210y3jAiltY-R_QecYHXOQe8YpMiuoNVbNBGi-XOkoQYBkrsQPqVGC3sBm9fQIc6kzEiD9fm1eslDbqf3SpUzg05JzLIByguKv4Cee3CcmYvcw2I_IraE8OkmR7rLN62KPYiQ_6wZMiM4Sc0qLatbRoUnGUyh7cRkxIEi28c3d1h0XnicKiBR7z15xpZL9G3lYVSQisXiLjXCvq6XOldD8_E0h_bilvXQagbFRIXJ',
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuDv6K-vD39HypBO9ow7Y72JPaovtZFDzYQ_O2KZBOPFwPQwrm09SiOM1EErnaT72HnOZWsgpsD97nPl6L9v35lleCg4VV2ao3UzL2UTeEsCwGHruEvcAqbnNKi0XyMXxP1P8qZjiF9dQ6N28HPmQCBCvhjcePC9-Kbkr4rEWEAjsN1Qvo2ZY2lERg5cu6iNhfdecsU6cjWTL2EFKuRJ8XU-xbUyRjJADWeidKKVLC0iuFQ6NRMGFhCaaCkxXQSVrwY7AGlR3wNf0QXT',
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuDVljfa0f2pS99l9rQwVCrsJKqYJUWIUTa6UOlIGoWUJjEk_JGKTU792dsUMnlZf5TpsZL91nauwHqB9JjCSViKUsaeiit6JPv0B06ZdcKH_MbcLjkEb6r2qw3YC6rWV3q02BCB2Jvsy64L2BSPKJr36ttXMhpLzK7iMayDRWq-NeFlzKrlrTsErs66va5c5n_PuUyxWAF5eFz75F5o2zhz8lsUwoHols8xWy5URp6g0pB7N3uK-WMNewWzMV4gHv4UXVKlw0iG8DHr',
 ];
 
 export default function ListingDetailPage() {
@@ -99,15 +105,11 @@ export default function ListingDetailPage() {
       {/* Hero carousel */}
       <div className="detail-hero">
         <div className="detail-hero-carousel">
-          {listing.images?.length > 0 ? (
-            <ImageCarousel
-              images={listing.images}
-              height="100%"
-              borderRadius="0"
-            />
-          ) : (
-            <div className="carousel-placeholder">🏛️</div>
-          )}
+          <ImageCarousel
+            images={listing.images?.length > 0 ? listing.images : AIDA_CAROUSEL}
+            height="100%"
+            borderRadius="0"
+          />
         </div>
       </div>
 
@@ -120,8 +122,8 @@ export default function ListingDetailPage() {
             <h1>{listing.name}</h1>
             <div className="detail-meta">
               <span className="detail-type-badge">{listing.type}</span>
-              {listing.city && <span>📍 {listing.city}</span>}
-              <span className="detail-rating">⭐ 4.8 · 32 reviews</span>
+              {listing.city && <span><span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: 'middle' }}>location_on</span> {listing.city}</span>}
+              <span className="detail-rating"><span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: 'middle', color: '#D4AF37', fontVariationSettings: "'FILL' 1" }}>star</span> 4.8 · 32 reviews</span>
               <span className="detail-badge">Verified</span>
             </div>
           </div>
@@ -141,7 +143,7 @@ export default function ListingDetailPage() {
             <div className="amenities-grid">
               {AMENITIES.map((a, i) => (
                 <div key={i} className="amenity-item">
-                  <span className="amenity-icon">{a.icon}</span>
+                  <span className="material-symbols-outlined amenity-icon">{a.icon}</span>
                   <span>{a.label}</span>
                 </div>
               ))}
@@ -165,7 +167,7 @@ export default function ListingDetailPage() {
                 <div className="booking-widget-price">
                   SAR {price} <span>/ night</span>
                 </div>
-                <div className="booking-widget-rating">⭐ 4.8 · 32 reviews</div>
+                <div className="booking-widget-rating"><span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: 'middle', color: '#D4AF37', fontVariationSettings: "'FILL' 1" }}>star</span> 4.8 · 32 reviews</div>
               </>
             ) : (
               <div className="booking-widget-price">Contact for pricing</div>
@@ -239,27 +241,17 @@ export default function ListingDetailPage() {
                 onClick={() => navigate(`/listings/${s._id}`)}
               >
                 <div className="similar-card-img">
-                  {s.images?.[0] ? (
-                    <img src={s.images[0]} alt={s.name} loading="lazy" />
-                  ) : (
-                    <div
-                      style={{
-                        width: "100%",
-                        height: "100%",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 32,
-                      }}
-                    >
-                      🏛️
-                    </div>
-                  )}
+                  <img
+                    src={s.images?.[0] || AIDA_CAROUSEL[0]}
+                    alt={s.name}
+                    loading="lazy"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
                 </div>
                 <div className="similar-card-body">
                   <h4>{s.name}</h4>
                   <p>
-                    📍 {s.city}
+                    <span className="material-symbols-outlined" style={{ fontSize: 13, verticalAlign: 'middle' }}>location_on</span> {s.city}
                     {s.price ? ` · SAR ${s.price}/night` : ""}
                   </p>
                 </div>

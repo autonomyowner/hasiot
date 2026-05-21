@@ -2,7 +2,7 @@ import { useState, useEffect, lazy, Suspense } from 'react'
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
-import { useMutation, useQuery } from 'convex/react'
+import { useMutation } from 'convex/react'
 import { api } from '../convex/_generated/api'
 import { authClient } from './lib/auth-client'
 import './App.css'
@@ -23,6 +23,57 @@ const staggerContainer = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
 }
+
+// Stitch bento grid cards
+const BENTO_CARDS = [
+  {
+    title: 'Al Qarah Mountain Caves',
+    titleAr: 'كهوف جبل القارة',
+    badge: 'CULTURAL LANDMARK',
+    badgeAr: 'معلم ثقافي',
+    desc: 'Explore the ancient whispers of limestone corridors.',
+    descAr: 'استكشف همسات الحجر الجيري القديمة في أعماق الجبل',
+    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD7zOc6WfUxnSoIFNV6r2Y8M3j6jVbR3xnughW0v19jFDH7RS_o1R0xOMi7f2CAYHnljvqopVPrULLbvC140Dah3BRRHMvZDsIWIcTYMrGDEuMiiUen2LnlamkY0nGDwJJXz2AwrN5nnfIxMSFfTbBc0YrHaTrWbbxFrylDbCpJizaMs1rqHjzlZVlgxwhdyqVngv7EN1_XxQCc0tUKDEgHtomI0eNbmF-9kXGbKLmywMIAsTdIq_QE8-nL_CWUNTxsgGiij2Qh6kGr',
+    wide: true,
+    link: '/listings?type=attraction'
+  },
+  {
+    title: 'The Oasis Serenity Resort',
+    titleAr: 'منتجع واحة السكينة',
+    badge: 'BOUTIQUE HOTEL',
+    badgeAr: 'فندق بوتيك',
+    desc: 'Boutique desert living with private natural springs.',
+    descAr: 'حياة صحراوية فاخرة مع ينابيع طبيعية خاصة',
+    price: 'From SAR 450 / night',
+    priceAr: 'من ٤٥٠ ر.س / ليلة',
+    rating: '4.9',
+    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBZhUn3gEH-hDr0pbD1v0-czSYBb_S4wTMYT0nRYAyAJhG15Yf8y9FLcZ8TpcAbjm2PJGa_W1q44G6sjp2LvUKlwlf-X6Nl59xWirusUMMAt9ZI2mBjetJDHevDhouuZCGgVPf3xIfPavYlxxas1bSF21Ip15Zh_oK02R4qUO_kY4KwZVM_NR7UKAEqIhSClVCFNdYYCRSC--7Iw6zBVEAdTcck_OvxWZeKd7aFpqHgysvNCkCDEakUaPAm1Gp4m6L28q2UBimrrMEY',
+    wide: false,
+    link: '/listings?type=hotel'
+  },
+  {
+    title: 'Palm Grove Dining',
+    titleAr: 'مطعم بستان النخيل',
+    badge: 'GASTRONOMY',
+    badgeAr: 'تجربة طهي',
+    desc: "A sensory journey through Al-Ahsa's rich agricultural heritage.",
+    descAr: 'رحلة حسية عبر التراث الزراعي الغني للأحساء',
+    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAueHTXCOOFF_YPQmVsG4IFULuqd7LKl-Ck8RT2bwGR8PSpGGQXCBvo6uEwZ2p4lfVFEKKIACx8OOFbtdpAVSkT8VM98axICt2ZKkesmM5ySpxeJlIiMx02nwbrMWiaEEINd5GPCIJxOJcBcesqOg-9qYl3gufR40Qzc_2X56OxWZa24PMKjLL7NNQgfRGEMERJlQFRAPf3OZxVB2GKb4jBw9CGW6cBE5OCx4D5gp5Ig1_Z1kS-1tOsW3U92NoBN_XGc2VJqoK1hLz',
+    wide: false,
+    link: '/listings?type=restaurant'
+  },
+  {
+    title: 'The Artisans of Hofuf',
+    titleAr: 'حرفيو الهفوف',
+    badge: 'MARKETPLACE TOUR',
+    badgeAr: 'جولة في السوق',
+    desc: "Discover traditional crafts in Al-Ahsa's historic bazaar.",
+    descAr: 'اكتشف الحرف التقليدية في السوق التاريخي للأحساء',
+    img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDg1Bo_aA64n3FA8sLKP0VyZiELLmc7XkMcnQ-StIb_BUDbNmfDuLjmxsldvhPfWrPEwQ9lbF_231Hff__BNv5MhzEtjUtJJOh5-tOLHLVZGFnAdq6ISTDWCi7LjuJufWhmG5i7X3N0uyXVebyjjLqsp6dgpRHl67vuORfiSngGjK8bi5Z5aooW0g8mXtkTkv5c457SXVrMTiVRwLxWIVYOvKjbdkvxWAB1XBjNse6MzL8z06ihTGsc3qWsov_HN3Znqao',
+    wide: true,
+    link: '/listings'
+  }
+]
 
 // Translations
 const translations = {
@@ -182,21 +233,6 @@ const translations = {
   }
 }
 
-// Type label mapping for gem cards
-const TYPE_LABELS = {
-  hotel: { en: 'Hotel', ar: 'فندق' },
-  restaurant: { en: 'Restaurant', ar: 'مطعم' },
-  attraction: { en: 'Attraction', ar: 'معلم سياحي' },
-  event: { en: 'Event', ar: 'فعالية' },
-  tour: { en: 'Tour', ar: 'جولة' }
-}
-
-function getTypeLabel(type, lang) {
-  if (!type) return ''
-  const entry = TYPE_LABELS[type]
-  if (!entry) return type
-  return entry[lang] || entry.en
-}
 
 function App() {
   const [lang, setLang] = useState(() => localStorage.getItem('hasio_lang') || 'ar')
@@ -208,9 +244,6 @@ function App() {
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const captureEmail = hasConvex ? useMutation(api.emailCaptures.mutations.captureEmail) : null
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const listingsRaw = hasConvex ? useQuery(api.listings.queries.listListings, { limit: 12 }) : null
-
   const session = hasConvex ? authClient.useSession() : { data: null }
   const isLoggedIn = !!session?.data
 
@@ -226,15 +259,6 @@ function App() {
   }, [lang, isAr])
 
   const toggleLang = () => setLang(prev => (prev === 'ar' ? 'en' : 'ar'))
-
-  // Filter listings: approved or no status (seed), prefer those with images
-  const featuredListings = (() => {
-    if (!listingsRaw) return []
-    const approved = listingsRaw.filter(l => !l.status || l.status === 'approved')
-    const withImages = approved.filter(l => l.images && l.images.length > 0)
-    const withoutImages = approved.filter(l => !l.images || l.images.length === 0)
-    return [...withImages, ...withoutImages].slice(0, 6)
-  })()
 
   const handleCategoryClick = (categoryType) => {
     if (categoryType === 'services') {
@@ -368,7 +392,7 @@ function App() {
         </div>
       </section>
 
-      {/* ===== FEATURED GEMS ===== */}
+      {/* ===== FEATURED GEMS BENTO ===== */}
       <div className="section">
         <div className="section-header">
           <div className="section-header-text">
@@ -379,58 +403,35 @@ function App() {
         </div>
 
         <motion.div
-          className="gems-grid"
+          className="gems-bento"
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: '-60px' }}
           variants={staggerContainer}
         >
-          {featuredListings.length > 0
-            ? featuredListings.map((listing) => (
-                <motion.a
-                  key={listing._id}
-                  href={`/listings?id=${listing._id}`}
-                  className="gem-card"
-                  variants={fadeInUp}
-                >
-                  <div className="gem-card-img">
-                    {listing.images && listing.images.length > 0 ? (
-                      <img
-                        src={listing.images[0]}
-                        alt={listing.name}
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="gem-card-img-placeholder">🏛</div>
-                    )}
-                    {listing.type && (
-                      <span className="gem-card-badge">
-                        {getTypeLabel(listing.type, lang)}
-                      </span>
-                    )}
+          {BENTO_CARDS.map((card, i) => (
+            <motion.a
+              key={i}
+              href={card.link}
+              className={`bento-card${card.wide ? ' bento-card--wide' : ''}`}
+              variants={fadeInUp}
+            >
+              <img src={card.img} alt={isAr ? card.titleAr : card.title} className="bento-card-img" />
+              <div className="bento-card-overlay" />
+              <div className="bento-card-content">
+                <span className="bento-card-badge">{isAr ? card.badgeAr : card.badge}</span>
+                <h3>{isAr ? card.titleAr : card.title}</h3>
+                <p>{isAr ? card.descAr : card.desc}</p>
+                {card.rating && (
+                  <div className="bento-card-rating">
+                    <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#D4AF37', fontVariationSettings: "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20" }}>star</span>
+                    <span>{card.rating}</span>
+                    {card.price && <span className="bento-card-price">{isAr ? card.priceAr : card.price}</span>}
                   </div>
-                  <div className="gem-card-body">
-                    <h3>{isAr && listing.nameAr ? listing.nameAr : listing.name}</h3>
-                    {listing.description && (
-                      <p className="gem-card-desc">
-                        {isAr && listing.descriptionAr ? listing.descriptionAr : listing.description}
-                      </p>
-                    )}
-                    <div className="gem-card-meta">
-                      <span className="gem-location">
-                        📍 {isAr && listing.cityAr ? listing.cityAr : (listing.city || 'Al-Ahsa')}
-                      </span>
-                      {listing.priceRange && (
-                        <span className="gem-price">{listing.priceRange}</span>
-                      )}
-                    </div>
-                  </div>
-                </motion.a>
-              ))
-            : Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="gem-card" style={{ minHeight: 280, background: 'var(--color-border)', borderRadius: 'var(--radius-lg)', opacity: 0.4 }} />
-              ))
-          }
+                )}
+              </div>
+            </motion.a>
+          ))}
         </motion.div>
       </div>
 
@@ -502,7 +503,7 @@ function App() {
 
             {/* Static chat messages */}
             <div className="chat-msg user">
-              <div className="chat-avatar">👤</div>
+              <div className="chat-avatar"><span className="material-symbols-outlined" style={{ fontSize: 20 }}>person</span></div>
               <div className="chat-bubble user">{t.concierge.chat1}</div>
             </div>
 
@@ -514,7 +515,7 @@ function App() {
             </div>
 
             <div className="chat-msg user">
-              <div className="chat-avatar">👤</div>
+              <div className="chat-avatar"><span className="material-symbols-outlined" style={{ fontSize: 20 }}>person</span></div>
               <div className="chat-bubble user">{t.concierge.chat3}</div>
             </div>
           </motion.div>

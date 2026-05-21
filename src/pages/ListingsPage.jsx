@@ -4,6 +4,15 @@ import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import './ListingsPage.css'
 
+const AIDA_FALLBACKS = [
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuDPTsZ4J6YVULnt7fquihF15Zua-d_IaG_DSiVEf3PooFw7Gh3WRLBYMKUZYU3CPxu5JHMTKdTUwIYnFp14FIXZxje1BTAY9H7CsUb994QeSgzK3NV_2rlJ4gLl6vXhU-WIiu53Nj-ajFv24mmeLeF6CFFQJNmssZCr0kKmD1GDTkL2d9mc_iTcst5c7ziPGv8HD50LfXwmC-iTWgVygnY_6hU2N66b2S5oZhgA-uu6g4RPjeQ19oLXzSD26v0pudZN8trqqRrm9cL9',
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuAyiW8qmkIv-9kXm-_aCsf3ekCel21krXAUNALubEZWe1WWuEX434Jb9m3noHb2NzoRFPw7GdCOOzdaCN2fByK1zLcKIx3-vi1EL0IYIrgACQvFmoi6N2ra28rxygeUBwxaPpSjfjCC6AbYRM05wD_DQ3_yxovW3Xa0konAHA9OZGCFZQPdQtgIrHTdYHzi40ylJi-4pBweJLIsSVExa-thgBQzFpfPpwKVW4XJvJ-E-A1e3Ap8C9087mnxzB4ogj4eit9XIbQ21EFs',
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuAyzHKTFxTIzlwopk3U-b9kYFQiHvs3A7O-RBvnbZQUs1JIXbH_I7J_Qfvd7vd2TC-EH4MvsCXDfxz4BzBzaxUYJFkVo5Fr2czcRSw28isobBIZufkdska4qEWUlBlvwy_vxlaiZp3ndIina0ZKq5C8JdlLKwOd562gq_uHjyxmIh-0ErlZpXEnW3B01rt5vb840HtigRODzaAvrOP8uV3eUrtnAJu1W6cFiwH8qO8D3GCSALnaFa_HSWmderYTwpx_ygHby-G5DHCf',
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuAiu18zXFzFoviKXAEUqt-KXU32TWTD6POvKiy_b_RVddOf1zAikj-Ye8X_pVLZMWgUZ-BmNrcWLuahCA2N5_LEObXQ8rNWTUNanlMoMjJ1MTsMxDLV-t4YzL94vNV2jDAgYkV2qW9juQk8_TkbxJUR-5He6SmfbY4rN6w_a1_9qi-eocJous18e7_Nohs3-TWMjzBYkkaTXcKfJeHVnntavqFWaEXwK2rylVB734ktdzYByFfx7uGh1F_dCSbLKlHFOuj91LleZIJV',
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuD7zOc6WfUxnSoIFNV6r2Y8M3j6jVbR3xnughW0v19jFDH7RS_o1R0xOMi7f2CAYHnljvqopVPrULLbvC140Dah3BRRHMvZDsIWIcTYMrGDEuMiiUen2LnlamkY0nGDwJJXz2AwrN5nnfIxMSFfTbBc0YrHaTrWbbxFrylDbCpJizaMs1rqHjzlZVlgxwhdyqVngv7EN1_XxQCc0tUKDEgHtomI0eNbmF-9kXGbKLmywMIAsTdIq_QE8-nL_CWUNTxsgGiij2Qh6kGr',
+  'https://lh3.googleusercontent.com/aida-public/AB6AXuAueHTXCOOFF_YPQmVsG4IFULuqd7LKl-Ck8RT2bwGR8PSpGGQXCBvo6uEwZ2p4lfVFEKKIACx8OOFbtdpAVSkT8VM98axICt2ZKkesmM5ySpxeJlIiMx02nwbrMWiaEEINd5GPCIJxOJcBcesqOg-9qYl3gufR40Qzc_2X56OxWZa24PMKjLL7NNQgfRGEMERJlQFRAPf3OZxVB2GKb4jBw9CGW6cBE5OCx4D5gp5Ig1_Z1kS-1tOsW3U92NoBN_XGc2VJqoK1hLz',
+]
+
 const translations = {
   ar: {
     title: 'الوجهات',
@@ -204,8 +213,8 @@ export default function ListingsPage() {
             </div>
           ) : (
             <div className="listings-grid">
-              {listings.map((item) => (
-                <ListingCard key={item._id} item={item} lang={lang} t={t} />
+              {listings.map((item, idx) => (
+                <ListingCard key={item._id} item={item} lang={lang} t={t} index={idx} />
               ))}
             </div>
           )}
@@ -215,10 +224,11 @@ export default function ListingsPage() {
   )
 }
 
-function ListingCard({ item, lang, t }) {
+function ListingCard({ item, lang, t, index }) {
   const navigate = useNavigate()
   const name = lang === 'ar' ? (item.name_ar || item.name_en) : item.name_en
   const desc = lang === 'ar' ? (item.description_ar || item.description_en) : item.description_en
+  const imgSrc = item.images?.[0] || AIDA_FALLBACKS[index % AIDA_FALLBACKS.length]
 
   return (
     <div
@@ -226,11 +236,7 @@ function ListingCard({ item, lang, t }) {
       onClick={() => navigate(`/listings/${item._id}`)}
     >
       <div className="listing-card-img">
-        {item.images?.[0] ? (
-          <img src={item.images[0]} alt={name} loading="lazy" />
-        ) : (
-          <div className="listing-card-img-placeholder">🏛️</div>
-        )}
+        <img src={imgSrc} alt={name} loading="lazy" />
         <span className="listing-card-badge">{t[item.type] || item.type}</span>
       </div>
       <div className="listing-card-body">
@@ -244,7 +250,7 @@ function ListingCard({ item, lang, t }) {
         <div className="listing-card-footer">
           {item.city && (
             <span className="listing-card-location">
-              📍 {item.city}
+              <span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: 'middle' }}>location_on</span> {item.city}
             </span>
           )}
           {item.priceRange && (
