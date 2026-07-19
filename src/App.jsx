@@ -75,6 +75,100 @@ const BENTO_CARDS = [
   }
 ]
 
+// Marketplace horizontal-scroll strip
+const MARKETPLACE_CARDS = [
+  {
+    title: 'Dar Al Ahsa',
+    titleAr: 'دار الأحساء',
+    subtitle: 'Boutique Hotel',
+    subtitleAr: 'فندق بوتيك',
+    rating: '4.7',
+    img: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80',
+    link: '/listings?type=hotel'
+  },
+  {
+    title: 'Al Ahsa InterContinental',
+    titleAr: 'إنتركونتيننتال الأحساء',
+    subtitle: 'Luxury Resort',
+    subtitleAr: 'منتجع فاخر',
+    rating: '4.8',
+    img: 'https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=500&q=80',
+    link: '/listings?type=hotel'
+  },
+  {
+    title: 'Najd Village',
+    titleAr: 'قرية نجد',
+    subtitle: 'Local Restaurant',
+    subtitleAr: 'مطعم محلي',
+    rating: '4.6',
+    img: 'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=500&q=80',
+    link: '/listings?type=restaurant'
+  },
+  {
+    title: 'Heritage Walking Tour',
+    titleAr: 'جولة التراث سيراً',
+    subtitle: 'Guided Tour',
+    subtitleAr: 'جولة مرشدة',
+    rating: '4.9',
+    img: 'https://images.unsplash.com/photo-1552566626-52f8b828add9?w=500&q=80',
+    link: '/listings?type=tour'
+  },
+  {
+    title: 'Al Ahsa Dates',
+    titleAr: 'تمور الأحساء',
+    subtitle: 'Date Farm',
+    subtitleAr: 'مزرعة نخيل',
+    rating: '4.9',
+    img: 'https://images.unsplash.com/photo-1447279506476-3faec8071eee?w=500&q=80',
+    link: '/listings?type=attraction'
+  },
+  {
+    title: 'Oasis Handicrafts',
+    titleAr: 'حرف الواحة اليدوية',
+    subtitle: 'Artisan Shop',
+    subtitleAr: 'متجر حرفي',
+    rating: '4.7',
+    img: 'https://images.unsplash.com/photo-1578894381163-e72c17f2d45f?w=500&q=80',
+    link: '/services'
+  }
+]
+
+// Testimonials (representative placeholder copy — swap with real reviews later)
+const TESTIMONIALS = [
+  {
+    name: 'Sarah Almutairi',
+    location: 'Riyadh, Saudi Arabia',
+    locationAr: 'الرياض، السعودية',
+    quote: 'Al-Ahsa is a hidden paradise. Hasio made it so easy to discover the best places and plan my trip.',
+    quoteAr: 'الأحساء جنة خفية. طبّق هاسيو سهّل عليّ اكتشاف أفضل الأماكن والتخطيط لرحلتي.',
+    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&q=80'
+  },
+  {
+    name: 'James Carter',
+    location: 'London, UK',
+    locationAr: 'لندن، المملكة المتحدة',
+    quote: 'The AI concierge is amazing! It recommended places we would have never found on our own.',
+    quoteAr: 'مرشد الذكاء الاصطناعي رائع! رشّح لنا أماكن ما كنا لنعثر عليها بأنفسنا أبداً.',
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80'
+  },
+  {
+    name: 'Fatima Alzahrani',
+    location: 'Dammam, Saudi Arabia',
+    locationAr: 'الدمام، السعودية',
+    quote: 'Authentic experiences, beautiful places, and seamless booking. Highly recommend!',
+    quoteAr: 'تجارب أصيلة وأماكن جميلة وحجز سلس. أنصح به بشدة!',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80'
+  }
+]
+
+// Stats band (illustrative marketing figures)
+const STATS = [
+  { num: '50K+', label: 'Travelers', labelAr: 'مسافر' },
+  { num: '400+', label: 'Experiences', labelAr: 'تجربة' },
+  { num: '120+', label: 'Hotels', labelAr: 'فندق' },
+  { num: '95%', label: 'Satisfaction', labelAr: 'نسبة الرضا' }
+]
+
 // Translations
 const translations = {
   en: {
@@ -95,19 +189,35 @@ const translations = {
       datePlaceholder: 'Choose dates',
       guestsPlaceholder: 'Guests',
       searchBtn: 'Search',
-      categories: ['Hotels', 'Restaurants', 'Attractions', 'Tours', 'Services'],
-      categoryTypes: ['hotel', 'restaurant', 'attraction', 'tour', 'services']
+      categories: ['Hotels', 'Restaurants', 'Attractions', 'Tours', 'Cafes', 'Shopping', 'Local Guides'],
+      categoryTypes: ['hotel', 'restaurant', 'attraction', 'tour', 'cafe', 'shopping', 'guides'],
+      categoryIcons: ['hotel', 'restaurant', 'landscape', 'map', 'local_cafe', 'shopping_bag', 'person_pin_circle']
     },
     featured: {
       title: 'Featured Gems',
       subtitle: 'Curated Al-Ahsa experiences',
       viewAll: 'View All'
     },
+    marketplace: {
+      title: 'Marketplace',
+      subtitle: 'Book unforgettable stays, unique experiences, and local treasures.',
+      viewAll: 'Explore All'
+    },
     atlas: {
       title: 'The Oasis Atlas',
       desc: 'Navigate Al-Ahsa like a local. Our interactive map covers every hidden gem, heritage site, and oasis trail across the region.',
       cta: 'Explore the Map',
-      mapLabel: 'Interactive Map of Al-Ahsa'
+      mapLabel: 'Interactive Map of Al-Ahsa',
+      stats: [
+        { num: '120+', label: 'Points of Interest' },
+        { num: '25+', label: 'Heritage Sites' },
+        { num: '10+', label: 'Unique Routes' }
+      ]
+    },
+    testimonials: {
+      title: 'Loved by Travelers',
+      subtitle: 'Real experiences from those who explored Al-Ahsa with Hasio.',
+      viewAll: 'View All'
     },
     concierge: {
       title: 'Your Personal Al-Ahsa Concierge',
@@ -172,19 +282,35 @@ const translations = {
       datePlaceholder: 'اختر التواريخ',
       guestsPlaceholder: 'الضيوف',
       searchBtn: 'بحث',
-      categories: ['فنادق', 'مطاعم', 'معالم سياحية', 'جولات', 'خدمات'],
-      categoryTypes: ['hotel', 'restaurant', 'attraction', 'tour', 'services']
+      categories: ['فنادق', 'مطاعم', 'معالم سياحية', 'جولات', 'مقاهي', 'تسوق', 'مرشدون محليون'],
+      categoryTypes: ['hotel', 'restaurant', 'attraction', 'tour', 'cafe', 'shopping', 'guides'],
+      categoryIcons: ['hotel', 'restaurant', 'landscape', 'map', 'local_cafe', 'shopping_bag', 'person_pin_circle']
     },
     featured: {
       title: 'جواهر مميزة',
       subtitle: 'تجارب الأحساء المنتقاة',
       viewAll: 'عرض الكل'
     },
+    marketplace: {
+      title: 'السوق',
+      subtitle: 'احجز إقامات لا تُنسى وتجارب فريدة وكنوز محلية.',
+      viewAll: 'استكشف الكل'
+    },
     atlas: {
       title: 'أطلس الواحة',
       desc: 'تنقل في الأحساء كالسكان المحليين. تغطي خريطتنا التفاعلية كل جوهرة خفية وموقع تراثي ومسار واحة في المنطقة.',
       cta: 'استكشف الخريطة',
-      mapLabel: 'خريطة الأحساء التفاعلية'
+      mapLabel: 'خريطة الأحساء التفاعلية',
+      stats: [
+        { num: '+120', label: 'معلم سياحي' },
+        { num: '+25', label: 'موقع تراثي' },
+        { num: '+10', label: 'مسار فريد' }
+      ]
+    },
+    testimonials: {
+      title: 'محبوب من المسافرين',
+      subtitle: 'تجارب حقيقية من مستكشفي الأحساء مع هاسيو.',
+      viewAll: 'عرض الكل'
     },
     concierge: {
       title: 'مرشدك الشخصي في الأحساء',
@@ -238,6 +364,7 @@ function App() {
   const [lang, setLang] = useState(() => localStorage.getItem('hasio_lang') || 'ar')
   const [showTravelPlanner, setShowTravelPlanner] = useState(false)
   const [showMobileChat, setShowMobileChat] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [earlyEmail, setEarlyEmail] = useState('')
   const [earlyStatus, setEarlyStatus] = useState(null) // null | 'submitting' | 'success' | 'duplicate' | 'error'
@@ -263,8 +390,12 @@ function App() {
   const toggleLang = () => setLang(prev => (prev === 'ar' ? 'en' : 'ar'))
 
   const handleCategoryClick = (categoryType) => {
-    if (categoryType === 'services') {
+    if (categoryType === 'guides') {
       navigate('/services')
+    } else if (categoryType === 'shopping') {
+      navigate('/listings')
+    } else if (categoryType === 'cafe') {
+      navigate('/listings?type=restaurant')
     } else {
       navigate(`/listings?type=${categoryType}`)
     }
@@ -319,22 +450,47 @@ function App() {
                 <Link to="/sign-up" className="btn-signup">{t.nav.signUp}</Link>
               </>
             )}
+            <button
+              className="nav-hamburger"
+              aria-label="Menu"
+              aria-expanded={mobileMenuOpen}
+              onClick={() => setMobileMenuOpen((v) => !v)}
+            >
+              <span className="material-symbols-outlined">{mobileMenuOpen ? 'close' : 'menu'}</span>
+            </button>
           </div>
         </div>
+
+        {mobileMenuOpen && (
+          <motion.div
+            className="nav-mobile-dropdown"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Link to="/explore" onClick={() => setMobileMenuOpen(false)}>{t.nav.explore}</Link>
+            <Link to="/listings" onClick={() => setMobileMenuOpen(false)}>{t.nav.marketplace}</Link>
+            <Link to="/services" onClick={() => setMobileMenuOpen(false)}>{t.nav.services}</Link>
+            {isLoggedIn && <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>{t.nav.dashboard}</Link>}
+            <div className="nav-mobile-dropdown-divider" />
+            {isLoggedIn ? (
+              <Link to="/dashboard" className="nav-mobile-dropdown-cta" onClick={() => setMobileMenuOpen(false)}>{t.nav.dashboard}</Link>
+            ) : (
+              <>
+                <Link to="/sign-in" onClick={() => setMobileMenuOpen(false)}>{t.nav.signIn}</Link>
+                <Link to="/sign-up" className="nav-mobile-dropdown-cta" onClick={() => setMobileMenuOpen(false)}>{t.nav.signUp}</Link>
+              </>
+            )}
+          </motion.div>
+        )}
       </nav>
 
       {/* ===== HERO ===== */}
       <section className="hero">
         <img
           className="hero-bg-img"
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbX7vXhYqLLXG70k0_Yw40zZ7LHFTvsNXOOVekLkapmi1Z-U89-wacUWQLneWNoLmtqcfgqhF8SVRvSQVKufq0Hc-sKOmk4S457rGfXUERQzsbgmBajMcj8YVdjckDV8O56zDpOVF9TCw8_2FLQQ1ESZuMswxeZZGkGATlkrH1AGlavzjy9FaxLD1AoU5mh3pxGyF1y1yEllCPWPjRo7mBLBIkiIySqiprXLVLACa-jJuXZtjMW2TlilFawFnvXWRozPv4Fae8zVHD"
+          src="/hero.png"
           alt="Al-Ahsa Oasis"
-        />
-        <img
-          className="hero-sand-texture"
-          src="https://lh3.googleusercontent.com/aida-public/AB6AXuBvOn0-_6WExpjjjZDIGtJ4emLgSGeiYQvV49lEBVEkRNzsBLGoqqDCgXfEJsCW6AhW4WjfU93nGcqIjn_4e7ZI3vTZJjCuz6xx1QynlXgtqBQIDQcMkjVBd3AbJiocfJUzQVz3eUNOduG8inDUaGKTrcrIv0tCr9D9VvteFSK96a8__JRXY8wohXTTNkTMwb6JlbSXw4tIN8cExmHdqYDK0V7tPIqR2bJzBEdzk4-m09Wst9QbILz03YFsPUif48h0UfBgA2jDzBAt"
-          alt=""
-          aria-hidden="true"
         />
         <div className="hero-overlay" />
         <div className="hero-content">
@@ -348,35 +504,58 @@ function App() {
               {t.hero.badge}
             </motion.div>
 
-            <motion.h1 variants={fadeInUp}>{t.hero.title}</motion.h1>
+            <motion.h1 variants={fadeInUp}>
+              {(() => {
+                const accent = isAr ? 'الأحساء' : 'Al-Ahsa'
+                const idx = t.hero.title.indexOf(accent)
+                if (idx === -1) return t.hero.title
+                return (
+                  <>
+                    {t.hero.title.slice(0, idx)}
+                    <span className="hero-title-accent">{accent}</span>
+                    {t.hero.title.slice(idx + accent.length)}
+                  </>
+                )
+              })()}
+            </motion.h1>
 
             <motion.p className="hero-sub" variants={fadeInUp}>
               {t.hero.sub}
             </motion.p>
 
             <motion.form className="hero-search" variants={fadeInUp} onSubmit={handleSearch}>
-              <input
-                className="search-field"
-                type="text"
-                placeholder={t.hero.searchPlaceholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <div className="search-field-group">
+                <span className="material-symbols-outlined search-field-icon">location_on</span>
+                <input
+                  className="search-field"
+                  type="text"
+                  placeholder={t.hero.searchPlaceholder}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
               <div className="search-divider" />
-              <input
-                className="search-field"
-                type="text"
-                placeholder={t.hero.datePlaceholder}
-                style={{ maxWidth: 160 }}
-              />
+              <div className="search-field-group" style={{ maxWidth: 170 }}>
+                <span className="material-symbols-outlined search-field-icon">calendar_month</span>
+                <input
+                  className="search-field"
+                  type="text"
+                  placeholder={t.hero.datePlaceholder}
+                />
+              </div>
               <div className="search-divider" />
-              <input
-                className="search-field"
-                type="text"
-                placeholder={t.hero.guestsPlaceholder}
-                style={{ maxWidth: 110 }}
-              />
-              <button type="submit" className="search-btn">{t.hero.searchBtn}</button>
+              <div className="search-field-group" style={{ maxWidth: 130 }}>
+                <span className="material-symbols-outlined search-field-icon">group</span>
+                <input
+                  className="search-field"
+                  type="text"
+                  placeholder={t.hero.guestsPlaceholder}
+                />
+              </div>
+              <button type="submit" className="search-btn">
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>search</span>
+                {t.hero.searchBtn}
+              </button>
             </motion.form>
 
             <motion.div className="hero-categories" variants={fadeInUp}>
@@ -386,6 +565,7 @@ function App() {
                   className="cat-pill"
                   onClick={() => handleCategoryClick(t.hero.categoryTypes[i])}
                 >
+                  <span className="material-symbols-outlined">{t.hero.categoryIcons[i]}</span>
                   {label}
                 </button>
               ))}
@@ -415,11 +595,14 @@ function App() {
             <motion.a
               key={i}
               href={card.link}
-              className={`bento-card${card.wide ? ' bento-card--wide' : ''}`}
+              className="bento-card"
               variants={fadeInUp}
             >
               <img src={card.img} alt={isAr ? card.titleAr : card.title} className="bento-card-img" />
               <div className="bento-card-overlay" />
+              <span className="bento-card-bookmark">
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>bookmark</span>
+              </span>
               <div className="bento-card-content">
                 <span className="bento-card-badge">{isAr ? card.badgeAr : card.badge}</span>
                 <h3>{isAr ? card.titleAr : card.title}</h3>
@@ -437,6 +620,32 @@ function App() {
         </motion.div>
       </div>
 
+      {/* ===== MARKETPLACE ===== */}
+      <div className="section">
+        <div className="section-header">
+          <div className="section-header-text">
+            <h2 className="section-title">{t.marketplace.title}</h2>
+            <p className="section-subtitle">{t.marketplace.subtitle}</p>
+          </div>
+          <Link to="/listings" className="btn-view-all">{t.marketplace.viewAll}</Link>
+        </div>
+
+        <div className="marketplace-scroll">
+          {MARKETPLACE_CARDS.map((card, i) => (
+            <a key={i} href={card.link} className="marketplace-card">
+              <div className="marketplace-card-img-wrap">
+                <img src={card.img} alt={isAr ? card.titleAr : card.title} />
+              </div>
+              <div className="marketplace-card-title">{isAr ? card.titleAr : card.title}</div>
+              <div className="marketplace-card-rating">
+                <span className="material-symbols-outlined">star</span>
+                <span>{card.rating}</span>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+
       {/* ===== OASIS ATLAS ===== */}
       <section className="atlas-section">
         <div className="atlas-inner">
@@ -450,6 +659,15 @@ function App() {
             <h2>{t.atlas.title}</h2>
             <p>{t.atlas.desc}</p>
             <Link to="/explore" className="btn-atlas">{t.atlas.cta}</Link>
+
+            <div className="atlas-stats">
+              {t.atlas.stats.map((stat, i) => (
+                <div key={i}>
+                  <div className="atlas-stat-num">{stat.num}</div>
+                  <div className="atlas-stat-label">{stat.label}</div>
+                </div>
+              ))}
+            </div>
           </motion.div>
 
           <motion.div
@@ -478,7 +696,8 @@ function App() {
         </div>
       </section>
 
-      {/* ===== AI CONCIERGE ===== */}
+      {/* ===== AI CONCIERGE + TESTIMONIALS (shared background) ===== */}
+      <div className="concierge-testimonials-bg">
       <section className="concierge-section">
         <div className="concierge-inner">
           <motion.div
@@ -534,47 +753,96 @@ function App() {
         </div>
       </section>
 
-      {/* ===== EMAIL CAPTURE ===== */}
-      <section className="email-section">
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={staggerContainer}
-        >
-          <motion.h2 variants={fadeInUp}>{t.email.title}</motion.h2>
-          <motion.p variants={fadeInUp}>{t.email.desc}</motion.p>
+      {/* ===== TESTIMONIALS ===== */}
+      <div className="section testimonials-on-photo">
+        <div className="section-header">
+          <div className="section-header-text">
+            <h2 className="section-title">{t.testimonials.title}</h2>
+            <p className="section-subtitle">{t.testimonials.subtitle}</p>
+          </div>
+          <Link to="/listings" className="btn-view-all btn-view-all--light">{t.testimonials.viewAll}</Link>
+        </div>
 
-          <motion.div variants={fadeInUp}>
-            {earlyStatus === 'success' || earlyStatus === 'duplicate' ? (
-              <div className="email-success-msg">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                {earlyStatus === 'duplicate' ? t.email.duplicate : t.email.success}
+        <div className="testimonials-grid">
+          {TESTIMONIALS.map((item, i) => (
+            <div key={i} className="testimonial-card">
+              <div className="testimonial-stars">
+                {Array.from({ length: 5 }).map((_, s) => (
+                  <span key={s} className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                ))}
               </div>
-            ) : (
-              <form className="email-form" onSubmit={handleEmailSubmit}>
-                <input
-                  className="email-input"
-                  type="email"
-                  required
-                  placeholder={t.email.placeholder}
-                  value={earlyEmail}
-                  onChange={(e) => { setEarlyEmail(e.target.value); setEarlyStatus(null) }}
-                />
-                <button
-                  type="submit"
-                  className="email-submit"
-                  disabled={earlyStatus === 'submitting'}
-                >
-                  {earlyStatus === 'submitting' ? t.email.btnSubmitting : t.email.btn}
-                </button>
-              </form>
-            )}
-            {earlyStatus === 'error' && (
-              <p className="email-error-msg">{t.email.error}</p>
-            )}
+              <p className="testimonial-quote">"{isAr ? item.quoteAr : item.quote}"</p>
+              <div className="testimonial-person">
+                <img className="testimonial-avatar" src={item.avatar} alt={item.name} />
+                <div>
+                  <div className="testimonial-name">{item.name}</div>
+                  <div className="testimonial-location">{isAr ? item.locationAr : item.location}</div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      </div>
+
+      {/* ===== CTA BAND (stats + email, merged) ===== */}
+      <section className="cta-band">
+        <div className="cta-band-inner">
+          <motion.div
+            className="cta-stats"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+          >
+            {STATS.map((stat, i) => (
+              <motion.div key={i} className="cta-stat" variants={fadeInUp}>
+                <span className="cta-stat-num">{stat.num}</span>
+                <span className="cta-stat-label">{isAr ? stat.labelAr : stat.label}</span>
+              </motion.div>
+            ))}
           </motion.div>
-        </motion.div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={staggerContainer}
+          >
+            <motion.h2 className="cta-heading" variants={fadeInUp}>{t.email.title}</motion.h2>
+            <motion.p className="cta-desc" variants={fadeInUp}>{t.email.desc}</motion.p>
+
+            <motion.div variants={fadeInUp}>
+              {earlyStatus === 'success' || earlyStatus === 'duplicate' ? (
+                <div className="email-success-msg">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  {earlyStatus === 'duplicate' ? t.email.duplicate : t.email.success}
+                </div>
+              ) : (
+                <form className="email-form" onSubmit={handleEmailSubmit}>
+                  <input
+                    className="email-input"
+                    type="email"
+                    required
+                    placeholder={t.email.placeholder}
+                    value={earlyEmail}
+                    onChange={(e) => { setEarlyEmail(e.target.value); setEarlyStatus(null) }}
+                  />
+                  <button
+                    type="submit"
+                    className="email-submit"
+                    disabled={earlyStatus === 'submitting'}
+                  >
+                    {earlyStatus === 'submitting' ? t.email.btnSubmitting : t.email.btn}
+                  </button>
+                </form>
+              )}
+              {earlyStatus === 'error' && (
+                <p className="email-error-msg">{t.email.error}</p>
+              )}
+            </motion.div>
+          </motion.div>
+        </div>
       </section>
 
       {/* ===== FOOTER ===== */}
