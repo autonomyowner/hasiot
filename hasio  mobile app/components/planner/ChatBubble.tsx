@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
+import { colors, fonts } from "@/constants/colors";
 import type { ChatMessage } from "@/types";
 
 interface ChatBubbleProps {
@@ -136,27 +137,28 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#0D7A5F",
+    backgroundColor: colors.primary.DEFAULT,
     justifyContent: "center",
     alignItems: "center",
   },
   avatarText: {
     color: "#FFFFFF",
     fontSize: 12,
+    fontFamily: fonts.bold,
     fontWeight: "700",
   },
   bubbleWrapper: {
     flex: 1,
   },
   bubble: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 18,
+    paddingVertical: 11,
+    paddingHorizontal: 15,
+    borderRadius: 20,
   },
   userBubble: {
-    backgroundColor: "#0D7A5F",
+    backgroundColor: colors.primary.DEFAULT,
     borderBottomRightRadius: 6,
-    shadowColor: "#0D7A5F",
+    shadowColor: colors.primary.DEFAULT,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -165,8 +167,6 @@ const styles = StyleSheet.create({
   botBubble: {
     backgroundColor: "#FFFFFF",
     borderBottomLeftRadius: 6,
-    borderWidth: 1,
-    borderColor: "#E8E5E0",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -174,16 +174,18 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   text: {
-    fontSize: 15,
+    fontSize: 14,
     lineHeight: 22,
     letterSpacing: 0.1,
+    fontFamily: fonts.regular,
   },
   userText: {
     color: "#FFFFFF",
+    fontFamily: fonts.medium,
     fontWeight: "500",
   },
   botText: {
-    color: "#1A1A1A",
+    color: colors.ink,
   },
   textRTL: {
     textAlign: "right",
@@ -197,13 +199,14 @@ const styles = StyleSheet.create({
   timestamp: {
     fontSize: 11,
     paddingHorizontal: 4,
+    fontFamily: fonts.regular,
   },
   timestampUser: {
-    color: "#9CA3AF",
+    color: colors.onSurface.muted,
     textAlign: "right",
   },
   timestampBot: {
-    color: "#9CA3AF",
+    color: colors.onSurface.muted,
     textAlign: "left",
   },
   timestampRTL: {
@@ -220,6 +223,7 @@ const styles = StyleSheet.create({
   reportButtonText: {
     fontSize: 11,
     color: "#DC2626",
+    fontFamily: fonts.semibold,
     fontWeight: "600",
   },
 });

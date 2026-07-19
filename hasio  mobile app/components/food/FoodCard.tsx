@@ -7,8 +7,9 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import type { Food, Language } from "@/types";
+import { Feather } from "@expo/vector-icons";
 import { getLocalizedText } from "@/hooks/useLanguage";
-import { categoryColors } from "@/constants/colors";
+import { categoryColors, colors, fonts } from "@/constants/colors";
 import { ReportSheet } from "@/components/ReportSheet";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -75,6 +76,7 @@ export function FoodCard({
 
         {/* Rating Badge */}
         <View style={styles.ratingBadge}>
+          <Feather name="star" size={12} color={colors.warm} />
           <Text style={styles.ratingText}>{food.rating.toFixed(1)}</Text>
         </View>
 
@@ -137,19 +139,21 @@ export function FoodCard({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderRadius: 24,
+    padding: 10,
+    shadowColor: "#1F1D17",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    elevation: 4,
     marginBottom: 16,
   },
   imageContainer: {
     height: 160,
     position: "relative",
-    backgroundColor: "#E8DFD4",
+    backgroundColor: colors.sand,
+    borderRadius: 18,
+    overflow: "hidden",
   },
   image: {
     width: "100%",
@@ -159,15 +163,19 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 12,
     left: 12,
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
+    paddingVertical: 5,
+    borderRadius: 14,
   },
   ratingText: {
-    color: "#D97706",
-    fontSize: 14,
-    fontWeight: "700",
+    color: colors.ink,
+    fontSize: 12,
+    fontFamily: fonts.semibold,
+    fontWeight: "600",
   },
   moreButton: {
     position: "absolute",
@@ -183,11 +191,13 @@ const styles = StyleSheet.create({
   moreText: {
     fontSize: 18,
     color: "#FFFFFF",
+    fontFamily: fonts.bold,
     fontWeight: "700",
     lineHeight: 18,
   },
   content: {
-    padding: 16,
+    padding: 14,
+    paddingBottom: 6,
   },
   contentRTL: {
     alignItems: "flex-end",
@@ -196,39 +206,45 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 11,
     marginBottom: 10,
   },
   categoryText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 11.5,
+    fontFamily: fonts.semibold,
     fontWeight: "600",
   },
   name: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1A1A",
+    fontSize: 16.5,
+    fontFamily: fonts.semibold,
+    fontWeight: "600",
+    color: colors.ink,
     marginBottom: 4,
   },
   cuisine: {
-    fontSize: 14,
-    color: "#737373",
+    fontSize: 13,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
     marginBottom: 4,
   },
   hours: {
     fontSize: 13,
-    color: "#A3A3A3",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
     marginBottom: 8,
   },
   price: {
     fontSize: 16,
-    fontWeight: "600",
-    color: "#0D7A5F",
+    fontFamily: fonts.bold,
+    fontWeight: "700",
+    color: colors.primary.DEFAULT,
   },
   priceUnit: {
     fontSize: 13,
+    fontFamily: fonts.regular,
     fontWeight: "400",
-    color: "#737373",
+    color: colors.onSurface.muted,
   },
   textRTL: {
     textAlign: "right",

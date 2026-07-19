@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useLanguage } from "@/hooks/useLanguage";
+import { colors, fonts } from "@/constants/colors";
 import { useEvents } from "@/hooks/useConvexData";
 import { FilterChip } from "@/components/ui";
 import { EventCard } from "@/components/events/EventCard";
@@ -77,7 +78,7 @@ export function EventsScreenContent() {
       {/* Events List */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0D7A5F" />
+          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
         </View>
       ) : (
         <FlatList
@@ -113,7 +114,7 @@ export function EventsScreenContent() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF7F2",
+    backgroundColor: colors.background,
   },
   header: {
     paddingHorizontal: 24,
@@ -124,9 +125,10 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   title: {
-    fontSize: 28,
+    fontSize: 34,
     fontWeight: "700",
-    color: "#1A1A1A",
+    fontFamily: fonts.serif,
+    color: colors.ink,
     letterSpacing: -0.5,
   },
   textRTL: {
@@ -153,12 +155,14 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: "#1A1A1A",
+    fontFamily: fonts.semibold,
+    color: colors.ink,
     marginBottom: 8,
   },
   emptyMessage: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
   },
   loadingContainer: {
     flex: 1,

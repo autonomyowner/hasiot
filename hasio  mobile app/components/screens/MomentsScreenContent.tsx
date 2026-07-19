@@ -23,6 +23,7 @@ import { useConvexUser } from "@/hooks/useConvexUser";
 import { useMomentsStore } from "@/stores/momentsStore";
 import { MomentCard } from "@/components/moments/MomentCard";
 import { Button } from "@/components/ui";
+import { colors, fonts } from "@/constants/colors";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -56,6 +57,7 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
   const [newMomentLocation, setNewMomentLocation] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [viewingMoment, setViewingMoment] = useState<{ image: string; note?: string; location?: string; timestamp: string } | null>(null);
+  const [activeTab, setActiveTab] = useState<"mine" | "community">("mine");
 
   useEffect(() => {
     mountedRef.current = true;
@@ -159,11 +161,56 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
         <Text style={[styles.title, isRTL && styles.textRTL]}>
           {t("myMoments")}
         </Text>
-        {userId && <AddButton label={t("addMoment")} onPress={() => setModalVisible(true)} />}
+        {userId && <AddButton onPress={() => setModalVisible(true)} />}
       </Animated.View>
 
-      {/* Not logged in */}
-      {isAuthLoaded && !userId ? (
+      {/* Mine / Community segmented control (visual) */}
+      <Animated.View
+        entering={FadeInDown.delay(150).duration(600)}
+        style={[styles.segmentWrapper, isRTL && styles.segmentWrapperRTL]}
+      >
+        <View style={[styles.segmentTrack, isRTL && styles.segmentTrackRTL]}>
+          <Pressable
+            style={[styles.segment, activeTab === "mine" && styles.segmentActive]}
+            onPress={() => setActiveTab("mine")}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                activeTab === "mine" ? styles.segmentTextActive : styles.segmentTextInactive,
+              ]}
+            >
+              {isRTL ? "لحظاتي" : "Mine"}
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[styles.segment, activeTab === "community" && styles.segmentActive]}
+            onPress={() => setActiveTab("community")}
+          >
+            <Text
+              style={[
+                styles.segmentText,
+                activeTab === "community" ? styles.segmentTextActive : styles.segmentTextInactive,
+              ]}
+            >
+              {isRTL ? "المجتمع" : "Community"}
+            </Text>
+          </Pressable>
+        </View>
+      </Animated.View>
+
+      {/* Community placeholder (visual only) */}
+      {activeTab === "community" ? (
+        <View style={styles.emptyState}>
+          <Text style={[styles.emptyTitle, isRTL && styles.textRTL]}>
+            {isRTL ? "لحظات المجتمع" : "Community moments"}
+          </Text>
+          <Text style={[styles.emptyMessage, isRTL && styles.textRTL]}>
+            {isRTL ? "لحظات المجتمع قريبًا" : "Community moments coming soon"}
+          </Text>
+        </View>
+      ) : /* Not logged in */
+      isAuthLoaded && !userId ? (
         <View style={styles.emptyState}>
           <Text style={[styles.emptyTitle, isRTL && styles.textRTL]}>
             {t("myMoments")}
@@ -175,7 +222,7 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
       ) : /* Loading State */
       isLoading && moments.length === 0 ? (
         <View style={styles.loadingState}>
-          <ActivityIndicator size="large" color="#0D7A5F" />
+          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
         </View>
       ) : moments.length > 0 ? (
         <FlatList
@@ -308,11 +355,10 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
 // SHARED COMPONENTS
 // ============================================
 interface AddButtonProps {
-  label: string;
   onPress: () => void;
 }
 
-function AddButton({ label, onPress }: AddButtonProps) {
+function AddButton({ onPress }: AddButtonProps) {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -334,7 +380,7 @@ function AddButton({ label, onPress }: AddButtonProps) {
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
     >
-      <Text style={styles.addButtonText}>+ {label}</Text>
+      <Text style={styles.addButtonText}>+</Text>
     </AnimatedPressable>
   );
 }
@@ -342,7 +388,7 @@ function AddButton({ label, onPress }: AddButtonProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF7F2",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -356,24 +402,78 @@ const styles = StyleSheet.create({
     flexDirection: "row-reverse",
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#1A1A1A",
+    fontFamily: fonts.serif,
+    fontSize: 34,
+    color: colors.ink,
     letterSpacing: -0.5,
   },
   textRTL: {
     textAlign: "right",
   },
   addButton: {
-    backgroundColor: "#0D7A5F",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.primary.DEFAULT,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.primary.DEFAULT,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
   },
   addButtonText: {
+    fontFamily: fonts.regular,
     color: "#FFFFFF",
-    fontSize: 14,
+    fontSize: 24,
+    lineHeight: 28,
     fontWeight: "600",
+  },
+  // Segmented control
+  segmentWrapper: {
+    paddingHorizontal: 24,
+    paddingBottom: 16,
+    alignItems: "flex-start",
+  },
+  segmentWrapperRTL: {
+    alignItems: "flex-end",
+  },
+  segmentTrack: {
+    flexDirection: "row",
+    width: 240,
+    backgroundColor: colors.chip,
+    borderRadius: 24,
+    padding: 4,
+  },
+  segmentTrackRTL: {
+    flexDirection: "row-reverse",
+  },
+  segment: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  segmentActive: {
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  segmentText: {
+    fontSize: 14,
+  },
+  segmentTextActive: {
+    fontFamily: fonts.semibold,
+    color: colors.primary.DEFAULT,
+  },
+  segmentTextInactive: {
+    fontFamily: fonts.medium,
+    color: colors.onSurface.muted,
   },
   // List
   listContent: {
@@ -400,14 +500,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontFamily: fonts.serif,
+    fontSize: 24,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: colors.ink,
     marginBottom: 8,
   },
   emptyMessage: {
+    fontFamily: fonts.medium,
     fontSize: 15,
-    color: "#737373",
+    color: colors.onSurface.variant,
     textAlign: "center",
     marginBottom: 24,
   },
@@ -436,18 +538,20 @@ const styles = StyleSheet.create({
     flexDirection: "row-reverse",
   },
   modalTitle: {
-    fontSize: 20,
+    fontFamily: fonts.serif,
+    fontSize: 24,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: colors.ink,
   },
   cancelText: {
+    fontFamily: fonts.medium,
     fontSize: 16,
-    color: "#737373",
+    color: colors.onSurface.variant,
   },
   imagePicker: {
     width: "100%",
     aspectRatio: 1,
-    backgroundColor: "#F5F1EB",
+    backgroundColor: colors.surface.variant,
     borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
@@ -455,20 +559,22 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   imagePickerText: {
+    fontFamily: fonts.medium,
     fontSize: 16,
-    color: "#737373",
+    color: colors.onSurface.variant,
   },
   previewImage: {
     width: "100%",
     height: "100%",
   },
   input: {
-    backgroundColor: "#F5F1EB",
+    fontFamily: fonts.regular,
+    backgroundColor: colors.surface.variant,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 15,
-    color: "#1A1A1A",
+    color: colors.ink,
     marginBottom: 12,
   },
   inputRTL: {
@@ -498,6 +604,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   viewerCloseText: {
+    fontFamily: fonts.regular,
     color: "#FFFFFF",
     fontSize: 18,
     fontWeight: "600",
@@ -517,6 +624,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   viewerNote: {
+    fontFamily: fonts.regular,
     color: "#FFFFFF",
     fontSize: 16,
     lineHeight: 22,
@@ -524,6 +632,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   viewerLocation: {
+    fontFamily: fonts.medium,
     color: "rgba(255, 255, 255, 0.6)",
     fontSize: 14,
   },

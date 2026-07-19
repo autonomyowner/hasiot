@@ -2,17 +2,15 @@ import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
+import { useFonts } from "expo-font";
+import { InstrumentSerif_400Regular } from "@expo-google-fonts/instrument-serif";
 import {
-  useFonts,
-  PlayfairDisplay_400Regular,
-  PlayfairDisplay_700Bold,
-} from "@expo-google-fonts/playfair-display";
-import {
-  PlusJakartaSans_400Regular,
-  PlusJakartaSans_500Medium,
-  PlusJakartaSans_600SemiBold,
-  PlusJakartaSans_700Bold,
-} from "@expo-google-fonts/plus-jakarta-sans";
+  Outfit_300Light,
+  Outfit_400Regular,
+  Outfit_500Medium,
+  Outfit_600SemiBold,
+  Outfit_700Bold,
+} from "@expo-google-fonts/outfit";
 import "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ConvexProviderWithAuth } from "convex/react";
@@ -26,12 +24,12 @@ SplashScreen.preventAutoHideAsync();
 
 function InnerLayout() {
   const [fontsLoaded] = useFonts({
-    PlayfairDisplay_400Regular,
-    PlayfairDisplay_700Bold,
-    PlusJakartaSans_400Regular,
-    PlusJakartaSans_500Medium,
-    PlusJakartaSans_600SemiBold,
-    PlusJakartaSans_700Bold,
+    InstrumentSerif_400Regular,
+    Outfit_300Light,
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
   });
 
   useEffect(() => {

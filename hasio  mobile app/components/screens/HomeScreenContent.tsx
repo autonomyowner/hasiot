@@ -21,9 +21,11 @@ import Animated, {
   interpolate,
   Extrapolation,
 } from "react-native-reanimated";
+import { Feather } from "@expo/vector-icons";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
 import { useHomeData } from "@/hooks/useConvexData";
 import { SearchBar, CategoryCard } from "@/components/ui";
+import { colors, fonts } from "@/constants/colors";
 import type { Food, Lodging, Event } from "@/types";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -165,7 +167,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#B85C38"
+            tintColor={colors.primary.DEFAULT}
           />
         }
       >
@@ -174,6 +176,12 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           entering={FadeInDown.delay(100).duration(600)}
           style={[styles.header, isRTL && styles.headerRTL, headerAnimatedStyle]}
         >
+          <View style={[styles.eyebrowRow, isRTL && styles.eyebrowRowRTL]}>
+            <Feather name="map-pin" size={13} color={colors.primary.DEFAULT} />
+            <Text style={[styles.eyebrowText, isRTL && styles.textRTL]}>
+              AL-AHSA OASIS
+            </Text>
+          </View>
           <Text style={[styles.appName, isRTL && styles.textRTL]}>
             Hasio
           </Text>
@@ -198,7 +206,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
         {/* Loading State */}
         {isLoading && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0D7A5F" />
+            <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
           </View>
         )}
 
@@ -332,7 +340,9 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
             >
               {t("featuredDestinations")}
             </Text>
-            <View style={[styles.decorativeLine, isRTL && styles.decorativeLineRTL]} />
+            <Text style={styles.seeAllLink}>
+              {language === "ar" ? "عرض الكل" : "See all"}
+            </Text>
           </View>
 
           {featuredItems.length > 0 ? (
@@ -376,7 +386,9 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
             >
               {t("moreDestinations")}
             </Text>
-            <View style={[styles.decorativeLine, isRTL && styles.decorativeLineRTL]} />
+            <Text style={styles.seeAllLink}>
+              {language === "ar" ? "عرض الكل" : "See all"}
+            </Text>
           </View>
 
           {moreDestinations.length > 0 ? (
@@ -458,9 +470,12 @@ function SearchResultItem({ name, subtitle, image, isRTL, index }: SearchResultI
           <Text style={[styles.searchResultName, isRTL && styles.textRTL]} numberOfLines={1}>
             {name}
           </Text>
-          <Text style={[styles.searchResultSubtitle, isRTL && styles.textRTL]} numberOfLines={1}>
-            {subtitle}
-          </Text>
+          <View style={[styles.searchResultMetaRow, isRTL && styles.searchResultMetaRowRTL]}>
+            <Feather name="star" size={12} color={colors.warm} />
+            <Text style={[styles.searchResultSubtitle, isRTL && styles.textRTL]} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          </View>
         </View>
       </AnimatedPressable>
     </Animated.View>
@@ -541,7 +556,7 @@ function DestinationGridCard({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F1EB",
+    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,
@@ -554,20 +569,37 @@ const styles = StyleSheet.create({
   headerRTL: {
     alignItems: "flex-end",
   },
+  eyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginBottom: 6,
+  },
+  eyebrowRowRTL: {
+    flexDirection: "row-reverse",
+  },
+  eyebrowText: {
+    fontSize: 12,
+    fontFamily: fonts.semibold,
+    fontWeight: "600",
+    color: colors.primary.DEFAULT,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+  },
   appName: {
-    fontSize: 28,
-    fontFamily: "System",
-    fontWeight: "700",
-    color: "#0D7A5F",
-    letterSpacing: -0.5,
-    lineHeight: 34,
+    fontSize: 30,
+    fontFamily: fonts.serif,
+    color: colors.ink,
+    letterSpacing: -0.3,
+    lineHeight: 36,
   },
   subtitle: {
     fontSize: 17,
-    color: "#6B5D4F",
-    marginTop: 4,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
+    marginTop: 2,
     fontWeight: "400",
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   textRTL: {
     textAlign: "right",
@@ -580,30 +612,30 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: CONTAINER_PADDING,
     marginBottom: 12,
   },
   sectionHeaderRTL: {
-    alignItems: "flex-end",
+    flexDirection: "row-reverse",
   },
   sectionTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#2C2416",
-    letterSpacing: -0.5,
-    marginBottom: 6,
+    fontSize: 18,
+    fontFamily: fonts.semibold,
+    fontWeight: "600",
+    color: colors.ink,
+    letterSpacing: -0.2,
   },
   sectionTitleRTL: {
     textAlign: "right",
   },
-  decorativeLine: {
-    width: 50,
-    height: 3,
-    backgroundColor: "#B85C38",
-    borderRadius: 2,
-  },
-  decorativeLineRTL: {
-    alignSelf: "flex-end",
+  seeAllLink: {
+    fontSize: 13,
+    fontFamily: fonts.semibold,
+    fontWeight: "600",
+    color: colors.primary.DEFAULT,
   },
   categoryCardsContainer: {
     paddingHorizontal: CONTAINER_PADDING,
@@ -626,10 +658,10 @@ const styles = StyleSheet.create({
   },
   gridCard: {
     flex: 1,
-    borderRadius: 16,
+    borderRadius: 24,
     overflow: "hidden",
-    backgroundColor: "#E8DFD4",
-    shadowColor: "#2C2416",
+    backgroundColor: colors.sand,
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
@@ -653,7 +685,8 @@ const styles = StyleSheet.create({
   },
   gridCardName: {
     fontSize: 18,
-    fontWeight: "700",
+    fontFamily: fonts.semibold,
+    fontWeight: "600",
     color: "#FFFFFF",
     letterSpacing: -0.3,
     lineHeight: 22,
@@ -670,6 +703,7 @@ const styles = StyleSheet.create({
   },
   gridCardSubtitle: {
     fontSize: 12,
+    fontFamily: fonts.medium,
     color: "rgba(255, 255, 255, 0.95)",
     fontWeight: "500",
     letterSpacing: 0.5,
@@ -684,8 +718,9 @@ const styles = StyleSheet.create({
   },
   resultsCount: {
     fontSize: 16,
+    fontFamily: fonts.semibold,
     fontWeight: "600",
-    color: "#0D7A5F",
+    color: colors.primary.DEFAULT,
     marginBottom: 20,
   },
   noResultsContainer: {
@@ -695,24 +730,27 @@ const styles = StyleSheet.create({
   },
   noResultsText: {
     fontSize: 16,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
   },
   resultSection: {
     marginBottom: 24,
   },
   resultSectionTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#2C2416",
+    fontFamily: fonts.semibold,
+    fontWeight: "600",
+    color: colors.ink,
     marginBottom: 12,
   },
   searchResultItem: {
     flexDirection: "row",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    alignItems: "center",
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 20,
+    padding: 10,
     marginBottom: 10,
-    overflow: "hidden",
-    shadowColor: "#000",
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -722,13 +760,14 @@ const styles = StyleSheet.create({
     flexDirection: "row-reverse",
   },
   searchResultImage: {
-    width: 80,
-    height: 80,
-    backgroundColor: "#E8DFD4",
+    width: 62,
+    height: 62,
+    borderRadius: 14,
+    backgroundColor: colors.sand,
   },
   searchResultContent: {
     flex: 1,
-    padding: 12,
+    paddingHorizontal: 12,
     justifyContent: "center",
   },
   searchResultContentRTL: {
@@ -736,13 +775,23 @@ const styles = StyleSheet.create({
   },
   searchResultName: {
     fontSize: 16,
+    fontFamily: fonts.semibold,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: colors.ink,
     marginBottom: 4,
+  },
+  searchResultMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  searchResultMetaRowRTL: {
+    flexDirection: "row-reverse",
   },
   searchResultSubtitle: {
     fontSize: 13,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
   },
   loadingContainer: {
     paddingTop: 40,
@@ -755,14 +804,16 @@ const styles = StyleSheet.create({
   },
   emptyStateTitle: {
     fontSize: 18,
+    fontFamily: fonts.semibold,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: colors.ink,
     marginBottom: 8,
     textAlign: "center",
   },
   emptyStateMessage: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
     textAlign: "center",
   },
 });

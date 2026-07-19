@@ -11,6 +11,8 @@
     "generate-icons": "node scripts/generate-icons.js"
   },
   "dependencies": {
+    "@expo-google-fonts/instrument-serif": "^0.4.1",
+    "@expo-google-fonts/outfit": "^0.4.3",
     "@expo-google-fonts/playfair-display": "^0.2.3",
     "@expo-google-fonts/plus-jakarta-sans": "^0.2.3",
     "@expo/vector-icons": "^15.0.3",
@@ -29,7 +31,6 @@
     "expo-linking": "~8.0.11",
     "expo-router": "~6.0.21",
     "expo-secure-store": "^15.0.8",
-
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "expo-updates": "~29.0.16",

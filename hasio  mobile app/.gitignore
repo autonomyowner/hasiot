@@ -12,6 +12,9 @@ dist/
 *.mobileprovision
 *.orig.*
 web-build/
+
+# Design mockups / scratch copies — not part of the app
+hasio v5/
 ios/
 android/
 

@@ -1,14 +1,14 @@
 import React, { useRef, useCallback } from "react";
-import { View, Pressable, StyleSheet, Dimensions, Platform } from "react-native";
+import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  interpolateColor,
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import PagerView from "@/components/PagerViewWrapper";
+import { colors, fonts } from "@/constants/colors";
 
 // Import screen content components
 import {
@@ -23,26 +23,22 @@ import {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-
 interface TabItem {
   key: string;
   icon: keyof typeof Feather.glyphMap;
+  label: string;
 }
 
-// Reordered: 3 left, home center, 3 right
+// 7 tabs, home centered. Labels surfaced in the floating glass bar (v5 redesign).
 const tabs: TabItem[] = [
-  { key: "lodging", icon: "map-pin" },
-  { key: "food", icon: "coffee" },
-  { key: "events", icon: "calendar" },
-  { key: "home", icon: "home" },
-  { key: "planner", icon: "message-circle" },
-  { key: "moments", icon: "camera" },
-  { key: "settings", icon: "settings" },
+  { key: "lodging", icon: "map-pin", label: "Stay" },
+  { key: "food", icon: "coffee", label: "Eat" },
+  { key: "events", icon: "calendar", label: "Events" },
+  { key: "home", icon: "home", label: "Home" },
+  { key: "planner", icon: "message-circle", label: "Plan" },
+  { key: "moments", icon: "camera", label: "Moments" },
+  { key: "settings", icon: "user", label: "Profile" },
 ];
-
-// Elevation offsets for arch effect (index 3 = home is highest, negative = up)
-const elevationOffsets = [0, -4, -8, -14, -8, -4, 0];
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -69,18 +65,6 @@ export default function TabLayout() {
       scrollPosition.value = index;
     } else {
       pagerRef.current?.setPage(index);
-    }
-  }, [isWeb]);
-
-  const handleNavigateToTab = useCallback((tabKey: string) => {
-    const index = tabs.findIndex(tab => tab.key === tabKey);
-    if (index !== -1) {
-      if (isWeb) {
-        setCurrentPage(index);
-        scrollPosition.value = index;
-      } else {
-        pagerRef.current?.setPage(index);
-      }
     }
   }, [isWeb]);
 
@@ -127,8 +111,6 @@ export default function TabLayout() {
     }
   };
 
-  const tabWidth = (SCREEN_WIDTH - 32) / 7;
-
   return (
     <View style={styles.container}>
       {/* Content area - PagerView on native, simple View on web */}
@@ -158,31 +140,18 @@ export default function TabLayout() {
         </View>
       )}
 
-      {/* Hierarchical Arch Tab Bar */}
-      <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom + 4 }]}>
-        {/* Arch background curve */}
-        <View style={styles.archBackground} />
-
-        <View style={styles.tabBarContent}>
-          {tabs.map((tab, index) => {
-            const isActive = currentPage === index;
-            const isHome = tab.key === "home";
-            const elevation = elevationOffsets[index];
-
-            return (
-              <TabButton
-                key={tab.key}
-                icon={tab.icon}
-                isActive={isActive}
-                isHome={isHome}
-                scrollPosition={scrollPosition}
-                tabIndex={index}
-                elevation={elevation}
-                tabWidth={tabWidth}
-                onPress={() => handleTabPress(index)}
-              />
-            );
-          })}
+      {/* Floating glass tab bar (v5) */}
+      <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom : 14 }]}>
+        <View style={styles.tabBarPill}>
+          {tabs.map((tab, index) => (
+            <TabButton
+              key={tab.key}
+              icon={tab.icon}
+              label={tab.label}
+              isActive={currentPage === index}
+              onPress={() => handleTabPress(index)}
+            />
+          ))}
         </View>
       </View>
     </View>
@@ -191,106 +160,45 @@ export default function TabLayout() {
 
 interface TabButtonProps {
   icon: keyof typeof Feather.glyphMap;
+  label: string;
   isActive: boolean;
-  isHome: boolean;
-  scrollPosition: { value: number };
-  tabIndex: number;
-  elevation: number;
-  tabWidth: number;
   onPress: () => void;
 }
 
-function TabButton({
-  icon,
-  isActive,
-  isHome,
-  scrollPosition,
-  tabIndex,
-  elevation,
-  tabWidth,
-  onPress
-}: TabButtonProps) {
+function TabButton({ icon, label, isActive, onPress }: TabButtonProps) {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: scale.value },
-      { translateY: elevation },
-    ],
+    transform: [{ scale: scale.value }],
   }));
 
-  // Animate based on scroll position
-  const containerStyle = useAnimatedStyle(() => {
-    'worklet';
-    const distance = Math.abs(scrollPosition.value - tabIndex);
-    const progress = Math.max(0, Math.min(1, 1 - distance));
-
-    const backgroundColor = interpolateColor(
-      progress,
-      [0, 1],
-      isHome ? ["rgba(13, 122, 95, 0.1)", "rgba(13, 122, 95, 0.25)"] : ["transparent", "rgba(13, 122, 95, 0.12)"]
-    );
-
-    return {
-      backgroundColor,
-    };
-  });
-
-  const dotStyle = useAnimatedStyle(() => {
-    'worklet';
-    const distance = Math.abs(scrollPosition.value - tabIndex);
-    const progress = Math.max(0, Math.min(1, 1 - distance));
-
-    return {
-      opacity: progress,
-      transform: [{ scale: progress }],
-    };
-  });
-
-  const iconOpacity = useAnimatedStyle(() => {
-    'worklet';
-    const distance = Math.abs(scrollPosition.value - tabIndex);
-    const progress = Math.max(0, Math.min(1, 1 - distance));
-
-    return {
-      opacity: 0.5 + (progress * 0.5),
-    };
-  });
-
   const handlePressIn = () => {
-    scale.value = withSpring(0.92, { damping: 15, stiffness: 400 });
+    scale.value = withSpring(0.9, { damping: 15, stiffness: 400 });
   };
 
   const handlePressOut = () => {
     scale.value = withSpring(1, { damping: 15, stiffness: 400 });
   };
 
+  const tint = isActive ? colors.primary.DEFAULT : "#A39D8E";
+
   return (
     <AnimatedPressable
-      style={[
-        styles.tabButton,
-        isHome && styles.homeTabButton,
-        { width: tabWidth },
-        animatedStyle,
-      ]}
+      style={[styles.tabButton, animatedStyle]}
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
     >
-      <Animated.View style={[
-        styles.tabButtonInner,
-        isHome && styles.homeTabButtonInner,
-        containerStyle,
-      ]}>
-        <Animated.View style={iconOpacity}>
-          <Feather
-            name={icon}
-            size={isHome ? 22 : 18}
-            color={isActive ? "#0D7A5F" : "#737373"}
-          />
-        </Animated.View>
-        <Animated.View style={[styles.activeDot, dotStyle]} />
-      </Animated.View>
+      <Feather name={icon} size={22} color={tint} />
+      <Text
+        style={[
+          styles.tabLabel,
+          { color: tint, fontFamily: isActive ? fonts.semibold : fonts.medium },
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
     </AnimatedPressable>
   );
 }
@@ -298,7 +206,7 @@ function TabButton({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF7F2",
+    backgroundColor: colors.background,
   },
   pagerView: {
     flex: 1,
@@ -307,59 +215,35 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tabBarContainer: {
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E8E5E0",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 8,
-    paddingTop: 16,
-    position: "relative",
-  },
-  archBackground: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 20,
-    backgroundColor: "#FFFFFF",
-  },
-  tabBarContent: {
-    flexDirection: "row",
+    backgroundColor: "transparent",
     paddingHorizontal: 16,
-    alignItems: "flex-end",
-    justifyContent: "space-between",
+    paddingTop: 8,
+  },
+  tabBarPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    backgroundColor: "rgba(255,255,255,0.96)",
+    borderRadius: 30,
+    paddingVertical: 9,
+    paddingHorizontal: 6,
+    borderWidth: 1,
+    borderColor: "rgba(31,29,23,0.04)",
+    shadowColor: "#1F1D17",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.16,
+    shadowRadius: 24,
+    elevation: 16,
   },
   tabButton: {
+    flex: 1,
     alignItems: "center",
-    justifyContent: "flex-end",
-  },
-  homeTabButton: {
-    zIndex: 10,
-  },
-  tabButtonInner: {
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 10,
-    alignItems: "center",
-    minHeight: 36,
     justifyContent: "center",
+    gap: 3,
+    paddingVertical: 2,
   },
-  homeTabButtonInner: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    minHeight: 42,
-    borderWidth: 2,
-    borderColor: "rgba(13, 122, 95, 0.2)",
-  },
-  activeDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    backgroundColor: "#0D7A5F",
-    marginTop: 3,
+  tabLabel: {
+    fontSize: 10,
+    letterSpacing: 0.1,
   },
 });

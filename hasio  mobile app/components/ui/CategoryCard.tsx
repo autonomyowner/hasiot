@@ -6,6 +6,8 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { Feather } from "@expo/vector-icons";
+import { colors, fonts } from "@/constants/colors";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -54,9 +56,12 @@ export function CategoryCard({
       <View style={styles.overlay} />
       <View style={[styles.content, isRTL && styles.contentRTL]}>
         <Text style={[styles.title, isRTL && styles.textRTL]}>{title}</Text>
-        <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
-          {subtitle}
-        </Text>
+        <View style={[styles.captionChip, isRTL && styles.captionChipRTL]}>
+          <Feather name="map-pin" size={11} color="#FFFFFF" />
+          <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
+            {subtitle}
+          </Text>
+        </View>
       </View>
     </AnimatedPressable>
   );
@@ -66,15 +71,16 @@ const styles = StyleSheet.create({
   container: {
     width: 280,
     height: 160,
-    borderRadius: 16,
+    borderRadius: 18,
     overflow: "hidden",
     marginRight: 16,
+    backgroundColor: colors.sand,
   },
   image: {
     width: "100%",
     height: "100%",
     position: "absolute",
-    backgroundColor: "#E8DFD4",
+    backgroundColor: colors.sand,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -90,13 +96,29 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
+    fontFamily: fonts.semibold,
     fontWeight: "700",
     color: "#FFFFFF",
-    marginBottom: 4,
+    marginBottom: 6,
+  },
+  captionChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    alignSelf: "flex-start",
+    backgroundColor: "rgba(20, 18, 12, 0.55)",
+    borderRadius: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  captionChipRTL: {
+    flexDirection: "row-reverse",
+    alignSelf: "flex-end",
   },
   subtitle: {
-    fontSize: 14,
-    color: "rgba(255, 255, 255, 0.85)",
+    fontSize: 11,
+    fontFamily: fonts.medium,
+    color: "#FFFFFF",
   },
   textRTL: {
     textAlign: "right",

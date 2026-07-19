@@ -15,6 +15,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { useLanguage } from "@/hooks/useLanguage";
+import { colors, fonts } from "@/constants/colors";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -30,19 +31,61 @@ export default function BusinessDashboardContent() {
     { key: "postDestination", route: "/business/post-destination" },
   ];
 
+  // NOTE: views / bookings / listings figures in the stat cards below are
+  // static placeholders — no backend metrics are bound in this screen yet.
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Ink hosting header band */}
         <Animated.View
           entering={FadeInDown.delay(100).duration(600)}
-          style={[styles.header, isRTL && styles.headerRTL]}
+          style={[styles.headerBand, { paddingTop: insets.top + 16 }]}
         >
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backText}>{t("back")}</Text>
-          </Pressable>
-          <Text style={[styles.title, isRTL && styles.textRTL]}>
-            {t("businessDashboard")}
-          </Text>
+          <View
+            style={[styles.headerRow, isRTL && styles.headerRowRTL]}
+          >
+            <View style={isRTL && styles.alignEnd}>
+              <Text style={[styles.eyebrow, isRTL && styles.textRTL]}>
+                {isRTL ? "وضع الاستضافة" : "HOSTING MODE"}
+              </Text>
+              <Text style={[styles.businessName, isRTL && styles.textRTL]}>
+                {t("businessDashboard")}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() => router.back()}
+              style={[styles.travellingChip, isRTL && styles.travellingChipRTL]}
+            >
+              <Text style={styles.swapIcon}>⇄</Text>
+              <Text style={styles.travellingText}>
+                {isRTL ? "السفر" : "Travelling"}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Stat cards over the ink band */}
+          <View style={styles.statsRow}>
+            <StatCard
+              value="—"
+              label={isRTL ? "القوائم" : "Listings"}
+              delta={isRTL ? "ابدأ بإضافة قائمة" : "Add your first listing"}
+              isRTL={isRTL}
+            />
+            <StatCard
+              value="0"
+              label={isRTL ? "المشاهدات" : "Views"}
+              delta={isRTL ? "تجريبي" : "demo"}
+              isRTL={isRTL}
+            />
+            <StatCard
+              value="0"
+              label={isRTL ? "الحجوزات" : "Bookings"}
+              delta={isRTL ? "تجريبي" : "demo"}
+              isRTL={isRTL}
+            />
+          </View>
         </Animated.View>
 
         <Animated.View
@@ -59,7 +102,7 @@ export default function BusinessDashboardContent() {
             {t("addNew")}
           </Text>
           <View style={styles.actionsGrid}>
-            {quickActions.map((action, index) => (
+            {quickActions.map((action) => (
               <ActionCard
                 key={action.key}
                 label={t(action.key as any)}
@@ -76,6 +119,26 @@ export default function BusinessDashboardContent() {
   );
 }
 
+function StatCard({
+  value,
+  label,
+  delta,
+  isRTL,
+}: {
+  value: string;
+  label: string;
+  delta: string;
+  isRTL: boolean;
+}) {
+  return (
+    <View style={[styles.statCard, isRTL && styles.alignEnd]}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statDelta}>{delta}</Text>
+    </View>
+  );
+}
+
 function ActionCard({ label, onPress, isRTL }: { label: string; onPress: () => void; isRTL: boolean }) {
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -86,25 +149,130 @@ function ActionCard({ label, onPress, isRTL }: { label: string; onPress: () => v
       onPressIn={() => { scale.value = withSpring(0.95, { damping: 15, stiffness: 400 }); }}
       onPressOut={() => { scale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
     >
+      <View style={styles.actionTile} />
       <Text style={[styles.actionLabel, isRTL && styles.textRTL]}>{label}</Text>
     </AnimatedPressable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#FAF7F2" },
-  header: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 8 },
-  headerRTL: { alignItems: "flex-end" },
-  backButton: { marginBottom: 8 },
-  backText: { fontSize: 15, color: "#0D7A5F", fontWeight: "500" },
-  title: { fontSize: 28, fontWeight: "700", color: "#1A1A1A", letterSpacing: -0.5 },
+  container: { flex: 1, backgroundColor: colors.background },
+
+  headerBand: {
+    backgroundColor: colors.ink,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    paddingHorizontal: 24,
+    paddingBottom: 24,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  headerRowRTL: { flexDirection: "row-reverse" },
+  alignEnd: { alignItems: "flex-end" },
+  eyebrow: {
+    fontFamily: fonts.semibold,
+    fontSize: 12,
+    letterSpacing: 1.5,
+    color: "rgba(255,255,255,0.55)",
+    marginBottom: 4,
+  },
+  businessName: {
+    fontFamily: fonts.serif,
+    fontSize: 25,
+    color: "#FFFFFF",
+  },
+  travellingChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.12)",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  travellingChipRTL: { flexDirection: "row-reverse" },
+  swapIcon: { fontSize: 14, color: "#FFFFFF" },
+  travellingText: { fontFamily: fonts.medium, fontSize: 13, color: "#FFFFFF" },
+
+  statsRow: { flexDirection: "row", gap: 10, marginTop: 24 },
+  statCard: {
+    flex: 1,
+    backgroundColor: "rgba(255,255,255,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: 18,
+    padding: 14,
+  },
+  statValue: { fontFamily: fonts.bold, fontSize: 24, color: "#FFFFFF" },
+  statLabel: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.6)",
+    marginTop: 2,
+  },
+  statDelta: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    color: colors.hostingAccent,
+    marginTop: 6,
+  },
+
   textRTL: { textAlign: "right" },
-  noteContainer: { marginHorizontal: 24, backgroundColor: "#DBEAFE", borderRadius: 8, padding: 12, marginBottom: 16 },
-  noteText: { fontSize: 14, color: "#1E40AF", textAlign: "center" },
-  sectionTitle: { fontSize: 13, fontWeight: "600", color: "#737373", textTransform: "uppercase", letterSpacing: 1, paddingHorizontal: 24, paddingTop: 8, paddingBottom: 12 },
+  noteContainer: {
+    marginHorizontal: 24,
+    backgroundColor: colors.mint,
+    borderRadius: 14,
+    padding: 14,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  noteText: {
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    color: colors.primary.DEFAULT,
+    textAlign: "center",
+  },
+  sectionTitle: {
+    fontFamily: fonts.semibold,
+    fontSize: 13,
+    color: colors.onSurface.muted,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 12,
+  },
   sectionTitleRTL: { textAlign: "right" },
   actionsGrid: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 20, gap: 12 },
-  actionCard: { width: "47%", backgroundColor: "#FFFFFF", borderRadius: 12, padding: 20, alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2, minHeight: 80 },
-  actionLabel: { fontSize: 15, fontWeight: "600", color: "#1A1A1A", textAlign: "center" },
+  actionCard: {
+    width: "47%",
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 20,
+    padding: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    minHeight: 96,
+    gap: 12,
+  },
+  actionTile: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: colors.sand,
+  },
+  actionLabel: {
+    fontFamily: fonts.semibold,
+    fontSize: 15,
+    color: colors.ink,
+    textAlign: "center",
+  },
   bottomSpacing: { height: 32 },
 });

@@ -1,5 +1,6 @@
 import React from "react";
 import { Text, Pressable, StyleSheet } from "react-native";
+import { colors, fonts } from "@/constants/colors";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -49,21 +50,26 @@ export function FilterChip({ label, selected, onPress }: FilterChipProps) {
 
 const styles = StyleSheet.create({
   chip: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 24,
-    backgroundColor: "#F5F1EB",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 18,
+    backgroundColor: colors.surface.DEFAULT,
+    borderWidth: 1,
+    borderColor: colors.border,
     marginRight: 10,
   },
   chipSelected: {
-    backgroundColor: "#0D7A5F",
+    backgroundColor: colors.primary.DEFAULT,
+    borderColor: colors.primary.DEFAULT,
   },
   label: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#737373",
+    fontFamily: fonts.medium,
+    color: colors.onSurface.variant,
   },
   labelSelected: {
     color: "#FFFFFF",
+    fontFamily: fonts.semibold,
   },
 });

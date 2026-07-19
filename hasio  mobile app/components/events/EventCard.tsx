@@ -8,7 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import type { Event, Language } from "@/types";
 import { getLocalizedText } from "@/hooks/useLanguage";
-import { categoryColors } from "@/constants/colors";
+import { categoryColors, colors, fonts } from "@/constants/colors";
 import { ReportSheet } from "@/components/ReportSheet";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -130,19 +130,21 @@ export function EventCard({
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    borderRadius: 24,
+    padding: 10,
+    shadowColor: "#1F1D17",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    elevation: 4,
     marginBottom: 16,
   },
   imageContainer: {
     height: 180,
     position: "relative",
-    backgroundColor: "#E8DFD4",
+    backgroundColor: colors.sand,
+    borderRadius: 18,
+    overflow: "hidden",
   },
   image: {
     width: "100%",
@@ -152,14 +154,15 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 12,
     left: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
   },
   dateText: {
-    color: "#1A1A1A",
-    fontSize: 13,
+    color: colors.ink,
+    fontSize: 12,
+    fontFamily: fonts.semibold,
     fontWeight: "600",
   },
   categoryBadge: {
@@ -168,11 +171,12 @@ const styles = StyleSheet.create({
     right: 12,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 11,
   },
   categoryText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 11.5,
+    fontFamily: fonts.semibold,
     fontWeight: "600",
   },
   moreButton: {
@@ -189,31 +193,36 @@ const styles = StyleSheet.create({
   moreText: {
     fontSize: 18,
     color: "#FFFFFF",
+    fontFamily: fonts.bold,
     fontWeight: "700",
     lineHeight: 18,
   },
   content: {
-    padding: 16,
+    padding: 14,
+    paddingBottom: 6,
   },
   contentRTL: {
     alignItems: "flex-end",
   },
   title: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1A1A",
+    fontSize: 16.5,
+    fontFamily: fonts.semibold,
+    fontWeight: "600",
+    color: colors.ink,
     marginBottom: 6,
-    lineHeight: 24,
+    lineHeight: 22,
   },
   time: {
-    fontSize: 14,
-    color: "#0D7A5F",
+    fontSize: 13,
+    fontFamily: fonts.medium,
+    color: colors.primary.DEFAULT,
     fontWeight: "500",
     marginBottom: 4,
   },
   location: {
-    fontSize: 14,
-    color: "#737373",
+    fontSize: 13,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
   },
   textRTL: {
     textAlign: "right",

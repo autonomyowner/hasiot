@@ -26,16 +26,26 @@ export const colors = {
     elevated: "#FFFFFF",
   },
 
+  // v5 redesign tokens
+  sand: "#E8DFD4", // image / avatar fallback
+  mint: "#E9F2EE", // soft green chip surface
+  ink: "#1F1D17", // near-black headings / hosting header band
+  warm: "#C77B3B", // star / warm accent
+  favorite: "#E0524D", // active favorite heart
+  hostingAccent: "#7BC4AC", // green accent on dark ink surfaces
+  chip: "#EFEAE0", // segmented-control track
+  signOut: "#B0493F", // destructive text
+
   // Text Colors
   onSurface: {
-    DEFAULT: "#1A1A1A",
-    variant: "#737373",
-    muted: "#A3A3A3",
+    DEFAULT: "#1F1D17",
+    variant: "#6E6859",
+    muted: "#8B8576",
   },
 
   // Borders
-  border: "#E8E5E0",
-  divider: "#F0EDE8",
+  border: "#E8E3D8",
+  divider: "#EDE8DD",
 
   // System Colors
   success: "#0D7A5F",
@@ -63,6 +73,17 @@ export const colors = {
     background: "rgba(255, 255, 255, 0.85)",
     border: "rgba(255, 255, 255, 0.2)",
   },
+} as const;
+
+// Typography — v5 redesign (Instrument Serif headings + Outfit body).
+// The font keys match the names registered via useFonts() in app/_layout.tsx.
+export const fonts = {
+  serif: "InstrumentSerif_400Regular", // display headings
+  light: "Outfit_300Light",
+  regular: "Outfit_400Regular",
+  medium: "Outfit_500Medium",
+  semibold: "Outfit_600SemiBold",
+  bold: "Outfit_700Bold",
 } as const;
 
 // Category Badge Colors

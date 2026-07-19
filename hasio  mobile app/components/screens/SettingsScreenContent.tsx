@@ -11,6 +11,7 @@ import {
   Linking,
   ActivityIndicator,
   Platform,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -24,6 +25,7 @@ import { useMutation } from "convex/react";
 import Constants from "expo-constants";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/backend";
+import { colors, fonts } from "@/constants/colors";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAppStore } from "@/stores/appStore";
 import { useMomentsStore } from "@/stores/momentsStore";
@@ -47,8 +49,22 @@ export function SettingsScreenContent() {
   const clearUserData = useAppStore((state) => state.clearUserData);
   const clearMoments = useMomentsStore((state) => state.clearMoments);
 
-  const { isSignedIn, isBusinessOwner, isServiceProvider, isAdmin, userType: convexUserType } = useConvexUser();
+  const { isSignedIn, isBusinessOwner, isServiceProvider, isAdmin, userType: convexUserType, user } = useConvexUser();
   const userType: UserType = convexUserType === "business_owner" ? "business" : convexUserType === "service_provider" ? "provider" : convexUserType === "admin" ? "admin" : "user";
+
+  // Visual-only display values for the profile header (best-effort from the user record).
+  const profileName = (user as any)?.name || (user as any)?.fullName || (user as any)?.email || t("appName");
+  const profileSubtitle =
+    (user as any)?.email ||
+    (userType === "business"
+      ? t("userTypeBusiness")
+      : userType === "provider"
+      ? t("userTypeProvider")
+      : userType === "admin"
+      ? t("admin")
+      : t("userTypeUser"));
+  const profileAvatarUrl = (user as any)?.image || (user as any)?.avatarUrl || null;
+  const profileInitial = (profileName?.trim?.()?.[0] || "H").toUpperCase();
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isUpgrading, setIsUpgrading] = useState(false);
@@ -306,56 +322,91 @@ export function SettingsScreenContent() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Profile Header */}
         <Animated.View
           entering={FadeInDown.delay(100).duration(600)}
-          style={[styles.header, isRTL && styles.headerRTL]}
+          style={[styles.profileHeader, isRTL && styles.profileHeaderRTL]}
         >
-          <Text style={[styles.title, isRTL && styles.textRTL]}>
-            {t("settings")}
-          </Text>
+          <View style={styles.avatar}>
+            {profileAvatarUrl ? (
+              <Image source={{ uri: profileAvatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarInitial}>{profileInitial}</Text>
+            )}
+          </View>
+          <View style={[styles.profileHeaderInfo, isRTL && styles.profileHeaderInfoRTL]}>
+            <Text style={[styles.profileName, isRTL && styles.textRTL]} numberOfLines={1}>
+              {profileName}
+            </Text>
+            <Text style={[styles.profileSubtitle, isRTL && styles.textRTL]} numberOfLines={1}>
+              {profileSubtitle}
+            </Text>
+          </View>
         </Animated.View>
 
-        {/* Preferences Section */}
-        <Animated.View entering={FadeInDown.delay(200).duration(600)}>
-          <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
-            {t("preferences")}
-          </Text>
-
-          <SettingRow
-            label={t("language")}
-            value={language === "en" ? "English" : "العربية"}
-            isRTL={isRTL}
-            onPress={() => changeLanguage(language === "en" ? "ar" : "en")}
-          />
-
-          <SettingRowWithSwitch
-            label={t("notifications")}
-            value={notificationsEnabled}
-            isRTL={isRTL}
-            onToggle={toggleNotifications}
-          />
-
+        {/* Stats Strip */}
+        <Animated.View
+          entering={FadeInDown.delay(150).duration(600)}
+          style={[styles.statsCard, isRTL && styles.statsCardRTL]}
+        >
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statLabel}>{language === "ar" ? "الرحلات" : "Trips"}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statLabel}>{t("moments")}</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statLabel}>{t("favorites")}</Text>
+          </View>
         </Animated.View>
 
-        {/* Account Section */}
-        <Animated.View entering={FadeInDown.delay(300).duration(600)}>
-          <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
-            {t("account")}
-          </Text>
+        {/* Switch to hosting promo — only for normal users */}
+        {userType === "user" && (
+          <Animated.View entering={FadeInDown.delay(200).duration(600)}>
+            <Pressable
+              style={styles.hostingCard}
+              onPress={() => setShowUpgradeModal(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t("upgradeAccount")}
+            >
+              <View style={[styles.hostingRow, isRTL && styles.hostingRowRTL]}>
+                <View style={styles.hostingIcon}>
+                  <Feather name="home" size={22} color={colors.surface.DEFAULT} />
+                </View>
+                <View style={[styles.hostingTextWrap, isRTL && styles.profileHeaderInfoRTL]}>
+                  <Text style={[styles.hostingTitle, isRTL && styles.textRTL]}>
+                    {t("upgradeAccount")}
+                  </Text>
+                  <Text style={[styles.hostingDesc, isRTL && styles.textRTL]} numberOfLines={2}>
+                    {t("becomeBusinessOrProvider")}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.hostingPillRow, isRTL && styles.hostingRowRTL]}>
+                <View style={styles.hostingPill}>
+                  <Text style={styles.hostingPillText}>{language === "ar" ? "ابدأ الآن" : "Get started"}</Text>
+                </View>
+              </View>
+            </Pressable>
+          </Animated.View>
+        )}
 
-          <SettingRow
-            label={t("profile")}
-            subtitle={t("manageProfile")}
-            isRTL={isRTL}
-          />
-
+        {/* Settings List */}
+        <Animated.View
+          entering={FadeInDown.delay(300).duration(600)}
+          style={styles.listCard}
+        >
           {/* Dashboard link for business users */}
           {isBusinessOwner && (
             <SettingRow
+              icon="grid"
               label={t("businessDashboard")}
-              subtitle={t("manageListings")}
               isRTL={isRTL}
               onPress={() => router.push("/business/dashboard")}
             />
@@ -364,84 +415,95 @@ export function SettingsScreenContent() {
           {/* Dashboard link for provider users */}
           {isServiceProvider && (
             <SettingRow
+              icon="grid"
               label={t("providerDashboard")}
-              subtitle={t("manageServices")}
               isRTL={isRTL}
               onPress={() => router.push("/provider/dashboard")}
             />
           )}
 
-          {/* Upgrade option for normal users */}
-          {userType === "user" && (
-            <SettingRow
-              label={t("upgradeAccount")}
-              subtitle={t("becomeBusinessOrProvider")}
-              isRTL={isRTL}
-              onPress={() => setShowUpgradeModal(true)}
-            />
-          )}
-
           <SettingRow
+            icon="heart"
             label={t("favorites")}
-            subtitle={t("savedPlaces")}
             isRTL={isRTL}
           />
 
           <SettingRow
-            label={t("privacyPolicy")}
-            subtitle={t("privacyPolicySubtitle")}
+            icon="globe"
+            label={t("language")}
+            value={language === "en" ? "English" : "العربية"}
             isRTL={isRTL}
-            onPress={handleOpenPrivacyPolicy}
+            onPress={() => changeLanguage(language === "en" ? "ar" : "en")}
+          />
+
+          <SettingRowWithSwitch
+            icon="bell"
+            label={t("notifications")}
+            value={notificationsEnabled}
+            isRTL={isRTL}
+            onToggle={toggleNotifications}
           />
 
           <SettingRow
-            label={t("termsOfService")}
-            subtitle={t("termsOfServiceSubtitle")}
-            isRTL={isRTL}
-            onPress={handleOpenTermsOfService}
-          />
-
-          <SettingRow
-            label={t("deleteAccount")}
-            subtitle={t("deleteAccountSubtitle")}
-            isRTL={isRTL}
-            onPress={confirmDeleteAccount}
-            destructive
-          />
-
-          <SettingRow
-            label={t("signOut")}
-            subtitle={t("signOutSubtitle")}
-            isRTL={isRTL}
-            onPress={handleSignOut}
-            destructive
-          />
-        </Animated.View>
-
-        {/* Support Section */}
-        <Animated.View entering={FadeInDown.delay(400).duration(600)}>
-          <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
-            {t("support")}
-          </Text>
-
-          <SettingRow
+            icon="star"
             label={t("rateApp")}
-            subtitle={t("shareFeedback")}
             isRTL={isRTL}
             onPress={handleRateApp}
           />
 
           <SettingRow
+            icon="info"
             label={t("about")}
-            subtitle={t("appVersionInfo")}
             isRTL={isRTL}
             onPress={handleAbout}
           />
+
+          <SettingRow
+            icon="shield"
+            label={t("privacyPolicy")}
+            isRTL={isRTL}
+            onPress={handleOpenPrivacyPolicy}
+          />
+
+          <SettingRow
+            icon="file-text"
+            label={t("termsOfService")}
+            isRTL={isRTL}
+            onPress={handleOpenTermsOfService}
+            isLast
+          />
+        </Animated.View>
+
+        {/* Delete account */}
+        <Animated.View
+          entering={FadeInDown.delay(350).duration(600)}
+          style={styles.listCard}
+        >
+          <SettingRow
+            icon="trash-2"
+            label={t("deleteAccount")}
+            isRTL={isRTL}
+            onPress={confirmDeleteAccount}
+            destructive
+            isLast
+          />
+        </Animated.View>
+
+        {/* Sign out */}
+        <Animated.View entering={FadeInDown.delay(400).duration(600)}>
+          <Pressable
+            style={styles.signOutButton}
+            onPress={handleSignOut}
+            accessibilityRole="button"
+            accessibilityLabel={t("signOut")}
+          >
+            <Text style={styles.signOutText}>{t("signOut")}</Text>
+          </Pressable>
         </Animated.View>
 
         {/* App Info */}
         <Animated.View
-          entering={FadeInDown.delay(500).duration(600)}
+          entering={FadeInDown.delay(450).duration(600)}
           style={styles.appInfo}
         >
           <Text style={[styles.appName, isRTL && styles.textRTL]}>
@@ -449,9 +511,6 @@ export function SettingsScreenContent() {
           </Text>
           <Text style={[styles.version, isRTL && styles.textRTL]}>
             {t("version")}
-          </Text>
-          <Text style={[styles.appDescription, isRTL && styles.textRTL]}>
-            {t("appDescription")}
           </Text>
         </Animated.View>
 
@@ -573,6 +632,8 @@ interface SettingRowProps {
   isRTL: boolean;
   onPress?: () => void;
   destructive?: boolean;
+  icon?: React.ComponentProps<typeof Feather>["name"];
+  isLast?: boolean;
 }
 
 function SettingRow({
@@ -582,6 +643,8 @@ function SettingRow({
   isRTL,
   onPress,
   destructive,
+  icon,
+  isLast,
 }: SettingRowProps) {
   const scale = useSharedValue(1);
 
@@ -601,9 +664,16 @@ function SettingRow({
     }
   };
 
+  const iconColor = destructive ? colors.signOut : colors.primary.DEFAULT;
+
   return (
     <AnimatedPressable
-      style={[styles.settingRow, isRTL && styles.settingRowRTL, animatedStyle]}
+      style={[
+        styles.settingRow,
+        isRTL && styles.settingRowRTL,
+        isLast && styles.settingRowLast,
+        animatedStyle,
+      ]}
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
@@ -611,27 +681,43 @@ function SettingRow({
       accessibilityRole={onPress ? "button" : "text"}
       accessibilityLabel={subtitle ? `${label}, ${subtitle}` : label}
     >
-      <View style={[styles.settingInfo, isRTL && styles.settingInfoRTL]}>
-        <Text
-          style={[
-            styles.settingLabel,
-            isRTL && styles.textRTL,
-            destructive && styles.destructiveText,
-          ]}
-        >
-          {label}
-        </Text>
-        {subtitle && (
-          <Text style={[styles.settingSubtitle, isRTL && styles.textRTL]}>
-            {subtitle}
+      <View style={[styles.settingLeft, isRTL && styles.settingRowRTL]}>
+        {icon && (
+          <View style={styles.settingIcon}>
+            <Feather name={icon} size={18} color={iconColor} />
+          </View>
+        )}
+        <View style={[styles.settingInfo, isRTL && styles.settingInfoRTL]}>
+          <Text
+            style={[
+              styles.settingLabel,
+              isRTL && styles.textRTL,
+              destructive && styles.destructiveText,
+            ]}
+          >
+            {label}
+          </Text>
+          {subtitle && (
+            <Text style={[styles.settingSubtitle, isRTL && styles.textRTL]}>
+              {subtitle}
+            </Text>
+          )}
+        </View>
+      </View>
+      <View style={[styles.settingRight, isRTL && styles.settingRowRTL]}>
+        {value && (
+          <Text style={[styles.settingValue, isRTL && styles.textRTL]}>
+            {value}
           </Text>
         )}
+        {onPress && !destructive && (
+          <Feather
+            name={isRTL ? "chevron-left" : "chevron-right"}
+            size={18}
+            color={colors.onSurface.muted}
+          />
+        )}
       </View>
-      {value && (
-        <Text style={[styles.settingValue, isRTL && styles.textRTL]}>
-          {value}
-        </Text>
-      )}
     </AnimatedPressable>
   );
 }
@@ -641,6 +727,8 @@ interface SettingRowWithSwitchProps {
   value: boolean;
   isRTL: boolean;
   onToggle: () => void;
+  icon?: React.ComponentProps<typeof Feather>["name"];
+  isLast?: boolean;
 }
 
 function SettingRowWithSwitch({
@@ -648,15 +736,30 @@ function SettingRowWithSwitch({
   value,
   isRTL,
   onToggle,
+  icon,
+  isLast,
 }: SettingRowWithSwitchProps) {
   return (
-    <View style={[styles.settingRow, isRTL && styles.settingRowRTL]}>
-      <Text style={[styles.settingLabel, isRTL && styles.textRTL]}>{label}</Text>
+    <View
+      style={[
+        styles.settingRow,
+        isRTL && styles.settingRowRTL,
+        isLast && styles.settingRowLast,
+      ]}
+    >
+      <View style={[styles.settingLeft, isRTL && styles.settingRowRTL]}>
+        {icon && (
+          <View style={styles.settingIcon}>
+            <Feather name={icon} size={18} color={colors.primary.DEFAULT} />
+          </View>
+        )}
+        <Text style={[styles.settingLabel, isRTL && styles.textRTL]}>{label}</Text>
+      </View>
       <Switch
         value={value}
         onValueChange={onToggle}
-        trackColor={{ false: "#E8E5E0", true: "#0D7A5F" }}
-        thumbColor="#FFFFFF"
+        trackColor={{ false: colors.border, true: colors.primary.DEFAULT }}
+        thumbColor={colors.surface.DEFAULT}
         accessibilityLabel={label}
         accessibilityRole="switch"
       />
@@ -667,7 +770,10 @@ function SettingRowWithSwitch({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF7F2",
+    backgroundColor: colors.background,
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
   },
   header: {
     paddingHorizontal: 24,
@@ -678,39 +784,227 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   title: {
+    fontFamily: fonts.serif,
     fontSize: 28,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: colors.ink,
     letterSpacing: -0.5,
   },
   textRTL: {
     textAlign: "right",
+    writingDirection: "rtl",
   },
   sectionTitle: {
+    fontFamily: fonts.semibold,
     fontSize: 13,
     fontWeight: "600",
-    color: "#737373",
+    color: colors.onSurface.muted,
     textTransform: "uppercase",
     letterSpacing: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 4,
     paddingTop: 24,
     paddingBottom: 12,
   },
   sectionTitleRTL: {
     textAlign: "right",
   },
+  // Profile header
+  profileHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 20,
+    paddingBottom: 20,
+    paddingHorizontal: 4,
+  },
+  profileHeaderRTL: {
+    flexDirection: "row-reverse",
+  },
+  avatar: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.sand,
+    borderWidth: 3,
+    borderColor: colors.surface.DEFAULT,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+  },
+  avatarInitial: {
+    fontFamily: fonts.serif,
+    fontSize: 30,
+    color: colors.ink,
+  },
+  profileHeaderInfo: {
+    flex: 1,
+    marginLeft: 16,
+  },
+  profileHeaderInfoRTL: {
+    marginLeft: 0,
+    marginRight: 16,
+    alignItems: "flex-end",
+  },
+  profileName: {
+    fontFamily: fonts.serif,
+    fontSize: 26,
+    color: colors.ink,
+  },
+  profileSubtitle: {
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    color: colors.onSurface.muted,
+    marginTop: 2,
+  },
+  // Stats strip
+  statsCard: {
+    flexDirection: "row",
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 20,
+    paddingVertical: 18,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
+  statsCardRTL: {
+    flexDirection: "row-reverse",
+  },
+  statItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: colors.divider,
+    marginVertical: 4,
+  },
+  statNumber: {
+    fontFamily: fonts.bold,
+    fontSize: 19,
+    color: colors.ink,
+  },
+  statLabel: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.onSurface.muted,
+    marginTop: 4,
+  },
+  // Hosting promo
+  hostingCard: {
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: 24,
+    padding: 22,
+    marginBottom: 20,
+    shadowColor: colors.primary.DEFAULT,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 4,
+  },
+  hostingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  hostingRowRTL: {
+    flexDirection: "row-reverse",
+  },
+  hostingIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+  hostingTextWrap: {
+    flex: 1,
+  },
+  hostingTitle: {
+    fontFamily: fonts.serif,
+    fontSize: 22,
+    color: colors.surface.DEFAULT,
+  },
+  hostingDesc: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: "rgba(255, 255, 255, 0.85)",
+    marginTop: 2,
+    lineHeight: 18,
+  },
+  hostingPillRow: {
+    flexDirection: "row",
+    marginTop: 16,
+  },
+  hostingPill: {
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 999,
+    paddingVertical: 10,
+    paddingHorizontal: 22,
+  },
+  hostingPillText: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    color: colors.primary.DEFAULT,
+  },
+  // Settings list card
+  listCard: {
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 20,
+    paddingHorizontal: 4,
+    marginBottom: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    elevation: 2,
+  },
   settingRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    backgroundColor: colors.surface.DEFAULT,
+    paddingHorizontal: 16,
+    paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0EDE8",
+    borderBottomColor: colors.divider,
+  },
+  settingRowLast: {
+    borderBottomWidth: 0,
   },
   settingRowRTL: {
     flexDirection: "row-reverse",
+  },
+  settingLeft: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  settingRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  settingIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: colors.mint,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
   },
   settingInfo: {
     flex: 1,
@@ -719,42 +1013,59 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   settingLabel: {
+    fontFamily: fonts.medium,
     fontSize: 16,
     fontWeight: "500",
-    color: "#1A1A1A",
+    color: colors.ink,
   },
   settingSubtitle: {
+    fontFamily: fonts.regular,
     fontSize: 13,
-    color: "#737373",
+    color: colors.onSurface.muted,
     marginTop: 2,
   },
   settingValue: {
+    fontFamily: fonts.medium,
     fontSize: 15,
-    color: "#0D7A5F",
+    color: colors.onSurface.muted,
     fontWeight: "500",
   },
   destructiveText: {
-    color: "#DC6B5A",
+    color: colors.signOut,
+  },
+  // Sign out
+  signOutButton: {
+    alignItems: "center",
+    paddingVertical: 16,
+    marginBottom: 8,
+  },
+  signOutText: {
+    fontFamily: fonts.medium,
+    fontSize: 16,
+    fontWeight: "500",
+    color: colors.signOut,
   },
   appInfo: {
     alignItems: "center",
-    paddingVertical: 32,
+    paddingVertical: 24,
     paddingHorizontal: 40,
   },
   appName: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#0D7A5F",
+    fontFamily: fonts.serif,
+    fontSize: 22,
+    color: colors.onSurface.muted,
     marginBottom: 4,
   },
   version: {
-    fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.onSurface.muted,
     marginBottom: 16,
   },
   appDescription: {
+    fontFamily: fonts.regular,
     fontSize: 14,
-    color: "#737373",
+    color: colors.onSurface.muted,
     textAlign: "center",
     lineHeight: 22,
   },
@@ -786,15 +1097,17 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   guestTitle: {
-    fontSize: 22,
+    fontFamily: fonts.serif,
+    fontSize: 24,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: colors.ink,
     marginBottom: 8,
     textAlign: "center",
   },
   guestMessage: {
+    fontFamily: fonts.regular,
     fontSize: 15,
-    color: "#737373",
+    color: colors.onSurface.muted,
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 24,
@@ -815,9 +1128,10 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   guestSignInButtonText: {
+    fontFamily: fonts.semibold,
     fontSize: 16,
     fontWeight: "600",
-    color: "#FFFFFF",
+    color: colors.surface.DEFAULT,
   },
   // Modal Styles
   modalOverlay: {
@@ -834,33 +1148,37 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   modalTitle: {
+    fontFamily: fonts.serif,
     fontSize: 24,
     fontWeight: "700",
-    color: "#1A1A1A",
+    color: colors.ink,
     marginBottom: 8,
   },
   modalSubtitle: {
+    fontFamily: fonts.regular,
     fontSize: 14,
-    color: "#737373",
+    color: colors.onSurface.muted,
     marginBottom: 24,
   },
   upgradeOption: {
-    backgroundColor: "#FAF7F2",
+    backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: colors.border,
   },
   upgradeOptionTitle: {
+    fontFamily: fonts.semibold,
     fontSize: 16,
     fontWeight: "600",
-    color: "#1A1A1A",
+    color: colors.ink,
     marginBottom: 4,
   },
   upgradeOptionDesc: {
+    fontFamily: fonts.regular,
     fontSize: 14,
-    color: "#737373",
+    color: colors.onSurface.muted,
   },
   cancelButton: {
     marginTop: 8,
@@ -868,12 +1186,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cancelButtonText: {
+    fontFamily: fonts.medium,
     fontSize: 16,
-    color: "#737373",
+    color: colors.onSurface.muted,
     fontWeight: "500",
   },
   deleteButton: {
-    backgroundColor: "#DC6B5A",
+    backgroundColor: colors.error,
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
@@ -883,8 +1202,9 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   deleteButtonText: {
+    fontFamily: fonts.semibold,
     fontSize: 16,
-    color: "#FFFFFF",
+    color: colors.surface.DEFAULT,
     fontWeight: "600",
   },
 });

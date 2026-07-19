@@ -27,6 +27,7 @@ import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAppStore } from "@/stores/appStore";
 import { ChatBubble } from "@/components/planner";
+import { colors, fonts } from "@/constants/colors";
 import type { ChatMessage } from "@/types";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -252,9 +253,12 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
           <Text style={[styles.title, isRTL && styles.textRTL]}>
             {t("plannerAssistant")}
           </Text>
-          <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
-            {t("plannerSubtitle")}
-          </Text>
+          <View style={[styles.subtitleRow, isRTL && styles.subtitleRowRTL]}>
+            <Text style={styles.subtitleIcon}>✦</Text>
+            <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
+              {t("plannerSubtitle")}
+            </Text>
+          </View>
         </View>
 
         {/* Chat Area */}
@@ -326,10 +330,11 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
 
         {/* Input Area */}
         <View style={styles.inputContainer}>
+          <View style={[styles.inputPill, isRTL && styles.inputPillRTL]}>
           <TextInput
             style={[styles.input, isRTL && styles.inputRTL]}
             placeholder={t("chatPlaceholder")}
-            placeholderTextColor="#A3A3A3"
+            placeholderTextColor={colors.onSurface.muted}
             value={inputText}
             onChangeText={setInputText}
             onSubmitEditing={handleSend}
@@ -338,6 +343,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
             textAlign={isRTL ? "right" : "left"}
             editable={!isLoading}
           />
+          </View>
           <Pressable
             style={[
               styles.sendButton,
@@ -454,33 +460,45 @@ function SuggestionButton({ label, onPress, delay = 0 }: SuggestionButtonProps) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF7F2",
+    backgroundColor: colors.background,
   },
   inner: {
     flex: 1,
   },
   header: {
     paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingTop: 12,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#E8E5E0",
-    backgroundColor: "#FFFFFF",
+    borderBottomColor: colors.divider,
+    backgroundColor: colors.background,
   },
   headerRTL: {
     alignItems: "flex-end",
   },
   title: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1A1A1A",
+    fontSize: 30,
+    fontFamily: fonts.serif,
+    color: colors.ink,
     letterSpacing: -0.3,
   },
-  subtitle: {
+  subtitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 2,
+  },
+  subtitleRowRTL: {
+    flexDirection: "row-reverse",
+  },
+  subtitleIcon: {
     fontSize: 12,
-    fontWeight: "500",
-    color: "#0D7A5F",
-    marginTop: 1,
+    color: colors.primary.DEFAULT,
+  },
+  subtitle: {
+    fontSize: 12.5,
+    fontFamily: fonts.medium,
+    color: colors.primary.DEFAULT,
   },
   textRTL: {
     textAlign: "right",
@@ -505,8 +523,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06,
     shadowRadius: 8,
     elevation: 3,
-    borderWidth: 1,
-    borderColor: "#E8E5E0",
   },
   welcomeBubbleRTL: {
     alignItems: "flex-end",
@@ -517,19 +533,20 @@ const styles = StyleSheet.create({
   },
   welcomeTitle: {
     fontSize: 18,
-    fontWeight: "700",
-    color: "#0D7A5F",
+    fontFamily: fonts.semibold,
+    color: colors.primary.DEFAULT,
     marginBottom: 4,
   },
   welcomeText: {
     fontSize: 14,
     lineHeight: 21,
-    color: "#4A4A4A",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
   },
   suggestionsTitle: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#6B7280",
+    fontFamily: fonts.semibold,
+    color: colors.onSurface.muted,
     marginBottom: 8,
     paddingHorizontal: 2,
   },
@@ -545,19 +562,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 20,
+    borderRadius: 18,
     borderWidth: 1.5,
-    borderColor: "#0D7A5F",
-    shadowColor: "#0D7A5F",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    elevation: 1,
+    borderColor: "#D9E8E1",
   },
   suggestionText: {
     fontSize: 13,
-    fontWeight: "600",
-    color: "#0D7A5F",
+    fontFamily: fonts.medium,
+    color: colors.primary.DEFAULT,
   },
   loadingContainer: {
     flexDirection: "row",
@@ -568,7 +580,8 @@ const styles = StyleSheet.create({
   },
   loadingBubble: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 20,
+    borderBottomLeftRadius: 6,
     paddingHorizontal: 16,
     paddingVertical: 12,
     shadowColor: "#000",
@@ -586,42 +599,51 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#0D7A5F",
+    backgroundColor: colors.primary.DEFAULT,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 8,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E8E5E0",
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 10,
+    backgroundColor: colors.background,
     gap: 10,
   },
+  inputPill: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 26,
+    justifyContent: "center",
+    minHeight: 50,
+    paddingHorizontal: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  inputPillRTL: {},
   input: {
     flex: 1,
-    backgroundColor: "#F5F1EB",
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     fontSize: 15,
-    color: "#1A1A1A",
+    fontFamily: fonts.regular,
+    color: colors.ink,
     maxHeight: 100,
-    borderWidth: 1,
-    borderColor: "#E8E5E0",
   },
   inputRTL: {
     writingDirection: "rtl",
   },
   sendButton: {
-    backgroundColor: "#0D7A5F",
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    backgroundColor: colors.primary.DEFAULT,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#0D7A5F",
+    shadowColor: colors.primary.DEFAULT,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -633,7 +655,8 @@ const styles = StyleSheet.create({
   },
   sendButtonText: {
     color: "#FFFFFF",
-    fontSize: 20,
+    fontSize: 22,
+    fontFamily: fonts.bold,
     fontWeight: "700",
   },
 });

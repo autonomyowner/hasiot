@@ -6,7 +6,9 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { Feather } from "@expo/vector-icons";
 import type { Moment } from "@/types";
+import { colors, fonts } from "@/constants/colors";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const { width } = Dimensions.get("window");
@@ -83,12 +85,15 @@ export function MomentCard({ moment, isRTL, onPress, onDelete }: MomentCardProps
       {/* Location */}
       {moment.location && (
         <View style={[styles.locationContainer, isRTL && styles.locationContainerRTL]}>
-          <Text
-            style={[styles.locationText, isRTL && styles.textRTL]}
-            numberOfLines={1}
-          >
-            {moment.location}
-          </Text>
+          <View style={[styles.locationRow, isRTL && styles.locationRowRTL]}>
+            <Feather name="map-pin" size={11} color={colors.onSurface.muted} />
+            <Text
+              style={[styles.locationText, isRTL && styles.textRTL]}
+              numberOfLines={1}
+            >
+              {moment.location}
+            </Text>
+          </View>
         </View>
       )}
     </AnimatedPressable>
@@ -99,32 +104,33 @@ const styles = StyleSheet.create({
   container: {
     width: cardWidth,
     backgroundColor: "#FFFFFF",
-    borderRadius: 14,
+    borderRadius: 18,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowColor: "#1F1D17",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.07,
+    shadowRadius: 16,
+    elevation: 4,
     marginBottom: 12,
   },
   image: {
     width: "100%",
     height: cardWidth,
-    backgroundColor: "#E8DFD4",
+    backgroundColor: colors.sand,
   },
   dateOverlay: {
     position: "absolute",
     top: 8,
     left: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    backgroundColor: "rgba(20, 18, 12, 0.55)",
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 12,
   },
   dateText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: 11,
+    fontFamily: fonts.medium,
     fontWeight: "600",
   },
   deleteButton: {
@@ -141,6 +147,7 @@ const styles = StyleSheet.create({
   deleteButtonText: {
     color: "#FFFFFF",
     fontSize: 18,
+    fontFamily: fonts.semibold,
     fontWeight: "600",
     lineHeight: 20,
   },
@@ -153,7 +160,8 @@ const styles = StyleSheet.create({
   },
   noteText: {
     fontSize: 14,
-    color: "#1A1A1A",
+    fontFamily: fonts.medium,
+    color: colors.ink,
     lineHeight: 20,
   },
   locationContainer: {
@@ -163,9 +171,18 @@ const styles = StyleSheet.create({
   locationContainerRTL: {
     alignItems: "flex-end",
   },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  locationRowRTL: {
+    flexDirection: "row-reverse",
+  },
   locationText: {
     fontSize: 12,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
   },
   textRTL: {
     textAlign: "right",

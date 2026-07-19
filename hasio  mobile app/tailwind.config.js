@@ -43,8 +43,8 @@ module.exports = {
         gold: "#D97706",
       },
       fontFamily: {
-        display: ["Playfair Display", "serif"],
-        body: ["Plus Jakarta Sans", "sans-serif"],
+        display: ["InstrumentSerif_400Regular", "serif"],
+        body: ["Outfit_400Regular", "sans-serif"],
       },
       boxShadow: {
         card: "0 2px 8px rgba(0, 0, 0, 0.06)",
