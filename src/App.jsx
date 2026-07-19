@@ -133,6 +133,26 @@ const MARKETPLACE_CARDS = [
   }
 ]
 
+// Oasis Atlas map pins (decorative positions over the static map thumb)
+const ATLAS_PINS = [
+  { top: '20%', left: '14%', icon: 'landscape', size: 'sm' },
+  { top: '14%', left: '44%', icon: 'account_balance', size: 'sm' },
+  { top: '38%', left: '82%', icon: 'mosque', size: 'sm' },
+  { top: '48%', left: '56%', icon: 'park', size: 'lg', featured: true },
+  { top: '62%', left: '26%', icon: 'location_city', size: 'sm' },
+  { top: '40%', left: '30%', icon: 'route', size: 'sm' }
+]
+
+const ATLAS_FEATURED_PIN = {
+  title: 'Al Qarah Mountain',
+  titleAr: 'جبل القارة',
+  badge: 'Natural Wonder',
+  badgeAr: 'عجيبة طبيعية',
+  rating: '4.8',
+  reviews: '230',
+  img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD7zOc6WfUxnSoIFNV6r2Y8M3j6jVbR3xnughW0v19jFDH7RS_o1R0xOMi7f2CAYHnljvqopVPrULLbvC140Dah3BRRHMvZDsIWIcTYMrGDEuMiiUen2LnlamkY0nGDwJJXz2AwrN5nnfIxMSFfTbBc0YrHaTrWbbxFrylDbCpJizaMs1rqHjzlZVlgxwhdyqVngv7EN1_XxQCc0tUKDEgHtomI0eNbmF-9kXGbKLmywMIAsTdIq_QE8-nL_CWUNTxsgGiij2Qh6kGr'
+}
+
 // Testimonials (representative placeholder copy — swap with real reviews later)
 const TESTIMONIALS = [
   {
@@ -208,6 +228,7 @@ const translations = {
       desc: 'Navigate Al-Ahsa like a local. Our interactive map covers every hidden gem, heritage site, and oasis trail across the region.',
       cta: 'Explore the Map',
       mapLabel: 'Interactive Map of Al-Ahsa',
+      viewDetails: 'View Details',
       stats: [
         { num: '120+', label: 'Points of Interest' },
         { num: '25+', label: 'Heritage Sites' },
@@ -301,6 +322,7 @@ const translations = {
       desc: 'تنقل في الأحساء كالسكان المحليين. تغطي خريطتنا التفاعلية كل جوهرة خفية وموقع تراثي ومسار واحة في المنطقة.',
       cta: 'استكشف الخريطة',
       mapLabel: 'خريطة الأحساء التفاعلية',
+      viewDetails: 'عرض التفاصيل',
       stats: [
         { num: '+120', label: 'معلم سياحي' },
         { num: '+25', label: 'موقع تراثي' },
@@ -658,7 +680,10 @@ function App() {
           >
             <h2>{t.atlas.title}</h2>
             <p>{t.atlas.desc}</p>
-            <Link to="/explore" className="btn-atlas">{t.atlas.cta}</Link>
+            <Link to="/explore" className="btn-atlas">
+              {t.atlas.cta}
+              <span className="material-symbols-outlined">arrow_forward</span>
+            </Link>
 
             <div className="atlas-stats">
               {t.atlas.stats.map((stat, i) => (
@@ -677,21 +702,72 @@ function App() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
           >
-            {publicConfig?.mapboxToken ? (
-              <img
-                src={`https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/static/49.5683,25.3854,9,0/600x400@2x?access_token=${publicConfig.mapboxToken}`}
-                alt="Al-Ahsa map"
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            <Link to="/explore" className="atlas-map-base">
+              {publicConfig?.mapboxToken ? (
+                <img
+                  src={`https://api.mapbox.com/styles/v1/mapbox/light-v11/static/49.5683,25.3854,10.2,0/700x500@2x?access_token=${publicConfig.mapboxToken}`}
+                  alt="Al-Ahsa map"
+                />
+              ) : (
+                <iframe
+                  title="Al-Ahsa map"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 'none' }}
+                  src="https://www.openstreetmap.org/export/embed.html?bbox=49.0%2C25.0%2C50.2%2C25.8&layer=mapnik&marker=25.3854%2C49.5683"
+                />
+              )}
+            </Link>
+
+            <svg className="atlas-map-route" viewBox="0 0 100 100" preserveAspectRatio="none">
+              <polyline
+                points="14,20 44,14 30,40 82,38 56,48 26,62"
+                fill="none"
+                stroke="var(--color-gold)"
+                strokeWidth="0.6"
+                strokeDasharray="2.5 2.5"
+                strokeLinecap="round"
               />
-            ) : (
-              <iframe
-                title="Al-Ahsa map"
-                width="100%"
-                height="100%"
-                style={{ border: 'none' }}
-                src="https://www.openstreetmap.org/export/embed.html?bbox=49.0%2C25.0%2C50.2%2C25.8&layer=mapnik&marker=25.3854%2C49.5683"
-              />
-            )}
+            </svg>
+
+            {ATLAS_PINS.map((pin, i) => (
+              <div
+                key={i}
+                className={`atlas-map-pin atlas-map-pin--${pin.size}${pin.featured ? ' atlas-map-pin--active' : ''}`}
+                style={{ top: pin.top, left: pin.left }}
+              >
+                <span className="material-symbols-outlined">{pin.icon}</span>
+              </div>
+            ))}
+
+            <div className="atlas-map-controls">
+              <div className="atlas-map-zoom">
+                <button type="button" aria-label="Zoom in">+</button>
+                <button type="button" aria-label="Zoom out">–</button>
+              </div>
+              <button type="button" className="atlas-map-tool" aria-label="Layers">
+                <span className="material-symbols-outlined">layers</span>
+              </button>
+              <button type="button" className="atlas-map-tool" aria-label="My location">
+                <span className="material-symbols-outlined">my_location</span>
+              </button>
+            </div>
+
+            <Link to="/explore" className="atlas-map-card">
+              <img src={ATLAS_FEATURED_PIN.img} alt={isAr ? ATLAS_FEATURED_PIN.titleAr : ATLAS_FEATURED_PIN.title} />
+              <div className="atlas-map-card-body">
+                <div className="atlas-map-card-badge">{isAr ? ATLAS_FEATURED_PIN.badgeAr : ATLAS_FEATURED_PIN.badge}</div>
+                <div className="atlas-map-card-title">{isAr ? ATLAS_FEATURED_PIN.titleAr : ATLAS_FEATURED_PIN.title}</div>
+                <div className="atlas-map-card-rating">
+                  <span className="material-symbols-outlined">star</span>
+                  <span>{ATLAS_FEATURED_PIN.rating} ({ATLAS_FEATURED_PIN.reviews})</span>
+                </div>
+                <div className="atlas-map-card-link">
+                  {t.atlas.viewDetails}
+                  <span className="material-symbols-outlined">arrow_forward</span>
+                </div>
+              </div>
+            </Link>
           </motion.div>
         </div>
       </section>

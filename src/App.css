@@ -655,9 +655,15 @@ html[dir="rtl"] .bento-card-bookmark {
   border: none;
   cursor: pointer;
   text-decoration: none;
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--font-body);
   transition: opacity 0.15s, transform 0.15s;
+}
+
+.btn-atlas .material-symbols-outlined {
+  font-size: 18px;
 }
 
 .btn-atlas:hover {
@@ -685,43 +691,209 @@ html[dir="rtl"] .bento-card-bookmark {
 }
 
 .atlas-map-thumb {
+  position: relative;
   border-radius: var(--radius-xl);
   overflow: hidden;
   aspect-ratio: 4/3;
-  background: rgba(255, 255, 255, 0.08);
+  background: #EDE7DA;
   min-height: 320px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.25);
 }
 
-.atlas-map-thumb img,
-.atlas-map-thumb iframe {
+.atlas-map-base {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.atlas-map-base img,
+.atlas-map-base iframe {
   width: 100%;
   height: 100%;
   display: block;
   object-fit: cover;
+  filter: saturate(0.85) brightness(1.02);
 }
 
-.atlas-map-visual {
+.atlas-map-route {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+.atlas-map-pin {
+  position: absolute;
+  width: 30px;
+  height: 30px;
+  transform: translate(-50%, -100%) rotate(-45deg);
+  background: var(--color-primary);
+  border: 2px solid white;
+  border-radius: 50% 50% 50% 0;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.25);
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.15s;
+}
+
+.atlas-map-pin:hover {
+  transform: translate(-50%, -100%) rotate(-45deg) scale(1.08);
+}
+
+.atlas-map-pin .material-symbols-outlined {
+  transform: rotate(45deg);
+  color: white;
+  font-size: 15px;
+}
+
+.atlas-map-pin--lg {
+  width: 38px;
+  height: 38px;
+}
+
+.atlas-map-pin--lg .material-symbols-outlined {
+  font-size: 19px;
+}
+
+.atlas-map-pin--active {
+  background: var(--color-gold);
+}
+
+.atlas-map-controls {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: flex;
   flex-direction: column;
-  gap: 12px;
-  color: rgba(255, 255, 255, 0.7);
+  gap: 8px;
+  z-index: 2;
 }
 
-.atlas-map-icon {
-  font-size: 48px;
-  opacity: 0.8;
+.atlas-map-zoom {
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  overflow: hidden;
 }
 
-.atlas-map-label {
+.atlas-map-zoom button {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: white;
+  color: var(--color-text);
   font-size: 16px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
+  font-weight: 700;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.atlas-map-zoom button:first-child {
+  border-bottom: 1px solid #EEE;
+}
+
+.atlas-map-zoom button:hover {
+  background: #F5F5F5;
+}
+
+.atlas-map-tool {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: white;
+  color: var(--color-text);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.atlas-map-tool .material-symbols-outlined {
+  font-size: 17px;
+}
+
+.atlas-map-tool:hover {
+  background: #F5F5F5;
+}
+
+.atlas-map-card {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  text-decoration: none;
+  max-width: 260px;
+  transition: transform 0.15s;
+}
+
+.atlas-map-card:hover {
+  transform: translateY(-2px);
+}
+
+.atlas-map-card img {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.atlas-map-card-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-gold);
+  margin-bottom: 2px;
+}
+
+.atlas-map-card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.atlas-map-card-rating {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.atlas-map-card-rating .material-symbols-outlined {
+  font-size: 13px;
+  color: var(--color-gold);
+}
+
+.atlas-map-card-link {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-top: 3px;
+}
+
+.atlas-map-card-link .material-symbols-outlined {
+  font-size: 13px;
 }
 
 /* ===== AI CONCIERGE + TESTIMONIALS (shared background) ===== */
@@ -1496,6 +1668,23 @@ html[dir="rtl"] .footer-bottom {
   }
   .atlas-map-thumb {
     min-height: 240px;
+  }
+  .atlas-map-card {
+    max-width: 200px;
+    padding: 8px;
+    gap: 8px;
+  }
+  .atlas-map-card img {
+    width: 44px;
+    height: 44px;
+  }
+  .atlas-map-pin {
+    width: 24px;
+    height: 24px;
+  }
+  .atlas-map-pin--lg {
+    width: 30px;
+    height: 30px;
   }
 }
 
