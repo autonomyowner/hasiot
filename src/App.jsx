@@ -153,31 +153,35 @@ const ATLAS_FEATURED_PIN = {
   img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD7zOc6WfUxnSoIFNV6r2Y8M3j6jVbR3xnughW0v19jFDH7RS_o1R0xOMi7f2CAYHnljvqopVPrULLbvC140Dah3BRRHMvZDsIWIcTYMrGDEuMiiUen2LnlamkY0nGDwJJXz2AwrN5nnfIxMSFfTbBc0YrHaTrWbbxFrylDbCpJizaMs1rqHjzlZVlgxwhdyqVngv7EN1_XxQCc0tUKDEgHtomI0eNbmF-9kXGbKLmywMIAsTdIq_QE8-nL_CWUNTxsgGiij2Qh6kGr'
 }
 
-// Testimonials (representative placeholder copy — swap with real reviews later)
-const TESTIMONIALS = [
+// Why Hasio — real product value props (no fabricated reviews)
+const WHY_HASIO = [
   {
-    name: 'Sarah Almutairi',
-    location: 'Riyadh, Saudi Arabia',
-    locationAr: 'الرياض، السعودية',
-    quote: 'Al-Ahsa is a hidden paradise. Hasio made it so easy to discover the best places and plan my trip.',
-    quoteAr: 'الأحساء جنة خفية. طبّق هاسيو سهّل عليّ اكتشاف أفضل الأماكن والتخطيط لرحلتي.',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&q=80'
+    icon: 'auto_awesome',
+    title: 'AI Travel Concierge',
+    titleAr: 'مرشد سفر بالذكاء الاصطناعي',
+    desc: 'Get a personalized Al-Ahsa itinerary in seconds, tailored to what you actually want to see.',
+    descAr: 'احصل على خطة رحلة مخصصة للأحساء خلال ثوانٍ، مصممة بناءً على ما تريد فعلاً رؤيته.'
   },
   {
-    name: 'James Carter',
-    location: 'London, UK',
-    locationAr: 'لندن، المملكة المتحدة',
-    quote: 'The AI concierge is amazing! It recommended places we would have never found on our own.',
-    quoteAr: 'مرشد الذكاء الاصطناعي رائع! رشّح لنا أماكن ما كنا لنعثر عليها بأنفسنا أبداً.',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&q=80'
+    icon: 'verified',
+    title: 'Verified Local Listings',
+    titleAr: 'إعلانات محلية موثقة',
+    desc: 'Every hotel, restaurant, and experience is reviewed by our team before it goes live.',
+    descAr: 'يتم مراجعة كل فندق ومطعم وتجربة من قبل فريقنا قبل نشرها.'
   },
   {
-    name: 'Fatima Alzahrani',
-    location: 'Dammam, Saudi Arabia',
-    locationAr: 'الدمام، السعودية',
-    quote: 'Authentic experiences, beautiful places, and seamless booking. Highly recommend!',
-    quoteAr: 'تجارب أصيلة وأماكن جميلة وحجز سلس. أنصح به بشدة!',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&q=80'
+    icon: 'explore',
+    title: 'Built for Al-Ahsa',
+    titleAr: 'مصمم خصيصاً للأحساء',
+    desc: "Not a generic travel app — every recommendation is local to the oasis and its heritage.",
+    descAr: 'ليس تطبيق سفر عام — كل توصية محلية مرتبطة بالواحة وتراثها.'
+  },
+  {
+    icon: 'calendar_month',
+    title: 'Direct Booking',
+    titleAr: 'حجز مباشر',
+    desc: 'Reserve stays, tours, and services directly through the platform, no back-and-forth needed.',
+    descAr: 'احجز الإقامات والجولات والخدمات مباشرة عبر المنصة دون الحاجة لتواصل إضافي.'
   }
 ]
 
@@ -235,10 +239,9 @@ const translations = {
         { num: '10+', label: 'Unique Routes' }
       ]
     },
-    testimonials: {
-      title: 'Loved by Travelers',
-      subtitle: 'Real experiences from those who explored Al-Ahsa with Hasio.',
-      viewAll: 'View All'
+    whyHasio: {
+      title: 'Why Travel Al-Ahsa with Hasio',
+      subtitle: 'Everything you need to explore the region, built into one platform.'
     },
     concierge: {
       title: 'Your Personal Al-Ahsa Concierge',
@@ -329,10 +332,9 @@ const translations = {
         { num: '+10', label: 'مسار فريد' }
       ]
     },
-    testimonials: {
-      title: 'محبوب من المسافرين',
-      subtitle: 'تجارب حقيقية من مستكشفي الأحساء مع هاسيو.',
-      viewAll: 'عرض الكل'
+    whyHasio: {
+      title: 'لماذا تستكشف الأحساء مع هاسيو',
+      subtitle: 'كل ما تحتاجه لاستكشاف المنطقة، في منصة واحدة.'
     },
     concierge: {
       title: 'مرشدك الشخصي في الأحساء',
@@ -829,32 +831,21 @@ function App() {
         </div>
       </section>
 
-      {/* ===== TESTIMONIALS ===== */}
-      <div className="section testimonials-on-photo">
+      {/* ===== WHY HASIO ===== */}
+      <div className="section why-hasio-on-photo">
         <div className="section-header">
           <div className="section-header-text">
-            <h2 className="section-title">{t.testimonials.title}</h2>
-            <p className="section-subtitle">{t.testimonials.subtitle}</p>
+            <h2 className="section-title">{t.whyHasio.title}</h2>
+            <p className="section-subtitle">{t.whyHasio.subtitle}</p>
           </div>
-          <Link to="/listings" className="btn-view-all btn-view-all--light">{t.testimonials.viewAll}</Link>
         </div>
 
-        <div className="testimonials-grid">
-          {TESTIMONIALS.map((item, i) => (
-            <div key={i} className="testimonial-card">
-              <div className="testimonial-stars">
-                {Array.from({ length: 5 }).map((_, s) => (
-                  <span key={s} className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                ))}
-              </div>
-              <p className="testimonial-quote">"{isAr ? item.quoteAr : item.quote}"</p>
-              <div className="testimonial-person">
-                <img className="testimonial-avatar" src={item.avatar} alt={item.name} />
-                <div>
-                  <div className="testimonial-name">{item.name}</div>
-                  <div className="testimonial-location">{isAr ? item.locationAr : item.location}</div>
-                </div>
-              </div>
+        <div className="why-hasio-grid">
+          {WHY_HASIO.map((item, i) => (
+            <div key={i} className="why-hasio-card">
+              <span className="why-hasio-icon material-symbols-outlined">{item.icon}</span>
+              <h3 className="why-hasio-title">{isAr ? item.titleAr : item.title}</h3>
+              <p className="why-hasio-desc">{isAr ? item.descAr : item.desc}</p>
             </div>
           ))}
         </div>
