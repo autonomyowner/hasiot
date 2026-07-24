@@ -1,6 +1,11 @@
 import { ConvexReactClient } from "convex/react";
 import { useCallback, useMemo, useState, useEffect, useRef } from "react";
-import { getStoredToken, getStoredSessionToken, fetchConvexToken, validateSession } from "./auth";
+import {
+  getStoredToken,
+  getStoredSessionToken,
+  fetchConvexToken,
+  clearStoredAuth,
+} from "./auth";
 
 const CONVEX_URL = process.env.EXPO_PUBLIC_CONVEX_URL;
 if (!CONVEX_URL) {
@@ -44,6 +49,11 @@ export function useAuthFromSecureStore() {
         const sessionToken = await getStoredSessionToken();
         if (sessionToken) {
           jwt = await fetchConvexToken(sessionToken);
+          if (!jwt) {
+            // Session token is dead — don't leave stale user info behind,
+            // it would render a signed-in UI whose queries all fail.
+            await clearStoredAuth();
+          }
         }
       }
 
@@ -65,13 +75,19 @@ export function useAuthFromSecureStore() {
     async ({ forceRefreshToken }: { forceRefreshToken: boolean }) => {
       if (forceRefreshToken) {
         const sessionToken = await getStoredSessionToken();
-        if (sessionToken) {
-          const fresh = await fetchConvexToken(sessionToken);
+        const fresh = sessionToken ? await fetchConvexToken(sessionToken) : null;
 
-          tokenRef.current = fresh;
-          return fresh;
+        tokenRef.current = fresh;
+
+        if (!fresh) {
+          // Convex asked for a fresh token and we can't produce one: the
+          // session is gone. Wipe local auth and flip the app to signed-out
+          // instead of leaving a signed-in shell with failing queries.
+          await clearStoredAuth();
+          setIsAuthenticated(false);
         }
-        return null;
+
+        return fresh;
       }
       return tokenRef.current;
     },
