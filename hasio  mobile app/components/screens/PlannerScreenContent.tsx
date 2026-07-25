@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import Animated, {
 import { useAction } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { useAppStore } from "@/stores/appStore";
 import { ChatBubble } from "@/components/planner";
 import { colors, fonts } from "@/constants/colors";
@@ -47,35 +48,23 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
 
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
 
-  // On Android: manually track keyboard height since KeyboardAvoidingView
-  // doesn't work reliably inside PagerView. On iOS: just scroll to bottom.
-  useEffect(() => {
-    const isAndroid = Platform.OS === "android";
-    const showEvent = isAndroid ? "keyboardDidShow" : "keyboardWillShow";
-    const hideEvent = isAndroid ? "keyboardDidHide" : "keyboardWillHide";
-
-    const showSub = Keyboard.addListener(showEvent, (e) => {
-      if (isAndroid) {
-        setAndroidKeyboardHeight(e.endCoordinates.height);
-      }
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    });
-
-    const hideSub = Keyboard.addListener(hideEvent, () => {
-      if (isAndroid) {
-        setAndroidKeyboardHeight(0);
-      }
-    });
-
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
+  const scrollToEndSoon = useCallback(() => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   }, []);
+
+  // Android: pad by the measured keyboard overlap. iOS: KeyboardAvoidingView below.
+  const { ref: innerRef, overlap: androidKeyboardHeight } =
+    useKeyboardOverlap(scrollToEndSoon);
+
+  // iOS only — KeyboardAvoidingView moves the input, we just follow with a scroll.
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    const sub = Keyboard.addListener("keyboardWillShow", scrollToEndSoon);
+    return () => sub.remove();
+  }, [scrollToEndSoon]);
 
   // Handle reporting AI messages (no reports table yet — local feedback only)
   const handleReportMessage = async (_messageId: string) => {
@@ -245,9 +234,12 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      keyboardVerticalOffset={0}
     >
-      <View style={[styles.inner, { paddingTop: insets.top, paddingBottom: androidKeyboardHeight }]}>
+      <View
+        ref={innerRef}
+        style={[styles.inner, { paddingTop: insets.top, paddingBottom: androidKeyboardHeight }]}
+      >
         {/* Header */}
         <View style={[styles.header, isRTL && styles.headerRTL]}>
           <Text style={[styles.title, isRTL && styles.textRTL]}>

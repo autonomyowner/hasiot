@@ -20,6 +20,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { Button } from "@/components/ui";
 import { ServiceType, PriceUnit } from "@/types";
@@ -45,6 +46,7 @@ const PRICE_UNITS: { value: PriceUnit; labelKey: string }[] = [
 export default function PostServiceScreen() {
   const router = useRouter();
   const { t, isRTL } = useLanguage();
+  const { ref: keyboardRef, overlap: keyboardOverlap } = useKeyboardOverlap();
   const submitService = useMutation(api.services.mutations.submitService);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -139,10 +141,14 @@ export default function PostServiceScreen() {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={0}
       >
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <View ref={keyboardRef} style={{ flex: 1, paddingBottom: keyboardOverlap }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
         {/* Header */}
         <Animated.View
           entering={FadeInDown.delay(100).duration(600)}
@@ -386,6 +392,7 @@ export default function PostServiceScreen() {
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
+      </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

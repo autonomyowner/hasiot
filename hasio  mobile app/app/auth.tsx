@@ -17,6 +17,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { useMutation } from "convex/react";
 import { api } from "@/backend";
 import { signIn, signUp, signOut, getAuthErrorKey } from "@/lib/auth";
@@ -27,6 +28,7 @@ export default function AuthScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, isRTL } = useLanguage();
+  const { ref: keyboardRef, overlap: keyboardOverlap } = useKeyboardOverlap();
   const setOnboardingComplete = useAppStore((state) => state.setOnboardingComplete);
 
   const createUser = useMutation(api.users.mutations.createUser);
@@ -106,9 +108,10 @@ export default function AuthScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={0}
     >
+      <View ref={keyboardRef} style={{ flex: 1, paddingBottom: keyboardOverlap }}>
       <ScrollView
         contentContainerStyle={[
           styles.scrollContent,
@@ -253,6 +256,7 @@ export default function AuthScreen() {
           </Pressable>
         </Animated.View>
       </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
