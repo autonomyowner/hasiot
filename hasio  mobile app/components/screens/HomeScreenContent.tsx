@@ -581,7 +581,6 @@ const styles = StyleSheet.create({
   eyebrowText: {
     fontSize: 12,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
     color: colors.primary.DEFAULT,
     letterSpacing: 1.5,
     textTransform: "uppercase",
@@ -598,7 +597,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.onSurface.variant,
     marginTop: 2,
-    fontWeight: "400",
     letterSpacing: 0.2,
   },
   textRTL: {
@@ -624,7 +622,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
     color: colors.ink,
     letterSpacing: -0.2,
   },
@@ -634,7 +631,6 @@ const styles = StyleSheet.create({
   seeAllLink: {
     fontSize: 13,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
     color: colors.primary.DEFAULT,
   },
   categoryCardsContainer: {
@@ -686,7 +682,6 @@ const styles = StyleSheet.create({
   gridCardName: {
     fontSize: 18,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
     color: "#FFFFFF",
     letterSpacing: -0.3,
     lineHeight: 22,
@@ -705,7 +700,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.medium,
     color: "rgba(255, 255, 255, 0.95)",
-    fontWeight: "500",
     letterSpacing: 0.5,
     textTransform: "uppercase",
   },
@@ -719,7 +713,6 @@ const styles = StyleSheet.create({
   resultsCount: {
     fontSize: 16,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
     color: colors.primary.DEFAULT,
     marginBottom: 20,
   },
@@ -739,7 +732,6 @@ const styles = StyleSheet.create({
   resultSectionTitle: {
     fontSize: 18,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
     color: colors.ink,
     marginBottom: 12,
   },
@@ -776,7 +768,6 @@ const styles = StyleSheet.create({
   searchResultName: {
     fontSize: 16,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
     color: colors.ink,
     marginBottom: 4,
   },
@@ -805,7 +796,6 @@ const styles = StyleSheet.create({
   emptyStateTitle: {
     fontSize: 18,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
     color: colors.ink,
     marginBottom: 8,
     textAlign: "center",

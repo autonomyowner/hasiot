@@ -20,10 +20,12 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
+import { getSubmitErrorKey } from "@/lib/submitError";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
-import { Button } from "@/components/ui";
+import { BackButton, Button } from "@/components/ui";
 import { EventCategory } from "@/types";
+import { fonts } from "@/constants/colors";
 
 const EVENT_CATEGORIES: { value: EventCategory; labelKey: string }[] = [
   { value: "festival", labelKey: "festivals" },
@@ -66,7 +68,7 @@ export default function PostEventScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsMultipleSelection: true,
       quality: 0.8,
     });
@@ -115,7 +117,7 @@ export default function PostEventScreen() {
         [{ text: t("done"), onPress: () => router.back() }]
       );
     } catch (error) {
-      Alert.alert(t("error"), t("pleaseTryAgain"));
+      Alert.alert(t("error"), t(getSubmitErrorKey(error)));
     } finally {
       setIsLoading(false);
     }
@@ -138,9 +140,7 @@ export default function PostEventScreen() {
           entering={FadeInDown.delay(100).duration(600)}
           style={[styles.header, isRTL && styles.headerRTL]}
         >
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backText}>{t("back")}</Text>
-          </Pressable>
+          <BackButton />
           <Text style={[styles.title, isRTL && styles.textRTL]}>
             {t("postEvent")}
           </Text>
@@ -343,17 +343,9 @@ const styles = StyleSheet.create({
   headerRTL: {
     alignItems: "flex-end",
   },
-  backButton: {
-    marginBottom: 8,
-  },
-  backText: {
-    fontSize: 15,
-    color: "#0D7A5F",
-    fontWeight: "500",
-  },
   title: {
     fontSize: 28,
-    fontWeight: "700",
+    fontFamily: fonts.bold,
     color: "#1A1A1A",
     letterSpacing: -0.5,
   },
@@ -366,7 +358,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
     color: "#1A1A1A",
     marginBottom: 8,
     marginTop: 16,
@@ -411,7 +403,7 @@ const styles = StyleSheet.create({
   typeButtonText: {
     fontSize: 14,
     color: "#737373",
-    fontWeight: "500",
+    fontFamily: fonts.medium,
   },
   typeButtonTextSelected: {
     color: "#FFFFFF",
@@ -428,7 +420,7 @@ const styles = StyleSheet.create({
   imagePickerText: {
     fontSize: 15,
     color: "#0D7A5F",
-    fontWeight: "500",
+    fontFamily: fonts.medium,
   },
   imagesContainer: {
     flexDirection: "row",
@@ -458,7 +450,7 @@ const styles = StyleSheet.create({
   removeImageText: {
     color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: "700",
+    fontFamily: fonts.bold,
   },
   submitButton: {
     marginTop: 24,

@@ -97,7 +97,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontFamily: fonts.semibold,
-    fontWeight: "700",
     color: "#FFFFFF",
     marginBottom: 6,
   },

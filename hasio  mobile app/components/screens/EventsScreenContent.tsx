@@ -126,7 +126,6 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 34,
-    fontWeight: "700",
     fontFamily: fonts.serif,
     color: colors.ink,
     letterSpacing: -0.5,
@@ -154,7 +153,6 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: "600",
     fontFamily: fonts.semibold,
     color: colors.ink,
     marginBottom: 8,

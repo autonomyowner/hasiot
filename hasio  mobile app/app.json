@@ -9,18 +9,13 @@
     "userInterfaceStyle": "automatic",
     "sdkVersion": "54.0.0",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/IconKitchen-Output/android/play_store_512.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FAF7F2"
-    },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.hasio.travel",
-      "icon": "./assets/IconKitchen-Output/android/play_store_512.png",
+      "userInterfaceStyle": "light",
+      "buildNumber": "1",
+      "icon": "./assets/icon-ios-1024.png",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "Hasio needs access to your photos to save and share your travel moments.",
-        "NSCameraUsageDescription": "Hasio needs access to your camera to capture travel moments.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -50,9 +45,18 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": false,
+          "photosPermission": "Hasio uses your photo library so you can attach pictures to your travel moments, listings, and verification documents.",
           "cameraPermission": false,
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FAF7F2",
+          "image": "./assets/icon-ios-1024.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
         }
       ],
       "expo-updates",

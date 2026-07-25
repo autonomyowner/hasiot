@@ -24,6 +24,7 @@ export default function ProviderLayout() {
       }}
     >
       <Stack.Screen name="dashboard" />
+      <Stack.Screen name="verification" />
       <Stack.Screen name="post-service" />
       <Stack.Screen name="my-services" />
     </Stack>

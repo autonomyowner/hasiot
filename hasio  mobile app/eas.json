@@ -26,8 +26,8 @@
         "distribution": "internal"
       },
       "env": {
-        "EXPO_PUBLIC_CONVEX_URL": "https://limitless-mockingbird-449.eu-west-1.convex.cloud",
-        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://limitless-mockingbird-449.eu-west-1.convex.site"
+        "EXPO_PUBLIC_CONVEX_URL": "https://hearty-ram-74.eu-west-1.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site"
       }
     },
     "production": {
@@ -51,6 +51,13 @@
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
         "track": "production"
+      },
+      "ios": {
+        "ascApiKeyPath": "./appstore-connect-api-key.p8",
+        "ascApiKeyIssuerId": "REPLACE_WITH_ASC_API_KEY_ISSUER_ID",
+        "ascApiKeyId": "REPLACE_WITH_ASC_API_KEY_ID",
+        "ascAppId": "REPLACE_WITH_ASC_APP_ID",
+        "appleTeamId": "REPLACE_WITH_APPLE_TEAM_ID"
       }
     }
   }

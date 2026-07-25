@@ -105,7 +105,11 @@ export function LodgingCard({
         </Pressable>
 
         {/* Favorite Button */}
-        <Pressable style={styles.favoriteButton} onPress={toggleFavorite}>
+        <Pressable
+          style={styles.favoriteButton}
+          onPress={toggleFavorite}
+          hitSlop={10}
+        >
           <Feather
             name="heart"
             size={18}
@@ -124,7 +128,13 @@ export function LodgingCard({
       {/* Content */}
       <View style={[styles.content, isRTL && styles.contentRTL]}>
         {/* Type Badge */}
-        <View style={[styles.typeBadge, { backgroundColor: typeColor }]}>
+        <View
+          style={[
+            styles.typeBadge,
+            isRTL && styles.typeBadgeRTL,
+            { backgroundColor: typeColor },
+          ]}
+        >
           <Text style={styles.typeText}>{typeLabel}</Text>
         </View>
 
@@ -193,7 +203,6 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 12,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
   },
   favoriteButton: {
     position: "absolute",
@@ -221,7 +230,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#FFFFFF",
     fontFamily: fonts.bold,
-    fontWeight: "700",
     lineHeight: 18,
   },
   content: {
@@ -238,16 +246,19 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     marginBottom: 10,
   },
+  // `contentRTL` sets alignItems: "flex-end", but a child's own alignSelf wins,
+  // so the badge needs an explicit RTL override to flip with the rest.
+  typeBadgeRTL: {
+    alignSelf: "flex-end",
+  },
   typeText: {
     color: "#FFFFFF",
     fontSize: 11.5,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
   },
   name: {
     fontSize: 16.5,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
     color: colors.ink,
     marginBottom: 4,
   },
@@ -260,13 +271,11 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 16,
     fontFamily: fonts.bold,
-    fontWeight: "700",
     color: colors.primary.DEFAULT,
   },
   priceUnit: {
     fontSize: 13,
     fontFamily: fonts.regular,
-    fontWeight: "400",
     color: colors.onSurface.muted,
   },
   textRTL: {

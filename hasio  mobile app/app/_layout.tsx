@@ -61,6 +61,7 @@ function InnerLayout() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="business" />
         <Stack.Screen name="provider" />
+        <Stack.Screen name="blocked-accounts" />
       </Stack>
       <StatusBar style="dark" />
     </>

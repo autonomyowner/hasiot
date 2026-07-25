@@ -12,12 +12,14 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { TranslationKey } from "@/constants/translations";
+import { fonts } from "@/constants/colors";
 
 type TargetType = "listing" | "service" | "review";
 
@@ -45,6 +47,7 @@ export function ReportSheet({
   ownerId,
 }: ReportSheetProps) {
   const { t, isRTL } = useLanguage();
+  const insets = useSafeAreaInsets();
   const { ref: keyboardRef, overlap: keyboardOverlap } = useKeyboardOverlap();
   const { isAuthenticated } = useConvexAuth();
   const reportContent = useMutation(api.moderation.mutations.reportContent);
@@ -128,7 +131,18 @@ export function ReportSheet({
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         pointerEvents="box-none"
       >
-      <View ref={keyboardRef} style={[styles.sheet, { paddingBottom: 24 + keyboardOverlap }]}>
+      {/* keyboardOverlap is Android-only (0 on iOS, where KeyboardAvoidingView
+          handles it), so on iOS this always clears the home indicator. */}
+      <View
+        ref={keyboardRef}
+        style={[
+          styles.sheet,
+          {
+            paddingBottom:
+              keyboardOverlap > 0 ? keyboardOverlap + 24 : insets.bottom + 24,
+          },
+        ]}
+      >
         <View style={styles.handle} />
         <ScrollView
           keyboardShouldPersistTaps="handled"
@@ -228,7 +242,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: "85%",
-    paddingBottom: 24,
   },
   handle: {
     width: 40,
@@ -246,7 +259,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: "700",
+    fontFamily: fonts.bold,
     color: "#111827",
     marginBottom: 4,
   },
@@ -296,7 +309,7 @@ const styles = StyleSheet.create({
   },
   reasonLabelActive: {
     color: "#0D7A5F",
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
   },
   detailsInput: {
     marginTop: 12,
@@ -322,7 +335,7 @@ const styles = StyleSheet.create({
   submitText: {
     color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
   },
   blockBtn: {
     marginTop: 12,
@@ -335,7 +348,7 @@ const styles = StyleSheet.create({
   blockText: {
     color: "#DC2626",
     fontSize: 15,
-    fontWeight: "500",
+    fontFamily: fonts.medium,
   },
   cancelBtn: {
     marginTop: 12,

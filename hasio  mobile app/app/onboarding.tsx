@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  Dimensions,
-  SafeAreaView,
+  ScrollView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
 import Animated, {
@@ -19,8 +19,7 @@ import Animated, {
 import { useAppStore } from "@/stores/appStore";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui";
-
-const { width, height } = Dimensions.get("window");
+import { fonts } from "@/constants/colors";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -56,6 +55,15 @@ export default function OnboardingScreen() {
       <View style={styles.overlay} />
 
       <SafeAreaView style={styles.safeArea}>
+        {/* The layout is bottom-anchored with fixed vertical margins, which
+            overflows on short devices (iPhone SE) — scrolling is the fallback,
+            and flexGrow keeps the anchored look everywhere else. */}
+        <ScrollView
+          style={styles.safeArea}
+          contentContainerStyle={styles.scrollContent}
+          bounces={false}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Content */}
         <View style={styles.content}>
           {/* Hero Section */}
@@ -110,6 +118,7 @@ export default function OnboardingScreen() {
             </Pressable>
           </Animated.View>
         </View>
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
@@ -166,8 +175,6 @@ const styles = StyleSheet.create({
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
-    width: width,
-    height: height,
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -176,9 +183,11 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: "flex-end",
+  },
+  content: {
     paddingHorizontal: 24,
     paddingBottom: 40,
   },
@@ -190,7 +199,7 @@ const styles = StyleSheet.create({
   },
   heroGreeting: {
     fontSize: 36,
-    fontWeight: "700",
+    fontFamily: fonts.bold,
     color: "#FFFFFF",
     marginBottom: 12,
     letterSpacing: -0.5,
@@ -209,7 +218,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
     color: "rgba(255, 255, 255, 0.7)",
     marginBottom: 12,
     textTransform: "uppercase",
@@ -235,7 +244,7 @@ const styles = StyleSheet.create({
   },
   languageButtonText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
     color: "rgba(255, 255, 255, 0.8)",
   },
   languageButtonTextSelected: {
@@ -256,6 +265,6 @@ const styles = StyleSheet.create({
   skipText: {
     fontSize: 15,
     color: "rgba(255, 255, 255, 0.7)",
-    fontWeight: "500",
+    fontFamily: fonts.medium,
   },
 });

@@ -649,6 +649,5 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 22,
     fontFamily: fonts.bold,
-    fontWeight: "700",
   },
 });

@@ -10,12 +10,13 @@ import {
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { BackButton } from "@/components/ui";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { ApprovalStatus } from "@/types";
+import { fonts } from "@/constants/colors";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#D97706",
@@ -24,7 +25,6 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function MyServicesScreen() {
-  const router = useRouter();
   const { t, isRTL, language } = useLanguage();
   const [filter, setFilter] = useState<"all" | string>("all");
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -61,9 +61,7 @@ export default function MyServicesScreen() {
           entering={FadeInDown.delay(100).duration(600)}
           style={[styles.header, isRTL && styles.headerRTL]}
         >
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <Text style={styles.backText}>{t("back")}</Text>
-          </Pressable>
+          <BackButton />
           <Text style={[styles.title, isRTL && styles.textRTL]}>
             {t("myServices")}
           </Text>
@@ -174,17 +172,9 @@ const styles = StyleSheet.create({
   headerRTL: {
     alignItems: "flex-end",
   },
-  backButton: {
-    marginBottom: 8,
-  },
-  backText: {
-    fontSize: 15,
-    color: "#0D7A5F",
-    fontWeight: "500",
-  },
   title: {
     fontSize: 28,
-    fontWeight: "700",
+    fontFamily: fonts.bold,
     color: "#1A1A1A",
     letterSpacing: -0.5,
   },
@@ -216,7 +206,7 @@ const styles = StyleSheet.create({
   filterText: {
     fontSize: 14,
     color: "#737373",
-    fontWeight: "500",
+    fontFamily: fonts.medium,
   },
   filterTextActive: {
     color: "#FFFFFF",
@@ -248,7 +238,7 @@ const styles = StyleSheet.create({
   },
   listingName: {
     fontSize: 17,
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
     color: "#1A1A1A",
     marginBottom: 4,
   },
@@ -267,7 +257,7 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     color: "#FFFFFF",
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
     textTransform: "capitalize",
   },
   emptyContainer: {

@@ -61,6 +61,11 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 }
 
+// Deliberately the one place in the app that still uses `fontWeight` instead of
+// a `fontFamily` from `constants/colors`. This boundary is mounted outside the
+// font-loading gate in app/_layout.tsx, so a custom family may not be
+// registered when it paints — and it renders Arabic, which our Latin-only
+// families do not cover. A crash screen should favour legibility over branding.
 const styles = StyleSheet.create({
   container: {
     flex: 1,

@@ -64,7 +64,6 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: "500",
     fontFamily: fonts.medium,
     color: colors.onSurface.variant,
   },

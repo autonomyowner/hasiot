@@ -145,7 +145,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 12,
     fontFamily: fonts.bold,
-    fontWeight: "700",
   },
   bubbleWrapper: {
     flex: 1,
@@ -182,7 +181,6 @@ const styles = StyleSheet.create({
   userText: {
     color: "#FFFFFF",
     fontFamily: fonts.medium,
-    fontWeight: "500",
   },
   botText: {
     color: colors.ink,
@@ -224,6 +222,5 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: "#DC2626",
     fontFamily: fonts.semibold,
-    fontWeight: "600",
   },
 });

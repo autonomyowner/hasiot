@@ -77,7 +77,7 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.8,
@@ -265,12 +265,16 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
       >
         <Pressable style={styles.viewerOverlay} onPress={() => setViewingMoment(null)}>
           <View style={[styles.viewerHeader, { paddingTop: insets.top + 8 }]}>
-            <Pressable onPress={() => setViewingMoment(null)} style={styles.viewerClose}>
+            <Pressable
+              onPress={() => setViewingMoment(null)}
+              style={styles.viewerClose}
+              hitSlop={8}
+            >
               <Text style={styles.viewerCloseText}>✕</Text>
             </Pressable>
           </View>
           {viewingMoment && (
-            <View style={styles.viewerContent}>
+            <View style={[styles.viewerContent, { paddingBottom: insets.bottom }]}>
               <Animated.Image
                 source={{ uri: viewingMoment.image }}
                 style={styles.viewerImage}
@@ -444,7 +448,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 24,
     lineHeight: 28,
-    fontWeight: "600",
   },
   // Segmented control
   segmentWrapper: {
@@ -518,7 +521,6 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontFamily: fonts.serif,
     fontSize: 24,
-    fontWeight: "600",
     color: colors.ink,
     marginBottom: 8,
   },
@@ -556,7 +558,6 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontFamily: fonts.serif,
     fontSize: 24,
-    fontWeight: "700",
     color: colors.ink,
   },
   cancelText: {
@@ -623,7 +624,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.regular,
     color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: "600",
   },
   viewerContent: {
     flex: 1,

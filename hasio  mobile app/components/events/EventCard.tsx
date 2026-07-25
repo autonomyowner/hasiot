@@ -163,7 +163,6 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 12,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
   },
   categoryBadge: {
     position: "absolute",
@@ -177,7 +176,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 11.5,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
   },
   moreButton: {
     position: "absolute",
@@ -194,7 +192,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#FFFFFF",
     fontFamily: fonts.bold,
-    fontWeight: "700",
     lineHeight: 18,
   },
   content: {
@@ -207,7 +204,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 16.5,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
     color: colors.ink,
     marginBottom: 6,
     lineHeight: 22,
@@ -216,7 +212,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontFamily: fonts.medium,
     color: colors.primary.DEFAULT,
-    fontWeight: "500",
     marginBottom: 4,
   },
   location: {

@@ -37,6 +37,12 @@ import { UserType } from "@/types";
 const PRIVACY_POLICY_URL = "https://www.hasio.xyz/privacy-policy.html";
 const TERMS_OF_SERVICE_URL = "https://www.hasio.xyz/terms-of-service.html";
 
+const ANDROID_PACKAGE = "com.hasio.travel";
+// Set this once the app has an App Store Connect record. Until then the
+// "Rate app" row is hidden on iOS rather than linking to a dead page.
+const IOS_APP_STORE_ID: string | null = null;
+const CAN_RATE_APP = Platform.OS !== "ios" || IOS_APP_STORE_ID !== null;
+
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function SettingsScreenContent() {
@@ -49,7 +55,7 @@ export function SettingsScreenContent() {
   const clearUserData = useAppStore((state) => state.clearUserData);
   const clearMoments = useMomentsStore((state) => state.clearMoments);
 
-  const { isSignedIn, isBusinessOwner, isServiceProvider, isAdmin, userType: convexUserType, user } = useConvexUser();
+  const { isSignedIn, isBusinessOwner, isServiceProvider, isAdmin, isApproved, verificationStatus, userType: convexUserType, user } = useConvexUser();
   const userType: UserType = convexUserType === "business_owner" ? "business" : convexUserType === "service_provider" ? "provider" : convexUserType === "admin" ? "admin" : "user";
 
   // Visual-only display values for the profile header (best-effort from the user record).
@@ -148,11 +154,18 @@ export function SettingsScreenContent() {
       await setUserRole({
         role: newType === "business" ? "business_owner" : "service_provider",
       });
-      Alert.alert(t("upgradeSuccess"), "", [
+      // The new role starts unapproved, so send them straight to verification —
+      // otherwise posting silently fails server-side with "must be approved".
+      Alert.alert(t("upgradeSuccess"), t("verificationUnverifiedBody"), [
         {
           text: t("done"),
           onPress: () => {
             setShowUpgradeModal(false);
+            router.push(
+              newType === "business"
+                ? "/business/verification"
+                : "/provider/verification"
+            );
           },
         },
       ]);
@@ -164,19 +177,19 @@ export function SettingsScreenContent() {
   };
 
   const handleRateApp = async () => {
-    const androidPackage = "com.hasio.travel";
+    const playStoreUrl = `https://play.google.com/store/apps/details?id=${ANDROID_PACKAGE}`;
     const url = Platform.select({
-      android: `market://details?id=${androidPackage}`,
-      ios: "https://apps.apple.com/app/hasio/id0000000000", // Update with real App Store ID
-      default: `https://play.google.com/store/apps/details?id=${androidPackage}`,
+      android: `market://details?id=${ANDROID_PACKAGE}`,
+      ios: IOS_APP_STORE_ID
+        ? `https://apps.apple.com/app/id${IOS_APP_STORE_ID}?action=write-review`
+        : null,
+      default: playStoreUrl,
     });
+    if (!url) return;
+    const fallbackUrl = Platform.OS === "ios" ? url : playStoreUrl;
     try {
-      const supported = await Linking.canOpenURL(url!);
-      if (supported) {
-        await Linking.openURL(url!);
-      } else {
-        await Linking.openURL(`https://play.google.com/store/apps/details?id=${androidPackage}`);
-      }
+      const supported = await Linking.canOpenURL(url);
+      await Linking.openURL(supported ? url : fallbackUrl);
     } catch (error) {
     }
   };
@@ -283,12 +296,14 @@ export function SettingsScreenContent() {
               onPress={handleOpenTermsOfService}
             />
 
-            <SettingRow
-              label={t("rateApp")}
-              subtitle={t("shareFeedback")}
-              isRTL={isRTL}
-              onPress={handleRateApp}
-            />
+            {CAN_RATE_APP && (
+              <SettingRow
+                label={t("rateApp")}
+                subtitle={t("shareFeedback")}
+                isRTL={isRTL}
+                onPress={handleRateApp}
+              />
+            )}
 
             <SettingRow
               label={t("about")}
@@ -422,6 +437,27 @@ export function SettingsScreenContent() {
             />
           )}
 
+          {/* Verification status — only while approval is still outstanding */}
+          {(isBusinessOwner || isServiceProvider) && !isApproved && (
+            <SettingRow
+              icon="shield"
+              label={t("verificationTitle")}
+              value={
+                verificationStatus === "pending"
+                  ? t("statusPending")
+                  : t("verificationUnverifiedTitle")
+              }
+              isRTL={isRTL}
+              onPress={() =>
+                router.push(
+                  isBusinessOwner
+                    ? "/business/verification"
+                    : "/provider/verification"
+                )
+              }
+            />
+          )}
+
           <SettingRow
             icon="heart"
             label={t("favorites")}
@@ -445,11 +481,20 @@ export function SettingsScreenContent() {
           />
 
           <SettingRow
-            icon="star"
-            label={t("rateApp")}
+            icon="slash"
+            label={t("blockedAccounts")}
             isRTL={isRTL}
-            onPress={handleRateApp}
+            onPress={() => router.push("/blocked-accounts")}
           />
+
+          {CAN_RATE_APP && (
+            <SettingRow
+              icon="star"
+              label={t("rateApp")}
+              isRTL={isRTL}
+              onPress={handleRateApp}
+            />
+          )}
 
           <SettingRow
             icon="info"
@@ -525,7 +570,7 @@ export function SettingsScreenContent() {
         onRequestClose={() => setShowUpgradeModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 24 }]}>
             <Text style={[styles.modalTitle, isRTL && styles.textRTL]}>
               {t("upgradeAccount")}
             </Text>
@@ -585,7 +630,7 @@ export function SettingsScreenContent() {
         onRequestClose={() => !isDeleting && setShowDeleteModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 24 }]}>
             <Text style={[styles.modalTitle, isRTL && styles.textRTL, styles.destructiveText]}>
               {t("deleteAccountConfirmTitle")}
             </Text>
@@ -786,7 +831,6 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: fonts.serif,
     fontSize: 28,
-    fontWeight: "700",
     color: colors.ink,
     letterSpacing: -0.5,
   },
@@ -797,7 +841,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: fonts.semibold,
     fontSize: 13,
-    fontWeight: "600",
     color: colors.onSurface.muted,
     textTransform: "uppercase",
     letterSpacing: 1,
@@ -1015,7 +1058,6 @@ const styles = StyleSheet.create({
   settingLabel: {
     fontFamily: fonts.medium,
     fontSize: 16,
-    fontWeight: "500",
     color: colors.ink,
   },
   settingSubtitle: {
@@ -1028,7 +1070,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: 15,
     color: colors.onSurface.muted,
-    fontWeight: "500",
   },
   destructiveText: {
     color: colors.signOut,
@@ -1042,7 +1083,6 @@ const styles = StyleSheet.create({
   signOutText: {
     fontFamily: fonts.medium,
     fontSize: 16,
-    fontWeight: "500",
     color: colors.signOut,
   },
   appInfo: {
@@ -1099,7 +1139,6 @@ const styles = StyleSheet.create({
   guestTitle: {
     fontFamily: fonts.serif,
     fontSize: 24,
-    fontWeight: "700",
     color: colors.ink,
     marginBottom: 8,
     textAlign: "center",
@@ -1130,7 +1169,6 @@ const styles = StyleSheet.create({
   guestSignInButtonText: {
     fontFamily: fonts.semibold,
     fontSize: 16,
-    fontWeight: "600",
     color: colors.surface.DEFAULT,
   },
   // Modal Styles
@@ -1145,12 +1183,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     paddingHorizontal: 24,
     paddingTop: 24,
-    paddingBottom: 40,
+    paddingBottom: 24,
   },
   modalTitle: {
     fontFamily: fonts.serif,
     fontSize: 24,
-    fontWeight: "700",
     color: colors.ink,
     marginBottom: 8,
   },
@@ -1171,7 +1208,6 @@ const styles = StyleSheet.create({
   upgradeOptionTitle: {
     fontFamily: fonts.semibold,
     fontSize: 16,
-    fontWeight: "600",
     color: colors.ink,
     marginBottom: 4,
   },
@@ -1189,7 +1225,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: 16,
     color: colors.onSurface.muted,
-    fontWeight: "500",
   },
   deleteButton: {
     backgroundColor: colors.error,
@@ -1205,6 +1240,5 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semibold,
     fontSize: 16,
     color: colors.surface.DEFAULT,
-    fontWeight: "600",
   },
 });

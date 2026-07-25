@@ -8,6 +8,7 @@ dist/
 *.jks
 *.p8
 *.p12
+google-service-account.json
 *.key
 *.mobileprovision
 *.orig.*

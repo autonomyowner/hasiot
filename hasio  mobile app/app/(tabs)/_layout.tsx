@@ -196,6 +196,8 @@ function TabButton({ icon, label, isActive, onPress }: TabButtonProps) {
           { color: tint, fontFamily: isActive ? fonts.semibold : fonts.medium },
         ]}
         numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
       >
         {label}
       </Text>
@@ -214,9 +216,11 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
   },
+  // Seven tabs have to fit across the narrowest phone we support, so the
+  // horizontal padding here is deliberately tight.
   tabBarContainer: {
     backgroundColor: "transparent",
-    paddingHorizontal: 16,
+    paddingHorizontal: 10,
     paddingTop: 8,
   },
   tabBarPill: {
@@ -226,7 +230,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.96)",
     borderRadius: 30,
     paddingVertical: 9,
-    paddingHorizontal: 6,
+    paddingHorizontal: 2,
     borderWidth: 1,
     borderColor: "rgba(31,29,23,0.04)",
     shadowColor: "#1F1D17",
@@ -244,6 +248,6 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     fontSize: 10,
-    letterSpacing: 0.1,
+    letterSpacing: 0,
   },
 });

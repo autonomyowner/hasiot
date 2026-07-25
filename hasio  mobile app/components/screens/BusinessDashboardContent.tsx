@@ -15,6 +15,8 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useConvexUser } from "@/hooks/useConvexUser";
+import { VerificationBanner } from "@/components/VerificationBanner";
 import { colors, fonts } from "@/constants/colors";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -23,6 +25,7 @@ export default function BusinessDashboardContent() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, isRTL } = useLanguage();
+  const { verificationStatus, isApproved } = useConvexUser();
 
   const quickActions = [
     { key: "postLodging", route: "/business/post-lodging" },
@@ -88,14 +91,24 @@ export default function BusinessDashboardContent() {
           </View>
         </Animated.View>
 
-        <Animated.View
-          entering={FadeInDown.delay(200).duration(600)}
-          style={styles.noteContainer}
-        >
-          <Text style={[styles.noteText, isRTL && styles.textRTL]}>
-            {t("firstListingNote")}
-          </Text>
+        <Animated.View entering={FadeInDown.delay(200).duration(600)}>
+          <VerificationBanner
+            status={verificationStatus}
+            onPress={() => router.push("/business/verification")}
+            isRTL={isRTL}
+          />
         </Animated.View>
+
+        {isApproved && (
+          <Animated.View
+            entering={FadeInDown.delay(200).duration(600)}
+            style={styles.noteContainer}
+          >
+            <Text style={[styles.noteText, isRTL && styles.textRTL]}>
+              {t("firstListingNote")}
+            </Text>
+          </Animated.View>
+        )}
 
         <Animated.View entering={FadeInDown.delay(300).duration(600)}>
           <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
@@ -108,9 +121,26 @@ export default function BusinessDashboardContent() {
                 label={t(action.key as any)}
                 onPress={() => router.push(action.route as any)}
                 isRTL={isRTL}
+                locked={!isApproved}
+                lockedLabel={t("verificationLocked")}
               />
             ))}
           </View>
+        </Animated.View>
+
+        {/* Always reachable — owners need to see the status of what they posted,
+            including while the account itself is still pending. */}
+        <Animated.View entering={FadeInDown.delay(350).duration(600)}>
+          <Pressable
+            style={styles.secondaryAction}
+            onPress={() => router.push("/business/my-listings")}
+            accessibilityRole="button"
+            accessibilityLabel={t("myListings")}
+          >
+            <Text style={[styles.secondaryActionText, isRTL && styles.textRTL]}>
+              {t("myListings")}
+            </Text>
+          </Pressable>
         </Animated.View>
 
         <View style={styles.bottomSpacing} />
@@ -139,18 +169,39 @@ function StatCard({
   );
 }
 
-function ActionCard({ label, onPress, isRTL }: { label: string; onPress: () => void; isRTL: boolean }) {
+function ActionCard({
+  label,
+  onPress,
+  isRTL,
+  locked,
+  lockedLabel,
+}: {
+  label: string;
+  onPress: () => void;
+  isRTL: boolean;
+  locked?: boolean;
+  lockedLabel?: string;
+}) {
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
     <AnimatedPressable
-      style={[styles.actionCard, animatedStyle]}
+      style={[styles.actionCard, locked && styles.actionCardLocked, animatedStyle]}
       onPress={onPress}
-      onPressIn={() => { scale.value = withSpring(0.95, { damping: 15, stiffness: 400 }); }}
-      onPressOut={() => { scale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
+      disabled={locked}
+      accessibilityRole="button"
+      accessibilityLabel={locked ? `${label} — ${lockedLabel}` : label}
+      accessibilityState={{ disabled: !!locked }}
+      onPressIn={() => { if (!locked) scale.value = withSpring(0.95, { damping: 15, stiffness: 400 }); }}
+      onPressOut={() => { if (!locked) scale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
     >
       <View style={styles.actionTile} />
       <Text style={[styles.actionLabel, isRTL && styles.textRTL]}>{label}</Text>
+      {locked && lockedLabel ? (
+        <Text style={[styles.actionLockedLabel, isRTL && styles.textRTL]}>
+          {lockedLabel}
+        </Text>
+      ) : null}
     </AnimatedPressable>
   );
 }
@@ -261,6 +312,35 @@ const styles = StyleSheet.create({
     elevation: 2,
     minHeight: 96,
     gap: 12,
+  },
+  secondaryAction: {
+    marginHorizontal: 24,
+    marginTop: 16,
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 18,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  secondaryActionText: {
+    fontFamily: fonts.semibold,
+    fontSize: 16,
+    color: colors.ink,
+  },
+  actionCardLocked: {
+    opacity: 0.55,
+    shadowOpacity: 0,
+    elevation: 0,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  actionLockedLabel: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    color: colors.onSurface.muted,
+    marginTop: -6,
+    textAlign: "center",
   },
   actionTile: {
     width: 46,

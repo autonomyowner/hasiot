@@ -65,7 +65,7 @@ export function MomentCard({ moment, isRTL, onPress, onDelete }: MomentCardProps
 
       {/* Delete Button */}
       {onDelete && (
-        <Pressable style={styles.deleteButton} onPress={onDelete}>
+        <Pressable style={styles.deleteButton} onPress={onDelete} hitSlop={10}>
           <Text style={styles.deleteButtonText}>×</Text>
         </Pressable>
       )}
@@ -131,16 +131,15 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 11,
     fontFamily: fonts.medium,
-    fontWeight: "600",
   },
   deleteButton: {
     position: "absolute",
     top: 8,
     right: 8,
     backgroundColor: "rgba(220, 38, 38, 0.9)",
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -148,7 +147,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 18,
     fontFamily: fonts.semibold,
-    fontWeight: "600",
     lineHeight: 20,
   },
   noteContainer: {

@@ -79,7 +79,6 @@ const styles = StyleSheet.create({
     color: colors.ink,
     paddingVertical: 8,
     fontFamily: fonts.regular,
-    fontWeight: "400",
   },
   inputRTL: {
     writingDirection: "rtl",

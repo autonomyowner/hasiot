@@ -1,6 +1,7 @@
 import * as FileSystem from "expo-file-system";
 import { api } from "@/backend";
 import { ConvexReactClient } from "convex/react";
+import type { Id } from "../../convex/_generated/dataModel";
 import { convex } from "./convex";
 
 /**
@@ -42,6 +43,40 @@ export async function uploadImageToConvex(
   }
 
   return url;
+}
+
+/**
+ * Upload a verification document (business licence, CR, ID) to Convex storage.
+ *
+ * Unlike `uploadImageToConvex` this returns the raw storageId, because
+ * `saveBusinessDoc` stores an `_storage` id on the user record — the file is
+ * private and is only ever resolved to a URL by an admin via `getBusinessDocUrl`.
+ */
+export async function uploadDocumentToConvex(
+  fileUri: string,
+  mimeType: string = "image/jpeg",
+  client: ConvexReactClient = convex
+): Promise<Id<"_storage">> {
+  const uploadUrl = await client.mutation(api.users.mutations.generateUploadUrl);
+
+  const response = await FileSystem.uploadAsync(uploadUrl, fileUri, {
+    httpMethod: "POST",
+    uploadType: (FileSystem as any).FileSystemUploadType?.BINARY_CONTENT ?? 0,
+    headers: {
+      "Content-Type": mimeType,
+    },
+  });
+
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(`Upload failed with status ${response.status}`);
+  }
+
+  const { storageId } = JSON.parse(response.body);
+  if (!storageId) {
+    throw new Error("Upload succeeded but no storageId was returned");
+  }
+
+  return storageId;
 }
 
 /**

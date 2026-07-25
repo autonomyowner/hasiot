@@ -24,6 +24,7 @@ export default function BusinessLayout() {
       }}
     >
       <Stack.Screen name="dashboard" />
+      <Stack.Screen name="verification" />
       <Stack.Screen name="post-lodging" />
       <Stack.Screen name="post-food" />
       <Stack.Screen name="post-event" />

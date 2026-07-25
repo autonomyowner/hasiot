@@ -253,6 +253,42 @@ export const translations = {
     awaitingReview: "Awaiting admin review",
     firstListingNote: "Your first listing requires approval",
 
+    // Account Verification
+    verificationTitle: "Verify your account",
+    verificationSubtitle:
+      "Upload a business document so our team can confirm your account. Posting unlocks once it's approved.",
+    verificationWhyTitle: "Why we ask for this",
+    verificationWhyBody:
+      "We check every business and service provider before their content appears in Hasio. This keeps listings trustworthy for travellers.",
+    verificationDocLabel: "Business document",
+    verificationDocHint:
+      "A clear photo or scan of your commercial registration, freelance licence, or official ID.",
+    verificationChooseFile: "Choose document",
+    verificationReplaceDoc: "Replace document",
+    verificationSubmit: "Submit for review",
+    verificationNoDocSelected: "Please add your business document first",
+    verificationSubmitted: "Submitted for review",
+    verificationSubmittedMessage:
+      "Our team usually reviews accounts within 1–2 business days. We'll unlock posting as soon as you're approved.",
+    verificationPrivacyNote:
+      "Your document is stored privately and is only visible to the Hasio review team. It is never shown on your public profile.",
+    verificationUnverifiedTitle: "Verification required",
+    verificationUnverifiedBody:
+      "Add your business document to unlock posting.",
+    verificationUnverifiedCta: "Start verification",
+    verificationPendingTitle: "Under review",
+    verificationPendingBody:
+      "Your document is with our review team. Posting unlocks once you're approved.",
+    verificationPendingCta: "View status",
+    verificationLocked: "Available after approval",
+
+    // Submit errors
+    errorNotApproved:
+      "Your account is still awaiting approval. You can post as soon as our team approves it.",
+    errorSessionExpired: "Your session expired. Please sign in again.",
+    errorWrongRole: "Your account type can't post this kind of entry.",
+    errorUploadFailed: "We couldn't upload your images. Check your connection and try again.",
+
     // Service Types
     tourGuide: "Tour Guide",
     photographer: "Photographer",
@@ -397,6 +433,14 @@ export const translations = {
     blockSuccess: "Provider blocked",
     blockFailed: "Could not block. Please try again.",
     unblock: "Unblock",
+    blockedAccounts: "Blocked accounts",
+    blockedAccountsSubtitle:
+      "Listings and services from these accounts are hidden from you.",
+    blockedAccountsEmpty: "You haven't blocked any accounts.",
+    unblockConfirmTitle: "Unblock this account?",
+    unblockConfirmMessage: "Their listings and services will appear again.",
+    unblockFailed: "Could not unblock. Please try again.",
+    blockedAccountFallbackName: "Hasio account",
 
     // Permission alerts
     permissionRequired: "Permission Required",
@@ -670,6 +714,41 @@ export const translations = {
     awaitingReview: "في انتظار مراجعة المسؤول",
     firstListingNote: "إعلانك الأول يتطلب موافقة",
 
+    // Account Verification
+    verificationTitle: "توثيق حسابك",
+    verificationSubtitle:
+      "ارفع وثيقة نشاطك التجاري ليتمكن فريقنا من التحقق من حسابك. سيتم تفعيل النشر فور الموافقة.",
+    verificationWhyTitle: "لماذا نطلب ذلك؟",
+    verificationWhyBody:
+      "نراجع كل صاحب نشاط ومقدم خدمة قبل ظهور محتواه في هاسيو، حفاظاً على ثقة الزوار بالمحتوى المعروض.",
+    verificationDocLabel: "وثيقة النشاط",
+    verificationDocHint:
+      "صورة أو نسخة واضحة من السجل التجاري، أو رخصة العمل الحر، أو الهوية الرسمية.",
+    verificationChooseFile: "اختيار الوثيقة",
+    verificationReplaceDoc: "استبدال الوثيقة",
+    verificationSubmit: "إرسال للمراجعة",
+    verificationNoDocSelected: "الرجاء إضافة وثيقة النشاط أولاً",
+    verificationSubmitted: "تم الإرسال للمراجعة",
+    verificationSubmittedMessage:
+      "يراجع فريقنا الحسابات عادةً خلال يوم إلى يومي عمل. سنفعّل النشر فور الموافقة على حسابك.",
+    verificationPrivacyNote:
+      "تُحفظ وثيقتك بشكل خاص ولا يطّلع عليها سوى فريق المراجعة في هاسيو، ولا تظهر أبداً في ملفك العام.",
+    verificationUnverifiedTitle: "التوثيق مطلوب",
+    verificationUnverifiedBody: "أضف وثيقة نشاطك لتفعيل النشر.",
+    verificationUnverifiedCta: "ابدأ التوثيق",
+    verificationPendingTitle: "قيد المراجعة",
+    verificationPendingBody:
+      "وثيقتك لدى فريق المراجعة. سيتم تفعيل النشر فور الموافقة.",
+    verificationPendingCta: "عرض الحالة",
+    verificationLocked: "متاح بعد الموافقة",
+
+    // Submit errors
+    errorNotApproved:
+      "لا يزال حسابك بانتظار الموافقة. ستتمكن من النشر فور موافقة فريقنا.",
+    errorSessionExpired: "انتهت جلستك. الرجاء تسجيل الدخول مرة أخرى.",
+    errorWrongRole: "نوع حسابك لا يسمح بنشر هذا النوع من المحتوى.",
+    errorUploadFailed: "تعذّر رفع الصور. تحقق من اتصالك وحاول مرة أخرى.",
+
     // Service Types
     tourGuide: "مرشد سياحي",
     photographer: "مصور",
@@ -814,6 +893,14 @@ export const translations = {
     blockSuccess: "تم حظر المزود",
     blockFailed: "تعذر الحظر. يرجى المحاولة مرة أخرى.",
     unblock: "إلغاء الحظر",
+    blockedAccounts: "الحسابات المحظورة",
+    blockedAccountsSubtitle:
+      "إعلانات وخدمات هذه الحسابات مخفية عنك.",
+    blockedAccountsEmpty: "لم تحظر أي حساب.",
+    unblockConfirmTitle: "إلغاء حظر هذا الحساب؟",
+    unblockConfirmMessage: "ستظهر إعلاناته وخدماته مرة أخرى.",
+    unblockFailed: "تعذّر إلغاء الحظر. حاول مرة أخرى.",
+    blockedAccountFallbackName: "حساب هاسيو",
 
     // Permission alerts
     permissionRequired: "إذن مطلوب",

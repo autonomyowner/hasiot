@@ -23,6 +23,7 @@ import { api } from "@/backend";
 import { signIn, signUp, signOut, getAuthErrorKey } from "@/lib/auth";
 import { convex, refreshAuth } from "@/lib/convex";
 import { useAppStore } from "@/stores/appStore";
+import { fonts } from "@/constants/colors";
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -292,7 +293,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: "700",
+    fontFamily: fonts.bold,
     color: "#1A1A1A",
     marginBottom: 8,
     letterSpacing: -0.5,
@@ -313,7 +314,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
     color: "#404040",
   },
   input: {
@@ -362,7 +363,7 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: fonts.bold,
     color: "#FFFFFF",
   },
   toggleMode: {
@@ -375,6 +376,6 @@ const styles = StyleSheet.create({
   },
   toggleLink: {
     color: "#0D7A5F",
-    fontWeight: "600",
+    fontFamily: fonts.semibold,
   },
 });
