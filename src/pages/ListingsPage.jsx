@@ -116,6 +116,12 @@ export default function ListingsPage() {
     >
       <Navbar lang={lang} onLangToggle={toggleLang} />
 
+      {/* Hero bar */}
+      <div className="listings-hero-bar">
+        <h1>{t.title}</h1>
+        <p>{t.subtitle}</p>
+      </div>
+
       {/* Sticky search bar */}
       <div className="listings-header">
         <div className="listings-header-inner">
@@ -130,20 +136,6 @@ export default function ListingsPage() {
               {count} {t.listings}
             </span>
           )}
-          <button
-            onClick={toggleLang}
-            style={{
-              border: '1px solid var(--color-border)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '6px 12px',
-              fontSize: 13,
-              cursor: 'pointer',
-              color: 'var(--color-text-muted)',
-              background: 'transparent',
-            }}
-          >
-            {t.langSwitch}
-          </button>
         </div>
       </div>
 

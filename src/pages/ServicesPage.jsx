@@ -262,7 +262,6 @@ export default function ServicesPage() {
                 ))}
               </select>
             )}
-            <button className="services-lang-btn" onClick={toggleLang}>{t.langSwitch}</button>
           </div>
 
           {/* Type filter tabs */}
