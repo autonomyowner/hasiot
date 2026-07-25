@@ -9,8 +9,11 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import * as ImagePicker from "expo-image-picker";
 import Animated, {
   FadeInDown,
@@ -52,6 +55,7 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
   const mountedRef = useRef(true);
 
   const [modalVisible, setModalVisible] = useState(false);
+  const { ref: keyboardRef, overlap: keyboardOverlap } = useKeyboardOverlap();
   const [newMomentImage, setNewMomentImage] = useState<string | null>(null);
   const [newMomentNote, setNewMomentNote] = useState("");
   const [newMomentLocation, setNewMomentLocation] = useState("");
@@ -294,8 +298,20 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
         transparent
         onRequestClose={() => setModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 20 }]}>
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View
+            ref={keyboardRef}
+            style={[
+              styles.modalContent,
+              {
+                paddingBottom:
+                  keyboardOverlap > 0 ? keyboardOverlap + 20 : insets.bottom + 20,
+              },
+            ]}
+          >
             <View style={[styles.modalHeader, isRTL && styles.modalHeaderRTL]}>
               <Text style={[styles.modalTitle, isRTL && styles.textRTL]}>
                 {t("addMoment")}
@@ -345,7 +361,7 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
               disabled={!newMomentImage || isSaving}
             />
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

@@ -9,10 +9,13 @@ import {
   Alert,
   TextInput,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { TranslationKey } from "@/constants/translations";
 
@@ -42,6 +45,7 @@ export function ReportSheet({
   ownerId,
 }: ReportSheetProps) {
   const { t, isRTL } = useLanguage();
+  const { ref: keyboardRef, overlap: keyboardOverlap } = useKeyboardOverlap();
   const { isAuthenticated } = useConvexAuth();
   const reportContent = useMutation(api.moderation.mutations.reportContent);
   const blockUser = useMutation(api.moderation.mutations.blockUser);
@@ -119,7 +123,12 @@ export function ReportSheet({
       onRequestClose={handleClose}
     >
       <Pressable style={styles.backdrop} onPress={handleClose} />
-      <View style={styles.sheet}>
+      <KeyboardAvoidingView
+        style={styles.avoider}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        pointerEvents="box-none"
+      >
+      <View ref={keyboardRef} style={[styles.sheet, { paddingBottom: 24 + keyboardOverlap }]}>
         <View style={styles.handle} />
         <ScrollView
           keyboardShouldPersistTaps="handled"
@@ -198,6 +207,7 @@ export function ReportSheet({
           </Pressable>
         </ScrollView>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -207,11 +217,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
   },
-  sheet: {
+  avoider: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  sheet: {
     backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

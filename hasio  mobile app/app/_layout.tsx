@@ -23,7 +23,7 @@ import "../global.css";
 SplashScreen.preventAutoHideAsync();
 
 function InnerLayout() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     InstrumentSerif_400Regular,
     Outfit_300Light,
     Outfit_400Regular,
@@ -32,13 +32,17 @@ function InnerLayout() {
     Outfit_700Bold,
   });
 
+  // Fall through on error too — a failed font download must not leave the
+  // splash screen up forever. System fonts are an acceptable fallback.
+  const fontsReady = fontsLoaded || !!fontError;
+
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsReady) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsReady]);
 
-  if (!fontsLoaded) {
+  if (!fontsReady) {
     return null;
   }
 

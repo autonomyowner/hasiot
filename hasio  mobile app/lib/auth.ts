@@ -188,6 +188,20 @@ export async function signUp(
   return { token: sessionToken, user: data.user };
 }
 
+/**
+ * Wipe all locally stored auth state. Does not call the server — use when the
+ * session is already known to be dead (e.g. token refresh returned null).
+ */
+export async function clearStoredAuth() {
+  try {
+    await SecureStore.deleteItemAsync(SESSION_TOKEN_KEY);
+    await SecureStore.deleteItemAsync(JWT_KEY);
+    await SecureStore.deleteItemAsync(SESSION_KEY);
+  } catch (e) {
+
+  }
+}
+
 export async function signOut() {
   const sessionToken = await SecureStore.getItemAsync(SESSION_TOKEN_KEY);
 
@@ -206,13 +220,7 @@ export async function signOut() {
     }
   }
 
-  try {
-    await SecureStore.deleteItemAsync(SESSION_TOKEN_KEY);
-    await SecureStore.deleteItemAsync(JWT_KEY);
-    await SecureStore.deleteItemAsync(SESSION_KEY);
-  } catch (e) {
-
-  }
+  await clearStoredAuth();
 }
 
 /** Get the stored session token (for Better-Auth API calls) */
