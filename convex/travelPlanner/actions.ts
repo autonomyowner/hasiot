@@ -5,7 +5,7 @@ import { v } from "convex/values";
 import { api } from "../_generated/api";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = "anthropic/claude-3.5-haiku";
+const MODEL = "anthropic/claude-haiku-4.5";
 
 const SYSTEM_PROMPT = `You are an Al-Ahsa travel planning assistant for Hasio (هاسيو), a travel guidance platform focused on Al-Ahsa (الأحساء), the largest governorate in Saudi Arabia's Eastern Province. You conduct thorough travel interviews to understand traveler preferences before providing personalized recommendations.
 

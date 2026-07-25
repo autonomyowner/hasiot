@@ -186,7 +186,7 @@ npx convex run listings/seedImages:addImagesToListings --prod  # add images
 
 ### AI Travel Planner
 
-`convex/travelPlanner/actions.ts` — multi-turn conversational action using OpenRouter with `anthropic/claude-3.5-haiku`. Asks follow-up questions before generating a full itinerary. Responds in the user's language. Returns JSON with `ready: false` (follow-up) or `ready: true` (full plan).
+`convex/travelPlanner/actions.ts` — multi-turn conversational action using OpenRouter with `anthropic/claude-haiku-4.5`. Asks follow-up questions before generating a full itinerary. Responds in the user's language. Returns JSON with `ready: false` (follow-up) or `ready: true` (full plan).
 
 ### Internationalization Pattern
 
