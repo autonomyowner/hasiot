@@ -2,7 +2,8 @@
 
 import { action } from "../_generated/server";
 import { v } from "convex/values";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
+import { Id } from "../_generated/dataModel";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MODEL = "anthropic/claude-haiku-4.5";
@@ -149,6 +150,7 @@ export const planTravel = action({
       role: v.string(),
       content: v.string()
     }))),
+    sessionId: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<{
     success: boolean;
@@ -178,6 +180,51 @@ export const planTravel = action({
     }
 
     const language = args.language || "ar";
+
+    // Rate limiting — every call costs OpenRouter money. Authed users get a
+    // higher daily allowance than anonymous sessions; a global cap bounds
+    // total daily spend. Old app builds that don't send sessionId share one
+    // anonymous bucket until they update.
+    let userId: Id<"users"> | undefined = undefined;
+    try {
+      const currentUser = await ctx.runQuery(api.users.queries.getCurrentUser, {});
+      if (currentUser) {
+        userId = currentUser._id;
+      }
+    } catch {
+      // Not authenticated
+    }
+
+    const globalCheck = await ctx.runMutation(internal.travelPlanner.rateLimit.checkAndIncrement, {
+      key: "global",
+      limit: 1000,
+    });
+    const callerCheck = globalCheck.allowed
+      ? await ctx.runMutation(internal.travelPlanner.rateLimit.checkAndIncrement, {
+          key: userId
+            ? `user:${userId}`
+            : args.sessionId
+              ? `session:${args.sessionId}`
+              : "anon:unkeyed",
+          limit: userId ? 20 : 5,
+        })
+      : { allowed: false };
+
+    if (!globalCheck.allowed || !callerCheck.allowed) {
+      const limitMessage = userId
+        ? "You've reached today's travel planning limit. Please come back tomorrow!"
+        : "You've reached today's travel planning limit. Come back tomorrow — or sign in for a higher limit.";
+      const limitMessageAr = userId
+        ? "لقد وصلت إلى الحد اليومي لمخطط الرحلات. يرجى المحاولة مرة أخرى غدًا!"
+        : "لقد وصلت إلى الحد اليومي لمخطط الرحلات. يرجى المحاولة غدًا — أو سجّل الدخول للحصول على حد أعلى.";
+      return {
+        success: true,
+        ready: false,
+        message: language === "ar" ? limitMessageAr : limitMessage,
+        message_ar: limitMessageAr,
+      };
+    }
+
     const languageInstruction =
       language === "ar"
         ? "Respond in Arabic. Understand Saudi/Gulf dialect. Use Modern Standard Arabic for the main response but feel free to use Gulf expressions when appropriate."
@@ -283,18 +330,9 @@ export const planTravel = action({
               : "Travel recommendations may vary by season. Please verify opening hours and availability before visiting.";
         }
 
-        let userId = undefined;
-        try {
-          const currentUser = await ctx.runQuery(api.users.queries.getCurrentUser, {});
-          if (currentUser) {
-            userId = currentUser._id;
-          }
-        } catch {
-          // Not authenticated
-        }
-
         const planId = await ctx.runMutation(api.travelPlanner.mutations.storePlan, {
           userId,
+          sessionId: args.sessionId,
           userInput: args.userInput,
           language,
           plan: {

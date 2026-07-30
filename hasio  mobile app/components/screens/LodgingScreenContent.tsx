@@ -5,14 +5,13 @@ import {
   StyleSheet,
   FlatList,
   ScrollView,
-  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useLanguage } from "@/hooks/useLanguage";
 import { colors, fonts } from "@/constants/colors";
 import { useLodgings } from "@/hooks/useConvexData";
-import { FilterChip } from "@/components/ui";
+import { FilterChip, SkeletonRow } from "@/components/ui";
 import { LodgingCard } from "@/components/lodging/LodgingCard";
 import type { LodgingFilter, LodgingType } from "@/types";
 
@@ -76,9 +75,7 @@ export function LodgingScreenContent() {
 
       {/* Lodging List */}
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-        </View>
+        <SkeletonRow count={3} />
       ) : (
         <FlatList
           data={filteredLodging}

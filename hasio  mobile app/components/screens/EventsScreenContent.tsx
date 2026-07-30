@@ -5,14 +5,13 @@ import {
   StyleSheet,
   FlatList,
   ScrollView,
-  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useLanguage } from "@/hooks/useLanguage";
 import { colors, fonts } from "@/constants/colors";
 import { useEvents } from "@/hooks/useConvexData";
-import { FilterChip } from "@/components/ui";
+import { FilterChip, SkeletonRow } from "@/components/ui";
 import { EventCard } from "@/components/events/EventCard";
 import type { EventFilter, EventCategory } from "@/types";
 
@@ -77,9 +76,7 @@ export function EventsScreenContent() {
 
       {/* Events List */}
       {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-        </View>
+        <SkeletonRow count={3} />
       ) : (
         <FlatList
           data={filteredEvents}

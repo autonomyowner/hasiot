@@ -62,11 +62,7 @@ export const listServices = query({
       filtered = filtered.filter((s) => s.city === args.city);
     }
 
-    if (args.limit) {
-      return filtered.slice(0, args.limit);
-    }
-
-    return filtered;
+    return filtered.slice(0, args.limit ?? 500);
   },
 });
 
@@ -105,10 +101,6 @@ export const searchServices = query({
       .filter((s) => s.status === "approved")
       .filter((s) => !blockedIds.has(s.ownerId as string));
 
-    if (args.limit) {
-      return approved.slice(0, args.limit);
-    }
-
-    return approved;
+    return approved.slice(0, args.limit ?? 50);
   },
 });

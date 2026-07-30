@@ -57,11 +57,7 @@ export const listListings = query({
       .filter(isPublicListing)
       .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string)));
 
-    if (args.limit) {
-      return publicListings.slice(0, args.limit);
-    }
-
-    return publicListings;
+    return publicListings.slice(0, args.limit ?? 500);
   },
 });
 
@@ -92,11 +88,7 @@ export const searchListings = query({
       .filter(isPublicListing)
       .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string)));
 
-    if (args.limit) {
-      return publicListings.slice(0, args.limit);
-    }
-
-    return publicListings;
+    return publicListings.slice(0, args.limit ?? 50);
   },
 });
 

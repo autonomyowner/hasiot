@@ -38,6 +38,10 @@ interface AppState {
   notificationsEnabled: boolean;
   toggleNotifications: () => void;
 
+  // Anonymous session id — rate-limit key for the AI planner when signed out
+  sessionId: string | null;
+  ensureSessionId: () => string;
+
   // Clear all user data (for account deletion)
   clearUserData: () => void;
 }
@@ -104,6 +108,16 @@ export const useAppStore = create<AppState>()(
       toggleNotifications: () =>
         set((state) => ({ notificationsEnabled: !state.notificationsEnabled })),
 
+      // Anonymous session id (Hermes has no crypto.randomUUID)
+      sessionId: null,
+      ensureSessionId: () => {
+        const existing = get().sessionId;
+        if (existing) return existing;
+        const generated = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}-${Math.random().toString(36).slice(2, 10)}`;
+        set({ sessionId: generated });
+        return generated;
+      },
+
       // Clear all user data (for account deletion)
       clearUserData: () =>
         set({
@@ -124,6 +138,7 @@ export const useAppStore = create<AppState>()(
         moments: state.moments,
         dayPlans: state.dayPlans,
         notificationsEnabled: state.notificationsEnabled,
+        sessionId: state.sessionId,
       }),
     }
   )

@@ -250,6 +250,14 @@ export default defineSchema({
     .index("by_blocker", ["blockerId"])
     .index("by_blocker_and_blocked", ["blockerId", "blockedUserId"]),
 
+  // Rate limiting — one row per key (user, session, or global), fixed 24h window
+  rateLimits: defineTable({
+    key: v.string(), // "user:<id>" | "session:<id>" | "anon:unkeyed" | "global"
+    windowStart: v.number(),
+    count: v.number(),
+  })
+    .index("by_key", ["key"]),
+
   // Travel Knowledge Base — for AI travel planner
   travelKnowledge: defineTable({
     category: v.string(), // "destinations" | "hotels" | "restaurants" | "culture" | "transport" | "tips" | "events" | "general"

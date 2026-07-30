@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as admin_internalOps from "../admin/internalOps.js";
 import type * as admin_mutations from "../admin/mutations.js";
 import type * as admin_queries from "../admin/queries.js";
 import type * as auth from "../auth.js";
@@ -27,6 +28,7 @@ import type * as services_queries from "../services/queries.js";
 import type * as travelPlanner_actions from "../travelPlanner/actions.js";
 import type * as travelPlanner_mutations from "../travelPlanner/mutations.js";
 import type * as travelPlanner_queries from "../travelPlanner/queries.js";
+import type * as travelPlanner_rateLimit from "../travelPlanner/rateLimit.js";
 import type * as trips_mutations from "../trips/mutations.js";
 import type * as trips_queries from "../trips/queries.js";
 import type * as users_mutations from "../users/mutations.js";
@@ -39,6 +41,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "admin/internalOps": typeof admin_internalOps;
   "admin/mutations": typeof admin_mutations;
   "admin/queries": typeof admin_queries;
   auth: typeof auth;
@@ -58,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   "travelPlanner/actions": typeof travelPlanner_actions;
   "travelPlanner/mutations": typeof travelPlanner_mutations;
   "travelPlanner/queries": typeof travelPlanner_queries;
+  "travelPlanner/rateLimit": typeof travelPlanner_rateLimit;
   "trips/mutations": typeof trips_mutations;
   "trips/queries": typeof trips_queries;
   "users/mutations": typeof users_mutations;

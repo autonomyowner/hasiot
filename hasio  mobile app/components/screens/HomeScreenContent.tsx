@@ -8,7 +8,6 @@ import {
   RefreshControl,
   Pressable,
   Dimensions,
-  ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
@@ -24,7 +23,7 @@ import Animated, {
 import { Feather } from "@expo/vector-icons";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
 import { useHomeData } from "@/hooks/useConvexData";
-import { SearchBar, CategoryCard } from "@/components/ui";
+import { SearchBar, CategoryCard, SkeletonRow } from "@/components/ui";
 import { colors, fonts } from "@/constants/colors";
 import type { Food, Lodging, Event } from "@/types";
 
@@ -204,11 +203,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
         </Animated.View>
 
         {/* Loading State */}
-        {isLoading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-          </View>
-        )}
+        {isLoading && <SkeletonRow count={2} />}
 
         {/* Search Results */}
         {!isLoading && searchResults ? (
@@ -234,7 +229,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                       <SearchResultItem
                         key={item.id}
                         name={getLocalizedText(item.name, item.nameAr, language)}
-                        subtitle={`${getLocalizedText(item.city, item.cityAr, language)} • ${item.priceRange}`}
+                        subtitle={`${getLocalizedText(item.city, item.cityAr, language)} â€¢ ${item.priceRange}`}
                         image={item.images?.[0]}
                         isRTL={isRTL}
                         index={index}
@@ -270,7 +265,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                       <SearchResultItem
                         key={item.id}
                         name={getLocalizedText(item.title, item.titleAr, language)}
-                        subtitle={`${getLocalizedText(item.location, item.locationAr, language)} • ${item.date}`}
+                        subtitle={`${getLocalizedText(item.location, item.locationAr, language)} â€¢ ${item.date}`}
                         image={item.images?.[0]}
                         isRTL={isRTL}
                         index={index}
@@ -341,7 +336,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
               {t("featuredDestinations")}
             </Text>
             <Text style={styles.seeAllLink}>
-              {language === "ar" ? "عرض الكل" : "See all"}
+              {language === "ar" ? "Ø¹Ø±Ø¶ Ø§Ù„ÙƒÙ„" : "See all"}
             </Text>
           </View>
 
@@ -387,7 +382,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
               {t("moreDestinations")}
             </Text>
             <Text style={styles.seeAllLink}>
-              {language === "ar" ? "عرض الكل" : "See all"}
+              {language === "ar" ? "Ø¹Ø±Ø¶ Ø§Ù„ÙƒÙ„" : "See all"}
             </Text>
           </View>
 

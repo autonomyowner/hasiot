@@ -45,6 +45,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
 
   const chatMessages = useAppStore((state) => state.chatMessages);
   const addChatMessage = useAppStore((state) => state.addChatMessage);
+  const ensureSessionId = useAppStore((state) => state.ensureSessionId);
 
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -104,6 +105,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
         userInput: userText,
         language,
         conversationHistory,
+        sessionId: ensureSessionId(),
       });
 
       let responseText = "";
@@ -186,6 +188,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
           userInput: label,
           language,
           conversationHistory,
+          sessionId: ensureSessionId(),
         });
 
         let responseText = "";
