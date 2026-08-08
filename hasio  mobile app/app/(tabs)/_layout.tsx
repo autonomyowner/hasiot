@@ -4,6 +4,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   interpolateColor,
   useAnimatedStyle,
+  useEvent,
+  useHandler,
   useSharedValue,
   withSpring,
   withTiming,
@@ -11,6 +13,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import PagerView from "@/components/PagerViewWrapper";
+import type { PagerViewProps } from "react-native-pager-view";
 import { colors, fonts } from "@/constants/colors";
 
 // Import screen content components
@@ -25,6 +28,44 @@ import {
 } from "@/components/screens";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const AnimatedPagerView = PagerView
+  ? Animated.createAnimatedComponent(PagerView)
+  : null;
+
+type PagerScrollEvent = {
+  eventName: string;
+  position: number;
+  offset: number;
+};
+
+/**
+ * Subscribes to PagerView's onPageScroll as a Reanimated event, so the handler
+ * runs on the UI thread.
+ *
+ * This is the difference between the tab bar tracking the swipe and lagging
+ * behind it. As a plain `onPageScroll={fn}` prop, every scroll frame has to
+ * cross to the JS thread — and while a newly revealed screen is mounting and
+ * its Convex queries are resolving, that thread is busy, so the events queue up
+ * and the tint jumps late. A worklet is never blocked by that work.
+ */
+function usePagerScrollHandler(
+  handlers: { onPageScroll: (event: PagerScrollEvent) => void },
+  dependencies?: unknown[]
+) {
+  const { doDependenciesDiffer } = useHandler(handlers, dependencies);
+
+  return useEvent<PagerScrollEvent>(
+    (event) => {
+      "worklet";
+      const { onPageScroll } = handlers;
+      if (onPageScroll && event.eventName.endsWith("onPageScroll")) {
+        onPageScroll(event);
+      }
+    },
+    ["onPageScroll"],
+    doDependenciesDiffer
+  );
+}
 // Feather renders a Text under the hood, so `color` is a style property and can
 // be animated on the UI thread like any other.
 const AnimatedFeather = Animated.createAnimatedComponent(Feather);
@@ -56,12 +97,17 @@ export default function TabLayout() {
   const scrollPosition = useSharedValue(3);
   const isWeb = Platform.OS === "web";
 
-  const handlePageScroll = useCallback((e: any) => {
-    if (isWeb) return;
-    const { position, offset } = e.nativeEvent;
-    scrollPosition.value = position + offset;
-  }, [isWeb]);
 
+  // Runs on the UI thread — see usePagerScrollHandler.
+  const pageScrollHandler = usePagerScrollHandler({
+    onPageScroll: (e) => {
+      "worklet";
+      scrollPosition.value = e.position + e.offset;
+    },
+  });
+
+  // Only bookkeeping the JS side still needs: which page is settled, for the
+  // web render path and the label weight. The tint no longer waits on it.
   const handlePageSelected = useCallback((e: any) => {
     if (isWeb) return;
     const position = e.nativeEvent.position;
@@ -129,12 +175,18 @@ export default function TabLayout() {
         <View style={styles.pagerView}>
           {renderScreen(tabs[currentPage].key)}
         </View>
-      ) : PagerView ? (
-        <PagerView
+      ) : AnimatedPagerView ? (
+        <AnimatedPagerView
           ref={pagerRef}
           style={styles.pagerView}
           initialPage={3}
-          onPageScroll={handlePageScroll}
+          // react-native-pager-view types onPageScroll as a JS
+          // DirectEventHandler; Reanimated's useEvent returns its own processed
+          // handler that the native side understands but the prop type does
+          // not describe. The cast is the documented way to connect the two.
+          onPageScroll={
+            pageScrollHandler as unknown as PagerViewProps["onPageScroll"]
+          }
           onPageSelected={handlePageSelected}
           overdrag={true}
           overScrollMode="always"
@@ -144,7 +196,7 @@ export default function TabLayout() {
               {renderScreen(tab.key)}
             </View>
           ))}
-        </PagerView>
+        </AnimatedPagerView>
       ) : (
         <View style={styles.pagerView}>
           {renderScreen(tabs[currentPage].key)}
