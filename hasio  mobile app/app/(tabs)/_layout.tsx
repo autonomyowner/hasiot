@@ -2,9 +2,12 @@ import React, { useRef, useCallback } from "react";
 import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
+  interpolateColor,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  withTiming,
+  type SharedValue,
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import PagerView from "@/components/PagerViewWrapper";
@@ -22,6 +25,12 @@ import {
 } from "@/components/screens";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+// Feather renders a Text under the hood, so `color` is a style property and can
+// be animated on the UI thread like any other.
+const AnimatedFeather = Animated.createAnimatedComponent(Feather);
+
+const ACTIVE_TINT = colors.primary.DEFAULT;
+const INACTIVE_TINT = "#A39D8E";
 
 interface TabItem {
   key: string;
@@ -62,7 +71,9 @@ export default function TabLayout() {
   const handleTabPress = useCallback((index: number) => {
     if (isWeb) {
       setCurrentPage(index);
-      scrollPosition.value = index;
+      // Web has no pager to emit scroll events, so the tint has nothing driving
+      // it — animate the position by hand to match the native feel.
+      scrollPosition.value = withTiming(index, { duration: 220 });
     } else {
       pagerRef.current?.setPage(index);
     }
@@ -84,7 +95,7 @@ export default function TabLayout() {
     const newIndex = indexMap[oldIndex] ?? oldIndex;
     if (isWeb) {
       setCurrentPage(newIndex);
-      scrollPosition.value = newIndex;
+      scrollPosition.value = withTiming(newIndex, { duration: 220 });
     } else {
       pagerRef.current?.setPage(newIndex);
     }
@@ -148,6 +159,8 @@ export default function TabLayout() {
               key={tab.key}
               icon={tab.icon}
               label={tab.label}
+              index={index}
+              scrollPosition={scrollPosition}
               isActive={currentPage === index}
               onPress={() => handleTabPress(index)}
             />
@@ -161,16 +174,38 @@ export default function TabLayout() {
 interface TabButtonProps {
   icon: keyof typeof Feather.glyphMap;
   label: string;
+  index: number;
+  scrollPosition: SharedValue<number>;
   isActive: boolean;
   onPress: () => void;
 }
 
-function TabButton({ icon, label, isActive, onPress }: TabButtonProps) {
+function TabButton({
+  icon,
+  label,
+  index,
+  scrollPosition,
+  isActive,
+  onPress,
+}: TabButtonProps) {
   const scale = useSharedValue(1);
 
-  const animatedStyle = useAnimatedStyle(() => ({
+  const pressStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
+
+  // Distance from this tab to the pager's live position: 0 while this page fills
+  // the screen, 1 once a neighbour has fully taken over. Driving the tint from
+  // this — rather than from the `currentPage` state, which only updates when the
+  // pager settles — is what keeps the colour moving with the swipe instead of
+  // snapping at the end of it. interpolateColor clamps, so overdrag past the
+  // first or last page cannot push the value out of range.
+  const tintStyle = useAnimatedStyle(() => {
+    const distance = Math.min(Math.abs(scrollPosition.value - index), 1);
+    return {
+      color: interpolateColor(distance, [0, 1], [ACTIVE_TINT, INACTIVE_TINT]),
+    };
+  });
 
   const handlePressIn = () => {
     scale.value = withSpring(0.9, { damping: 15, stiffness: 400 });
@@ -180,27 +215,31 @@ function TabButton({ icon, label, isActive, onPress }: TabButtonProps) {
     scale.value = withSpring(1, { damping: 15, stiffness: 400 });
   };
 
-  const tint = isActive ? colors.primary.DEFAULT : "#A39D8E";
-
   return (
     <AnimatedPressable
-      style={[styles.tabButton, animatedStyle]}
+      style={[styles.tabButton, pressStyle]}
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
     >
-      <Feather name={icon} size={22} color={tint} />
-      <Text
+      {/* No `color` prop: the animated style supplies it, and the prop would be
+          a static value competing with the interpolation. */}
+      <AnimatedFeather name={icon} size={22} style={tintStyle} />
+      <Animated.Text
         style={[
           styles.tabLabel,
-          { color: tint, fontFamily: isActive ? fonts.semibold : fonts.medium },
+          // Weight stays keyed to the settled page — there is no intermediate
+          // font file to interpolate towards, so animating it would only add a
+          // pop partway through the swipe.
+          { fontFamily: isActive ? fonts.semibold : fonts.medium },
+          tintStyle,
         ]}
         numberOfLines={1}
         adjustsFontSizeToFit
         minimumFontScale={0.85}
       >
         {label}
-      </Text>
+      </Animated.Text>
     </AnimatedPressable>
   );
 }

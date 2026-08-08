@@ -335,9 +335,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
             >
               {t("featuredDestinations")}
             </Text>
-            <Text style={styles.seeAllLink}>
-              {language === "ar" ? "Ø¹Ø±Ø¶ Ø§Ù„ÙƒÙ„" : "See all"}
-            </Text>
+            <Text style={styles.seeAllLink}>{t("seeAll")}</Text>
           </View>
 
           {featuredItems.length > 0 ? (
@@ -381,9 +379,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
             >
               {t("moreDestinations")}
             </Text>
-            <Text style={styles.seeAllLink}>
-              {language === "ar" ? "Ø¹Ø±Ø¶ Ø§Ù„ÙƒÙ„" : "See all"}
-            </Text>
+            <Text style={styles.seeAllLink}>{t("seeAll")}</Text>
           </View>
 
           {moreDestinations.length > 0 ? (

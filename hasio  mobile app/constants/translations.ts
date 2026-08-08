@@ -36,6 +36,7 @@ export const translations = {
     exploreOasis: "Explore the Oasis",
     featuredDestinations: "Featured Destinations",
     moreDestinations: "More Destinations",
+    seeAll: "See all",
     destinations: "Destinations",
 
     // Lodging
@@ -497,6 +498,7 @@ export const translations = {
     exploreOasis: "استكشف الأحساء",
     featuredDestinations: "وجهات مميزة",
     moreDestinations: "المزيد من الوجهات",
+    seeAll: "عرض الكل",
     destinations: "الوجهات",
 
     // Lodging
