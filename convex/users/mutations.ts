@@ -1,6 +1,11 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser, requireAdmin, authComponent, createAuth } from "../auth";
+import { enforceRateLimit } from "../rateLimit";
+
+// Maximum favorites a single user can hold. Bounds both the user document and
+// the Promise.all fan-out in users/queries.ts:getFavorites.
+const MAX_FAVORITES = 200;
 
 // Generate an upload URL for business document
 export const generateUploadUrl = mutation({
@@ -10,6 +15,14 @@ export const generateUploadUrl = mutation({
     if (!user) {
       throw new Error("Not authenticated");
     }
+    // Each URL is a signed write into file storage — cap them per user per day
+    // so one account cannot run up unbounded storage cost.
+    await enforceRateLimit(
+      ctx,
+      `upload:${user._id}`,
+      50,
+      "لقد وصلت إلى الحد اليومي لرفع الملفات. يرجى المحاولة غدًا. / Daily upload limit reached. Please try again tomorrow."
+    );
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -88,6 +101,11 @@ export const toggleFavorite = mutation({
     if (isFavorite) {
       newFavorites = currentFavorites.filter((id) => id !== args.listingId);
     } else {
+      if (currentFavorites.length >= MAX_FAVORITES) {
+        throw new Error(
+          `لا يمكن حفظ أكثر من ${MAX_FAVORITES} مفضلة. / You can save at most ${MAX_FAVORITES} favorites.`
+        );
+      }
       newFavorites = [...currentFavorites, args.listingId];
     }
 
@@ -275,6 +293,16 @@ export const createUser = mutation({
     if (existing) {
       return existing._id;
     }
+
+    // This mutation is unauthenticated (it runs as part of signup), so a global
+    // daily cap bounds how many rows a script can insert into `users`. Checked
+    // only on the insert path so returning existing users is never blocked.
+    await enforceRateLimit(
+      ctx,
+      "signup:global",
+      200,
+      "تعذّر إنشاء الحساب حاليًا. يرجى المحاولة لاحقًا. / Sign-ups are temporarily unavailable. Please try again later."
+    );
 
     const userId = await ctx.db.insert("users", {
       email: args.email,

@@ -199,7 +199,7 @@
   display: flex;
   align-items: center;
   overflow: hidden;
-  background-color: #005f49;
+  background-color: var(--color-primary);
 }
 
 .hero-bg-img {
@@ -1705,14 +1705,14 @@ html[dir="rtl"] .footer-bottom {
   background: var(--color-surface);
 }
 
+/* Sticky rather than fixed: the header occupies flow, so .map-content needs no
+   hardcoded offset and a wrapped title can never overlap the map. */
 .map-header {
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   padding: 1rem 0;
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   z-index: 100;
 }
 
@@ -1745,10 +1745,16 @@ html[dir="rtl"] .footer-bottom {
   font-weight: 400;
 }
 
+.map-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
 .map-content {
   display: flex;
-  margin-top: 65px;
-  height: calc(100vh - 65px);
+  flex: 1;
+  min-height: 0;
   position: relative;
 }
 
@@ -1932,6 +1938,38 @@ html[dir="rtl"] .map-sidebar {
 .map-container {
   flex: 1;
   position: relative;
+  background: var(--color-bg, #f5f5f4);
+}
+
+/* Placeholder shown until Mapbox paints, or if the token never arrives. */
+.map-container-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+  color: var(--color-text-muted, #6b7280);
+  font-size: 0.95rem;
+  pointer-events: none;
+}
+
+.location-list-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+  color: var(--color-text-muted, #6b7280);
+}
+
+.location-list-empty h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  color: var(--color-text, #1f2937);
+}
+
+.location-list-empty p {
+  font-size: 0.875rem;
 }
 
 .map-marker {
@@ -2276,8 +2314,6 @@ html[dir="rtl"] .close-popup {
   .map-title { font-size: 1.1rem; }
   .map-content {
     flex-direction: column;
-    margin-top: 52px;
-    height: calc(100vh - 52px);
   }
   .map-container { flex: 1; width: 100%; min-height: 0; }
   .map-sidebar {

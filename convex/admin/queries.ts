@@ -2,18 +2,27 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "../auth";
 
+// Hard ceilings so no admin query can scan an unbounded number of documents.
+// Convex fails a query outright past ~16k reads, and this dashboard used to
+// collect seven whole tables on every page load.
+const MAX_LIST = 200;
+const MAX_SCAN = 1000;
+const STATS_CAP = 5000;
+
 // Get dashboard statistics
 export const getDashboardStats = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const listings = await ctx.db.query("listings").collect();
-    const bookings = await ctx.db.query("bookings").collect();
-    const users = await ctx.db.query("users").collect();
-    const knowledgeData = await ctx.db.query("travelKnowledge").collect();
-    const travelPlans = await ctx.db.query("travelPlans").collect();
-    const emailCaptures = await ctx.db.query("emailCaptures").collect();
-    const services = await ctx.db.query("services").collect();
+    // Counts are exact below STATS_CAP. Past it the query reports `truncated`
+    // so the UI can render "5000+" rather than a silently wrong number.
+    const listings = await ctx.db.query("listings").take(STATS_CAP);
+    const bookings = await ctx.db.query("bookings").take(STATS_CAP);
+    const users = await ctx.db.query("users").take(STATS_CAP);
+    const knowledgeData = await ctx.db.query("travelKnowledge").take(STATS_CAP);
+    const travelPlans = await ctx.db.query("travelPlans").take(STATS_CAP);
+    const emailCaptures = await ctx.db.query("emailCaptures").take(STATS_CAP);
+    const services = await ctx.db.query("services").take(STATS_CAP);
 
     const bookingsByStatus = {
       pending: bookings.filter(b => b.status === "pending").length,
@@ -31,6 +40,9 @@ export const getDashboardStats = query({
     };
 
     return {
+      statsCap: STATS_CAP,
+      truncated: [listings, bookings, users, knowledgeData, travelPlans, emailCaptures, services]
+        .some((t) => t.length >= STATS_CAP),
       totalListings: listings.length,
       totalBookings: bookings.length,
       totalUsers: users.length,
@@ -53,6 +65,7 @@ export const listAllListings = query({
   args: {
     type: v.optional(v.string()),
     city: v.optional(v.string()),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -63,7 +76,9 @@ export const listAllListings = query({
       return ctx.db.query("listings");
     };
 
-    const listings = await buildQuery().order("desc").collect();
+    const listings = await buildQuery()
+      .order("desc")
+      .take(Math.min(args.limit ?? MAX_LIST, MAX_LIST));
 
     if (args.city) {
       return listings.filter(l => l.city === args.city);
@@ -78,6 +93,7 @@ export const listKnowledgeData = query({
   args: {
     category: v.optional(v.string()),
     activeOnly: v.optional(v.boolean()),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
@@ -88,7 +104,9 @@ export const listKnowledgeData = query({
       return ctx.db.query("travelKnowledge");
     };
 
-    const data = await buildQuery().order("desc").collect();
+    const data = await buildQuery()
+      .order("desc")
+      .take(Math.min(args.limit ?? MAX_LIST, MAX_LIST));
 
     if (args.activeOnly) {
       return data.filter(d => d.isActive);
@@ -124,17 +142,19 @@ export const listAllBookings = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    let bookings = await ctx.db
-      .query("bookings")
-      .order("desc")
-      .collect();
+    const take = Math.min(args.limit ?? 50, MAX_LIST);
 
-    if (args.status) {
-      bookings = bookings.filter(b => b.status === args.status);
-    }
+    // Filter by status on the index rather than scanning every booking.
+    let bookings = args.status
+      ? await ctx.db
+          .query("bookings")
+          .withIndex("by_status", (q) => q.eq("status", args.status!))
+          .order("desc")
+          .take(take)
+      : await ctx.db.query("bookings").order("desc").take(take);
 
     const enrichedBookings = await Promise.all(
-      bookings.slice(0, args.limit || 50).map(async (booking) => {
+      bookings.map(async (booking) => {
         const listing = await ctx.db.get(booking.listingId);
         const user = await ctx.db.get(booking.userId);
         return {
@@ -156,7 +176,7 @@ export const getCities = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const listings = await ctx.db.query("listings").collect();
+    const listings = await ctx.db.query("listings").take(MAX_SCAN);
     const cities = [...new Set(listings.map(l => l.city))].sort();
     return cities;
   },
@@ -167,7 +187,7 @@ export const getCategories = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const listings = await ctx.db.query("listings").collect();
+    const listings = await ctx.db.query("listings").take(MAX_SCAN);
     const categories = [...new Set(listings.map(l => l.category))].sort();
     return categories;
   },
@@ -182,7 +202,7 @@ export const listPendingContent = query({
       .query("listings")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .order("desc")
-      .collect();
+      .take(MAX_LIST);
 
     const enriched = await Promise.all(
       listings.map(async (listing) => {
@@ -212,7 +232,7 @@ export const listPendingServices = query({
       .query("services")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .order("desc")
-      .collect();
+      .take(MAX_LIST);
 
     const enriched = await Promise.all(
       services.map(async (service) => {
@@ -239,14 +259,14 @@ export const listPendingBusinesses = query({
       .withIndex("by_role_and_approval", (q) =>
         q.eq("role", "business_owner").eq("isApproved", false)
       )
-      .collect();
+      .take(MAX_LIST);
 
     const pendingProviders = await ctx.db
       .query("users")
       .withIndex("by_role_and_approval", (q) =>
         q.eq("role", "service_provider").eq("isApproved", false)
       )
-      .collect();
+      .take(MAX_LIST);
 
     return [...pendingOwners, ...pendingProviders];
   },

@@ -1,6 +1,7 @@
 import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser, requireAdmin } from "../auth";
+import { enforceRateLimit } from "../rateLimit";
 
 // Create a new listing
 export const createListing = mutation({
@@ -384,6 +385,13 @@ export const submitListing = mutation({
     if (role === "service_provider" && !SERVICE_PROVIDER_TYPES.includes(args.type)) {
       throw new Error("Service providers can post: tour");
     }
+
+    await enforceRateLimit(
+      ctx,
+      `listing:${user._id}`,
+      20,
+      "لقد وصلت إلى الحد اليومي لإضافة الأماكن. يرجى المحاولة غدًا. / You've reached today's limit for new listings. Please try again tomorrow."
+    );
 
     const now = Date.now();
     const listingId = await ctx.db.insert("listings", {

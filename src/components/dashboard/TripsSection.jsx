@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { motion, AnimatePresence } from 'framer-motion'
+import { SkeletonList } from '../Skeleton'
 
 const translations = {
   ar: {
@@ -267,11 +268,7 @@ export default function TripsSection({ lang = 'ar' }) {
         ))}
       </div>
 
-      {isLoading && (
-        <div style={{ textAlign: 'center', color: '#9ca3af', padding: '3rem' }}>
-          {isRTL ? 'جاري التحميل...' : 'Loading...'}
-        </div>
-      )}
+      {isLoading && <SkeletonList count={3} />}
 
       {/* Trips list */}
       {!isLoading && filter !== 'aiPlans' && (

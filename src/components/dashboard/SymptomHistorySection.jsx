@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { motion, AnimatePresence } from 'framer-motion'
+import { SkeletonList } from '../Skeleton'
 
 const translations = {
   ar: {
@@ -42,9 +43,7 @@ export default function SymptomHistorySection({ lang = 'ar' }) {
   const plans = useQuery(api.travelPlanner.queries.getMyPlans, {})
 
   if (plans === undefined) {
-    return <div style={{ textAlign: 'center', color: '#9ca3af', padding: '3rem' }}>
-      {isRTL ? 'جاري التحميل...' : 'Loading...'}
-    </div>
+    return <SkeletonList count={3} />
   }
 
   return (

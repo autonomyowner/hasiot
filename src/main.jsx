@@ -72,7 +72,7 @@ function MainRoutes() {
           <Route path="/dashboard" element={<TouristDashboard />} />
           <Route path="/business" element={<BusinessDashboard />} />
           <Route path="/listings" element={<ListingsPage />} />
-          <Route path="/listings/:id" element={<Suspense fallback={<div style={{padding:'80px',textAlign:'center'}}>Loading...</div>}><ListingDetailPage /></Suspense>} />
+          <Route path="/listings/:id" element={<ListingDetailPage />} />
           <Route path="/services" element={<ServicesPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/delete-account" element={<DeleteAccountPage />} />

@@ -3,6 +3,7 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { motion, AnimatePresence } from 'framer-motion'
 import BookingForm from '../appointments/BookingForm'
+import { SkeletonList } from '../Skeleton'
 
 const translations = {
   ar: {
@@ -149,8 +150,8 @@ export default function AppointmentsSection({ lang = 'ar' }) {
       <div className="subsection">
         <h3 className="subsection-title">{t.upcoming}</h3>
         {bookings === undefined ? (
-          <div className="dash-card" style={{ textAlign: 'center', color: '#9ca3af' }}>
-            {isRTL ? 'جاري التحميل...' : 'Loading...'}
+          <div className="dash-card">
+            <SkeletonList count={3} />
           </div>
         ) : upcoming.length === 0 ? (
           <div className="empty-state">

@@ -11,6 +11,15 @@
 }
 .detail-not-found h2 { margin-bottom: 16px; }
 
+.detail-skeleton {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 32px 80px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
 /* Breadcrumb */
 .detail-breadcrumb { max-width: 1200px; margin: 0 auto; padding: 20px 32px 0; font-size: 14px; color: var(--color-text-muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .detail-breadcrumb a { color: var(--color-primary); text-decoration: none; }
@@ -79,7 +88,7 @@
 .review-content { font-size: 14px; color: var(--color-text-muted); line-height: 1.7; }
 
 /* Booking widget */
-.booking-widget { background: var(--color-surface); border: 1.5px solid var(--color-border); border-radius: var(--radius-xl); padding: 28px; box-shadow: var(--shadow-lg); position: sticky; top: calc(var(--nav-h, 68px) + 24px); }
+.booking-widget { background: var(--color-surface); border: 1.5px solid var(--color-border); border-radius: var(--radius-xl); padding: 28px; box-shadow: var(--shadow-lg); position: sticky; top: calc(var(--nav-h) + 24px); }
 .booking-widget-price { font-size: 26px; font-weight: 700; color: var(--color-text); margin-bottom: 2px; letter-spacing: 1px; }
 .booking-price-label { font-size: 13px; font-weight: 400; color: var(--color-text-muted); letter-spacing: 0; }
 .booking-widget-rating { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--color-text-muted); margin-bottom: 4px; }

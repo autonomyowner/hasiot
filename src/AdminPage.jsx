@@ -4,6 +4,7 @@ import { api } from '../convex/_generated/api'
 import { Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useCurrentUser } from './hooks/useCurrentUser'
+import { useSyncHtmlLang } from './hooks/useLanguage'
 import { authClient } from './lib/auth-client'
 import './AdminPage.css'
 
@@ -52,6 +53,27 @@ const CATEGORIES = [
   { value: "seasonal_event", label: "موسم" },
 ]
 
+const REPORT_REASONS_AR = {
+  spam: "محتوى مزعج",
+  inappropriate: "محتوى غير لائق",
+  offensive: "محتوى مسيء",
+  fraud: "احتيال",
+  other: "أخرى",
+}
+
+const REPORT_TARGET_TYPES_AR = {
+  listing: "إعلان",
+  service: "خدمة",
+  review: "تقييم",
+}
+
+const REPORT_STATUSES = [
+  { value: "pending", label: "معلقة" },
+  { value: "actioned", label: "تم اتخاذ إجراء" },
+  { value: "dismissed", label: "مرفوضة" },
+  { value: "reviewed", label: "تمت المراجعة" },
+]
+
 const KNOWLEDGE_CATEGORIES = [
   { value: "destinations", label: "الوجهات" },
   { value: "hotels", label: "الفنادق" },
@@ -66,6 +88,9 @@ const KNOWLEDGE_CATEGORIES = [
 export default function AdminPage() {
   const { user, isLoading, isAuthenticated } = useCurrentUser()
   const [activeTab, setActiveTab] = useState('dashboard')
+
+  // Admin panel is Arabic-only; the RTL rules key off html[dir].
+  useSyncHtmlLang('ar')
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -130,6 +155,7 @@ export default function AdminPage() {
             { id: 'content', label: 'محتوى معلق' },
             { id: 'services', label: 'خدمات معلقة' },
             { id: 'pending', label: 'حسابات معلقة' },
+            { id: 'reports', label: 'التبليغات' },
             { id: 'knowledge', label: 'قاعدة المعرفة' },
             { id: 'bookings', label: 'الحجوزات' },
             { id: 'emails', label: 'البريد الإلكتروني' },
@@ -152,6 +178,7 @@ export default function AdminPage() {
           {activeTab === 'content' && <ContentApprovalTab key="content" />}
           {activeTab === 'services' && <ServiceApprovalTab key="services" />}
           {activeTab === 'pending' && <PendingBusinessesTab key="pending" />}
+          {activeTab === 'reports' && <ReportsTab key="reports" />}
           {activeTab === 'knowledge' && <KnowledgeTab key="knowledge" />}
           {activeTab === 'bookings' && <BookingsTab key="bookings" />}
           {activeTab === 'emails' && <EmailCapturesTab key="emails" />}
@@ -1597,6 +1624,162 @@ function EmailCapturesTab() {
                       year: 'numeric', month: 'long', day: 'numeric',
                       hour: '2-digit', minute: '2-digit'
                     })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
+function ReportsTab() {
+  const [status, setStatus] = useState('pending')
+  const reports = useQuery(api.moderation.queries.listPendingReports, { status })
+  const resolveReport = useMutation(api.moderation.mutations.resolveReport)
+  const rejectContent = useMutation(api.admin.mutations.rejectContent)
+  const rejectService = useMutation(api.admin.mutations.rejectService)
+  const [actionId, setActionId] = useState(null)
+  const [error, setError] = useState(null)
+
+  // Dismiss = the report was unfounded; the reported content stays published.
+  const handleDismiss = async (report) => {
+    setActionId(report._id)
+    setError(null)
+    try {
+      await resolveReport({ reportId: report._id, status: 'dismissed' })
+    } catch (err) {
+      console.error('Error dismissing report:', err)
+      setError('تعذر تحديث التبليغ')
+    }
+    setActionId(null)
+  }
+
+  // Takedown = unpublish the reported item, then close the report. The reject
+  // runs first so a failure there leaves the report open rather than silently
+  // closing a report whose content is still live.
+  const handleTakedown = async (report) => {
+    setActionId(report._id)
+    setError(null)
+    try {
+      if (report.targetType === 'listing') {
+        await rejectContent({ id: report.targetId, reason: `تبليغ: ${REPORT_REASONS_AR[report.reason] || report.reason}` })
+      } else if (report.targetType === 'service') {
+        await rejectService({ id: report.targetId, reason: `تبليغ: ${REPORT_REASONS_AR[report.reason] || report.reason}` })
+      }
+      await resolveReport({ reportId: report._id, status: 'actioned' })
+    } catch (err) {
+      console.error('Error actioning report:', err)
+      setError('تعذر إزالة المحتوى المبلغ عنه')
+    }
+    setActionId(null)
+  }
+
+  if (reports === undefined) return <LoadingState />
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      <div className="admin-section-header">
+        <h2 className="admin-section-title">تبليغات المستخدمين</h2>
+        <span className="admin-badge admin-badge-warning">{reports.length} تبليغ</span>
+      </div>
+
+      <div className="admin-form-group" style={{ maxWidth: '260px' }}>
+        <label className="admin-form-label">الحالة</label>
+        <select
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+          className="admin-form-input"
+        >
+          {REPORT_STATUSES.map(s => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {error && (
+        <div style={{ color: '#ef4444', padding: '0.75rem 0' }}>{error}</div>
+      )}
+
+      {reports.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem', color: '#6b7280' }}>
+          لا توجد تبليغات في هذه الحالة
+        </div>
+      ) : (
+        <div className="admin-table-wrapper">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>المحتوى المبلغ عنه</th>
+                <th>النوع</th>
+                <th>السبب</th>
+                <th>التفاصيل</th>
+                <th>المُبلِّغ</th>
+                <th>التاريخ</th>
+                <th style={{ textAlign: 'left' }}>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reports.map(report => (
+                <tr key={report._id}>
+                  <td>
+                    {report.target ? (
+                      <>
+                        <div className="admin-table-name">{report.target.title || '—'}</div>
+                        <div className="admin-table-sub">
+                          {report.target.subtitle}
+                          {report.target.status ? ` · ${report.target.status}` : ''}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="admin-table-sub">المحتوى محذوف</div>
+                    )}
+                  </td>
+                  <td>{REPORT_TARGET_TYPES_AR[report.targetType] || report.targetType}</td>
+                  <td>{REPORT_REASONS_AR[report.reason] || report.reason}</td>
+                  <td style={{ maxWidth: '240px', whiteSpace: 'pre-wrap' }}>
+                    {report.details || '-'}
+                  </td>
+                  <td>
+                    {report.reporter ? (
+                      <>
+                        <div className="admin-table-name">
+                          {[report.reporter.firstName, report.reporter.lastName].filter(Boolean).join(' ') || '—'}
+                        </div>
+                        <div className="admin-table-sub">{report.reporter.email}</div>
+                      </>
+                    ) : (
+                      <div className="admin-table-sub">—</div>
+                    )}
+                  </td>
+                  <td>{new Date(report.createdAt).toLocaleDateString('ar-SA')}</td>
+                  <td>
+                    {report.status === 'pending' ? (
+                      <div className="admin-actions">
+                        {report.target && report.targetType !== 'review' && (
+                          <button
+                            onClick={() => handleTakedown(report)}
+                            className="admin-action-btn delete"
+                            disabled={actionId === report._id}
+                          >
+                            {actionId === report._id ? 'جاري...' : 'إزالة المحتوى'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDismiss(report)}
+                          className="admin-action-btn edit"
+                          disabled={actionId === report._id}
+                        >
+                          {actionId === report._id ? 'جاري...' : 'رفض التبليغ'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="admin-table-sub">
+                        {REPORT_STATUSES.find(s => s.value === report.status)?.label || report.status}
+                      </span>
+                    )}
                   </td>
                 </tr>
               ))}

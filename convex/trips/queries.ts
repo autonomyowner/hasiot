@@ -2,6 +2,9 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 
+// Hard ceiling — each trip hydrates its stops, so this bounds a nested fan-out.
+const MAX_TRIPS = 100;
+
 // Get all trips for current user, with hydrated listing data for stops
 export const getMyTrips = query({
   args: {
@@ -18,12 +21,12 @@ export const getMyTrips = query({
         .withIndex("by_userId_and_status", (q) =>
           q.eq("userId", user._id).eq("status", args.status!)
         )
-        .collect();
+        .take(MAX_TRIPS);
     } else {
       trips = await ctx.db
         .query("trips")
         .withIndex("by_userId", (q) => q.eq("userId", user._id))
-        .collect();
+        .take(MAX_TRIPS);
     }
 
     // Hydrate stops with listing data
@@ -106,7 +109,7 @@ export const getMyTripSummaries = query({
       .withIndex("by_userId_and_status", (q) =>
         q.eq("userId", user._id).eq("status", "planning")
       )
-      .collect();
+      .take(MAX_TRIPS);
 
     return trips
       .map((trip) => ({

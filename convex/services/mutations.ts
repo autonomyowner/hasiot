@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
+import { enforceRateLimit } from "../rateLimit";
 
 // Submit a new service (service provider only)
 export const submitService = mutation({
@@ -35,6 +36,13 @@ export const submitService = mutation({
     if (!user.isApproved) {
       throw new Error("Your account must be approved before submitting services");
     }
+
+    await enforceRateLimit(
+      ctx,
+      `service:${user._id}`,
+      20,
+      "لقد وصلت إلى الحد اليومي لإضافة الخدمات. يرجى المحاولة غدًا. / You've reached today's limit for new services. Please try again tomorrow."
+    );
 
     const now = Date.now();
     const serviceId = await ctx.db.insert("services", {

@@ -23,6 +23,22 @@
   justify-content: space-between;
 }
 
+/* Matches the shared Navbar's logo treatment. */
+.dashboard-logo {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.dashboard-logo-img {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 2px solid var(--color-gold, #D4AF37);
+  object-fit: cover;
+}
+
 .dashboard-header .auth-logo {
   font-family: 'Instrument Serif', serif;
   font-size: 1.5rem;
@@ -324,7 +340,7 @@
 }
 
 /* Primary button */
-.btn-primary {
+.patient-dashboard .btn-primary {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -340,16 +356,16 @@
   transition: background 0.2s;
 }
 
-.btn-primary:hover {
+.patient-dashboard .btn-primary:hover {
   background: #065F46;
 }
 
-.btn-primary:disabled {
+.patient-dashboard .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.btn-secondary {
+.patient-dashboard .btn-secondary {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -365,7 +381,7 @@
   transition: all 0.2s;
 }
 
-.btn-secondary:hover {
+.patient-dashboard .btn-secondary:hover {
   border-color: #d1d5db;
   background: #f9fafb;
 }
@@ -585,7 +601,7 @@
 }
 
 /* Filter tabs */
-.filter-tabs {
+.patient-dashboard .filter-tabs {
   display: flex;
   gap: 0.25rem;
   background: #f3f4f6;
@@ -595,7 +611,7 @@
   overflow-x: auto;
 }
 
-.filter-tab {
+.patient-dashboard .filter-tab {
   padding: 0.5rem 0.75rem;
   border: none;
   border-radius: 8px;
@@ -609,14 +625,14 @@
   transition: all 0.2s;
 }
 
-.filter-tab.active {
+.patient-dashboard .filter-tab.active {
   background: white;
   color: #0D7A5F;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* Modal */
-.modal-overlay {
+.patient-dashboard .modal-overlay {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
@@ -627,7 +643,7 @@
   padding: 1rem;
 }
 
-.modal-content {
+.patient-dashboard .modal-content {
   background: white;
   border-radius: 16px;
   padding: 1.5rem;
@@ -651,7 +667,7 @@
   margin: 0;
 }
 
-.modal-close {
+.patient-dashboard .modal-close {
   width: 32px;
   height: 32px;
   border: none;
@@ -666,12 +682,12 @@
   transition: background 0.2s;
 }
 
-.modal-close:hover {
+.patient-dashboard .modal-close:hover {
   background: #e5e7eb;
 }
 
 /* Form */
-.form-group {
+.patient-dashboard .form-group {
   margin-bottom: 1rem;
 }
 
@@ -705,7 +721,7 @@
   box-shadow: 0 0 0 3px rgba(13, 122, 95, 0.1);
 }
 
-.form-row {
+.patient-dashboard .form-row {
   display: flex;
   gap: 0.75rem;
 }
@@ -794,7 +810,7 @@
 .urgency-self_care { border-color: #10b981; }
 
 /* Section header with actions */
-.section-header {
+.patient-dashboard .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -854,7 +870,7 @@
     text-align: center;
   }
 
-  .form-row {
+  .patient-dashboard .form-row {
     flex-direction: column;
   }
 
@@ -883,7 +899,7 @@
     flex-direction: column;
   }
 
-  .filter-tabs {
+  .patient-dashboard .filter-tabs {
     flex-wrap: nowrap;
   }
 }

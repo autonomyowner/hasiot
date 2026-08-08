@@ -1,8 +1,10 @@
 import { useState } from 'react'
 
-const fallbackImage = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" fill="#f3f4f6"><rect width="400" height="300"/><text x="50%" y="50%" text-anchor="middle" dy=".3em" fill="#9ca3af" font-family="system-ui" font-size="14">No Image</text></svg>`)
+// Wordless placeholder — a text label here would be untranslated on the Arabic
+// side of the app, so use a neutral image glyph instead.
+const fallbackImage = 'data:image/svg+xml,' + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300"><rect width="400" height="300" fill="#E8DFD4"/><g fill="none" stroke="#9ca3af" stroke-width="2"><rect x="160" y="120" width="80" height="60" rx="4"/><circle cx="180" cy="140" r="7"/><path d="M164 172l24-22 20 18 12-10 16 14"/></g></svg>`)
 
-export default function ImageCarousel({ images = [], height = 200, borderRadius = '16px 16px 0 0' }) {
+export default function ImageCarousel({ images = [], height = 200, borderRadius = '16px 16px 0 0', alt = '' }) {
   const [current, setCurrent] = useState(0)
   const srcs = images.length > 0 ? images : [fallbackImage]
 
@@ -19,7 +21,7 @@ export default function ImageCarousel({ images = [], height = 200, borderRadius 
     <div style={{ position: 'relative', width: '100%', height, overflow: 'hidden', borderRadius, background: '#f3f4f6' }}>
       <img
         src={srcs[current]}
-        alt=""
+        alt={alt}
         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         onError={(e) => { e.target.src = fallbackImage }}
       />

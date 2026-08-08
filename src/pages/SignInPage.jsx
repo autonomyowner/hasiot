@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { authClient } from '../lib/auth-client'
+import { useLanguage } from '../hooks/useLanguage'
 import './AuthPages.css'
 
 const translations = {
@@ -39,7 +40,7 @@ export default function SignInPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [lang, setLang] = useState('ar')
+  const { lang, toggleLang } = useLanguage()
   const t = translations[lang] || translations.ar
 
   const handleSubmit = async (e) => {
@@ -73,7 +74,7 @@ export default function SignInPage() {
         <button
           className="auth-lang-toggle"
           type="button"
-          onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')}
+          onClick={() => toggleLang()}
         >
           {lang === 'ar' ? 'EN' : 'عربي'}
         </button>

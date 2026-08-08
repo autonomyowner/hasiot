@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useConvex } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { useCurrentUser } from '../hooks/useCurrentUser'
+import { useSyncHtmlLang } from '../hooks/useLanguage'
+import { SkeletonLine, SkeletonList, SkeletonPanel } from '../components/Skeleton'
 import { authClient } from '../lib/auth-client'
 import { motion, AnimatePresence } from 'framer-motion'
 import './DoctorDashboard.css'
@@ -24,6 +26,10 @@ export default function DoctorDashboard() {
   const [uploading, setUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
   const [activeTab, setActiveTab] = useState(null)
+
+  // This dashboard is Arabic-only, but the RTL rules live on html[dir], so the
+  // page's own dir="rtl" is not enough on its own.
+  useSyncHtmlLang('ar')
 
   // Set default active tab based on role
   useEffect(() => {
@@ -60,8 +66,13 @@ export default function DoctorDashboard() {
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--color-bg)' }}>
-        <p style={{ color: 'var(--color-text-muted)', fontFamily: 'var(--font-arabic)' }}>جاري التحميل...</p>
+      <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '48px 24px' }}>
+          <SkeletonLine height={28} width="35%" />
+          <div style={{ marginTop: 24 }}>
+            <SkeletonList count={4} />
+          </div>
+        </div>
       </div>
     )
   }
@@ -270,7 +281,7 @@ function OverviewTab({ user, setActiveTab }) {
         </div>
         <div className="section-card-body">
           {myListings === undefined ? (
-            <p style={{ padding: '20px 24px', color: 'var(--color-text-muted)', fontSize: '14px' }}>جاري التحميل...</p>
+            <SkeletonPanel lines={3} />
           ) : myListings.length === 0 ? (
             <p style={{ padding: '20px 24px', color: 'var(--color-text-muted)', fontSize: '14px' }}>لا توجد قوائم بعد.</p>
           ) : (
@@ -446,7 +457,7 @@ function MyListingsTab({ user }) {
         </div>
         <div className="section-card-body">
           {myListings === undefined ? (
-            <p style={{ padding: '20px 24px', color: 'var(--color-text-muted)', fontSize: '14px' }}>جاري التحميل...</p>
+            <SkeletonPanel lines={3} />
           ) : myListings.length === 0 ? (
             <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
               <p style={{ fontSize: '15px' }}>لم تقم بإضافة أي قوائم بعد.</p>
@@ -619,7 +630,7 @@ function ImageUploader({ images, setImages }) {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
           {images.map((img, i) => (
             <div key={i} style={{ position: 'relative', width: '80px', height: '80px', borderRadius: '10px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
-              <img src={img.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <img src={img.url} alt={`صورة ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               <button
                 type="button"
                 onClick={() => removeImage(i)}
@@ -1004,7 +1015,7 @@ function MyServicesTab({ user }) {
         </div>
         <div className="section-card-body">
           {myServices === undefined ? (
-            <p style={{ padding: '20px 24px', color: 'var(--color-text-muted)', fontSize: '14px' }}>جاري التحميل...</p>
+            <SkeletonPanel lines={3} />
           ) : filtered.length === 0 ? (
             <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
               <p style={{ fontSize: '15px' }}>
@@ -1359,7 +1370,7 @@ function BusinessBookingsTab() {
         </div>
         <div className="section-card-body" style={{ padding: '8px 0' }}>
           {bookings === undefined ? (
-            <p style={{ padding: '20px 24px', color: 'var(--color-text-muted)', fontSize: '14px' }}>جاري التحميل...</p>
+            <SkeletonPanel lines={3} />
           ) : upcoming.length === 0 ? (
             <p style={{ padding: '20px 24px', color: 'var(--color-text-muted)', fontSize: '14px' }}>لا توجد حجوزات قادمة.</p>
           ) : (

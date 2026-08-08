@@ -17,11 +17,7 @@ export const getMyPlans = query({
       .query("travelPlans")
       .withIndex("by_userId", (q) => q.eq("userId", user._id))
       .order("desc")
-      .collect();
-
-    if (args.limit) {
-      return plans.slice(0, args.limit);
-    }
+      .take(Math.min(args.limit ?? 50, 50));
 
     return plans;
   },

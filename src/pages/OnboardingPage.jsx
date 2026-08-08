@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useLanguage } from '../hooks/useLanguage'
 import './OnboardingPage.css'
 
 const translations = {
@@ -22,26 +23,23 @@ const translations = {
 
 export default function OnboardingPage() {
   const navigate = useNavigate()
-  const [lang, setLang] = useState('ar')
+  // useLanguage owns dir/lang on <html> and persists the choice, so the
+  // language picked here carries through to the rest of the app.
+  const { lang, setLang, isRtl: isRTL } = useLanguage()
   const [loaded, setLoaded] = useState(false)
   const t = translations[lang]
-  const isRTL = lang === 'ar'
 
   useEffect(() => {
-    document.documentElement.dir = isRTL ? 'rtl' : 'ltr'
-    document.documentElement.lang = lang
     setLoaded(true)
-  }, [lang, isRTL])
+  }, [])
 
   const handleContinueWithEmail = () => {
     localStorage.setItem('hasio_onboarding_done', 'true')
-    localStorage.setItem('hasio_lang', lang)
     navigate('/sign-up')
   }
 
   const handleSkip = () => {
     localStorage.setItem('hasio_onboarding_done', 'true')
-    localStorage.setItem('hasio_lang', lang)
     navigate('/home')
   }
 
@@ -49,10 +47,18 @@ export default function OnboardingPage() {
     <div className="onboarding">
       {/* Background */}
       <div className="onboarding-bg">
+        {/* Falls back to a bundled asset — this is the first screen a new user
+            sees, so it must not depend on an external bucket being reachable. */}
         <img
           src="https://pub-d7fc967a0d9e4e42bba0d712e4f9b96e.r2.dev/lodging/desert-camp-a2dc07bf.jpg"
           alt=""
           className="onboarding-bg-img"
+          onError={(e) => {
+            if (!e.target.dataset.fallback) {
+              e.target.dataset.fallback = '1'
+              e.target.src = '/hero.png'
+            }
+          }}
         />
         <div className="onboarding-overlay" />
       </div>

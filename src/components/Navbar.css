@@ -11,9 +11,7 @@
    homepage's own floating hero nav (.nav / .nav-inner in App.css).
    ======================================== */
 
-:root {
-  --nav-h: 68px;
-}
+/* --nav-h is declared in index.css so it is defined before any page chunk. */
 
 .site-nav {
   position: sticky;
@@ -225,9 +223,6 @@ html[dir='rtl'] .site-nav .site-nav-inner {
 }
 
 @media (max-width: 768px) {
-  :root {
-    --nav-h: 60px;
-  }
   .site-nav .site-nav-inner {
     padding: 0 14px;
   }

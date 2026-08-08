@@ -3,6 +3,7 @@ import { useQuery, useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { motion, AnimatePresence } from 'framer-motion'
 import SaveToTripModal from '../trips/SaveToTripModal'
+import { SkeletonList } from '../Skeleton'
 
 const translations = {
   ar: {
@@ -53,9 +54,7 @@ export default function FavoritesSection({ lang = 'ar', user }) {
   const typeLabel = (type) => t[type] || type
 
   if (favorites === undefined) {
-    return <div style={{ textAlign: 'center', color: '#9ca3af', padding: '3rem' }}>
-      {isRTL ? 'جاري التحميل...' : 'Loading...'}
-    </div>
+    return <SkeletonList count={4} />
   }
 
   return (

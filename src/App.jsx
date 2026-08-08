@@ -1,10 +1,11 @@
-import { useState, useEffect, lazy, Suspense } from 'react'
+import { useState, lazy, Suspense } from 'react'
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link, useNavigate } from 'react-router-dom'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../convex/_generated/api'
 import { authClient } from './lib/auth-client'
+import { useLanguage } from './hooks/useLanguage'
 import './App.css'
 
 const hasConvex = !!import.meta.env.VITE_CONVEX_URL
@@ -385,7 +386,7 @@ const translations = {
 
 
 function App() {
-  const [lang, setLang] = useState(() => localStorage.getItem('hasio_lang') || 'ar')
+  const { lang, toggleLang, isRtl: isAr } = useLanguage()
   const [showTravelPlanner, setShowTravelPlanner] = useState(false)
   const [showMobileChat, setShowMobileChat] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -403,15 +404,6 @@ function App() {
   const navigate = useNavigate()
 
   const t = translations[lang]
-  const isAr = lang === 'ar'
-
-  useEffect(() => {
-    document.documentElement.dir = isAr ? 'rtl' : 'ltr'
-    document.documentElement.lang = lang
-    localStorage.setItem('hasio_lang', lang)
-  }, [lang, isAr])
-
-  const toggleLang = () => setLang(prev => (prev === 'ar' ? 'en' : 'ar'))
 
   const handleCategoryClick = (categoryType) => {
     if (categoryType === 'guides') {

@@ -195,12 +195,12 @@ export const planTravel = action({
       // Not authenticated
     }
 
-    const globalCheck = await ctx.runMutation(internal.travelPlanner.rateLimit.checkAndIncrement, {
+    const globalCheck = await ctx.runMutation(internal.rateLimit.checkAndIncrement, {
       key: "global",
       limit: 1000,
     });
     const callerCheck = globalCheck.allowed
-      ? await ctx.runMutation(internal.travelPlanner.rateLimit.checkAndIncrement, {
+      ? await ctx.runMutation(internal.rateLimit.checkAndIncrement, {
           key: userId
             ? `user:${userId}`
             : args.sessionId

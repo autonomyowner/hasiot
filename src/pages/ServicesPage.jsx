@@ -1,9 +1,14 @@
 import { useState } from 'react'
-import { useQuery } from 'convex/react'
+import { useQuery, usePaginatedQuery } from 'convex/react'
 import { motion as Motion } from 'framer-motion'
 import { api } from '../../convex/_generated/api'
 import Navbar from '../components/Navbar'
+import SectionBoundary from '../components/SectionBoundary'
+import { SkeletonLine, SkeletonRow, SkeletonList } from '../components/Skeleton'
+import { useLanguage } from '../hooks/useLanguage'
 import './ServicesPage.css'
+
+const PAGE_SIZE = 24
 
 const FALLBACK_AVATARS = [
   "https://lh3.googleusercontent.com/aida-public/AB6AXuAzcPMUwTld7-zCtkSnKB2ym4qiOjQ2fYoorZT6uPNWTW0qye4fvZBdnjo_4BVsw5deSOqJ6_7Xe3o_jDaL3ElV-6nGsRUFSiH0cjHcYpumKpa1inLHIex8jzevIycdFyQtBvIBFiqK6naq4aovwHeAOPKFITF2FpUiE4v-s_kG9vV7AYcW0Y9LxXPjQ8GFtkzEfZi8uh1N_GkciK2ZBh1tmK_Af02c95G0h1C6Hu-G7OBNWqRNaZMsLLSZvJcL3-GqKpDaVA5Cw2PL",
@@ -47,6 +52,7 @@ const translations = {
     professionals: 'professionals found',
     noResults: 'No services found',
     adjustFilters: 'Try adjusting your filters',
+    loadMore: 'Load more',
     contact: 'Contact',
     contactAdmin: 'Contact through platform',
     languages: 'Languages',
@@ -67,6 +73,7 @@ const translations = {
     professionals: 'محترف متاح',
     noResults: 'لا توجد خدمات',
     adjustFilters: 'حاول تعديل الفلاتر',
+    loadMore: 'عرض المزيد',
     contact: 'تواصل',
     contactAdmin: 'التواصل عبر المنصة',
     languages: 'اللغات',
@@ -83,19 +90,12 @@ const translations = {
 function SkeletonProvider() {
   return (
     <div className="skeleton-provider">
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-        <div className="skeleton-line" style={{ width: 80, height: 80, borderRadius: '50%', flexShrink: 0 }} />
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div className="skeleton-line" style={{ height: 18, width: '70%' }} />
-          <div className="skeleton-line" style={{ height: 13, width: '45%' }} />
-          <div className="skeleton-line" style={{ height: 13, width: '35%' }} />
-        </div>
-      </div>
-      <div className="skeleton-line" style={{ height: 13, width: '100%' }} />
-      <div className="skeleton-line" style={{ height: 13, width: '85%' }} />
+      <SkeletonRow />
+      <SkeletonLine height={13} />
+      <SkeletonLine height={13} width="85%" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div className="skeleton-line" style={{ height: 20, width: '30%' }} />
-        <div className="skeleton-line" style={{ height: 36, width: '35%', borderRadius: 12 }} />
+        <SkeletonLine height={20} width="30%" />
+        <SkeletonLine height={36} width="35%" />
       </div>
     </div>
   )
@@ -198,7 +198,7 @@ function ProviderCard({ svc, lang, t, stLabels, index, expanded, onToggle }) {
 }
 
 export default function ServicesPage() {
-  const [lang, setLang] = useState(() => localStorage.getItem('hasio_lang') || 'ar')
+  const { lang, toggleLang, isRtl: isAr } = useLanguage()
   const [search, setSearch] = useState('')
   const [serviceType, setServiceType] = useState('')
   const [city, setCity] = useState('')
@@ -206,27 +206,39 @@ export default function ServicesPage() {
 
   const t = translations[lang]
   const stLabels = serviceTypeLabels[lang]
-  const isAr = lang === 'ar'
 
-  const services = useQuery(
-    search.trim() ? api.services.queries.searchServices : api.services.queries.listServices,
-    search.trim()
+  const isSearching = !!search.trim()
+
+  // Search results are relevance-ranked and capped; only browsing paginates.
+  const searchResults = useQuery(
+    api.services.queries.searchServices,
+    isSearching
       ? { searchQuery: search.trim(), ...(serviceType ? { serviceType } : {}), ...(city ? { city } : {}), limit: 100 }
-      : { ...(serviceType ? { serviceType } : {}), ...(city ? { city } : {}), limit: 100 }
+      : 'skip'
   )
 
-  // Extract unique cities from results
-  const citySet = new Set()
-  if (services) services.forEach((s) => s.city && citySet.add(s.city))
-  const cityList = [...citySet].sort()
+  const {
+    results: browseResults,
+    status: browseStatus,
+    loadMore,
+  } = usePaginatedQuery(
+    api.services.queries.listServicesPaginated,
+    isSearching ? 'skip' : { ...(serviceType ? { serviceType } : {}), ...(city ? { city } : {}) },
+    { initialNumItems: PAGE_SIZE }
+  )
 
-  const toggleLang = () => {
-    const next = lang === 'ar' ? 'en' : 'ar'
-    setLang(next)
-    localStorage.setItem('hasio_lang', next)
-  }
+  const services = isSearching ? searchResults : browseResults
+  const canLoadMore = !isSearching && browseStatus === 'CanLoadMore'
+  const isLoadingMore = !isSearching && browseStatus === 'LoadingMore'
 
-  const loading = services === undefined
+  // Cities come from a dedicated query — deriving them from the visible results
+  // silently truncated the filter list to whatever happened to be loaded.
+  const cities = useQuery(api.services.queries.getServiceCities, {})
+  const cityList = (cities || []).map((c) => c.city)
+
+  const loading = isSearching
+    ? searchResults === undefined
+    : browseStatus === 'LoadingFirstPage'
 
   return (
     <div className="services-page" dir={isAr ? 'rtl' : 'ltr'}>
@@ -293,31 +305,49 @@ export default function ServicesPage() {
           </span>
         </div>
 
-        {loading ? (
-          <div className="services-loading">
-            {[...Array(6)].map((_, i) => <SkeletonProvider key={i} />)}
-          </div>
-        ) : services.length === 0 ? (
-          <div className="services-empty">
-            <h3>{t.noResults}</h3>
-            <p>{t.adjustFilters}</p>
-          </div>
-        ) : (
-          <div className="services-grid">
-            {services.map((svc, i) => (
-              <ProviderCard
-                key={svc._id}
-                svc={svc}
-                lang={lang}
-                t={t}
-                stLabels={stLabels}
-                index={i}
-                expanded={expanded === svc._id}
-                onToggle={() => setExpanded(expanded === svc._id ? null : svc._id)}
-              />
-            ))}
-          </div>
-        )}
+        <SectionBoundary lang={lang}>
+          {loading ? (
+            <div className="services-loading">
+              <SkeletonList count={6} as={SkeletonProvider} />
+            </div>
+          ) : services.length === 0 ? (
+            <div className="services-empty">
+              <h3>{t.noResults}</h3>
+              <p>{t.adjustFilters}</p>
+            </div>
+          ) : (
+            <>
+              <div className="services-grid">
+                {services.map((svc, i) => (
+                  <ProviderCard
+                    key={svc._id}
+                    svc={svc}
+                    lang={lang}
+                    t={t}
+                    stLabels={stLabels}
+                    index={i}
+                    expanded={expanded === svc._id}
+                    onToggle={() => setExpanded(expanded === svc._id ? null : svc._id)}
+                  />
+                ))}
+              </div>
+
+              {isLoadingMore && (
+                <div className="services-loading" style={{ marginTop: 24 }}>
+                  <SkeletonList count={3} as={SkeletonProvider} />
+                </div>
+              )}
+
+              {canLoadMore && (
+                <div className="services-load-more">
+                  <button type="button" onClick={() => loadMore(PAGE_SIZE)}>
+                    {t.loadMore}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </SectionBoundary>
       </div>
 
       {/* Trust indicators */}

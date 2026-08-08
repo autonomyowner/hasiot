@@ -1,9 +1,14 @@
 import { useState, useMemo } from 'react'
-import { useQuery } from 'convex/react'
+import { useQuery, usePaginatedQuery } from 'convex/react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { api } from '../../convex/_generated/api'
 import Navbar from '../components/Navbar'
+import SectionBoundary from '../components/SectionBoundary'
+import { SkeletonCard, SkeletonList } from '../components/Skeleton'
+import { useLanguage } from '../hooks/useLanguage'
 import './ListingsPage.css'
+
+const PAGE_SIZE = 24
 
 const AIDA_FALLBACKS = [
   'https://lh3.googleusercontent.com/aida-public/AB6AXuDPTsZ4J6YVULnt7fquihF15Zua-d_IaG_DSiVEf3PooFw7Gh3WRLBYMKUZYU3CPxu5JHMTKdTUwIYnFp14FIXZxje1BTAY9H7CsUb994QeSgzK3NV_2rlJ4gLl6vXhU-WIiu53Nj-ajFv24mmeLeF6CFFQJNmssZCr0kKmD1GDTkL2d9mc_iTcst5c7ziPGv8HD50LfXwmC-iTWgVygnY_6hU2N66b2S5oZhgA-uu6g4RPjeQ19oLXzSD26v0pudZN8trqqRrm9cL9',
@@ -35,6 +40,7 @@ const translations = {
     city: 'المدينة',
     clearAll: 'مسح الكل',
     listings: 'وجهة',
+    loadMore: 'عرض المزيد',
   },
   en: {
     title: 'Destinations',
@@ -56,48 +62,47 @@ const translations = {
     city: 'City',
     clearAll: 'Clear All',
     listings: 'listings',
+    loadMore: 'Load more',
   },
 }
 
 const typeOptions = ['hotel', 'restaurant', 'attraction', 'event', 'tour']
 
-function SkeletonCard() {
-  return (
-    <div className="skeleton-card">
-      <div className="skeleton-img" />
-      <div className="skeleton-body">
-        <div className="skeleton-line" />
-        <div className="skeleton-line short" />
-        <div className="skeleton-line short" />
-      </div>
-    </div>
-  )
-}
-
 export default function ListingsPage() {
   const [searchParams] = useSearchParams()
-  const [lang, setLang] = useState(() => localStorage.getItem('hasio_lang') || 'ar')
+  const { lang, toggleLang, isRtl } = useLanguage()
   const [search, setSearch] = useState('')
   const [type, setType] = useState(() => searchParams.get('type') || '')
   const [city, setCity] = useState('')
   const t = translations[lang]
-  const isRtl = lang === 'ar'
 
-  const listings = useQuery(
-    search.trim() ? api.listings.queries.searchListings : api.listings.queries.listListings,
-    search.trim()
+  const isSearching = !!search.trim()
+
+  // Search results come back relevance-ranked and capped, so only the browse
+  // path paginates. Passing "skip" keeps the inactive query from subscribing.
+  const searchResults = useQuery(
+    api.listings.queries.searchListings,
+    isSearching
       ? { searchQuery: search.trim(), ...(type ? { type } : {}), ...(city ? { city } : {}), limit: 100 }
-      : { ...(type ? { type } : {}), ...(city ? { city } : {}), limit: 100 }
+      : 'skip'
   )
+
+  const {
+    results: browseResults,
+    status: browseStatus,
+    loadMore,
+  } = usePaginatedQuery(
+    api.listings.queries.listListingsPaginated,
+    isSearching ? 'skip' : { ...(type ? { type } : {}), ...(city ? { city } : {}) },
+    { initialNumItems: PAGE_SIZE }
+  )
+
+  const listings = isSearching ? searchResults : browseResults
+  const canLoadMore = !isSearching && browseStatus === 'CanLoadMore'
+  const isLoadingMore = !isSearching && browseStatus === 'LoadingMore'
 
   const cities = useQuery(api.listings.queries.getCities)
   const cityList = useMemo(() => (cities || []).map((c) => c.city), [cities])
-
-  const toggleLang = () => {
-    const next = lang === 'ar' ? 'en' : 'ar'
-    setLang(next)
-    localStorage.setItem('hasio_lang', next)
-  }
 
   const clearFilters = () => {
     setType('')
@@ -105,7 +110,9 @@ export default function ListingsPage() {
     setSearch('')
   }
 
-  const isLoading = listings === undefined
+  const isLoading = isSearching
+    ? searchResults === undefined
+    : browseStatus === 'LoadingFirstPage'
   const count = listings?.length ?? 0
 
   return (
@@ -131,11 +138,11 @@ export default function ListingsPage() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t.search}
           />
-          {!isLoading && (
-            <span className="listings-count">
-              {count} {t.listings}
-            </span>
-          )}
+          {/* Rendered unconditionally so the sticky bar doesn't reflow when
+              the count arrives. */}
+          <span className="listings-count">
+            {isLoading ? '—' : `${count} ${t.listings}`}
+          </span>
         </div>
       </div>
 
@@ -196,24 +203,40 @@ export default function ListingsPage() {
 
         {/* Grid area */}
         <div>
-          {isLoading ? (
-            <div className="listings-loading">
-              {[...Array(6)].map((_, i) => (
-                <SkeletonCard key={i} />
-              ))}
-            </div>
-          ) : listings.length === 0 ? (
-            <div className="listings-empty">
-              <h3>{t.noResults}</h3>
-              <p>{t.noResultsSub}</p>
-            </div>
-          ) : (
-            <div className="listings-grid">
-              {listings.map((item, idx) => (
-                <ListingCard key={item._id} item={item} lang={lang} t={t} index={idx} />
-              ))}
-            </div>
-          )}
+          <SectionBoundary lang={lang}>
+            {isLoading ? (
+              <div className="listings-loading">
+                <SkeletonList count={6} as={SkeletonCard} />
+              </div>
+            ) : listings.length === 0 ? (
+              <div className="listings-empty">
+                <h3>{t.noResults}</h3>
+                <p>{t.noResultsSub}</p>
+              </div>
+            ) : (
+              <>
+                <div className="listings-grid">
+                  {listings.map((item, idx) => (
+                    <ListingCard key={item._id} item={item} lang={lang} t={t} index={idx} />
+                  ))}
+                </div>
+
+                {isLoadingMore && (
+                  <div className="listings-loading" style={{ marginTop: 24 }}>
+                    <SkeletonList count={3} as={SkeletonCard} />
+                  </div>
+                )}
+
+                {canLoadMore && (
+                  <div className="listings-load-more">
+                    <button type="button" onClick={() => loadMore(PAGE_SIZE)}>
+                      {t.loadMore}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </SectionBoundary>
         </div>
       </div>
     </div>

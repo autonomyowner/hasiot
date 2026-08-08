@@ -2,6 +2,10 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 
+// Hard ceilings so no query can scan an unbounded number of documents.
+const MAX_LIST = 200;
+const MAX_OWNED_LISTINGS = 50;
+
 // Get current user's bookings
 export const getUserBookings = query({
   args: {
@@ -14,6 +18,8 @@ export const getUserBookings = query({
       return [];
     }
 
+    const take = Math.min(args.limit ?? MAX_LIST, MAX_LIST);
+
     let bookings;
     if (args.status) {
       bookings = await ctx.db
@@ -22,13 +28,13 @@ export const getUserBookings = query({
           q.eq("userId", user._id).eq("status", args.status!)
         )
         .order("desc")
-        .collect();
+        .take(take);
     } else {
       bookings = await ctx.db
         .query("bookings")
         .withIndex("by_userId", (q) => q.eq("userId", user._id))
         .order("desc")
-        .collect();
+        .take(take);
     }
 
     // Enrich with listing info
@@ -51,10 +57,6 @@ export const getUserBookings = query({
         };
       })
     );
-
-    if (args.limit) {
-      return enrichedBookings.slice(0, args.limit);
-    }
 
     return enrichedBookings;
   },
@@ -160,7 +162,7 @@ export const getUpcomingCount = query({
       .withIndex("by_userId_and_status", (q) =>
         q.eq("userId", user._id).eq("status", "confirmed")
       )
-      .collect();
+      .take(MAX_LIST);
 
     return bookings.filter((b) => b.date >= today).length;
   },
@@ -177,30 +179,50 @@ export const getBusinessBookings = query({
       return [];
     }
 
-    const listings = await ctx.db.query("listings").collect();
-    const listing = listings.find(
-      (l) => l.email === user.email
-    );
+    // Resolve owned listings via the ownerId index. This previously scanned the
+    // whole listings table in JS and matched on email, which both scaled badly
+    // and only ever returned bookings for a single listing.
+    const listings = await ctx.db
+      .query("listings")
+      .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
+      .take(MAX_OWNED_LISTINGS);
 
-    if (!listing) {
+    if (listings.length === 0) {
       return [];
     }
 
-    let bookings = await ctx.db
-      .query("bookings")
-      .withIndex("by_listingId", (q) => q.eq("listingId", listing._id))
-      .order("desc")
-      .collect();
+    const perListing = await Promise.all(
+      listings.map((listing) =>
+        ctx.db
+          .query("bookings")
+          .withIndex("by_listingId", (q) => q.eq("listingId", listing._id))
+          .order("desc")
+          .take(MAX_LIST)
+      )
+    );
+
+    let bookings = perListing
+      .flat()
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, MAX_LIST);
 
     if (args.status) {
       bookings = bookings.filter((b) => b.status === args.status);
     }
 
+    // Bookings can now span several owned listings, so name the listing on each
+    // row rather than leaving the dashboard to guess.
+    const listingsById = new Map(listings.map((l) => [l._id as string, l]));
+
     const enriched = await Promise.all(
       bookings.map(async (booking) => {
         const tourist = await ctx.db.get(booking.userId);
+        const listing = listingsById.get(booking.listingId as string);
         return {
           ...booking,
+          listing: listing
+            ? { _id: listing._id, name_en: listing.name_en, name_ar: listing.name_ar }
+            : null,
           tourist: tourist
             ? {
                 _id: tourist._id,

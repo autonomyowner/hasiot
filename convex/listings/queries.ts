@@ -1,8 +1,14 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { getAuthenticatedAppUser } from "../auth";
 import { QueryCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
+
+// Hard ceilings so no query can ever scan an unbounded number of documents.
+// Convex fails a query outright past ~16k reads, so these must stay well under.
+const MAX_SCAN = 1000;
+const MAX_LIST = 200;
 
 // Helper: check if listing is publicly visible (approved or no status = seed data)
 function isPublicListing(listing: { isActive?: boolean; status?: string }) {
@@ -22,7 +28,56 @@ async function getBlockedIds(ctx: QueryCtx): Promise<Set<string>> {
   return new Set(blocks.map((b) => b.blockedUserId as string));
 }
 
-// List all listings with optional filters
+// Shared index selection for both the capped and paginated list queries.
+function buildListingQuery(
+  ctx: QueryCtx,
+  args: { type?: string; category?: string; city?: string }
+) {
+  if (args.city && args.category) {
+    return ctx.db.query("listings").withIndex("by_city_and_category", (q) =>
+      q.eq("city", args.city!).eq("category", args.category!)
+    );
+  } else if (args.type && args.category) {
+    return ctx.db.query("listings").withIndex("by_type_and_category", (q) =>
+      q.eq("type", args.type!).eq("category", args.category!)
+    );
+  } else if (args.type) {
+    return ctx.db.query("listings").withIndex("by_type", (q) => q.eq("type", args.type!));
+  } else if (args.category) {
+    return ctx.db.query("listings").withIndex("by_category", (q) => q.eq("category", args.category!));
+  } else if (args.city) {
+    return ctx.db.query("listings").withIndex("by_city", (q) => q.eq("city", args.city!));
+  }
+  return ctx.db.query("listings");
+}
+
+/**
+ * Cursor-paginated browse listing. Used by /listings ("load more").
+ * Filtering happens per page, so a page may come back shorter than numItems —
+ * that's expected and `isDone` still terminates correctly.
+ */
+export const listListingsPaginated = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    type: v.optional(v.string()),
+    category: v.optional(v.string()),
+    city: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const result = await buildListingQuery(ctx, args).paginate(args.paginationOpts);
+    const blockedIds = await getBlockedIds(ctx);
+
+    return {
+      ...result,
+      page: result.page
+        .filter(isPublicListing)
+        .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string))),
+    };
+  },
+});
+
+// List listings with optional filters, hard-capped. Used where a full set is
+// needed at once (map markers, related listings, booking pickers).
 export const listListings = query({
   args: {
     type: v.optional(v.string()),
@@ -31,33 +86,15 @@ export const listListings = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const buildQuery = () => {
-      if (args.city && args.category) {
-        return ctx.db.query("listings").withIndex("by_city_and_category", (q) =>
-          q.eq("city", args.city!).eq("category", args.category!)
-        );
-      } else if (args.type && args.category) {
-        return ctx.db.query("listings").withIndex("by_type_and_category", (q) =>
-          q.eq("type", args.type!).eq("category", args.category!)
-        );
-      } else if (args.type) {
-        return ctx.db.query("listings").withIndex("by_type", (q) => q.eq("type", args.type!));
-      } else if (args.category) {
-        return ctx.db.query("listings").withIndex("by_category", (q) => q.eq("category", args.category!));
-      } else if (args.city) {
-        return ctx.db.query("listings").withIndex("by_city", (q) => q.eq("city", args.city!));
-      }
-      return ctx.db.query("listings");
-    };
-
-    const listings = await buildQuery().collect();
+    // Scan a bounded window rather than the whole index, then filter within it.
+    const listings = await buildListingQuery(ctx, args).take(MAX_SCAN);
 
     const blockedIds = await getBlockedIds(ctx);
     const publicListings = listings
       .filter(isPublicListing)
       .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string)));
 
-    return publicListings.slice(0, args.limit ?? 500);
+    return publicListings.slice(0, Math.min(args.limit ?? 500, MAX_SCAN));
   },
 });
 
@@ -81,14 +118,16 @@ export const searchListings = query({
         return search;
       });
 
-    const results = await searchBuilder.collect();
+    // Search indexes already return relevance-ranked results, so a bounded
+    // take is enough — no pagination needed for a search box.
+    const results = await searchBuilder.take(MAX_LIST);
 
     const blockedIds = await getBlockedIds(ctx);
     const publicListings = results
       .filter(isPublicListing)
       .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string)));
 
-    return publicListings.slice(0, args.limit ?? 50);
+    return publicListings.slice(0, Math.min(args.limit ?? 50, MAX_LIST));
   },
 });
 
@@ -106,7 +145,7 @@ export const getListing = query({
 export const getCategories = query({
   args: {},
   handler: async (ctx) => {
-    const listings = await ctx.db.query("listings").collect();
+    const listings = await ctx.db.query("listings").take(MAX_SCAN);
 
     const categoryMap = new Map<string, { category: string; category_ar?: string; count: number }>();
 
@@ -133,7 +172,7 @@ export const getCategories = query({
 export const getCities = query({
   args: {},
   handler: async (ctx) => {
-    const listings = await ctx.db.query("listings").collect();
+    const listings = await ctx.db.query("listings").take(MAX_SCAN);
 
     const cityMap = new Map<string, number>();
 
@@ -162,7 +201,7 @@ export const getListingsNearLocation = query({
   handler: async (ctx, args) => {
     const radiusKm = args.radiusKm || 10;
 
-    let listings = await ctx.db.query("listings").collect();
+    let listings = await ctx.db.query("listings").take(MAX_SCAN);
 
     listings = listings.filter(isPublicListing);
 
@@ -183,11 +222,7 @@ export const getListingsNearLocation = query({
       .filter((l) => l.distance <= radiusKm)
       .sort((a, b) => a.distance - b.distance);
 
-    if (args.limit) {
-      return listingsWithDistance.slice(0, args.limit);
-    }
-
-    return listingsWithDistance;
+    return listingsWithDistance.slice(0, Math.min(args.limit ?? MAX_LIST, MAX_LIST));
   },
 });
 
@@ -204,7 +239,7 @@ export const getMyListings = query({
       .query("listings")
       .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
       .order("desc")
-      .collect();
+      .take(MAX_LIST);
 
     if (args.status) {
       return listings.filter((l) => l.status === args.status);
@@ -225,7 +260,7 @@ export const getListingReviews = query({
       .query("reviews")
       .withIndex("by_listingId", (q) => q.eq("listingId", args.listingId))
       .order("desc")
-      .collect();
+      .take(Math.min(args.limit ?? MAX_LIST, MAX_LIST));
 
     const reviewsWithUsers = await Promise.all(
       reviews.map(async (review) => {
@@ -241,10 +276,6 @@ export const getListingReviews = query({
         };
       })
     );
-
-    if (args.limit) {
-      return reviewsWithUsers.slice(0, args.limit);
-    }
 
     return reviewsWithUsers;
   },

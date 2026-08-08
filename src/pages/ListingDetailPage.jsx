@@ -6,6 +6,8 @@ import ImageCarousel from "../components/ImageCarousel";
 import Navbar from "../components/Navbar";
 import SaveToTripModal from "../components/trips/SaveToTripModal";
 import { useCurrentUser } from "../hooks/useCurrentUser";
+import { useLanguage } from "../hooks/useLanguage";
+import { SkeletonLine, SkeletonPanel } from "../components/Skeleton";
 import "./ListingDetailPage.css";
 
 const AMENITY_MAP = {
@@ -65,6 +67,9 @@ const translations = {
     anonymous: "مجهول",
     guestSingular: "ضيف",
     guestPlural: "ضيوف",
+    notFound: "لم يتم العثور على هذا المكان",
+    backToListings: "العودة إلى الوجهات",
+    loading: "جارٍ التحميل...",
   },
   en: {
     home: "Home",
@@ -101,6 +106,9 @@ const translations = {
     anonymous: "Anonymous",
     guestSingular: "guest",
     guestPlural: "guests",
+    notFound: "Listing not found",
+    backToListings: "Back to listings",
+    loading: "Loading...",
   },
 };
 
@@ -115,8 +123,7 @@ const BOOKING_TYPE_MAP = {
 export default function ListingDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [lang, setLang] = useState(() => localStorage.getItem("hasio_lang") || "ar");
-  const isRtl = lang === "ar";
+  const { lang, toggleLang, isRtl } = useLanguage();
   const t = translations[lang];
 
   const [guests, setGuests] = useState(2);
@@ -150,11 +157,6 @@ export default function ListingDetailPage() {
 
   useEffect(() => { window.scrollTo(0, 0); }, [id]);
 
-  const toggleLang = () => {
-    const next = lang === "ar" ? "en" : "ar";
-    setLang(next);
-    localStorage.setItem("hasio_lang", next);
-  };
 
   const handleToggleFav = async () => {
     if (!isAuthenticated) { navigate("/sign-in"); return; }
@@ -186,20 +188,30 @@ export default function ListingDetailPage() {
     }
   };
 
+  // The Navbar renders in every branch — omitting it here made the header
+  // disappear during load and the page jump when data arrived.
   if (listing === undefined) {
     return (
-      <div className="detail-page">
-        <div className="detail-loading">Loading…</div>
+      <div className="detail-page" dir={isRtl ? "rtl" : "ltr"}>
+        <Navbar lang={lang} onLangToggle={toggleLang} />
+        <div className="detail-skeleton">
+          <SkeletonLine height={320} />
+          <SkeletonLine height={30} width="55%" />
+          <SkeletonPanel lines={4} />
+        </div>
       </div>
     );
   }
 
   if (!listing) {
     return (
-      <div className="detail-page">
+      <div className="detail-page" dir={isRtl ? "rtl" : "ltr"}>
+        <Navbar lang={lang} onLangToggle={toggleLang} />
         <div className="detail-not-found">
-          <h2>Listing not found</h2>
-          <Link to="/listings" style={{ color: "var(--color-primary)" }}>← Back to listings</Link>
+          <h2>{t.notFound}</h2>
+          <Link to="/listings" style={{ color: "var(--color-primary)" }}>
+            {t.backToListings}
+          </Link>
         </div>
       </div>
     );
@@ -235,6 +247,7 @@ export default function ListingDetailPage() {
         <div className="detail-hero-carousel">
           <ImageCarousel
             images={listing.images?.length > 0 ? listing.images : AIDA_CAROUSEL}
+            alt={name}
             height="100%"
             borderRadius="0"
           />
@@ -383,7 +396,7 @@ export default function ListingDetailPage() {
               )}
             </h2>
             {reviews === undefined ? (
-              <p className="detail-description">Loading…</p>
+              <SkeletonPanel lines={3} />
             ) : reviews.length === 0 ? (
               <p className="detail-description">{t.noReviews}</p>
             ) : (

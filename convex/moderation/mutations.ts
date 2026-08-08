@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser, requireAdmin } from "../auth";
+import { enforceRateLimit } from "../rateLimit";
 
 const VALID_REASONS = ["spam", "inappropriate", "offensive", "fraud", "other"];
 const VALID_TARGET_TYPES = ["listing", "service", "review"];
@@ -38,6 +39,15 @@ export const reportContent = mutation({
     if (existing) {
       return { success: true, reportId: existing._id, alreadyReported: true };
     }
+
+    // The duplicate guard above is per-target; this bounds mass-reporting
+    // across many different targets from one account.
+    await enforceRateLimit(
+      ctx,
+      `report:${user._id}`,
+      20,
+      "لقد وصلت إلى الحد اليومي للبلاغات. يرجى المحاولة غدًا. / You've reached today's reporting limit. Please try again tomorrow."
+    );
 
     const reportId = await ctx.db.insert("contentReports", {
       reporterId: user._id,

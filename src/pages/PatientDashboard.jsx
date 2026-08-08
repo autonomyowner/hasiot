@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { useCurrentUser } from '../hooks/useCurrentUser'
+import { useSyncHtmlLang } from '../hooks/useLanguage'
+import { SkeletonLine, SkeletonList } from '../components/Skeleton'
 import { authClient } from '../lib/auth-client'
 import AppointmentsSection from '../components/dashboard/AppointmentsSection'
 import FavoritesSection from '../components/dashboard/FavoritesSection'
@@ -23,6 +25,7 @@ export default function PatientDashboard() {
   const [activeTab, setActiveTab] = useState('bookings')
   const lang = user?.preferredLanguage || 'ar'
   const isRTL = lang === 'ar'
+  useSyncHtmlLang(lang)
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -33,8 +36,11 @@ export default function PatientDashboard() {
   if (isLoading) {
     return (
       <div className="patient-dashboard" dir={isRTL ? 'rtl' : 'ltr'}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
-          <p style={{ color: '#6b7280' }}>{isRTL ? 'جاري التحميل...' : 'Loading...'}</p>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '48px 24px' }}>
+          <SkeletonLine height={28} width="35%" />
+          <div style={{ marginTop: 24 }}>
+            <SkeletonList count={4} />
+          </div>
         </div>
       </div>
     )
@@ -47,7 +53,9 @@ export default function PatientDashboard() {
       {/* Header */}
       <header className="dashboard-header">
         <div className="dashboard-header-inner">
-          <Link to="/" className="auth-logo">Hasio</Link>
+          <Link to="/" className="dashboard-logo">
+            <img src="/logo.png" alt="Hasio" className="dashboard-logo-img" />
+          </Link>
           <div className="dashboard-user-info">
             <span className="dashboard-user-name">
               {isRTL ? 'مرحباً، ' : 'Hi, '}{user.firstName || user.email}

@@ -9,6 +9,7 @@ import './App.css'
 import ChatWidget from './components/chat/ChatWidget'
 import SaveToTripModal from './components/trips/SaveToTripModal'
 import { useCurrentUser } from './hooks/useCurrentUser'
+import { useLanguage } from './hooks/useLanguage'
 
 // Translations for the map page
 const mapTranslations = {
@@ -16,6 +17,11 @@ const mapTranslations = {
     title: 'استكشف الأحساء',
     backHome: 'الرئيسية',
     searchPlaceholder: 'ابحث عن فندق، مطعم، أو معلم...',
+    loadingListings: 'جارٍ تحميل الأماكن...',
+    noResults: 'لا توجد نتائج مطابقة',
+    noResultsSub: 'جرّب تعديل البحث أو الفلاتر',
+    mapLoading: 'جارٍ تحميل الخريطة...',
+    mapUnavailable: 'الخريطة غير متاحة حاليًا',
     addNew: 'إضافة موقع جديد',
     filters: {
       all: 'الكل',
@@ -74,6 +80,11 @@ const mapTranslations = {
     title: 'Explore Al-Ahsa',
     backHome: 'Home',
     searchPlaceholder: 'Search for a hotel, restaurant, or attraction...',
+    loadingListings: 'Loading listings...',
+    noResults: 'No matching results',
+    noResultsSub: 'Try adjusting your search or filters',
+    mapLoading: 'Loading map...',
+    mapUnavailable: 'The map is unavailable right now',
     addNew: 'Add New Location',
     filters: {
       all: 'All',
@@ -152,7 +163,7 @@ const formatWorkingHours = (hours) => {
 }
 
 function MapPage() {
-  const [lang, setLang] = useState('ar')
+  const { lang, toggleLang } = useLanguage()
 
   // Fetch public config (Mapbox token)
   const config = useQuery(api.config.queries.getPublicConfig, {})
@@ -450,10 +461,6 @@ function MapPage() {
     })
   }
 
-  const toggleLang = () => {
-    setLang(prev => prev === 'ar' ? 'en' : 'ar')
-  }
-
   const handleAddLocation = async (e) => {
     e.preventDefault()
     if (!newLocation.coordinates) return
@@ -514,8 +521,26 @@ function MapPage() {
     return type
   }
 
+  // Filtered once here so the sidebar can distinguish "no results" from "still
+  // loading" rather than rendering an empty list either way.
+  const visibleLocations = locations
+    .filter(loc => {
+      if (filter === 'hotels') return loc.type === 'hotel'
+      if (filter === 'restaurants') return loc.type === 'restaurant'
+      if (filter === 'attractions') return loc.type === 'attraction'
+      return true
+    })
+    .filter(loc => {
+      if (!searchQuery) return true
+      const query = searchQuery.toLowerCase()
+      return loc.name.toLowerCase().includes(query) ||
+        loc.nameAr.includes(query) ||
+        loc.category.toLowerCase().includes(query) ||
+        loc.categoryAr.includes(query)
+    })
+
   return (
-    <div className={`map-page ${isRTL ? 'rtl' : 'ltr'}`}>
+    <div className="map-page">
       {/* Header */}
       <header className="map-header">
         <div className="map-header-inner">
@@ -574,7 +599,7 @@ function MapPage() {
           {/* Loading indicator */}
           {isLoading && (
             <div className="loading-indicator" style={{ padding: '10px', textAlign: 'center', color: '#666' }}>
-              Loading listings...
+              {t.loadingListings}
             </div>
           )}
 
@@ -610,21 +635,13 @@ function MapPage() {
 
           {/* Location List */}
           <div className="location-list">
-            {locations
-              .filter(loc => {
-                if (filter === 'hotels') return loc.type === 'hotel'
-                if (filter === 'restaurants') return loc.type === 'restaurant'
-                if (filter === 'attractions') return loc.type === 'attraction'
-                return true
-              })
-              .filter(loc => {
-                if (!searchQuery) return true
-                const query = searchQuery.toLowerCase()
-                return loc.name.toLowerCase().includes(query) ||
-                  loc.nameAr.includes(query) ||
-                  loc.category.toLowerCase().includes(query) ||
-                  loc.categoryAr.includes(query)
-              })
+            {!isLoading && visibleLocations.length === 0 && (
+              <div className="location-list-empty">
+                <h4>{t.noResults}</h4>
+                <p>{t.noResultsSub}</p>
+              </div>
+            )}
+            {visibleLocations
               .map(location => (
                 <motion.div
                   key={location.id}
@@ -655,7 +672,17 @@ function MapPage() {
         </aside>
 
         {/* Map */}
-        <div className="map-container" ref={mapContainer}></div>
+        <div className="map-container" ref={mapContainer}>
+          {/* Without this the container is a silent grey box while the Mapbox
+              token loads, or forever if it is missing. */}
+          {!mapLoaded && (
+            <div className="map-container-status">
+              {config === undefined || config?.mapboxToken
+                ? t.mapLoading
+                : t.mapUnavailable}
+            </div>
+          )}
+        </div>
 
         {/* Map Selection Mode Indicator */}
         {isSelectingOnMap && (

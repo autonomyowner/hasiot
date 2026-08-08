@@ -4,6 +4,7 @@ import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { useCurrentUser } from '../hooks/useCurrentUser'
 import { authClient } from '../lib/auth-client'
+import { useLanguage } from '../hooks/useLanguage'
 import './AuthPages.css'
 
 const translations = {
@@ -60,7 +61,7 @@ const translations = {
 }
 
 export default function DeleteAccountPage() {
-  const [lang, setLang] = useState('ar')
+  const { lang, toggleLang } = useLanguage()
   const [confirmation, setConfirmation] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -110,7 +111,7 @@ export default function DeleteAccountPage() {
       <div className="auth-container">
         <div className="auth-card">
           <div className="auth-header">
-            <button className="auth-lang-toggle" onClick={() => setLang(l => l === 'ar' ? 'en' : 'ar')}>
+            <button className="auth-lang-toggle" onClick={() => toggleLang()}>
               {lang === 'ar' ? 'EN' : 'عربي'}
             </button>
             <Link to="/" className="auth-logo">Hasio</Link>

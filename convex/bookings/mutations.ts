@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
+import { enforceRateLimit } from "../rateLimit";
 
 // Create a booking
 export const createBooking = mutation({
@@ -18,6 +19,15 @@ export const createBooking = mutation({
     if (!user) {
       throw new Error("Not authenticated");
     }
+
+    // Without a cap, one account can enumerate every listing × date × time and
+    // reserve the whole calendar.
+    await enforceRateLimit(
+      ctx,
+      `booking:${user._id}`,
+      30,
+      "لقد وصلت إلى الحد اليومي للحجوزات. يرجى المحاولة غدًا. / You've reached today's booking limit. Please try again tomorrow."
+    );
 
     const listing = await ctx.db.get(args.listingId);
     if (!listing || listing.isActive === false) {
