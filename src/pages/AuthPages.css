@@ -118,33 +118,134 @@ html[dir="rtl"] .auth-page--split .auth-lang-toggle {
   max-width: 42ch;
 }
 
-/* Below this width the panel is hidden, so the photo is never fetched. */
+/* ========================================
+   Phone: the side panel collapses, and the photo becomes a full-bleed fixed
+   background with a frosted-glass card on top.
+
+   A dedicated 820x1500 crop (102KB) is served here rather than the 1240x1740
+   desktop panel — the phone never downloads the larger one.
+
+   The background lives on fixed pseudo-elements rather than the element itself
+   so a long form (sign-up) scrolls over a stationary image instead of
+   stretching it. background-attachment: fixed is avoided deliberately; it is
+   unreliable on iOS Safari.
+   ======================================== */
 @media (max-width: 900px) {
   .auth-visual { display: none; }
+
   .auth-page--split {
     justify-content: center;
     align-items: center;
-    padding: 20px;
+    padding: 24px 16px;
+    position: relative;
+    background: #141a16;
   }
+
+  .auth-page--split::before,
+  .auth-page--split::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .auth-page--split::before {
+    background: url('/hero-mobile.webp') center / cover no-repeat;
+  }
+
+  /* Scrim: the card is translucent, so the photo behind it must be darkened
+     enough that white text on the glass stays legible over the bright water. */
+  .auth-page--split::after {
+    background: linear-gradient(180deg, rgba(18, 24, 20, 0.58), rgba(18, 24, 20, 0.76));
+  }
+
   .auth-page--split .auth-form-side {
     flex: 1 1 auto;
     width: 100%;
     padding: 0;
     background: none;
+    position: relative;
+    z-index: 1;
   }
-  /* Restore the card treatment now that it stands alone again. */
+
+  /* --- The glass card --- */
   .auth-page--split .auth-card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-lg);
-    padding: 48px 44px;
+    background: rgba(255, 255, 255, 0.12);
+    -webkit-backdrop-filter: blur(22px) saturate(150%);
+    backdrop-filter: blur(22px) saturate(150%);
+    border: 1px solid rgba(255, 255, 255, 0.26);
+    border-radius: var(--radius-xl);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.38);
+    padding: 40px 28px;
     max-width: 460px;
   }
-  .auth-page--split {
-    background:
-      radial-gradient(100% 60% at 50% 0%, rgba(212, 175, 55, 0.10), transparent 70%),
-      var(--color-bg);
+
+  /* Without backdrop-filter the card would be a barely-tinted transparent box
+     over a photo — fall back to a near-opaque dark panel instead. */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .auth-page--split .auth-card {
+      background: rgba(22, 30, 25, 0.88);
+    }
   }
+
+  /* --- Light-on-dark text inside the glass --- */
+  .auth-page--split .auth-logo { color: #fff; }
+  .auth-page--split .auth-card h1 { color: #fff; }
+  .auth-page--split .auth-card .auth-subtitle { color: rgba(255, 255, 255, 0.76); }
+  .auth-page--split .form-label-auth { color: rgba(255, 255, 255, 0.92); }
+
+  .auth-page--split .form-input-auth {
+    background: rgba(255, 255, 255, 0.13);
+    border-color: rgba(255, 255, 255, 0.28);
+    color: #fff;
+  }
+  .auth-page--split .form-input-auth::placeholder { color: rgba(255, 255, 255, 0.55); }
+  .auth-page--split .form-input-auth:focus {
+    border-color: var(--color-gold);
+    background: rgba(255, 255, 255, 0.18);
+  }
+  /* The business-type <select>: its popup is rendered by the OS, so options
+     need their own colours or they end up white-on-white. */
+  .auth-page--split .form-input-auth option {
+    color: var(--color-text);
+    background: var(--color-surface);
+  }
+
+  .auth-page--split .auth-role-toggle {
+    background: rgba(255, 255, 255, 0.10);
+    border-color: rgba(255, 255, 255, 0.22);
+  }
+  .auth-page--split .role-btn { color: rgba(255, 255, 255, 0.72); }
+  .auth-page--split .role-btn.active {
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--color-primary);
+  }
+
+  .auth-page--split .auth-divider { color: rgba(255, 255, 255, 0.6); }
+  .auth-page--split .auth-divider::before,
+  .auth-page--split .auth-divider::after { background: rgba(255, 255, 255, 0.22); }
+
+  .auth-page--split .auth-footer-text { color: rgba(255, 255, 255, 0.75); }
+  .auth-page--split .auth-legal { color: rgba(255, 255, 255, 0.62); }
+  .auth-page--split .auth-footer-text a,
+  .auth-page--split .auth-legal a { color: var(--color-gold); }
+  .auth-page--split .auth-success { color: #86efac; }
+
+  /* Solid green keeps the primary action unambiguous against the glass. */
+  .auth-page--split .auth-btn-primary { box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28); }
+
+  .auth-page--split .auth-lang-toggle {
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.16);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #fff;
+  }
+  .auth-page--split .auth-lang-toggle:hover { background: rgba(255, 255, 255, 0.26); }
+  html[dir="rtl"] .auth-page--split .auth-lang-toggle { right: auto; left: 20px; }
 }
 
 .auth-lang-toggle {
