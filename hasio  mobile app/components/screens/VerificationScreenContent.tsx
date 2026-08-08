@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
 import { useMutation } from "convex/react";
 import { api } from "@/backend";
 import { colors, fonts } from "@/constants/colors";
@@ -40,12 +41,16 @@ export default function VerificationScreenContent() {
 
   const [docUri, setDocUri] = useState<string | null>(null);
   const [docMimeType, setDocMimeType] = useState<string>("image/jpeg");
+  const [docName, setDocName] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isPending = verificationStatus === "pending";
   const isApproved = verificationStatus === "approved";
+  // PDFs and other non-images can't go through <Image>, so they get a
+  // filename chip preview instead of a thumbnail.
+  const isImageDoc = docMimeType.startsWith("image/");
 
-  const pickDocument = async () => {
+  const pickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
       Alert.alert(t("permissionRequired"), t("photoPermissionMessage"), [
@@ -62,8 +67,25 @@ export default function VerificationScreenContent() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      setDocUri(result.assets[0].uri);
-      setDocMimeType(result.assets[0].mimeType ?? "image/jpeg");
+      const asset = result.assets[0];
+      setDocUri(asset.uri);
+      setDocMimeType(asset.mimeType ?? "image/jpeg");
+      setDocName(asset.fileName ?? null);
+    }
+  };
+
+  const pickFile = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ["application/pdf", "image/*"],
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+
+    if (!result.canceled && result.assets?.[0]) {
+      const asset = result.assets[0];
+      setDocUri(asset.uri);
+      setDocMimeType(asset.mimeType ?? "application/octet-stream");
+      setDocName(asset.name ?? null);
     }
   };
 
@@ -86,7 +108,10 @@ export default function VerificationScreenContent() {
         [{ text: t("done"), onPress: () => router.back() }]
       );
     } catch (error) {
-      Alert.alert(t("error"), t("pleaseTryAgain"));
+      // Surface the underlying reason too — a silent "try again later" made an
+      // upload failure here impossible to diagnose from a tester's report.
+      const detail = error instanceof Error ? error.message : String(error);
+      Alert.alert(t("error"), `${t("pleaseTryAgain")}\n\n${detail}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -176,10 +201,19 @@ export default function VerificationScreenContent() {
 
             {docUri ? (
               <View style={styles.previewCard}>
-                <Image source={{ uri: docUri }} style={styles.preview} />
+                {isImageDoc ? (
+                  <Image source={{ uri: docUri }} style={styles.preview} />
+                ) : (
+                  <View style={styles.filePreview}>
+                    <Feather name="file-text" size={28} color={colors.primary.DEFAULT} />
+                    <Text style={styles.filePreviewName} numberOfLines={2}>
+                      {docName ?? t("verificationDocLabel")}
+                    </Text>
+                  </View>
+                )}
                 <Pressable
                   style={styles.replaceButton}
-                  onPress={pickDocument}
+                  onPress={pickFile}
                   disabled={isSubmitting}
                   accessibilityRole="button"
                   accessibilityLabel={t("verificationReplaceDoc")}
@@ -190,16 +224,28 @@ export default function VerificationScreenContent() {
                 </Pressable>
               </View>
             ) : (
-              <Pressable
-                style={styles.pickerCard}
-                onPress={pickDocument}
-                disabled={isSubmitting}
-                accessibilityRole="button"
-                accessibilityLabel={t("verificationChooseFile")}
-              >
-                <Feather name="upload" size={22} color={colors.primary.DEFAULT} />
-                <Text style={styles.pickerText}>{t("verificationChooseFile")}</Text>
-              </Pressable>
+              <View style={styles.pickerRow}>
+                <Pressable
+                  style={styles.pickerCard}
+                  onPress={pickPhoto}
+                  disabled={isSubmitting}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("verificationChoosePhoto")}
+                >
+                  <Feather name="image" size={22} color={colors.primary.DEFAULT} />
+                  <Text style={styles.pickerText}>{t("verificationChoosePhoto")}</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.pickerCard}
+                  onPress={pickFile}
+                  disabled={isSubmitting}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("verificationChooseFile")}
+                >
+                  <Feather name="file-text" size={22} color={colors.primary.DEFAULT} />
+                  <Text style={styles.pickerText}>{t("verificationChooseFile")}</Text>
+                </Pressable>
+              </View>
             )}
 
             <View style={styles.privacyRow}>
@@ -335,8 +381,13 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
   },
 
-  pickerCard: {
+  pickerRow: {
+    flexDirection: "row",
+    gap: 12,
     marginHorizontal: 24,
+  },
+  pickerCard: {
+    flex: 1,
     height: 120,
     borderRadius: 18,
     borderWidth: 1.5,
@@ -349,8 +400,24 @@ const styles = StyleSheet.create({
   },
   pickerText: {
     fontFamily: fonts.semibold,
-    fontSize: 15,
+    fontSize: 14,
+    textAlign: "center",
+    paddingHorizontal: 8,
     color: colors.primary.DEFAULT,
+  },
+
+  filePreview: {
+    height: 140,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 20,
+  },
+  filePreviewName: {
+    fontFamily: fonts.regular,
+    fontSize: 13,
+    textAlign: "center",
+    color: colors.onSurface.variant,
   },
 
   previewCard: {

@@ -263,8 +263,9 @@ export const translations = {
       "We check every business and service provider before their content appears in Hasio. This keeps listings trustworthy for travellers.",
     verificationDocLabel: "Business document",
     verificationDocHint:
-      "A clear photo or scan of your commercial registration, freelance licence, or official ID.",
-    verificationChooseFile: "Choose document",
+      "A clear photo, scan or PDF of your commercial registration, freelance licence, or official ID.",
+    verificationChoosePhoto: "Photo",
+    verificationChooseFile: "PDF or file",
     verificationReplaceDoc: "Replace document",
     verificationSubmit: "Submit for review",
     verificationNoDocSelected: "Please add your business document first",
@@ -725,8 +726,9 @@ export const translations = {
       "نراجع كل صاحب نشاط ومقدم خدمة قبل ظهور محتواه في هاسيو، حفاظاً على ثقة الزوار بالمحتوى المعروض.",
     verificationDocLabel: "وثيقة النشاط",
     verificationDocHint:
-      "صورة أو نسخة واضحة من السجل التجاري، أو رخصة العمل الحر، أو الهوية الرسمية.",
-    verificationChooseFile: "اختيار الوثيقة",
+      "صورة واضحة أو نسخة PDF من السجل التجاري، أو رخصة العمل الحر، أو الهوية الرسمية.",
+    verificationChoosePhoto: "صورة",
+    verificationChooseFile: "ملف PDF",
     verificationReplaceDoc: "استبدال الوثيقة",
     verificationSubmit: "إرسال للمراجعة",
     verificationNoDocSelected: "الرجاء إضافة وثيقة النشاط أولاً",
