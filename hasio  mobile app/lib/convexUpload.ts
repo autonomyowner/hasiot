@@ -1,4 +1,8 @@
-import * as FileSystem from "expo-file-system";
+// SDK 54 made the new File/Directory API the default export of
+// "expo-file-system"; the old helpers still exist there as stubs that throw at
+// runtime. `uploadAsync` lives in the legacy entrypoint and must be imported
+// from there or every upload in the app fails.
+import * as FileSystem from "expo-file-system/legacy";
 import { api } from "@/backend";
 import { ConvexReactClient } from "convex/react";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -20,7 +24,7 @@ export async function uploadImageToConvex(
   // 2. Upload the file
   const response = await FileSystem.uploadAsync(uploadUrl, fileUri, {
     httpMethod: "POST",
-    uploadType: (FileSystem as any).FileSystemUploadType?.BINARY_CONTENT ?? 0,
+    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
     headers: {
       "Content-Type": "image/jpeg",
     },
@@ -61,7 +65,7 @@ export async function uploadDocumentToConvex(
 
   const response = await FileSystem.uploadAsync(uploadUrl, fileUri, {
     httpMethod: "POST",
-    uploadType: (FileSystem as any).FileSystemUploadType?.BINARY_CONTENT ?? 0,
+    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
     headers: {
       "Content-Type": mimeType,
     },
