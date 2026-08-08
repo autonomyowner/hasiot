@@ -10,6 +10,7 @@ import AppointmentsSection from '../components/dashboard/AppointmentsSection'
 import FavoritesSection from '../components/dashboard/FavoritesSection'
 import ProfileSection from '../components/dashboard/ProfileSection'
 import TripsSection from '../components/dashboard/TripsSection'
+import BlockedAccountsSection from '../components/dashboard/BlockedAccountsSection'
 import './PatientDashboard.css'
 
 const tabs = [
@@ -93,7 +94,15 @@ export default function PatientDashboard() {
         <main className="dashboard-content">
           {activeTab === 'bookings' && <AppointmentsSection lang={lang} />}
           {activeTab === 'favorites' && <FavoritesSection lang={lang} user={user} />}
-          {activeTab === 'profile' && <ProfileSection lang={lang} user={user} />}
+          {/* Blocked accounts live under Profile rather than as a sixth tab:
+              the mobile app files them under Settings, and a sixth item does
+              not fit the mobile bottom bar at 375px. */}
+          {activeTab === 'profile' && (
+            <>
+              <ProfileSection lang={lang} user={user} />
+              <BlockedAccountsSection lang={lang} />
+            </>
+          )}
           {activeTab === 'trips' && <TripsSection lang={lang} />}
           {activeTab === 'upgrade' && <UpgradeSection lang={lang} user={user} />}
         </main>

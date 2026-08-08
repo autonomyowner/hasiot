@@ -8,7 +8,9 @@ import SaveToTripModal from "../components/trips/SaveToTripModal";
 import { useCurrentUser } from "../hooks/useCurrentUser";
 import { useLanguage } from "../hooks/useLanguage";
 import { SkeletonLine, SkeletonPanel } from "../components/Skeleton";
+import ReportButton from "../components/moderation/ReportButton";
 import "./ListingDetailPage.css";
+import "../components/moderation/ReportButton.css";
 
 const AMENITY_MAP = {
   wifi:             { icon: "wifi",                  en: "Free WiFi",        ar: "واي فاي مجاني" },
@@ -299,6 +301,16 @@ export default function ListingDetailPage() {
                 </span>
               )}
               {listing.isVerified && <span className="detail-badge">{t.verified}</span>}
+              {/* Always reportable; ownerId is absent on seed listings, which
+                  only hides the block action. */}
+              <ReportButton
+                targetType="listing"
+                targetId={listing._id}
+                ownerId={listing.ownerId ?? null}
+                targetLabel={name}
+                lang={lang}
+                variant="text"
+              />
             </div>
           </div>
 
@@ -431,6 +443,19 @@ export default function ListingDetailPage() {
                               </span>
                             ))}
                           </div>
+                        </div>
+                        {/* r.userId is absent on anonymous reviews (stripped
+                            server-side), so those can be reported but not
+                            blocked. */}
+                        <div className="review-actions">
+                          <ReportButton
+                            targetType="review"
+                            targetId={r._id}
+                            ownerId={r.userId ?? null}
+                            targetLabel={r.content}
+                            lang={lang}
+                            variant="text"
+                          />
                         </div>
                       </div>
                       {r.content && <p className="review-content">{r.content}</p>}

@@ -262,10 +262,21 @@ export const getListingReviews = query({
       .order("desc")
       .take(Math.min(args.limit ?? MAX_LIST, MAX_LIST));
 
+    const blockedIds = await getBlockedIds(ctx);
+    const visible = reviews.filter(
+      (r) => !blockedIds.has(r.userId as string)
+    );
+
     const reviewsWithUsers = await Promise.all(
-      reviews.map(async (review) => {
+      visible.map(async (review) => {
         if (review.isAnonymous) {
-          return { ...review, user: null };
+          // userId is stripped, not just left unresolved: spreading the row
+          // would ship the author's id to every client, which de-anonymises the
+          // review for anyone who reads the network response. The cost is that
+          // an anonymous review cannot be blocked from the UI — it can still be
+          // reported, and an admin sees the author on the report.
+          const { userId: _userId, ...rest } = review;
+          return { ...rest, user: null };
         }
         const user = await ctx.db.get(review.userId);
         return {

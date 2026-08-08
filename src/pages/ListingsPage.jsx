@@ -5,8 +5,10 @@ import { api } from '../../convex/_generated/api'
 import Navbar from '../components/Navbar'
 import SectionBoundary from '../components/SectionBoundary'
 import { SkeletonCard, SkeletonList } from '../components/Skeleton'
+import ReportButton from '../components/moderation/ReportButton'
 import { useLanguage } from '../hooks/useLanguage'
 import './ListingsPage.css'
+import '../components/moderation/ReportButton.css'
 
 const PAGE_SIZE = 24
 
@@ -257,6 +259,19 @@ function ListingCard({ item, lang, t, index }) {
       <div className="listing-card-img">
         <img src={imgSrc} alt={name} loading="lazy" />
         <span className="listing-card-badge">{t[item.type] || item.type}</span>
+        {/* Reporting is always available — most listings are first-party seed
+            data, and a report control that vanishes on them would read as an
+            unimplemented feature. ownerId is absent there, which only hides the
+            block action: there is no third-party account to block. */}
+        <div className="report-btn-corner">
+          <ReportButton
+            targetType="listing"
+            targetId={item._id}
+            ownerId={item.ownerId ?? null}
+            targetLabel={name}
+            lang={lang}
+          />
+        </div>
       </div>
       <div className="listing-card-body">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>

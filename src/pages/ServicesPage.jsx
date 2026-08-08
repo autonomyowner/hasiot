@@ -5,8 +5,10 @@ import { api } from '../../convex/_generated/api'
 import Navbar from '../components/Navbar'
 import SectionBoundary from '../components/SectionBoundary'
 import { SkeletonLine, SkeletonRow, SkeletonList } from '../components/Skeleton'
+import ReportButton from '../components/moderation/ReportButton'
 import { useLanguage } from '../hooks/useLanguage'
 import './ServicesPage.css'
+import '../components/moderation/ReportButton.css'
 
 const PAGE_SIZE = 24
 
@@ -114,6 +116,15 @@ function ProviderCard({ svc, lang, t, stLabels, index, expanded, onToggle }) {
       transition={{ delay: index * 0.04, duration: 0.35 }}
       onClick={onToggle}
     >
+      <div className="report-btn-corner">
+        <ReportButton
+          targetType="service"
+          targetId={svc._id}
+          ownerId={svc.ownerId ?? null}
+          targetLabel={title || svc.title}
+          lang={lang}
+        />
+      </div>
       <div className="provider-card-top">
         <div className="provider-avatar">
           {avatarSrc
