@@ -45,6 +45,10 @@ const translations = {
     emailPlaceholder: 'name@example.com',
     passwordPlaceholder: '••••••••',
     confirmPasswordPlaceholder: '••••••••',
+    legalPrefix: 'بمتابعتك فإنك توافق على',
+    terms: 'شروط الخدمة',
+    legalAnd: 'و',
+    privacy: 'سياسة الخصوصية',
   },
   en: {
     title: 'Create Account',
@@ -73,6 +77,10 @@ const translations = {
     emailPlaceholder: 'name@example.com',
     passwordPlaceholder: '••••••••',
     confirmPasswordPlaceholder: '••••••••',
+    legalPrefix: 'By continuing, you agree to our',
+    terms: 'Terms of Service',
+    legalAnd: 'and',
+    privacy: 'Privacy Policy',
   }
 }
 
@@ -314,10 +322,13 @@ export default function SignUpPage() {
           {t.hasAccount}{' '}
           <Link to="/sign-in">{t.signIn}</Link>
         </p>
+        {/* Plain anchors, not react-router <Link>: these are static files in
+            public/, not routes. A <Link> is intercepted client-side, matches no
+            route, and renders a blank page. */}
         <p className="auth-legal">
-          By continuing, you agree to our{' '}
-          <Link to="/terms-of-service.html">Terms of Service</Link> and{' '}
-          <Link to="/privacy-policy.html">Privacy Policy</Link>
+          {t.legalPrefix}{' '}
+          <a href="/terms-of-service.html">{t.terms}</a> {t.legalAnd}{' '}
+          <a href="/privacy-policy.html">{t.privacy}</a>
         </p>
       </div>
     </div>

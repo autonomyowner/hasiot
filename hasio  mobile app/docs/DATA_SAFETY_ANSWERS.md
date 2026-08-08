@@ -20,9 +20,11 @@ Use these exact answers when filling out the Data Safety form in Google Play Con
 - Users can delete their account in Settings > Delete Account
 - This permanently removes:
   - Profile information
-  - All uploaded photos/moments
+  - All uploaded photos (listing, service, and verification images)
   - Day plans and saved items
   - Favorites and chat history
+- Travel moments are not covered because they are never collected: they live only
+  in local storage on the user's device and are removed by deleting the app
 - Note: Data previously shared with third parties (Convex, OpenRouter) is subject to their retention policies
 
 ---
@@ -61,7 +63,9 @@ Use these exact answers when filling out the Data Safety form in Google Play Con
 - **Shared:** No
 - **Ephemeral:** No
 - **Required:** No (optional - business listing images)
-- **Purpose:** App functionality (business listings and travel moments)
+- **Purpose:** App functionality (business listings, freelancer services, and verification documents)
+- **Note:** Travel moment photos are NOT collected — they are written to local
+  device storage only and never uploaded to our servers
 
 ---
 
@@ -193,7 +197,7 @@ The app relies on specialized third-party services for authentication, data stor
 3. **No audio/voice data** - App does not collect any audio or voice data
 4. **Database sharing** - User data is shared with Convex for storage (required for app functionality)
 5. **Authentication sharing** - User credentials are managed by Better-Auth running on the Convex backend (no separate third-party auth service)
-6. **Photos** - User controls when to upload, but we do store them in Convex
+6. **Photos** - Listing, service, and verification images are stored in Convex. Travel moment photos never leave the device.
 7. **Optional data** - Name and photos are optional features
 8. **Account deletion** - Fully implemented in Settings > Delete Account
 
