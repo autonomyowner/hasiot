@@ -503,11 +503,18 @@ function App() {
 
       {/* ===== HERO ===== */}
       <section className="hero">
-        <img
-          className="hero-bg-img"
-          src="/hero.png"
-          alt="Al-Ahsa Oasis"
-        />
+        {/* WebP with a PNG fallback — the source PNG is 2.7MB, the WebP 250KB.
+            fetchPriority high because this is the LCP element. */}
+        <picture>
+          <source srcSet="/hero.webp" type="image/webp" />
+          <img
+            className="hero-bg-img"
+            src="/hero.png"
+            alt="Al-Ahsa Oasis"
+            fetchPriority="high"
+            decoding="async"
+          />
+        </picture>
         <div className="hero-overlay" />
         <div className="hero-content">
           <motion.div

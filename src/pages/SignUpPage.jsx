@@ -4,6 +4,7 @@ import { useMutation } from 'convex/react'
 import { api } from '../../convex/_generated/api'
 import { authClient } from '../lib/auth-client'
 import { useLanguage } from '../hooks/useLanguage'
+import AuthVisual from '../components/auth/AuthVisual'
 import './AuthPages.css'
 
 const BUSINESS_TYPES = [
@@ -181,8 +182,8 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="auth-page" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <div className="auth-card">
+    <div className="auth-page auth-page--split" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <div className="auth-form-side">
         <button
           className="auth-lang-toggle"
           type="button"
@@ -191,6 +192,7 @@ export default function SignUpPage() {
           {lang === 'ar' ? 'EN' : 'عربي'}
         </button>
 
+        <div className="auth-card">
         <Link to="/" className="auth-logo">Hasio</Link>
         <h1>{t.title}</h1>
         <p className="auth-subtitle">{t.subtitle}</p>
@@ -330,7 +332,10 @@ export default function SignUpPage() {
           <a href="/terms-of-service.html">{t.terms}</a> {t.legalAnd}{' '}
           <a href="/privacy-policy.html">{t.privacy}</a>
         </p>
+        </div>
       </div>
+
+      <AuthVisual lang={lang} />
     </div>
   )
 }

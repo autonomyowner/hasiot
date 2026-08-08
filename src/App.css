@@ -897,9 +897,15 @@ html[dir="rtl"] .bento-card-bookmark {
 }
 
 /* ===== AI CONCIERGE + TESTIMONIALS (shared background) ===== */
+/* image-set lets browsers without WebP fall back to the PNG. The WebP is 65KB
+   against the PNG's 2.0MB. */
 .concierge-testimonials-bg {
   position: relative;
   background: #1c1b1b url('/concierge-bg.png') right center/cover no-repeat;
+  background-image: image-set(
+    url('/concierge-bg.webp') type('image/webp'),
+    url('/concierge-bg.png') type('image/png')
+  );
   overflow: hidden;
 }
 

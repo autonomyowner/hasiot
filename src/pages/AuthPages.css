@@ -19,6 +19,134 @@
   position: relative;
 }
 
+/* ========================================
+   Split layout — sign-in / sign-up only.
+
+   The photo is a CSS background on .auth-visual rather than an <img>, so that
+   `display: none` below the breakpoint keeps phones from downloading it at all.
+   Form text sits on a solid surface, never over the photo, so contrast is not
+   dependent on the image.
+
+   Flex order is direction-aware: in RTL the panel lands on the left on its own,
+   which is the correct reading order — no separate rule needed.
+   ======================================== */
+.auth-page--split {
+  padding: 0;
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.auth-page--split .auth-form-side {
+  flex: 1 1 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  min-width: 0;
+  /* Anchors the language toggle, which the card no longer positions once its
+     own padding is removed. */
+  position: relative;
+  /* Warm wash so the form side is never a flat white slab next to the photo. */
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(212, 175, 55, 0.07), transparent 60%),
+    var(--color-bg);
+}
+
+/* Inside the split the card is the page, so drop the floating-card chrome. */
+.auth-page--split .auth-card {
+  box-shadow: none;
+  border: none;
+  background: transparent;
+  max-width: 440px;
+  padding: 0;
+}
+
+/* In split mode the toggle hangs off the form column, not the (padding-less) card. */
+.auth-page--split .auth-lang-toggle {
+  top: 28px;
+  right: 32px;
+}
+
+html[dir="rtl"] .auth-page--split .auth-lang-toggle {
+  right: auto;
+  left: 32px;
+}
+
+.auth-visual {
+  flex: 1 1 50%;
+  position: relative;
+  min-height: 100vh;
+  background-color: #6b5836; /* average tone — fills before the image paints */
+  background-image: url('/hero-panel.webp');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+}
+
+/* Bottom scrim so the caption stays legible over the water and greenery. */
+.auth-visual-caption {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: 96px 44px 44px;
+  background: linear-gradient(to top, rgba(20, 26, 22, 0.82), rgba(20, 26, 22, 0.35) 45%, transparent);
+  color: #fff;
+}
+
+.auth-visual-caption .auth-visual-rule {
+  width: 44px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--color-gold);
+  margin-bottom: 18px;
+}
+
+.auth-visual-caption h2 {
+  font-family: var(--font-display, 'Playfair Display', serif);
+  font-size: clamp(22px, 2.2vw, 30px);
+  font-weight: 400;
+  line-height: 1.35;
+  margin-bottom: 10px;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+}
+
+.auth-visual-caption p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.88);
+  max-width: 42ch;
+}
+
+/* Below this width the panel is hidden, so the photo is never fetched. */
+@media (max-width: 900px) {
+  .auth-visual { display: none; }
+  .auth-page--split {
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+  .auth-page--split .auth-form-side {
+    flex: 1 1 auto;
+    width: 100%;
+    padding: 0;
+    background: none;
+  }
+  /* Restore the card treatment now that it stands alone again. */
+  .auth-page--split .auth-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    box-shadow: var(--shadow-lg);
+    padding: 48px 44px;
+    max-width: 460px;
+  }
+  .auth-page--split {
+    background:
+      radial-gradient(100% 60% at 50% 0%, rgba(212, 175, 55, 0.10), transparent 70%),
+      var(--color-bg);
+  }
+}
+
 .auth-lang-toggle {
   position: absolute;
   top: 20px;
@@ -205,8 +333,11 @@ html[dir="rtl"] .form-group-auth { text-align: right; }
 /* Mobile */
 @media (max-width: 480px) {
   .auth-card { padding: 32px 24px; }
+  .auth-page--split .auth-card { padding: 32px 24px; }
   .auth-card h1 { font-size: 26px; }
   .auth-row { flex-direction: column; gap: 16px; }
   .auth-lang-toggle { top: 16px; right: 16px; }
   html[dir="rtl"] .auth-lang-toggle { right: auto; left: 16px; }
+  .auth-page--split .auth-lang-toggle { top: 16px; right: 16px; }
+  html[dir="rtl"] .auth-page--split .auth-lang-toggle { right: auto; left: 16px; }
 }
