@@ -28,3 +28,8 @@ dist-ssr
 # Build artifacts
 *.aab
 *.apk
+
+# Design mockups / scratch copies — not part of either app. Kept out of the repo
+# so nobody handed the project builds from the wrong tree.
+hasio v5/
+ChatGPT Image *.png

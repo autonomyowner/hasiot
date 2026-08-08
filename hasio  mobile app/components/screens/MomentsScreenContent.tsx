@@ -61,7 +61,6 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
   const [newMomentLocation, setNewMomentLocation] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [viewingMoment, setViewingMoment] = useState<{ image: string; note?: string; location?: string; timestamp: string } | null>(null);
-  const [activeTab, setActiveTab] = useState<"mine" | "community">("mine");
 
   useEffect(() => {
     mountedRef.current = true;
@@ -168,53 +167,12 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
         {userId && <AddButton onPress={() => setModalVisible(true)} />}
       </Animated.View>
 
-      {/* Mine / Community segmented control (visual) */}
-      <Animated.View
-        entering={FadeInDown.delay(150).duration(600)}
-        style={[styles.segmentWrapper, isRTL && styles.segmentWrapperRTL]}
-      >
-        <View style={[styles.segmentTrack, isRTL && styles.segmentTrackRTL]}>
-          <Pressable
-            style={[styles.segment, activeTab === "mine" && styles.segmentActive]}
-            onPress={() => setActiveTab("mine")}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                activeTab === "mine" ? styles.segmentTextActive : styles.segmentTextInactive,
-              ]}
-            >
-              {isRTL ? "لحظاتي" : "Mine"}
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[styles.segment, activeTab === "community" && styles.segmentActive]}
-            onPress={() => setActiveTab("community")}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                activeTab === "community" ? styles.segmentTextActive : styles.segmentTextInactive,
-              ]}
-            >
-              {isRTL ? "المجتمع" : "Community"}
-            </Text>
-          </Pressable>
-        </View>
-      </Animated.View>
+      {/* The Mine/Community segmented control lived here. Community moments are
+          not built, and a tab whose only content is "coming soon" reads as an
+          unfinished feature at App Review. Restore it with the feature. */}
 
-      {/* Community placeholder (visual only) */}
-      {activeTab === "community" ? (
-        <View style={styles.emptyState}>
-          <Text style={[styles.emptyTitle, isRTL && styles.textRTL]}>
-            {isRTL ? "لحظات المجتمع" : "Community moments"}
-          </Text>
-          <Text style={[styles.emptyMessage, isRTL && styles.textRTL]}>
-            {isRTL ? "لحظات المجتمع قريبًا" : "Community moments coming soon"}
-          </Text>
-        </View>
-      ) : /* Not logged in */
-      isAuthLoaded && !userId ? (
+      {/* Not logged in */}
+      {isAuthLoaded && !userId ? (
         <View style={styles.emptyState}>
           <Text style={[styles.emptyTitle, isRTL && styles.textRTL]}>
             {t("myMoments")}
@@ -448,51 +406,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 24,
     lineHeight: 28,
-  },
-  // Segmented control
-  segmentWrapper: {
-    paddingHorizontal: 24,
-    paddingBottom: 16,
-    alignItems: "flex-start",
-  },
-  segmentWrapperRTL: {
-    alignItems: "flex-end",
-  },
-  segmentTrack: {
-    flexDirection: "row",
-    width: 240,
-    backgroundColor: colors.chip,
-    borderRadius: 24,
-    padding: 4,
-  },
-  segmentTrackRTL: {
-    flexDirection: "row-reverse",
-  },
-  segment: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 20,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  segmentActive: {
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  segmentText: {
-    fontSize: 14,
-  },
-  segmentTextActive: {
-    fontFamily: fonts.semibold,
-    color: colors.primary.DEFAULT,
-  },
-  segmentTextInactive: {
-    fontFamily: fonts.medium,
-    color: colors.onSurface.muted,
   },
   // List
   listContent: {

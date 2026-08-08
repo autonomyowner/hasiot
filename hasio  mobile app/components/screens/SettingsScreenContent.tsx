@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Switch,
   Modal,
   Alert,
   Linking,
@@ -49,8 +48,6 @@ export function SettingsScreenContent() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, language, changeLanguage, isRTL } = useLanguage();
-  const notificationsEnabled = useAppStore((state) => state.notificationsEnabled);
-  const toggleNotifications = useAppStore((state) => state.toggleNotifications);
   const setOnboardingComplete = useAppStore((state) => state.setOnboardingComplete);
   const clearUserData = useAppStore((state) => state.clearUserData);
   const clearMoments = useMomentsStore((state) => state.clearMoments);
@@ -472,13 +469,10 @@ export function SettingsScreenContent() {
             onPress={() => changeLanguage(language === "en" ? "ar" : "en")}
           />
 
-          <SettingRowWithSwitch
-            icon="bell"
-            label={t("notifications")}
-            value={notificationsEnabled}
-            isRTL={isRTL}
-            onToggle={toggleNotifications}
-          />
+          {/* The notifications switch lived here. The app ships no push
+              notifications, so the toggle only flipped a local Zustand flag —
+              a control that does nothing. Restore it with the feature; the
+              `notificationsEnabled` state in appStore is kept for that. */}
 
           <SettingRow
             icon="slash"
@@ -767,50 +761,8 @@ function SettingRow({
   );
 }
 
-interface SettingRowWithSwitchProps {
-  label: string;
-  value: boolean;
-  isRTL: boolean;
-  onToggle: () => void;
-  icon?: React.ComponentProps<typeof Feather>["name"];
-  isLast?: boolean;
-}
-
-function SettingRowWithSwitch({
-  label,
-  value,
-  isRTL,
-  onToggle,
-  icon,
-  isLast,
-}: SettingRowWithSwitchProps) {
-  return (
-    <View
-      style={[
-        styles.settingRow,
-        isRTL && styles.settingRowRTL,
-        isLast && styles.settingRowLast,
-      ]}
-    >
-      <View style={[styles.settingLeft, isRTL && styles.settingRowRTL]}>
-        {icon && (
-          <View style={styles.settingIcon}>
-            <Feather name={icon} size={18} color={colors.primary.DEFAULT} />
-          </View>
-        )}
-        <Text style={[styles.settingLabel, isRTL && styles.textRTL]}>{label}</Text>
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onToggle}
-        trackColor={{ false: colors.border, true: colors.primary.DEFAULT }}
-        thumbColor={colors.surface.DEFAULT}
-        accessibilityLabel={label}
-        accessibilityRole="switch"
-      />
-    </View>
-  );
-}
+// SettingRowWithSwitch was removed alongside the notifications toggle — it had
+// no other caller. Recover it from git history when a real switch setting lands.
 
 const styles = StyleSheet.create({
   container: {
