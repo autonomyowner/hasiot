@@ -297,10 +297,16 @@ export const createUser = mutation({
     // This mutation is unauthenticated (it runs as part of signup), so a global
     // daily cap bounds how many rows a script can insert into `users`. Checked
     // only on the insert path so returning existing users is never blocked.
+    //
+    // The cap is deliberately far above any plausible organic signup day: this
+    // is a scripted-abuse ceiling, not a throttle. Better-Auth creates the auth
+    // identity BEFORE this mutation runs, so anyone we reject here is left with
+    // a login and no `users` row — a broken account, not a deferred one. Raising
+    // the ceiling is always cheaper than that failure mode.
     await enforceRateLimit(
       ctx,
       "signup:global",
-      200,
+      2000,
       "تعذّر إنشاء الحساب حاليًا. يرجى المحاولة لاحقًا. / Sign-ups are temporarily unavailable. Please try again later."
     );
 
