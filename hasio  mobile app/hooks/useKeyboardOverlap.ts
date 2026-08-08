@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Keyboard, Platform, View } from "react-native";
 
 /**
@@ -16,27 +16,57 @@ import { Keyboard, Platform, View } from "react-native";
  * the raw keyboard height overshoots by the distance from the view's bottom to
  * the bottom of the screen.
  *
+ * The overlap is recomputed on layout as well as on the keyboard event, and
+ * that is load-bearing. Measuring only inside `keyboardDidShow` races the
+ * window resize: on the Android versions that do honour `adjustResize`, the
+ * event can arrive while the view still reports its full pre-resize height, so
+ * the overlap comes back as a whole keyboard height and gets padded on top of a
+ * window that then shrinks anyway. The result is a dead band the height of the
+ * keyboard sitting over the submit button — the bug this guards against.
+ * Recomputing from `onLayout` makes it self-correcting whichever order the
+ * resize and the keyboard event happen to arrive in.
+ *
+ * Callers must attach BOTH returned values to the same view:
+ *
+ *     const { ref, overlap, onLayout } = useKeyboardOverlap();
+ *     <View ref={ref} onLayout={onLayout} style={{ flex: 1, paddingBottom: overlap }}>
+ *
  * Returns a no-op ({ overlap: 0 }) on iOS — use KeyboardAvoidingView there.
  */
 export function useKeyboardOverlap(onKeyboardShow?: () => void) {
   const ref = useRef<View>(null);
   const [overlap, setOverlap] = useState(0);
+  // Top edge of the keyboard in window coordinates, or null while it is hidden.
+  const keyboardTopRef = useRef<number | null>(null);
   const onShowRef = useRef(onKeyboardShow);
   onShowRef.current = onKeyboardShow;
+
+  const recompute = useCallback(() => {
+    if (Platform.OS !== "android") return;
+
+    const keyboardTop = keyboardTopRef.current;
+    if (keyboardTop === null) {
+      setOverlap(0);
+      return;
+    }
+
+    ref.current?.measureInWindow((_x, y, _width, height) => {
+      const covered = y + height - keyboardTop;
+      setOverlap(covered > 0 ? covered : 0);
+    });
+  }, []);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
 
     const showSub = Keyboard.addListener("keyboardDidShow", (e) => {
-      const keyboardTop = e.endCoordinates.screenY;
-      ref.current?.measureInWindow((_x, y, _width, height) => {
-        const covered = y + height - keyboardTop;
-        setOverlap(covered > 0 ? covered : 0);
-        onShowRef.current?.();
-      });
+      keyboardTopRef.current = e.endCoordinates.screenY;
+      recompute();
+      onShowRef.current?.();
     });
 
     const hideSub = Keyboard.addListener("keyboardDidHide", () => {
+      keyboardTopRef.current = null;
       setOverlap(0);
     });
 
@@ -44,7 +74,10 @@ export function useKeyboardOverlap(onKeyboardShow?: () => void) {
       showSub.remove();
       hideSub.remove();
     };
-  }, []);
+  }, [recompute]);
 
-  return { ref, overlap };
+  // Safe to feed straight into onLayout: padding is applied inside the measured
+  // view's own box, so it never changes the frame measureInWindow reports and
+  // cannot drive a feedback loop.
+  return { ref, overlap, onLayout: recompute };
 }

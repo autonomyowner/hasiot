@@ -57,8 +57,11 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
   }, []);
 
   // Android: pad by the measured keyboard overlap. iOS: KeyboardAvoidingView below.
-  const { ref: innerRef, overlap: androidKeyboardHeight } =
-    useKeyboardOverlap(scrollToEndSoon);
+  const {
+    ref: innerRef,
+    overlap: androidKeyboardHeight,
+    onLayout: keyboardOnLayout,
+  } = useKeyboardOverlap(scrollToEndSoon);
 
   // iOS only — KeyboardAvoidingView moves the input, we just follow with a scroll.
   useEffect(() => {
@@ -241,6 +244,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
     >
       <View
         ref={innerRef}
+        onLayout={keyboardOnLayout}
         style={[styles.inner, { paddingTop: insets.top, paddingBottom: androidKeyboardHeight }]}
       >
         {/* Header */}

@@ -48,7 +48,11 @@ const PRICE_UNITS: { value: PriceUnit; labelKey: string }[] = [
 export default function PostServiceScreen() {
   const router = useRouter();
   const { t, isRTL } = useLanguage();
-  const { ref: keyboardRef, overlap: keyboardOverlap } = useKeyboardOverlap();
+  const {
+    ref: keyboardRef,
+    overlap: keyboardOverlap,
+    onLayout: keyboardOnLayout,
+  } = useKeyboardOverlap();
   const submitService = useMutation(api.services.mutations.submitService);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -146,7 +150,11 @@ export default function PostServiceScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
-      <View ref={keyboardRef} style={{ flex: 1, paddingBottom: keyboardOverlap }}>
+      <View
+        ref={keyboardRef}
+        onLayout={keyboardOnLayout}
+        style={{ flex: 1, paddingBottom: keyboardOverlap }}
+      >
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"

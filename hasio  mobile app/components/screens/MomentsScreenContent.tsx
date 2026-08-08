@@ -55,7 +55,11 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
   const mountedRef = useRef(true);
 
   const [modalVisible, setModalVisible] = useState(false);
-  const { ref: keyboardRef, overlap: keyboardOverlap } = useKeyboardOverlap();
+  const {
+    ref: keyboardRef,
+    overlap: keyboardOverlap,
+    onLayout: keyboardOnLayout,
+  } = useKeyboardOverlap();
   const [newMomentImage, setNewMomentImage] = useState<string | null>(null);
   const [newMomentNote, setNewMomentNote] = useState("");
   const [newMomentLocation, setNewMomentLocation] = useState("");
@@ -266,6 +270,7 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
         >
           <View
             ref={keyboardRef}
+            onLayout={keyboardOnLayout}
             style={[
               styles.modalContent,
               {

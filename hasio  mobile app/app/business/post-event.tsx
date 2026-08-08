@@ -38,7 +38,11 @@ const EVENT_CATEGORIES: { value: EventCategory; labelKey: string }[] = [
 export default function PostEventScreen() {
   const router = useRouter();
   const { t, isRTL } = useLanguage();
-  const { ref: keyboardRef, overlap: keyboardOverlap } = useKeyboardOverlap();
+  const {
+    ref: keyboardRef,
+    overlap: keyboardOverlap,
+    onLayout: keyboardOnLayout,
+  } = useKeyboardOverlap();
   const submitListing = useMutation(api.listings.mutations.submitListing);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -130,7 +134,11 @@ export default function PostEventScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
-      <View ref={keyboardRef} style={{ flex: 1, paddingBottom: keyboardOverlap }}>
+      <View
+        ref={keyboardRef}
+        onLayout={keyboardOnLayout}
+        style={{ flex: 1, paddingBottom: keyboardOverlap }}
+      >
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"

@@ -48,7 +48,11 @@ export function ReportSheet({
 }: ReportSheetProps) {
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
-  const { ref: keyboardRef, overlap: keyboardOverlap } = useKeyboardOverlap();
+  const {
+    ref: keyboardRef,
+    overlap: keyboardOverlap,
+    onLayout: keyboardOnLayout,
+  } = useKeyboardOverlap();
   const { isAuthenticated } = useConvexAuth();
   const reportContent = useMutation(api.moderation.mutations.reportContent);
   const blockUser = useMutation(api.moderation.mutations.blockUser);
@@ -135,6 +139,7 @@ export function ReportSheet({
           handles it), so on iOS this always clears the home indicator. */}
       <View
         ref={keyboardRef}
+        onLayout={keyboardOnLayout}
         style={[
           styles.sheet,
           {
