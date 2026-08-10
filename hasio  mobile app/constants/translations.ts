@@ -67,6 +67,38 @@ export const translations = {
     seasonal: "Seasonal",
     addToPlan: "Add to Plan",
 
+    // Listing detail
+    detailAbout: "About",
+    detailContact: "Contact",
+    detailAmenities: "Amenities",
+    detailHours: "Opening Hours",
+    detailCall: "Call",
+    detailWebsite: "Website",
+    detailDirections: "Directions",
+    detailEmail: "Email",
+    detailNoDescription: "No description has been added for this listing yet.",
+    detailCallFailed: "Your device can't place calls.",
+    detailLinkFailed: "That link couldn't be opened.",
+    detailClosed: "Closed",
+    detailImageCount: "Photo {current} of {total}",
+
+    // Category badges. Singular, and keyed by the raw value stored on the
+    // record (`cat_` + the value) so a card can look one up directly without a
+    // mapping table that has to be kept in step with the type unions.
+    cat_hotel: "Hotel",
+    cat_apartment: "Apartment",
+    cat_camp: "Camp",
+    cat_homestay: "Homestay",
+    cat_restaurant: "Restaurant",
+    cat_home_kitchen: "Home Kitchen",
+    cat_fastfood: "Fast Food",
+    cat_drinks: "Drinks",
+    cat_festival: "Festival",
+    cat_conference: "Conference",
+    cat_outdoor: "Outdoor",
+    cat_indoor: "Indoor",
+    cat_seasonal: "Seasonal",
+
     // Planner
     myPlan: "My Day Plan",
     plannerAssistant: "Your Travel Assistant",
@@ -173,6 +205,10 @@ export const translations = {
     passwordTooShort: "Password must be at least 8 characters",
     noAccount: "Don't have an account?",
     haveAccount: "Already have an account?",
+    consentPrefix: "By creating an account you agree to our",
+    consentAnd: "and",
+    consentSuffix:
+      ", and you accept that abusive users and objectionable content are not tolerated.",
     back: "Back",
     saving: "Saving...",
     momentSaveError: "Failed to save moment. Please try again.",
@@ -530,6 +566,36 @@ export const translations = {
     seasonal: "موسمية",
     addToPlan: "إضافة للمخطط",
 
+    // Listing detail
+    detailAbout: "نبذة",
+    detailContact: "التواصل",
+    detailAmenities: "المرافق",
+    detailHours: "ساعات العمل",
+    detailCall: "اتصال",
+    detailWebsite: "الموقع الإلكتروني",
+    detailDirections: "الاتجاهات",
+    detailEmail: "البريد الإلكتروني",
+    detailNoDescription: "لم تتم إضافة وصف لهذا المكان بعد.",
+    detailCallFailed: "جهازك لا يدعم إجراء المكالمات.",
+    detailLinkFailed: "تعذر فتح الرابط.",
+    detailClosed: "مغلق",
+    detailImageCount: "صورة {current} من {total}",
+
+    // Category badges (singular) — see the English block.
+    cat_hotel: "فندق",
+    cat_apartment: "شقة",
+    cat_camp: "مخيم",
+    cat_homestay: "استضافة شعبية",
+    cat_restaurant: "مطعم",
+    cat_home_kitchen: "مطبخ منزلي",
+    cat_fastfood: "وجبات سريعة",
+    cat_drinks: "مشروبات",
+    cat_festival: "مهرجان",
+    cat_conference: "مؤتمر",
+    cat_outdoor: "خارجية",
+    cat_indoor: "داخلية",
+    cat_seasonal: "موسمية",
+
     // Planner
     myPlan: "مخططي اليومي",
     plannerAssistant: "مساعدك السياحي",
@@ -636,6 +702,9 @@ export const translations = {
     passwordTooShort: "كلمة المرور يجب أن تكون 8 أحرف على الأقل",
     noAccount: "ليس لديك حساب؟",
     haveAccount: "لديك حساب بالفعل؟",
+    consentPrefix: "بإنشائك حساباً فإنك توافق على",
+    consentAnd: "و",
+    consentSuffix: "، وتقر بعدم التسامح مع المحتوى المخالف أو المستخدمين المسيئين.",
     back: "رجوع",
     saving: "جاري الحفظ...",
     momentSaveError: "فشل في حفظ اللحظة. حاول مرة أخرى.",

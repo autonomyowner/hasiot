@@ -8,12 +8,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { useLanguage } from "@/hooks/useLanguage";
-import { colors, fonts } from "@/constants/colors";
+import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
+import { categoryColors, colors, fonts } from "@/constants/colors";
 import { useFoods } from "@/hooks/useConvexData";
-import { FilterChip, SkeletonRow } from "@/components/ui";
+import { FilterChip, SkeletonFade, SkeletonList } from "@/components/ui";
 import { FoodCard } from "@/components/food/FoodCard";
-import type { FoodFilter, FoodCategory } from "@/types";
+import {
+  ListingDetailSheet,
+  type DetailItem,
+} from "@/components/listing/ListingDetailSheet";
+import type { Food, FoodFilter, FoodCategory } from "@/types";
 
 const filters: { key: FoodFilter; labelKey: "all" | "restaurants" | "productiveFamilies" | "fastFood" | "drinks" }[] = [
   { key: "all", labelKey: "all" },
@@ -39,6 +43,22 @@ export function FoodScreenContent() {
   }, [activeFilter, foods]);
 
   const displayFilters = isRTL ? [...filters].reverse() : filters;
+
+  const [selected, setSelected] = useState<DetailItem | null>(null);
+
+  const toDetailItem = (item: Food): DetailItem => ({
+    id: item.id,
+    title: getLocalizedText(item.name, item.nameAr, language),
+    subtitle: getLocalizedText(item.cuisine, item.cuisineAr, language),
+    badge: t(`cat_${item.category}` as const),
+    badgeColor: categoryColors[item.category],
+    rating: item.rating,
+    priceLine: item.avgPrice ? `${item.avgPrice} ${t("averagePrice")}` : undefined,
+    images: item.images,
+    description: getLocalizedText(item.description, item.descriptionAr, language),
+    details: item.details,
+    ownerId: item.owner_id,
+  });
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -73,22 +93,23 @@ export function FoodScreenContent() {
         </ScrollView>
       </Animated.View>
 
-      {/* Food List */}
-      {isLoading ? (
-        <SkeletonRow count={3} />
-      ) : (
+      {/* Food List — cross-faded from its skeleton; see LodgingScreenContent. */}
+      <SkeletonFade
+        fill
+        loading={isLoading}
+        skeleton={<SkeletonList variant="food" isRTL={isRTL} />}
+      >
         <FlatList
           data={filteredFood}
           keyExtractor={(item) => item.id}
-          renderItem={({ item, index }) => (
-            <Animated.View entering={FadeInDown.delay(300 + index * 100).duration(600)}>
-              <FoodCard
-                food={item}
-                language={language}
-                isRTL={isRTL}
-                avgPriceText={t("averagePrice")}
-              />
-            </Animated.View>
+          renderItem={({ item }) => (
+            <FoodCard
+              food={item}
+              language={language}
+              isRTL={isRTL}
+              avgPriceText={t("averagePrice")}
+              onPress={() => setSelected(toDetailItem(item))}
+            />
           )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -103,7 +124,9 @@ export function FoodScreenContent() {
             </View>
           }
         />
-      )}
+      </SkeletonFade>
+
+      <ListingDetailSheet item={selected} onClose={() => setSelected(null)} />
     </View>
   );
 }

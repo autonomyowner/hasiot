@@ -8,7 +8,7 @@ import Animated, {
 } from "react-native-reanimated";
 import type { Food, Language } from "@/types";
 import { Feather } from "@expo/vector-icons";
-import { getLocalizedText } from "@/hooks/useLanguage";
+import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
 import { categoryColors, colors, fonts } from "@/constants/colors";
 import { ReportSheet } from "@/components/ReportSheet";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -23,13 +23,6 @@ interface FoodCardProps {
   avgPriceText: string;
 }
 
-const categoryLabels: Record<string, string> = {
-  restaurant: "Restaurant",
-  home_kitchen: "Home Kitchen",
-  fastfood: "Fast Food",
-  drinks: "Drinks",
-};
-
 export function FoodCard({
   food,
   language,
@@ -39,6 +32,7 @@ export function FoodCard({
 }: FoodCardProps) {
   const scale = useSharedValue(1);
   const [reportOpen, setReportOpen] = useState(false);
+  const { t } = useLanguage();
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -54,16 +48,17 @@ export function FoodCard({
 
   const name = getLocalizedText(food.name, food.nameAr, language);
   const cuisine = getLocalizedText(food.cuisine, food.cuisineAr, language);
-  const categoryLabel = categoryLabels[food.category] || food.category;
+  const categoryLabel = t(`cat_${food.category}` as const);
   const categoryColor = categoryColors[food.category] || categoryColors.restaurant;
 
   return (
     <AnimatedPressable
       style={[styles.container, animatedStyle]}
       onPress={onPress}
-      onLongPress={() => setReportOpen(true)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={`${name}, ${categoryLabel}, ${cuisine}, ${food.avgPrice} ${avgPriceText}`}
     >
       {/* Image */}
       <View style={styles.imageContainer}>
@@ -85,6 +80,8 @@ export function FoodCard({
           style={styles.moreButton}
           onPress={() => setReportOpen(true)}
           hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t("reportTitle")}
         >
           <Text style={styles.moreText}>⋯</Text>
         </Pressable>

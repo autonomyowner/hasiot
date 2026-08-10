@@ -73,13 +73,20 @@ const AnimatedFeather = Animated.createAnimatedComponent(Feather);
 const ACTIVE_TINT = colors.primary.DEFAULT;
 const INACTIVE_TINT = "#A39D8E";
 
+// Devices without a home indicator (iPhone SE, most Androids) report a bottom
+// inset of 0. A bar sitting flush on the screen edge still needs breathing room
+// there, so the inset is a floor, not the whole story. On a notched iPhone the
+// full 34pt inset is used, which puts total bar height at ~83pt — the same as a
+// UIKit tab bar, so the home indicator never overlaps a tap target.
+const MIN_BAR_BOTTOM_PADDING = 10;
+
 interface TabItem {
   key: string;
   icon: keyof typeof Feather.glyphMap;
   label: string;
 }
 
-// 7 tabs, home centered. Labels surfaced in the floating glass bar (v5 redesign).
+// 7 tabs, home centered. Labels surfaced under each icon in the docked bar.
 const tabs: TabItem[] = [
   { key: "lodging", icon: "map-pin", label: "Stay" },
   { key: "food", icon: "coffee", label: "Eat" },
@@ -203,21 +210,25 @@ export default function TabLayout() {
         </View>
       )}
 
-      {/* Floating glass tab bar (v5) */}
-      <View style={[styles.tabBarContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom : 14 }]}>
-        <View style={styles.tabBarPill}>
-          {tabs.map((tab, index) => (
-            <TabButton
-              key={tab.key}
-              icon={tab.icon}
-              label={tab.label}
-              index={index}
-              scrollPosition={scrollPosition}
-              isActive={currentPage === index}
-              onPress={() => handleTabPress(index)}
-            />
-          ))}
-        </View>
+      {/* Docked tab bar: anchored to the bottom edge, full-bleed, with the safe
+          area painted in the bar's own colour so nothing shows through under it. */}
+      <View
+        style={[
+          styles.tabBar,
+          { paddingBottom: Math.max(insets.bottom, MIN_BAR_BOTTOM_PADDING) },
+        ]}
+      >
+        {tabs.map((tab, index) => (
+          <TabButton
+            key={tab.key}
+            icon={tab.icon}
+            label={tab.label}
+            index={index}
+            scrollPosition={scrollPosition}
+            isActive={currentPage === index}
+            onPress={() => handleTabPress(index)}
+          />
+        ))}
       </View>
     </View>
   );
@@ -308,33 +319,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   // Seven tabs have to fit across the narrowest phone we support, so the
-  // horizontal padding here is deliberately tight.
-  tabBarContainer: {
-    backgroundColor: "transparent",
-    paddingHorizontal: 10,
-    paddingTop: 8,
-  },
-  tabBarPill: {
+  // horizontal padding here is deliberately tight. Opaque fill rather than a
+  // translucent one: the bar is part of the layout, not a pane hovering over
+  // scrolling content, so there is nothing behind it worth showing through.
+  tabBar: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    backgroundColor: "rgba(255,255,255,0.96)",
-    borderRadius: 30,
-    paddingVertical: 9,
+    backgroundColor: colors.surface.DEFAULT,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    paddingTop: 6,
     paddingHorizontal: 2,
-    borderWidth: 1,
-    borderColor: "rgba(31,29,23,0.04)",
-    shadowColor: "#1F1D17",
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.16,
-    shadowRadius: 24,
-    elevation: 16,
   },
+  // No fixed height: the row is sized by its tallest button, and the safe-area
+  // padding is added underneath. minHeight keeps every tap target at the 44pt
+  // iOS minimum even though the icon and label together are shorter than that.
   tabButton: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     gap: 3,
+    minHeight: 44,
     paddingVertical: 2,
   },
   tabLabel: {

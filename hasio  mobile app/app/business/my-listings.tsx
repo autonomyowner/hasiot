@@ -6,11 +6,10 @@ import {
   ScrollView,
   Pressable,
   Image,
-  ActivityIndicator,
   RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BackButton } from "@/components/ui";
+import { BackButton, SkeletonFade, SkeletonOwnerList } from "@/components/ui";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useQuery } from "convex/react";
 import { api } from "@/backend";
@@ -100,19 +99,13 @@ export default function MyListingsScreen() {
           </ScrollView>
         </Animated.View>
 
-        {/* Loading */}
-        {isLoading && (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0D7A5F" />
-          </View>
-        )}
-
-        {/* Listings */}
-        {!isLoading && filteredListings.length > 0 && (
-          <Animated.View
-            entering={FadeInDown.delay(300).duration(600)}
-            style={styles.listingsContainer}
-          >
+        {/* Listings — cross-faded in from a skeleton of the same cards. */}
+        <SkeletonFade
+          loading={isLoading}
+          skeleton={<SkeletonOwnerList isRTL={isRTL} />}
+        >
+        {filteredListings.length > 0 ? (
+          <View style={styles.listingsContainer}>
             {filteredListings.map((listing: any) => (
               <View key={listing._id} style={styles.listingCard}>
                 {listing.images && listing.images.length > 0 && (
@@ -136,20 +129,16 @@ export default function MyListingsScreen() {
                 </View>
               </View>
             ))}
-          </Animated.View>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && filteredListings.length === 0 && (
-          <Animated.View
-            entering={FadeInDown.delay(300).duration(600)}
-            style={styles.emptyContainer}
-          >
+          </View>
+        ) : (
+          /* Empty State */
+          <View style={styles.emptyContainer}>
             <Text style={[styles.emptyText, isRTL && styles.textRTL]}>
               {t("noListingsYet" as any)}
             </Text>
-          </Animated.View>
+          </View>
         )}
+        </SkeletonFade>
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -208,10 +197,6 @@ const styles = StyleSheet.create({
   },
   filterTextActive: {
     color: "#FFFFFF",
-  },
-  loadingContainer: {
-    paddingTop: 40,
-    alignItems: "center",
   },
   listingsContainer: {
     paddingHorizontal: 24,

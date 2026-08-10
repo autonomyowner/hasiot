@@ -28,7 +28,7 @@
         "backgroundColor": "#F5A623"
       },
       "package": "com.hasio.travel",
-      "versionCode": 11,
+      "versionCode": 12,
       "permissions": []
     },
     "web": {

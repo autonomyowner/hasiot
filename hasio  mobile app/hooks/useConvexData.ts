@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/backend";
 import { useConvexAuth } from "convex/react";
-import type { Lodging, Food, Event } from "@/types";
+import type { Lodging, Food, Event, ListingDetails } from "@/types";
 
 // Type for Convex listing documents
 type ConvexListing = {
@@ -35,6 +35,24 @@ type ConvexListing = {
   updatedAt: number;
 };
 
+/**
+ * The contact and location fields the cards don't show.
+ *
+ * Every key is dropped when empty rather than passed through as "", so the
+ * detail sheet can decide what to render by presence alone instead of every
+ * caller re-checking for blank strings.
+ */
+function toDetails(l: ConvexListing): ListingDetails {
+  return {
+    address: l.address || undefined,
+    phone: l.phone || undefined,
+    email: l.email || undefined,
+    website: l.website || undefined,
+    coordinates: l.coordinates,
+    workingHours: l.workingHours?.length ? l.workingHours : undefined,
+  };
+}
+
 // Adapters: map Convex listing → mobile app types
 function toLodging(l: ConvexListing): Lodging {
   return {
@@ -63,6 +81,7 @@ function toLodging(l: ConvexListing): Lodging {
     descriptionAr: l.description_ar || "",
     owner_id: l.ownerId || null,
     status: l.status as Lodging["status"],
+    details: toDetails(l),
   };
 }
 
@@ -92,6 +111,7 @@ function toFood(l: ConvexListing): Food {
     rating: l.rating || 0,
     owner_id: l.ownerId || null,
     status: l.status as Food["status"],
+    details: toDetails(l),
   };
 }
 
@@ -122,6 +142,7 @@ function toEvent(l: ConvexListing): Event {
     descriptionAr: l.description_ar || "",
     owner_id: l.ownerId || null,
     status: l.status as Event["status"],
+    details: toDetails(l),
   };
 }
 
@@ -199,6 +220,14 @@ export function useDestinations(featured?: boolean) {
         subtitleAr: l.category_ar || l.category,
         image: l.images?.[0] || "",
         featured: (l.rating || 0) >= 4.5,
+        // Carried so a tapped destination can open the same detail sheet as a
+        // hotel or a restaurant instead of being a dead end.
+        images: l.images || [],
+        description: l.description_en || "",
+        descriptionAr: l.description_ar || "",
+        rating: l.rating || 0,
+        owner_id: l.ownerId || null,
+        details: toDetails(l),
       }))
     : [];
 

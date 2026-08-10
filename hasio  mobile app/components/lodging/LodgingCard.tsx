@@ -9,7 +9,7 @@ import Animated, {
 import { useConvexAuth } from "convex/react";
 import type { Lodging, Language } from "@/types";
 import { Feather } from "@expo/vector-icons";
-import { getLocalizedText } from "@/hooks/useLanguage";
+import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
 import { categoryColors, colors, fonts } from "@/constants/colors";
 import { useAppStore } from "@/stores/appStore";
 import { useToggleFavorite, useFavorites } from "@/hooks/useConvexData";
@@ -34,6 +34,7 @@ export function LodgingCard({
 }: LodgingCardProps) {
   const scale = useSharedValue(1);
   const [reportOpen, setReportOpen] = useState(false);
+  const { t } = useLanguage();
   const { isAuthenticated } = useConvexAuth();
   const convexToggleFavorite = useToggleFavorite();
   const { favorites } = useFavorites();
@@ -69,16 +70,19 @@ export function LodgingCard({
 
   const name = getLocalizedText(lodging.name, lodging.nameAr, language);
   const city = getLocalizedText(lodging.city, lodging.cityAr, language);
-  const typeLabel = lodging.type.charAt(0).toUpperCase() + lodging.type.slice(1);
+  // Localised like every other string on the card. Capitalising the raw value
+  // left a Latin "Hotel" chip pinned to an otherwise Arabic card.
+  const typeLabel = t(`cat_${lodging.type}` as const);
   const typeColor = categoryColors[lodging.type] || categoryColors.hotel;
 
   return (
     <AnimatedPressable
       style={[styles.container, animatedStyle]}
       onPress={onPress}
-      onLongPress={() => setReportOpen(true)}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={`${name}, ${typeLabel}, ${city}, ${lodging.priceRange} ${perNightText}`}
     >
       {/* Image */}
       <View style={styles.imageContainer}>
@@ -100,6 +104,8 @@ export function LodgingCard({
           style={styles.moreButton}
           onPress={() => setReportOpen(true)}
           hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={t("reportTitle")}
         >
           <Text style={styles.moreText}>⋯</Text>
         </Pressable>
@@ -109,6 +115,11 @@ export function LodgingCard({
           style={styles.favoriteButton}
           onPress={toggleFavorite}
           hitSlop={10}
+          accessibilityRole="button"
+          accessibilityState={{ selected: isFavorite }}
+          accessibilityLabel={
+            isFavorite ? t("removeFromFavorites") : t("addToFavorites")
+          }
         >
           <Feather
             name="heart"

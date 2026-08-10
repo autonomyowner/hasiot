@@ -23,6 +23,8 @@ import type * as listings_queries from "../listings/queries.js";
 import type * as listings_seedImages from "../listings/seedImages.js";
 import type * as moderation_mutations from "../moderation/mutations.js";
 import type * as moderation_queries from "../moderation/queries.js";
+import type * as moments_mutations from "../moments/mutations.js";
+import type * as moments_queries from "../moments/queries.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as services_mutations from "../services/mutations.js";
 import type * as services_queries from "../services/queries.js";
@@ -56,6 +58,8 @@ declare const fullApi: ApiFromModules<{
   "listings/seedImages": typeof listings_seedImages;
   "moderation/mutations": typeof moderation_mutations;
   "moderation/queries": typeof moderation_queries;
+  "moments/mutations": typeof moments_mutations;
+  "moments/queries": typeof moments_queries;
   rateLimit: typeof rateLimit;
   "services/mutations": typeof services_mutations;
   "services/queries": typeof services_queries;

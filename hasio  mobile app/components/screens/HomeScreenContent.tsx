@@ -7,7 +7,6 @@ import {
   ScrollView,
   RefreshControl,
   Pressable,
-  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
@@ -23,15 +22,29 @@ import Animated, {
 import { Feather } from "@expo/vector-icons";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
 import { useHomeData } from "@/hooks/useConvexData";
-import { SearchBar, CategoryCard, SkeletonRow } from "@/components/ui";
-import { colors, fonts } from "@/constants/colors";
+import {
+  SearchBar,
+  CategoryCard,
+  SkeletonFade,
+  SkeletonHomeSections,
+} from "@/components/ui";
+import { categoryColors, colors, fonts } from "@/constants/colors";
+import {
+  HOME_CARD_GAP,
+  HOME_CARD_WIDTH,
+  HOME_CONTAINER_PADDING,
+} from "@/constants/layout";
+import {
+  ListingDetailSheet,
+  type DetailItem,
+} from "@/components/listing/ListingDetailSheet";
 import type { Food, Lodging, Event } from "@/types";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-const { width } = Dimensions.get("window");
-const CARD_GAP = 8;
-const CONTAINER_PADDING = 20;
-const CARD_WIDTH = (width - (CONTAINER_PADDING * 2) - CARD_GAP) / 2;
+// Shared with the skeleton that stands in for this screen while it loads.
+const CARD_GAP = HOME_CARD_GAP;
+const CONTAINER_PADDING = HOME_CONTAINER_PADDING;
+const CARD_WIDTH = HOME_CARD_WIDTH;
 
 interface HomeScreenContentProps {
   onNavigateToTab?: (index: number) => void;
@@ -132,6 +145,68 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
     };
   }, [debouncedQuery, allLodging, allFood, allEvents, destinations]);
 
+  const [selected, setSelected] = useState<DetailItem | null>(null);
+
+  // Home shows all four kinds of listing side by side, so each gets its own
+  // mapping into the shared sheet's shape. Same normalising the three list
+  // screens do — done here so the sheet never has to know what it is showing.
+  const lodgingDetail = (item: Lodging): DetailItem => ({
+    id: item.id,
+    title: getLocalizedText(item.name, item.nameAr, language),
+    subtitle: getLocalizedText(item.city, item.cityAr, language),
+    badge: t(`cat_${item.type}` as const),
+    badgeColor: categoryColors[item.type],
+    rating: item.rating,
+    priceLine: item.priceRange ? `${item.priceRange} ${t("perNight")}` : undefined,
+    images: item.images,
+    description: getLocalizedText(item.description, item.descriptionAr, language),
+    amenities: language === "ar" ? item.amenitiesAr : item.amenities,
+    details: item.details,
+    ownerId: item.owner_id,
+  });
+
+  const foodDetail = (item: Food): DetailItem => ({
+    id: item.id,
+    title: getLocalizedText(item.name, item.nameAr, language),
+    subtitle: getLocalizedText(item.cuisine, item.cuisineAr, language),
+    badge: t(`cat_${item.category}` as const),
+    badgeColor: categoryColors[item.category],
+    rating: item.rating,
+    priceLine: item.avgPrice ? `${item.avgPrice} ${t("averagePrice")}` : undefined,
+    images: item.images,
+    description: getLocalizedText(item.description, item.descriptionAr, language),
+    details: item.details,
+    ownerId: item.owner_id,
+  });
+
+  const eventDetail = (item: Event): DetailItem => ({
+    id: item.id,
+    title: getLocalizedText(item.title, item.titleAr, language),
+    subtitle: getLocalizedText(item.location, item.locationAr, language),
+    badge: t(`cat_${item.category}` as const),
+    badgeColor: categoryColors[item.category],
+    priceLine: [item.date, item.time].filter(Boolean).join(" • ") || undefined,
+    images: item.images,
+    description: getLocalizedText(item.description, item.descriptionAr, language),
+    details: item.details,
+    ownerId: item.owner_id,
+  });
+
+  // Destinations come straight off `useDestinations` rather than from a shared
+  // type, so this one is structural.
+  const destinationDetail = (
+    item: (typeof destinations)[number]
+  ): DetailItem => ({
+    id: item.id,
+    title: getLocalizedText(item.name, item.nameAr, language),
+    subtitle: getLocalizedText(item.subtitle, item.subtitleAr, language),
+    rating: item.rating,
+    images: item.images?.length ? item.images : item.image ? [item.image] : [],
+    description: getLocalizedText(item.description, item.descriptionAr, language),
+    details: item.details,
+    ownerId: item.owner_id,
+  });
+
   const handleScroll = (event: any) => {
     scrollY.value = event.nativeEvent.contentOffset.y;
   };
@@ -202,11 +277,14 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           />
         </Animated.View>
 
-        {/* Loading State */}
-        {isLoading && <SkeletonRow count={2} />}
-
-        {/* Search Results */}
-        {!isLoading && searchResults ? (
+        {/* Everything below the search bar is data-driven, so the skeleton
+            covers all of it: the category rail and both destination grids, at
+            their own dimensions rather than as a stack of list cards. */}
+        <SkeletonFade
+          loading={isLoading}
+          skeleton={<SkeletonHomeSections isRTL={isRTL} />}
+        >
+        {searchResults ? (
           <View style={styles.searchResultsContainer}>
             {searchResults.total === 0 ? (
               <View style={styles.noResultsContainer}>
@@ -229,10 +307,11 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                       <SearchResultItem
                         key={item.id}
                         name={getLocalizedText(item.name, item.nameAr, language)}
-                        subtitle={`${getLocalizedText(item.city, item.cityAr, language)} â€¢ ${item.priceRange}`}
+                        subtitle={`${getLocalizedText(item.city, item.cityAr, language)} • ${item.priceRange}`}
                         image={item.images?.[0]}
                         isRTL={isRTL}
                         index={index}
+                        onPress={() => setSelected(lodgingDetail(item))}
                       />
                     ))}
                   </View>
@@ -251,6 +330,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                         image={item.images?.[0]}
                         isRTL={isRTL}
                         index={index}
+                        onPress={() => setSelected(foodDetail(item))}
                       />
                     ))}
                   </View>
@@ -265,10 +345,11 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                       <SearchResultItem
                         key={item.id}
                         name={getLocalizedText(item.title, item.titleAr, language)}
-                        subtitle={`${getLocalizedText(item.location, item.locationAr, language)} â€¢ ${item.date}`}
+                        subtitle={`${getLocalizedText(item.location, item.locationAr, language)} • ${item.date}`}
                         image={item.images?.[0]}
                         isRTL={isRTL}
                         index={index}
+                        onPress={() => setSelected(eventDetail(item))}
                       />
                     ))}
                   </View>
@@ -287,6 +368,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                         image={item.image}
                         isRTL={isRTL}
                         index={index}
+                        onPress={() => setSelected(destinationDetail(item))}
                       />
                     ))}
                   </View>
@@ -294,13 +376,12 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
               </>
             )}
           </View>
-        ) : !isLoading ? (
+        ) : (
           <>
-            {/* Category Cards */}
-        <Animated.View
-          entering={FadeInDown.delay(300).duration(600)}
-          style={styles.section}
-        >
+            {/* Category Cards. These sections used to drop in one after another;
+                SkeletonFade now cross-fades the lot, and a slide underneath a
+                fading placeholder only fights it. */}
+        <View style={styles.section}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -322,13 +403,10 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
               )
             )}
           </ScrollView>
-        </Animated.View>
+        </View>
 
         {/* Featured Destinations - 2 Column Grid */}
-        <Animated.View
-          entering={FadeInDown.delay(400).duration(600)}
-          style={styles.section}
-        >
+        <View style={styles.section}>
           <View style={[styles.sectionHeader, isRTL && styles.sectionHeaderRTL]}>
             <Text
               style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
@@ -351,8 +429,8 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                   )}
                   image={dest.image}
                   isRTL={isRTL}
-                  index={index}
                   isTall={index % 3 === 0}
+                  onPress={() => setSelected(destinationDetail(dest))}
                 />
               ))}
             </View>
@@ -366,13 +444,10 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
               </Text>
             </View>
           )}
-        </Animated.View>
+        </View>
 
         {/* More Destinations - 2 Column Grid */}
-        <Animated.View
-          entering={FadeInDown.delay(500).duration(600)}
-          style={styles.section}
-        >
+        <View style={styles.section}>
           <View style={[styles.sectionHeader, isRTL && styles.sectionHeaderRTL]}>
             <Text
               style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
@@ -395,8 +470,8 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                   )}
                   image={dest.image}
                   isRTL={isRTL}
-                  index={index}
                   isTall={index % 3 === 1}
+                  onPress={() => setSelected(destinationDetail(dest))}
                 />
               ))}
             </View>
@@ -410,13 +485,16 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
               </Text>
             </View>
           )}
-        </Animated.View>
+        </View>
 
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
           </>
-        ) : null}
+        )}
+        </SkeletonFade>
       </ScrollView>
+
+      <ListingDetailSheet item={selected} onClose={() => setSelected(null)} />
     </View>
   );
 }
@@ -427,9 +505,10 @@ interface SearchResultItemProps {
   image: string;
   isRTL: boolean;
   index: number;
+  onPress?: () => void;
 }
 
-function SearchResultItem({ name, subtitle, image, isRTL, index }: SearchResultItemProps) {
+function SearchResultItem({ name, subtitle, image, isRTL, index, onPress }: SearchResultItemProps) {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -448,8 +527,11 @@ function SearchResultItem({ name, subtitle, image, isRTL, index }: SearchResultI
     <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
       <AnimatedPressable
         style={[styles.searchResultItem, isRTL && styles.searchResultItemRTL, animatedStyle]}
+        onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        accessibilityRole="button"
+        accessibilityLabel={`${name}, ${subtitle}`}
       >
         <Image
           source={image ? { uri: image } : undefined}
@@ -478,8 +560,8 @@ interface DestinationGridCardProps {
   subtitle: string;
   image: string;
   isRTL: boolean;
-  index: number;
   isTall?: boolean;
+  onPress?: () => void;
 }
 
 function DestinationGridCard({
@@ -487,8 +569,8 @@ function DestinationGridCard({
   subtitle,
   image,
   isRTL,
-  index,
   isTall = false,
+  onPress,
 }: DestinationGridCardProps) {
   const scale = useSharedValue(1);
   const cardHeight = isTall ? 260 : 210;
@@ -506,14 +588,16 @@ function DestinationGridCard({
   };
 
   return (
-    <Animated.View
-      entering={FadeInDown.delay(100 + index * 50).duration(600)}
-      style={[styles.gridCardWrapper, { height: cardHeight }]}
-    >
+    // Plain View: the grid arrives with the rest of the screen through
+    // SkeletonFade, so a per-card entrance would animate on top of that.
+    <View style={[styles.gridCardWrapper, { height: cardHeight }]}>
       <AnimatedPressable
         style={[styles.gridCard, animatedStyle]}
+        onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        accessibilityRole="button"
+        accessibilityLabel={`${name}, ${subtitle}`}
       >
         <Image
           source={{ uri: image }}
@@ -540,7 +624,7 @@ function DestinationGridCard({
           </Text>
         </View>
       </AnimatedPressable>
-    </Animated.View>
+    </View>
   );
 }
 

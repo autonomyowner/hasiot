@@ -225,6 +225,19 @@ export default defineSchema({
   })
     .index("by_email", ["email"]),
 
+  // Personal travel moments — private to their author, never a public feed.
+  // The image is a Convex storage id rather than a device path: the previous
+  // AsyncStorage-only version stored the raw picker URI, which points into the
+  // app's cache directory and is purged by iOS, so saved moments went blank.
+  moments: defineTable({
+    userId: v.id("users"),
+    storageId: v.id("_storage"),
+    note: v.optional(v.string()),
+    location: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"]),
+
   // User-submitted content reports (UGC compliance)
   contentReports: defineTable({
     reporterId: v.id("users"),

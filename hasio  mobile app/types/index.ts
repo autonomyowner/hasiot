@@ -46,6 +46,27 @@ export interface Profile {
 }
 
 // Lodging Types
+/**
+ * The fields a card doesn't show but a detail view needs.
+ *
+ * Grouped rather than spread across the three listing types: they come from the
+ * same Convex record and are read by one shared detail sheet, so keeping them
+ * together means adding a field touches one interface instead of three.
+ */
+export interface ListingDetails {
+  address?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  coordinates?: { lat: number; lng: number };
+  workingHours?: {
+    day: string;
+    open: string;
+    close: string;
+    isClosed?: boolean;
+  }[];
+}
+
 export type LodgingType = "hotel" | "apartment" | "camp" | "homestay";
 
 export interface Lodging {
@@ -66,6 +87,7 @@ export interface Lodging {
   descriptionAr: string;
   owner_id?: string | null;
   status?: ApprovalStatus;
+  details?: ListingDetails;
 }
 
 // Food Types
@@ -86,6 +108,7 @@ export interface Food {
   rating: number;
   owner_id?: string | null;
   status?: ApprovalStatus;
+  details?: ListingDetails;
 }
 
 // Event Types
@@ -105,6 +128,7 @@ export interface Event {
   descriptionAr: string;
   owner_id?: string | null;
   status?: ApprovalStatus;
+  details?: ListingDetails;
 }
 
 // Plan Types
@@ -125,7 +149,10 @@ export interface DayPlan {
 // Moment Type
 export interface Moment {
   id: string;
-  image: string;
+  // Null when the stored file behind the moment can no longer be resolved. The
+  // record still carries its note and date, so the card shows its placeholder
+  // rather than the moment disappearing.
+  image: string | null;
   note: string;
   location?: string;
   timestamp: string;

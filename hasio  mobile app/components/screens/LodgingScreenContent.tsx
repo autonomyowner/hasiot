@@ -8,12 +8,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { useLanguage } from "@/hooks/useLanguage";
-import { colors, fonts } from "@/constants/colors";
+import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
+import { categoryColors, colors, fonts } from "@/constants/colors";
 import { useLodgings } from "@/hooks/useConvexData";
-import { FilterChip, SkeletonRow } from "@/components/ui";
+import { FilterChip, SkeletonFade, SkeletonList } from "@/components/ui";
 import { LodgingCard } from "@/components/lodging/LodgingCard";
-import type { LodgingFilter, LodgingType } from "@/types";
+import {
+  ListingDetailSheet,
+  type DetailItem,
+} from "@/components/listing/ListingDetailSheet";
+import type { Lodging, LodgingFilter, LodgingType } from "@/types";
 
 const filters: { key: LodgingFilter; labelKey: "all" | "hotels" | "apartments" | "camps" | "homestays" }[] = [
   { key: "all", labelKey: "all" },
@@ -39,6 +43,26 @@ export function LodgingScreenContent() {
   }, [activeFilter, lodgings]);
 
   const displayFilters = isRTL ? [...filters].reverse() : filters;
+
+  const [selected, setSelected] = useState<DetailItem | null>(null);
+
+  // Localise here rather than inside the sheet: the three list screens describe
+  // different things, and normalising at the call site keeps the sheet from
+  // needing a branch per listing type.
+  const toDetailItem = (item: Lodging): DetailItem => ({
+    id: item.id,
+    title: getLocalizedText(item.name, item.nameAr, language),
+    subtitle: getLocalizedText(item.city, item.cityAr, language),
+    badge: t(`cat_${item.type}` as const),
+    badgeColor: categoryColors[item.type],
+    rating: item.rating,
+    priceLine: item.priceRange ? `${item.priceRange} ${t("perNight")}` : undefined,
+    images: item.images,
+    description: getLocalizedText(item.description, item.descriptionAr, language),
+    amenities: language === "ar" ? item.amenitiesAr : item.amenities,
+    details: item.details,
+    ownerId: item.owner_id,
+  });
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -73,22 +97,26 @@ export function LodgingScreenContent() {
         </ScrollView>
       </Animated.View>
 
-      {/* Lodging List */}
-      {isLoading ? (
-        <SkeletonRow count={3} />
-      ) : (
+      {/* Lodging List. The cards no longer animate in one by one: the skeleton
+          they replace is fading out on top of them, and content sliding up
+          through a stationary placeholder reads as a stumble. SkeletonFade
+          cross-fades the whole list instead. */}
+      <SkeletonFade
+        fill
+        loading={isLoading}
+        skeleton={<SkeletonList variant="lodging" isRTL={isRTL} />}
+      >
         <FlatList
           data={filteredLodging}
           keyExtractor={(item) => item.id}
-          renderItem={({ item, index }) => (
-            <Animated.View entering={FadeInDown.delay(300 + index * 100).duration(600)}>
-              <LodgingCard
-                lodging={item}
-                language={language}
-                isRTL={isRTL}
-                perNightText={t("perNight")}
-              />
-            </Animated.View>
+          renderItem={({ item }) => (
+            <LodgingCard
+              lodging={item}
+              language={language}
+              isRTL={isRTL}
+              perNightText={t("perNight")}
+              onPress={() => setSelected(toDetailItem(item))}
+            />
           )}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -103,7 +131,9 @@ export function LodgingScreenContent() {
             </View>
           }
         />
-      )}
+      </SkeletonFade>
+
+      <ListingDetailSheet item={selected} onClose={() => setSelected(null)} />
     </View>
   );
 }

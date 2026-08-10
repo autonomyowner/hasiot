@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Linking,
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { useRouter } from "expo-router";
@@ -25,6 +26,10 @@ import { convex, refreshAuth } from "@/lib/convex";
 import { useAppStore } from "@/stores/appStore";
 import { fonts } from "@/constants/colors";
 
+// Served from the website's public/ — the same pair Settings links to.
+const PRIVACY_POLICY_URL = "https://www.hasio.xyz/privacy-policy.html";
+const TERMS_OF_SERVICE_URL = "https://www.hasio.xyz/terms-of-service.html";
+
 export default function AuthScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -35,6 +40,10 @@ export default function AuthScreen() {
     onLayout: keyboardOnLayout,
   } = useKeyboardOverlap();
   const setOnboardingComplete = useAppStore((state) => state.setOnboardingComplete);
+
+  // Focus chaining, so return moves down the form instead of dismissing it.
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
 
   const createUser = useMutation(api.users.mutations.createUser);
 
@@ -173,6 +182,11 @@ export default function AuthScreen() {
                 onChangeText={setName}
                 autoCapitalize="words"
                 textAlign={isRTL ? "right" : "left"}
+                textContentType="name"
+                autoComplete="name"
+                returnKeyType="next"
+                submitBehavior="submit"
+                onSubmitEditing={() => emailRef.current?.focus()}
               />
             </View>
           )}
@@ -182,6 +196,7 @@ export default function AuthScreen() {
               {t("email")}
             </Text>
             <ThemedTextInput
+              ref={emailRef}
               style={[styles.input]}
               isRTL={isRTL}
               placeholder={t("emailPlaceholder")}
@@ -191,6 +206,11 @@ export default function AuthScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               textAlign={isRTL ? "right" : "left"}
+              textContentType="emailAddress"
+              autoComplete="email"
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => passwordRef.current?.focus()}
             />
           </View>
 
@@ -199,14 +219,24 @@ export default function AuthScreen() {
               {t("password")}
             </Text>
             <View style={styles.passwordContainer}>
-              <TextInput
-                style={[styles.input, styles.passwordInput, isRTL && styles.inputRTL]}
+              <ThemedTextInput
+                ref={passwordRef}
+                style={[styles.input, styles.passwordInput]}
+                isRTL={isRTL}
                 placeholder={t("passwordPlaceholder")}
-                placeholderTextColor="#A3A3A3"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
                 textAlign={isRTL ? "right" : "left"}
+                autoCapitalize="none"
+                autoCorrect={false}
+                // "newPassword" is what triggers iOS's strong-password
+                // suggestion; on sign-in the saved-credential fill is what we
+                // want instead.
+                textContentType={mode === "signUp" ? "newPassword" : "password"}
+                autoComplete={mode === "signUp" ? "new-password" : "current-password"}
+                returnKeyType="go"
+                onSubmitEditing={handleSubmit}
               />
               <Pressable
                 onPress={() => setShowPassword(!showPassword)}
@@ -226,6 +256,31 @@ export default function AuthScreen() {
               </Pressable>
             </View>
           </View>
+
+          {/* Terms consent. Sign-up only — this is the moment the account is
+              created, and App Review expects UGC apps to take agreement here
+              rather than bury it in settings. */}
+          {mode === "signUp" && (
+            <Text style={[styles.consentText, isRTL && styles.textRTL]}>
+              {t("consentPrefix")}{" "}
+              <Text
+                style={styles.consentLink}
+                onPress={() => Linking.openURL(TERMS_OF_SERVICE_URL)}
+                accessibilityRole="link"
+              >
+                {t("termsOfService")}
+              </Text>{" "}
+              {t("consentAnd")}{" "}
+              <Text
+                style={styles.consentLink}
+                onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+                accessibilityRole="link"
+              >
+                {t("privacyPolicy")}
+              </Text>
+              {t("consentSuffix")}
+            </Text>
+          )}
 
           {/* Submit */}
           <Pressable
@@ -352,6 +407,18 @@ const styles = StyleSheet.create({
   eyeButtonRTL: {
     right: undefined,
     left: 16,
+  },
+  consentText: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    lineHeight: 18,
+    color: "#737373",
+    marginTop: 4,
+  },
+  consentLink: {
+    fontFamily: fonts.medium,
+    color: "#0D7A5F",
+    textDecorationLine: "underline",
   },
   submitButton: {
     height: 52,

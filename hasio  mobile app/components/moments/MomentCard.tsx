@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet, Dimensions } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import Animated, {
   useAnimatedStyle,
@@ -9,10 +9,11 @@ import Animated, {
 import { Feather } from "@expo/vector-icons";
 import type { Moment } from "@/types";
 import { colors, fonts } from "@/constants/colors";
+import { MOMENT_CARD_WIDTH } from "@/constants/layout";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-const { width } = Dimensions.get("window");
-const cardWidth = (width - 48 - 12) / 2; // 24px padding on each side, 12px gap
+// 24px gutter each side, 12px between the columns. Shared with the skeleton.
+const cardWidth = MOMENT_CARD_WIDTH;
 
 interface MomentCardProps {
   moment: Moment;
@@ -65,7 +66,13 @@ export function MomentCard({ moment, isRTL, onPress, onDelete }: MomentCardProps
 
       {/* Delete Button */}
       {onDelete && (
-        <Pressable style={styles.deleteButton} onPress={onDelete} hitSlop={10}>
+        <Pressable
+          style={styles.deleteButton}
+          onPress={onDelete}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={isRTL ? "حذف اللحظة" : "Delete moment"}
+        >
           <Text style={styles.deleteButtonText}>×</Text>
         </Pressable>
       )}

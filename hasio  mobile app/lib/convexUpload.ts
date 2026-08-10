@@ -9,54 +9,13 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { convex } from "./convex";
 
 /**
- * Upload a single image to Convex storage.
- * Returns the public URL of the uploaded file.
- */
-export async function uploadImageToConvex(
-  fileUri: string,
-  client: ConvexReactClient = convex
-): Promise<string> {
-  // 1. Get a short-lived upload URL from Convex
-  const uploadUrl = await client.mutation(
-    api.users.mutations.generateUploadUrl
-  );
-
-  // 2. Upload the file
-  const response = await FileSystem.uploadAsync(uploadUrl, fileUri, {
-    httpMethod: "POST",
-    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
-    headers: {
-      "Content-Type": "image/jpeg",
-    },
-  });
-
-  if (response.status < 200 || response.status >= 300) {
-    throw new Error(`Upload failed with status ${response.status}`);
-  }
-
-  // 3. Parse the storage ID from the response
-  const { storageId } = JSON.parse(response.body);
-
-  // 4. Get the public URL for the storage ID
-  const url = await client.query(api.users.queries.getStorageUrl, {
-    storageId,
-  });
-
-  if (!url) {
-    throw new Error("Failed to get storage URL");
-  }
-
-  return url;
-}
-
-/**
- * Upload a verification document (business licence, CR, ID) to Convex storage.
+ * Put a file in Convex storage and return its storage id.
  *
- * Unlike `uploadImageToConvex` this returns the raw storageId, because
- * `saveBusinessDoc` stores an `_storage` id on the user record — the file is
- * private and is only ever resolved to a URL by an admin via `getBusinessDocUrl`.
+ * The id, not a URL, is the thing worth keeping: a record that stores the id can
+ * always resolve a fresh URL, and can delete the file when the record goes.
+ * Callers that need a URL immediately use `uploadImageToConvex` below.
  */
-export async function uploadDocumentToConvex(
+export async function uploadToConvexStorage(
   fileUri: string,
   mimeType: string = "image/jpeg",
   client: ConvexReactClient = convex
@@ -81,6 +40,42 @@ export async function uploadDocumentToConvex(
   }
 
   return storageId;
+}
+
+/**
+ * Upload a single image to Convex storage.
+ * Returns the public URL of the uploaded file.
+ */
+export async function uploadImageToConvex(
+  fileUri: string,
+  client: ConvexReactClient = convex
+): Promise<string> {
+  const storageId = await uploadToConvexStorage(fileUri, "image/jpeg", client);
+
+  const url = await client.query(api.users.queries.getStorageUrl, {
+    storageId,
+  });
+
+  if (!url) {
+    throw new Error("Failed to get storage URL");
+  }
+
+  return url;
+}
+
+/**
+ * Upload a verification document (business licence, CR, ID) to Convex storage.
+ *
+ * Returns the raw storageId because `saveBusinessDoc` stores an `_storage` id on
+ * the user record — the file is private and is only ever resolved to a URL by an
+ * admin via `getBusinessDocUrl`.
+ */
+export async function uploadDocumentToConvex(
+  fileUri: string,
+  mimeType: string = "image/jpeg",
+  client: ConvexReactClient = convex
+): Promise<Id<"_storage">> {
+  return uploadToConvexStorage(fileUri, mimeType, client);
 }
 
 /**

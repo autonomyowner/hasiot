@@ -7,7 +7,6 @@ import {
   Pressable,
   Modal,
   TextInput,
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -23,9 +22,9 @@ import Animated, {
 } from "react-native-reanimated";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
-import { useMomentsStore } from "@/stores/momentsStore";
+import { useMoments } from "@/hooks/useMoments";
 import { MomentCard } from "@/components/moments/MomentCard";
-import { Button } from "@/components/ui";
+import { Button, SkeletonFade, SkeletonMomentsGrid } from "@/components/ui";
 import { colors, fonts } from "@/constants/colors";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -51,7 +50,7 @@ interface UserMomentsViewProps {
 }
 
 function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMomentsViewProps) {
-  const { moments, isLoading, fetchMoments, addMoment, deleteMoment, setUserId } = useMomentsStore();
+  const { moments, isLoading, addMoment, deleteMoment } = useMoments(userId);
   const mountedRef = useRef(true);
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -64,19 +63,14 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
   const [newMomentNote, setNewMomentNote] = useState("");
   const [newMomentLocation, setNewMomentLocation] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [viewingMoment, setViewingMoment] = useState<{ image: string; note?: string; location?: string; timestamp: string } | null>(null);
+  const [viewingMoment, setViewingMoment] = useState<{ image: string | null; note?: string; location?: string; timestamp: string } | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
-    setUserId(userId).catch((err) => {
-      if (mountedRef.current) {
-
-      }
-    });
     return () => {
       mountedRef.current = false;
     };
-  }, [userId]);
+  }, []);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -116,7 +110,7 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
     }
   };
 
-  const handleDeleteMoment = async (id: string, imageUrl: string) => {
+  const handleDeleteMoment = async (id: string) => {
     Alert.alert(
       t("delete"),
       t("deleteMomentConfirm"),
@@ -126,18 +120,20 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
           text: t("delete"),
           style: "destructive",
           onPress: async () => {
-            await deleteMoment(id, imageUrl);
+            const ok = await deleteMoment(id);
+            if (!ok && mountedRef.current) {
+              Alert.alert(t("error"), t("pleaseTryAgain"));
+            }
           },
         },
       ]
     );
   };
 
-  const renderItem = ({ item, index }: { item: any; index: number }) => (
-    <Animated.View
-      entering={FadeInDown.delay(index * 100).duration(600)}
-      style={styles.cardWrapper}
-    >
+  // No per-card entrance: the grid cross-fades in from its skeleton, and a
+  // card sliding up under a stationary placeholder reads as a stumble.
+  const renderItem = ({ item }: { item: any }) => (
+    <View style={styles.cardWrapper}>
       <MomentCard
         moment={{
           id: item.id,
@@ -153,9 +149,9 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
           location: item.location || undefined,
           timestamp: item.created_at,
         })}
-        onDelete={() => handleDeleteMoment(item.id, item.image_url)}
+        onDelete={() => handleDeleteMoment(item.id)}
       />
-    </Animated.View>
+    </View>
   );
 
   return (
@@ -185,37 +181,41 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
             {isRTL ? "سجل دخولك لحفظ لحظاتك" : "Sign in to save your moments"}
           </Text>
         </View>
-      ) : /* Loading State */
-      isLoading && moments.length === 0 ? (
-        <View style={styles.loadingState}>
-          <ActivityIndicator size="large" color={colors.primary.DEFAULT} />
-        </View>
-      ) : moments.length > 0 ? (
-        <FlatList
-          data={moments}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          numColumns={2}
-          columnWrapperStyle={styles.row}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          onRefresh={fetchMoments}
-          refreshing={isLoading}
-        />
       ) : (
-        <View style={styles.emptyState}>
-          <Text style={[styles.emptyTitle, isRTL && styles.textRTL]}>
-            {t("emptyMomentsTitle")}
-          </Text>
-          <Text style={[styles.emptyMessage, isRTL && styles.textRTL]}>
-            {t("emptyMomentsMessage")}
-          </Text>
-          <Button
-            title={t("emptyMomentsAction")}
-            onPress={() => setModalVisible(true)}
-            style={styles.emptyButton}
-          />
-        </View>
+        <SkeletonFade
+          fill
+          loading={isLoading && moments.length === 0}
+          skeleton={<SkeletonMomentsGrid isRTL={isRTL} />}
+        >
+          {moments.length > 0 ? (
+            <FlatList
+              data={moments}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              numColumns={2}
+              columnWrapperStyle={styles.row}
+              contentContainerStyle={styles.listContent}
+              showsVerticalScrollIndicator={false}
+              // No RefreshControl: the Convex query is a live subscription, so
+              // the grid is already current and a pull would only ever appear
+              // to do something.
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={[styles.emptyTitle, isRTL && styles.textRTL]}>
+                {t("emptyMomentsTitle")}
+              </Text>
+              <Text style={[styles.emptyMessage, isRTL && styles.textRTL]}>
+                {t("emptyMomentsMessage")}
+              </Text>
+              <Button
+                title={t("emptyMomentsAction")}
+                onPress={() => setModalVisible(true)}
+                style={styles.emptyButton}
+              />
+            </View>
+          )}
+        </SkeletonFade>
       )}
 
       {/* Image Viewer Modal */}
@@ -237,11 +237,13 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
           </View>
           {viewingMoment && (
             <View style={[styles.viewerContent, { paddingBottom: insets.bottom }]}>
-              <Animated.Image
-                source={{ uri: viewingMoment.image }}
-                style={styles.viewerImage}
-                resizeMode="contain"
-              />
+              {viewingMoment.image && (
+                <Animated.Image
+                  source={{ uri: viewingMoment.image }}
+                  style={styles.viewerImage}
+                  resizeMode="contain"
+                />
+              )}
               {(viewingMoment.note || viewingMoment.location) && (
                 <View style={styles.viewerInfo}>
                   {viewingMoment.note && (
@@ -425,11 +427,6 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   // States
-  loadingState: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   emptyState: {
     flex: 1,
     alignItems: "center",

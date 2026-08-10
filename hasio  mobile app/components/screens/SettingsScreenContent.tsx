@@ -27,7 +27,6 @@ import { api } from "@/backend";
 import { colors, fonts } from "@/constants/colors";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAppStore } from "@/stores/appStore";
-import { useMomentsStore } from "@/stores/momentsStore";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { signOut as authSignOut } from "@/lib/auth";
 import { refreshAuth } from "@/lib/convex";
@@ -50,7 +49,6 @@ export function SettingsScreenContent() {
   const { t, language, changeLanguage, isRTL } = useLanguage();
   const setOnboardingComplete = useAppStore((state) => state.setOnboardingComplete);
   const clearUserData = useAppStore((state) => state.clearUserData);
-  const clearMoments = useMomentsStore((state) => state.clearMoments);
 
   const { isSignedIn, isBusinessOwner, isServiceProvider, isAdmin, isApproved, verificationStatus, userType: convexUserType, user } = useConvexUser();
   const userType: UserType = convexUserType === "business_owner" ? "business" : convexUserType === "service_provider" ? "provider" : convexUserType === "admin" ? "admin" : "user";
@@ -127,8 +125,10 @@ export function SettingsScreenContent() {
       await authSignOut();
       refreshAuth();
 
+      // Moments are server-side now and `deleteMyAccount` removes them along
+      // with their stored images, so there is no local moment cache left to
+      // clear here.
       clearUserData();
-      clearMoments();
 
       setShowDeleteModal(false);
       router.replace("/onboarding");
