@@ -1,5 +1,6 @@
 import React from "react";
 import { View, Pressable, StyleSheet, type ViewStyle } from "react-native";
+import { colors } from "@/constants/colors";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -76,10 +77,10 @@ export function Card({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface.DEFAULT,
     borderRadius: 16,
     padding: 16,
-    shadowColor: "#000",
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,

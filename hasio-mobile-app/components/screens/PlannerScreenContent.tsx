@@ -1,3 +1,4 @@
+import { appAlert } from "@/stores/dialogStore";
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
@@ -21,6 +22,7 @@ import Animated, {
   withSpring,
   withRepeat,
   withSequence,
+  useReducedMotion,
 } from "react-native-reanimated";
 import { useAction } from "convex/react";
 import { api } from "@/backend";
@@ -29,6 +31,8 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { useAppStore } from "@/stores/appStore";
 import { ChatBubble } from "@/components/planner";
 import { colors, fonts } from "@/constants/colors";
+import { TAB_BAR_HEIGHT, TAB_BAR_MARGIN } from "@/constants/layout";
+import { Feather } from "@expo/vector-icons";
 import type { ChatMessage } from "@/types";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -49,6 +53,24 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
 
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // The floating tab bar hovers over this screen; the input clears it while
+  // the keyboard is closed. With the keyboard open the bar is covered anyway,
+  // so the clearance collapses back to a normal padding.
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  useEffect(() => {
+    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const show = Keyboard.addListener(showEvt, () => setKeyboardVisible(true));
+    const hide = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  const inputBottomPadding = keyboardVisible
+    ? 10
+    : Math.max(insets.bottom, TAB_BAR_MARGIN) + TAB_BAR_HEIGHT + 16;
 
   const scrollToEndSoon = useCallback(() => {
     setTimeout(() => {
@@ -72,7 +94,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
 
   // Handle reporting AI messages (no reports table yet — local feedback only)
   const handleReportMessage = async (_messageId: string) => {
-    Alert.alert(t("thankYou"), t("reportReceived"));
+    appAlert(t("thankYou"), t("reportReceived"));
   };
 
   const handleSend = async () => {
@@ -328,7 +350,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
         </ScrollView>
 
         {/* Input Area */}
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { paddingBottom: inputBottomPadding }]}>
           <View style={[styles.inputPill, isRTL && styles.inputPillRTL]}>
           <TextInput
             style={[styles.input, isRTL && styles.inputRTL]}
@@ -354,7 +376,8 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
             {isLoading ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={[styles.sendButtonText, isRTL && { transform: [{ scaleX: -1 }] }]}>→</Text>
+              // arrow-up is symmetric, so no RTL mirroring is needed.
+              <Feather name="arrow-up" size={22} color="#FFFFFF" />
             )}
           </Pressable>
         </View>
@@ -369,8 +392,10 @@ function TypingIndicator() {
   const dot1 = useSharedValue(0);
   const dot2 = useSharedValue(0);
   const dot3 = useSharedValue(0);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
+    if (reducedMotion) return;
     dot1.value = withRepeat(
       withSequence(
         withSpring(1, { damping: 10 }),
@@ -557,18 +582,19 @@ const styles = StyleSheet.create({
   suggestionsRTL: {
     flexDirection: "row-reverse",
   },
+  // Matches the FilterChip language on the list screens.
   suggestionButton: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface.DEFAULT,
     paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 18,
-    borderWidth: 1.5,
-    borderColor: "#D9E8E1",
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
   suggestionText: {
     fontSize: 13,
     fontFamily: fonts.medium,
-    color: colors.primary.DEFAULT,
+    color: colors.ink,
   },
   loadingContainer: {
     flexDirection: "row",
@@ -605,7 +631,6 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
     paddingHorizontal: 14,
     paddingTop: 10,
-    paddingBottom: 10,
     backgroundColor: colors.background,
     gap: 10,
   },

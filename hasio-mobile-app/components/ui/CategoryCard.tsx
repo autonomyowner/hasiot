@@ -1,20 +1,20 @@
 import React from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
-import { Image } from "expo-image";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
+import { View, Text, StyleSheet } from "react-native";
+import { Image, type ImageSource } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
 import { colors, fonts } from "@/constants/colors";
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+import {
+  CATEGORY_CARD_HEIGHT,
+  CATEGORY_CARD_WIDTH,
+} from "@/constants/layout";
+import { PressableScale } from "./PressableScale";
 
 interface CategoryCardProps {
   title: string;
   subtitle: string;
-  imageUrl: string;
+  /** Remote URL or a bundled `require()` module. */
+  imageUrl: string | number | ImageSource;
   onPress: () => void;
   isRTL?: boolean;
 }
@@ -26,52 +26,44 @@ export function CategoryCard({
   onPress,
   isRTL = false,
 }: CategoryCardProps) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.97, { damping: 15, stiffness: 400 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-  };
+  const source =
+    typeof imageUrl === "string"
+      ? imageUrl
+        ? { uri: imageUrl }
+        : undefined
+      : imageUrl;
 
   return (
-    <AnimatedPressable
-      style={[styles.container, animatedStyle]}
+    <PressableScale
+      style={styles.container}
+      scaleTo={0.97}
       onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}, ${subtitle}`}
     >
-      <Image
-        source={imageUrl ? { uri: imageUrl } : undefined}
-        style={styles.image}
-        contentFit="cover"
-        transition={300}
+      <Image source={source} style={styles.image} contentFit="cover" transition={300} />
+      <LinearGradient
+        colors={["transparent", "rgba(20, 18, 12, 0.18)", "rgba(20, 18, 12, 0.62)"]}
+        style={styles.gradient}
       />
-      <View style={styles.overlay} />
       <View style={[styles.content, isRTL && styles.contentRTL]}>
-        <Text style={[styles.title, isRTL && styles.textRTL]}>{title}</Text>
-        <View style={[styles.captionChip, isRTL && styles.captionChipRTL]}>
-          <Feather name="map-pin" size={11} color="#FFFFFF" />
-          <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
-            {subtitle}
-          </Text>
+        <Text style={[styles.title, isRTL && styles.textRTL]} numberOfLines={2}>
+          {title}
+        </Text>
+        <View style={[styles.captionPill, isRTL && styles.captionPillRTL]}>
+          <Feather name="map-pin" size={11} color={colors.ink} />
+          <Text style={styles.subtitle}>{subtitle}</Text>
         </View>
       </View>
-    </AnimatedPressable>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    width: 280,
-    height: 160,
-    borderRadius: 18,
+    width: CATEGORY_CARD_WIDTH,
+    height: CATEGORY_CARD_HEIGHT,
+    borderRadius: 24,
     overflow: "hidden",
     marginRight: 16,
     backgroundColor: colors.sand,
@@ -82,9 +74,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     backgroundColor: colors.sand,
   },
-  overlay: {
+  gradient: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.35)",
   },
   content: {
     flex: 1,
@@ -95,29 +86,34 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   title: {
-    fontSize: 18,
-    fontFamily: fonts.semibold,
+    fontSize: 22,
+    fontFamily: fonts.serif,
     color: "#FFFFFF",
-    marginBottom: 6,
+    marginBottom: 8,
+    letterSpacing: -0.2,
+    textShadowColor: "rgba(0, 0, 0, 0.25)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
-  captionChip: {
+  // Floating white pill, echoing the destination-grid cards.
+  captionPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 5,
     alignSelf: "flex-start",
-    backgroundColor: "rgba(20, 18, 12, 0.55)",
-    borderRadius: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
-  captionChipRTL: {
+  captionPillRTL: {
     flexDirection: "row-reverse",
     alignSelf: "flex-end",
   },
   subtitle: {
-    fontSize: 11,
-    fontFamily: fonts.medium,
-    color: "#FFFFFF",
+    fontSize: 11.5,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
   },
   textRTL: {
     textAlign: "right",

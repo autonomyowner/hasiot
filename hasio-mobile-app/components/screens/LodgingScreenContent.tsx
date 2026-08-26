@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
 import { categoryColors, colors, fonts } from "@/constants/colors";
+import { TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { useLodgings } from "@/hooks/useConvexData";
 import { FilterChip, SkeletonFade, SkeletonList } from "@/components/ui";
 import { LodgingCard } from "@/components/lodging/LodgingCard";
@@ -71,6 +72,9 @@ export function LodgingScreenContent() {
         entering={FadeInDown.delay(100).duration(600)}
         style={[styles.header, isRTL && styles.headerRTL]}
       >
+        <Text style={[styles.eyebrow, isRTL && styles.textRTL]}>
+          {t("lodgingEyebrow")}
+        </Text>
         <Text style={[styles.title, isRTL && styles.textRTL]}>
           {t("lodging")}
         </Text>
@@ -118,7 +122,10 @@ export function LodgingScreenContent() {
               onPress={() => setSelected(toDetailItem(item))}
             />
           )}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: TAB_BAR_CLEARANCE + insets.bottom },
+          ]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
@@ -146,10 +153,18 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: 8,
+    paddingBottom: 12,
   },
   headerRTL: {
     alignItems: "flex-end",
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontFamily: fonts.semibold,
+    color: colors.primary.DEFAULT,
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    marginBottom: 4,
   },
   title: {
     fontSize: 34,
@@ -170,7 +185,6 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: 24,
     paddingTop: 8,
-    paddingBottom: 32,
   },
   emptyState: {
     flex: 1,

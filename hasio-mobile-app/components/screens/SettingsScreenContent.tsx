@@ -1,3 +1,5 @@
+import { appAlert } from "@/stores/dialogStore";
+import { AppDialogHost } from "@/components/ui/AppDialog";
 import React, { useState } from "react";
 import {
   View,
@@ -25,6 +27,7 @@ import Constants from "expo-constants";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/backend";
 import { colors, fonts } from "@/constants/colors";
+import { TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAppStore } from "@/stores/appStore";
 import { useConvexUser } from "@/hooks/useConvexUser";
@@ -73,7 +76,7 @@ export function SettingsScreenContent() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleSignOut = () => {
-    Alert.alert(
+    appAlert(
       t("signOutConfirmTitle"),
       t("signOutConfirmMessage"),
       [
@@ -89,7 +92,7 @@ export function SettingsScreenContent() {
               setOnboardingComplete(false);
               router.replace("/onboarding");
             } catch (error) {
-              Alert.alert(t("error"), t("signOutFailed"));
+              appAlert(t("error"), t("signOutFailed"));
             }
           },
         },
@@ -101,7 +104,7 @@ export function SettingsScreenContent() {
     try {
       await Linking.openURL(PRIVACY_POLICY_URL);
     } catch (error) {
-      Alert.alert(t("error"), t("couldNotOpenLink"));
+      appAlert(t("error"), t("couldNotOpenLink"));
     }
   };
 
@@ -109,7 +112,7 @@ export function SettingsScreenContent() {
     try {
       await Linking.openURL(TERMS_OF_SERVICE_URL);
     } catch (error) {
-      Alert.alert(t("error"), t("couldNotOpenLink"));
+      appAlert(t("error"), t("couldNotOpenLink"));
     }
   };
 
@@ -133,7 +136,7 @@ export function SettingsScreenContent() {
       setShowDeleteModal(false);
       router.replace("/onboarding");
     } catch (error: any) {
-      Alert.alert(t("deleteAccountError"), t("pleaseTryAgain"));
+      appAlert(t("deleteAccountError"), t("pleaseTryAgain"));
     } finally {
       setIsDeleting(false);
     }
@@ -153,7 +156,7 @@ export function SettingsScreenContent() {
       });
       // The new role starts unapproved, so send them straight to verification —
       // otherwise posting silently fails server-side with "must be approved".
-      Alert.alert(t("upgradeSuccess"), t("verificationUnverifiedBody"), [
+      appAlert(t("upgradeSuccess"), t("verificationUnverifiedBody"), [
         {
           text: t("done"),
           onPress: () => {
@@ -167,7 +170,7 @@ export function SettingsScreenContent() {
         },
       ]);
     } catch (error: any) {
-      Alert.alert(t("upgradeError"), t("pleaseTryAgain"));
+      appAlert(t("upgradeError"), t("pleaseTryAgain"));
     } finally {
       setIsUpgrading(false);
     }
@@ -196,7 +199,7 @@ export function SettingsScreenContent() {
     const buildNumber = Platform.OS === "android"
       ? Constants.expoConfig?.android?.versionCode
       : Constants.expoConfig?.ios?.buildNumber;
-    Alert.alert(
+    appAlert(
       "Hasio",
       `${t("appDescription")}\n\n${t("version")}: ${version}${buildNumber ? ` (${buildNumber})` : ""}`,
       [{ text: t("done") }]
@@ -614,6 +617,8 @@ export function SettingsScreenContent() {
             </Pressable>
           </View>
         </View>
+        {/* Alerts fired while this modal is open render above it. */}
+        <AppDialogHost />
       </Modal>
 
       {/* Delete Account Modal */}
@@ -659,6 +664,8 @@ export function SettingsScreenContent() {
             </Pressable>
           </View>
         </View>
+        {/* Alerts fired while this modal is open render above it. */}
+        <AppDialogHost />
       </Modal>
     </View>
   );
@@ -815,9 +822,9 @@ const styles = StyleSheet.create({
     flexDirection: "row-reverse",
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: colors.sand,
     borderWidth: 3,
     borderColor: colors.surface.DEFAULT,
@@ -1061,8 +1068,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
   },
+  // Clears the floating tab bar.
   bottomSpacing: {
-    height: 32,
+    height: TAB_BAR_CLEARANCE,
   },
   // Guest Card Styles
   guestCard: {
@@ -1130,9 +1138,9 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: colors.surface.DEFAULT,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingHorizontal: 24,
     paddingTop: 24,
     paddingBottom: 24,

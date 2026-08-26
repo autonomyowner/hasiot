@@ -60,14 +60,14 @@ export function MomentCard({ moment, isRTL, onPress, onDelete }: MomentCardProps
       />
 
       {/* Date Overlay */}
-      <View style={styles.dateOverlay}>
+      <View style={[styles.dateOverlay, isRTL && styles.dateOverlayRTL]}>
         <Text style={styles.dateText}>{formatDate(moment.timestamp)}</Text>
       </View>
 
       {/* Delete Button */}
       {onDelete && (
         <Pressable
-          style={styles.deleteButton}
+          style={[styles.deleteButton, isRTL && styles.deleteButtonRTL]}
           onPress={onDelete}
           hitSlop={10}
           accessibilityRole="button"
@@ -110,10 +110,10 @@ export function MomentCard({ moment, isRTL, onPress, onDelete }: MomentCardProps
 const styles = StyleSheet.create({
   container: {
     width: cardWidth,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 22,
     overflow: "hidden",
-    shadowColor: "#1F1D17",
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.07,
     shadowRadius: 16,
@@ -125,19 +125,24 @@ const styles = StyleSheet.create({
     height: cardWidth,
     backgroundColor: colors.sand,
   },
+  // Floating white pill, matching the listing cards' overlay language.
   dateOverlay: {
     position: "absolute",
     top: 8,
     left: 8,
-    backgroundColor: "rgba(20, 18, 12, 0.55)",
+    backgroundColor: "rgba(255, 255, 255, 0.94)",
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 999,
+  },
+  dateOverlayRTL: {
+    left: undefined,
+    right: 8,
   },
   dateText: {
-    color: "#FFFFFF",
+    color: colors.ink,
     fontSize: 11,
-    fontFamily: fonts.medium,
+    fontFamily: fonts.semibold,
   },
   deleteButton: {
     position: "absolute",
@@ -149,6 +154,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+  },
+  deleteButtonRTL: {
+    right: undefined,
+    left: 8,
   },
   deleteButtonText: {
     color: "#FFFFFF",

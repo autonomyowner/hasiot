@@ -1,3 +1,5 @@
+import { appAlert } from "@/stores/dialogStore";
+import { AppDialogHost } from "@/components/ui/AppDialog";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -26,6 +28,9 @@ import { useMoments } from "@/hooks/useMoments";
 import { MomentCard } from "@/components/moments/MomentCard";
 import { Button, SkeletonFade, SkeletonMomentsGrid } from "@/components/ui";
 import { colors, fonts } from "@/constants/colors";
+import { TAB_BAR_CLEARANCE } from "@/constants/layout";
+import { generatedImages } from "@/assets/images/generated";
+import { Image } from "expo-image";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -106,12 +111,12 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
       setNewMomentNote("");
       setNewMomentLocation("");
     } else {
-      Alert.alert(t("error"), t("momentSaveError"));
+      appAlert(t("error"), t("momentSaveError"));
     }
   };
 
   const handleDeleteMoment = async (id: string) => {
-    Alert.alert(
+    appAlert(
       t("delete"),
       t("deleteMomentConfirm"),
       [
@@ -122,7 +127,7 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
           onPress: async () => {
             const ok = await deleteMoment(id);
             if (!ok && mountedRef.current) {
-              Alert.alert(t("error"), t("pleaseTryAgain"));
+              appAlert(t("error"), t("pleaseTryAgain"));
             }
           },
         },
@@ -194,7 +199,10 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
               renderItem={renderItem}
               numColumns={2}
               columnWrapperStyle={styles.row}
-              contentContainerStyle={styles.listContent}
+              contentContainerStyle={[
+                styles.listContent,
+                { paddingBottom: TAB_BAR_CLEARANCE + insets.bottom },
+              ]}
               showsVerticalScrollIndicator={false}
               // No RefreshControl: the Convex query is a live subscription, so
               // the grid is already current and a pull would only ever appear
@@ -202,6 +210,12 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
             />
           ) : (
             <View style={styles.emptyState}>
+              <Image
+                source={generatedImages.emptyMoments}
+                style={styles.emptyImage}
+                contentFit="contain"
+                transition={200}
+              />
               <Text style={[styles.emptyTitle, isRTL && styles.textRTL]}>
                 {t("emptyMomentsTitle")}
               </Text>
@@ -331,6 +345,8 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
             />
           </View>
         </KeyboardAvoidingView>
+        {/* Alerts fired while this modal is open render above it. */}
+        <AppDialogHost />
       </Modal>
     </View>
   );
@@ -417,7 +433,6 @@ const styles = StyleSheet.create({
   // List
   listContent: {
     paddingHorizontal: 24,
-    paddingBottom: 32,
   },
   // Moments
   row: {
@@ -432,6 +447,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 40,
+  },
+  emptyImage: {
+    width: 150,
+    height: 150,
+    marginBottom: 16,
   },
   emptyTitle: {
     fontFamily: fonts.serif,
@@ -456,9 +476,9 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: colors.surface.DEFAULT,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     padding: 24,
   },
   modalHeader: {

@@ -1,13 +1,8 @@
 import React from "react";
-import { Text, Pressable, StyleSheet } from "react-native";
+import { Text, StyleSheet } from "react-native";
 import { colors, fonts } from "@/constants/colors";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+import { PressableScale } from "./PressableScale";
+import { PRESS_SCALE_CHIP } from "@/constants/motion";
 
 interface FilterChipProps {
   label: string;
@@ -16,51 +11,36 @@ interface FilterChipProps {
 }
 
 export function FilterChip({ label, selected, onPress }: FilterChipProps) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.95, { damping: 15, stiffness: 400 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-  };
-
   return (
-    <AnimatedPressable
-      style={[
-        styles.chip,
-        selected && styles.chipSelected,
-        animatedStyle,
-      ]}
+    <PressableScale
+      style={[styles.chip, selected && styles.chipSelected]}
+      scaleTo={PRESS_SCALE_CHIP}
       onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={label}
     >
       <Text style={[styles.label, selected && styles.labelSelected]}>
         {label}
       </Text>
-    </AnimatedPressable>
+    </PressableScale>
   );
 }
 
 const styles = StyleSheet.create({
+  // Ink-on-white pills: green stays reserved for the tab puck and prices.
   chip: {
-    paddingVertical: 8,
+    paddingVertical: 9,
     paddingHorizontal: 16,
-    borderRadius: 18,
+    borderRadius: 999,
     backgroundColor: colors.surface.DEFAULT,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
     marginRight: 10,
   },
   chipSelected: {
-    backgroundColor: colors.primary.DEFAULT,
-    borderColor: colors.primary.DEFAULT,
+    backgroundColor: colors.ink,
+    borderColor: colors.ink,
   },
   label: {
     fontSize: 14,

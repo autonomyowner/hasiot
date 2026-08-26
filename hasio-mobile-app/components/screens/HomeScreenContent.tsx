@@ -13,6 +13,7 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   FadeInDown,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -33,7 +34,9 @@ import {
   HOME_CARD_GAP,
   HOME_CARD_WIDTH,
   HOME_CONTAINER_PADDING,
+  TAB_BAR_CLEARANCE,
 } from "@/constants/layout";
+import { generatedImages } from "@/assets/images/generated";
 import {
   ListingDetailSheet,
   type DetailItem,
@@ -64,29 +67,27 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
     setTimeout(() => setRefreshing(false), 800);
   };
 
+  // Bundled AI-generated imagery — no network fetch, renders instantly.
   const categoryCards = [
     {
       id: "lodging",
       title: t("discoverLodging"),
       subtitle: t("lodging"),
-      image:
-        "https://pub-d7fc967a0d9e4e42bba0d712e4f9b96e.r2.dev/lodging/intercontinental-aea218dd.webp",
+      image: generatedImages.catLodging,
       tabIndex: 1,
     },
     {
       id: "food",
       title: t("exploreFoodDrinks"),
       subtitle: t("food"),
-      image:
-        "https://pub-d7fc967a0d9e4e42bba0d712e4f9b96e.r2.dev/food/traditional-restaurant-7f7a7b7f.webp",
+      image: generatedImages.catFood,
       tabIndex: 2,
     },
     {
       id: "events",
       title: t("findEvents"),
       subtitle: t("events"),
-      image:
-        "https://pub-d7fc967a0d9e4e42bba0d712e4f9b96e.r2.dev/events/date-festival-0ae96b03.jpg",
+      image: generatedImages.catEvents,
       tabIndex: 3,
     },
   ];
@@ -207,21 +208,23 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
     ownerId: item.owner_id,
   });
 
-  const handleScroll = (event: any) => {
-    scrollY.value = event.nativeEvent.contentOffset.y;
-  };
+  // Runs on the UI thread — the JS thread being busy (queries resolving,
+  // screens mounting) can no longer make the hero fade stutter.
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    scrollY.value = event.contentOffset.y;
+  });
 
   const headerAnimatedStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       scrollY.value,
-      [0, 100],
-      [1, 0],
+      [0, 140],
+      [1, 0.35],
       Extrapolation.CLAMP
     );
     const translateY = interpolate(
       scrollY.value,
-      [0, 100],
-      [0, -20],
+      [0, 140],
+      [0, -14],
       Extrapolation.CLAMP
     );
     return {
@@ -232,10 +235,10 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView
+      <Animated.ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
+        onScroll={scrollHandler}
         scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
@@ -245,26 +248,39 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           />
         }
       >
-        {/* Header */}
+        {/* Mini-hero header: bundled oasis imagery with the brand block
+            overlaid, the inspiration's "text over landscape" opening. */}
         <Animated.View
           entering={FadeInDown.delay(100).duration(600)}
-          style={[styles.header, isRTL && styles.headerRTL, headerAnimatedStyle]}
+          style={[styles.hero, headerAnimatedStyle]}
         >
-          <View style={[styles.eyebrowRow, isRTL && styles.eyebrowRowRTL]}>
-            <Feather name="map-pin" size={13} color={colors.primary.DEFAULT} />
-            <Text style={[styles.eyebrowText, isRTL && styles.textRTL]}>
-              AL-AHSA OASIS
+          <Image
+            source={generatedImages.heroOasis}
+            style={styles.heroImage}
+            contentFit="cover"
+            transition={300}
+          />
+          <LinearGradient
+            colors={["rgba(31,29,23,0.08)", "transparent", "rgba(31,29,23,0.62)"]}
+            style={styles.heroGradient}
+          />
+          <View style={[styles.heroContent, isRTL && styles.heroContentRTL]}>
+            <View style={[styles.eyebrowRow, isRTL && styles.eyebrowRowRTL]}>
+              <Feather name="map-pin" size={12} color="#FFFFFF" />
+              <Text style={[styles.eyebrowText, isRTL && styles.textRTL]}>
+                AL-AHSA OASIS
+              </Text>
+            </View>
+            <Text style={[styles.appName, isRTL && styles.textRTL]}>
+              Hasio
+            </Text>
+            <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
+              {t("exploreOasis")}
             </Text>
           </View>
-          <Text style={[styles.appName, isRTL && styles.textRTL]}>
-            Hasio
-          </Text>
-          <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
-            {t("exploreOasis")}
-          </Text>
         </Animated.View>
 
-        {/* Search Bar */}
+        {/* Search pill floats up over the hero's bottom edge. */}
         <Animated.View
           entering={FadeInDown.delay(200).duration(600)}
           style={styles.searchContainer}
@@ -288,6 +304,12 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           <View style={styles.searchResultsContainer}>
             {searchResults.total === 0 ? (
               <View style={styles.noResultsContainer}>
+                <Image
+                  source={generatedImages.emptySearch}
+                  style={styles.noResultsImage}
+                  contentFit="contain"
+                  transition={200}
+                />
                 <Text style={[styles.noResultsText, isRTL && styles.textRTL]}>
                   {t("noResults")}
                 </Text>
@@ -413,7 +435,6 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
             >
               {t("featuredDestinations")}
             </Text>
-            <Text style={styles.seeAllLink}>{t("seeAll")}</Text>
           </View>
 
           {featuredItems.length > 0 ? (
@@ -428,6 +449,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                     language
                   )}
                   image={dest.image}
+                  rating={dest.rating}
                   isRTL={isRTL}
                   isTall={index % 3 === 0}
                   onPress={() => setSelected(destinationDetail(dest))}
@@ -454,7 +476,6 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
             >
               {t("moreDestinations")}
             </Text>
-            <Text style={styles.seeAllLink}>{t("seeAll")}</Text>
           </View>
 
           {moreDestinations.length > 0 ? (
@@ -469,6 +490,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                     language
                   )}
                   image={dest.image}
+                  rating={dest.rating}
                   isRTL={isRTL}
                   isTall={index % 3 === 1}
                   onPress={() => setSelected(destinationDetail(dest))}
@@ -492,7 +514,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           </>
         )}
         </SkeletonFade>
-      </ScrollView>
+      </Animated.ScrollView>
 
       <ListingDetailSheet item={selected} onClose={() => setSelected(null)} />
     </View>
@@ -559,6 +581,7 @@ interface DestinationGridCardProps {
   name: string;
   subtitle: string;
   image: string;
+  rating?: number;
   isRTL: boolean;
   isTall?: boolean;
   onPress?: () => void;
@@ -568,6 +591,7 @@ function DestinationGridCard({
   name,
   subtitle,
   image,
+  rating,
   isRTL,
   isTall = false,
   onPress,
@@ -606,20 +630,31 @@ function DestinationGridCard({
           transition={300}
         />
         <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.3)", "rgba(0,0,0,0.75)"]}
+          colors={["transparent", "rgba(0,0,0,0.06)", "rgba(0,0,0,0.28)"]}
           style={styles.gridCardGradient}
         />
-        <View
-          style={[
-            styles.gridCardContent,
-            isRTL && styles.gridCardContentRTL,
-          ]}
-        >
-          <Text style={[styles.gridCardName, isRTL && styles.textRTL]}>
-            {name}
-          </Text>
-          <View style={styles.gridCardDivider} />
-          <Text style={[styles.gridCardSubtitle, isRTL && styles.textRTL]}>
+        {/* Floating white info pill over the image bottom. */}
+        <View style={styles.gridCardPill}>
+          <View style={[styles.gridCardPillTopRow, isRTL && styles.rowRTL]}>
+            <Text
+              style={[styles.gridCardName, isRTL && styles.textRTL]}
+              numberOfLines={1}
+            >
+              {name}
+            </Text>
+            {rating != null && (
+              <View style={[styles.gridCardRating, isRTL && styles.rowRTL]}>
+                <Feather name="star" size={11} color={colors.warm} />
+                <Text style={styles.gridCardRatingText}>
+                  {rating.toFixed(1)}
+                </Text>
+              </View>
+            )}
+          </View>
+          <Text
+            style={[styles.gridCardSubtitle, isRTL && styles.textRTL]}
+            numberOfLines={1}
+          >
             {subtitle}
           </Text>
         </View>
@@ -636,50 +671,74 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  header: {
-    paddingHorizontal: CONTAINER_PADDING,
-    paddingTop: 16,
-    paddingBottom: 8,
+  hero: {
+    marginHorizontal: CONTAINER_PADDING,
+    marginTop: 12,
+    height: 176,
+    borderRadius: 24,
+    overflow: "hidden",
+    backgroundColor: colors.sand,
   },
-  headerRTL: {
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  heroContent: {
+    flex: 1,
+    justifyContent: "flex-end",
+    padding: 18,
+    paddingBottom: 40,
+  },
+  heroContentRTL: {
     alignItems: "flex-end",
   },
   eyebrowRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   eyebrowRowRTL: {
     flexDirection: "row-reverse",
   },
   eyebrowText: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: fonts.semibold,
-    color: colors.primary.DEFAULT,
-    letterSpacing: 1.5,
+    color: "#FFFFFF",
+    letterSpacing: 2,
     textTransform: "uppercase",
+    opacity: 0.92,
   },
   appName: {
-    fontSize: 30,
+    fontSize: 34,
     fontFamily: fonts.serif,
-    color: colors.ink,
+    color: "#FFFFFF",
     letterSpacing: -0.3,
-    lineHeight: 36,
+    lineHeight: 38,
+    textShadowColor: "rgba(0, 0, 0, 0.25)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   subtitle: {
-    fontSize: 17,
+    fontSize: 13,
     fontFamily: fonts.regular,
-    color: colors.onSurface.variant,
+    color: "rgba(255, 255, 255, 0.88)",
     marginTop: 2,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   textRTL: {
     textAlign: "right",
   },
+  rowRTL: {
+    flexDirection: "row-reverse",
+  },
+  // Pulled up over the hero's bottom edge so the pill floats over the image.
   searchContainer: {
-    paddingHorizontal: CONTAINER_PADDING,
-    paddingVertical: 12,
+    paddingHorizontal: CONTAINER_PADDING + 14,
+    marginTop: -26,
+    paddingBottom: 4,
   },
   section: {
     marginTop: 20,
@@ -702,11 +761,6 @@ const styles = StyleSheet.create({
   },
   sectionTitleRTL: {
     textAlign: "right",
-  },
-  seeAllLink: {
-    fontSize: 13,
-    fontFamily: fonts.semibold,
-    color: colors.primary.DEFAULT,
   },
   categoryCardsContainer: {
     paddingHorizontal: CONTAINER_PADDING,
@@ -746,40 +800,47 @@ const styles = StyleSheet.create({
   gridCardGradient: {
     ...StyleSheet.absoluteFillObject,
   },
-  gridCardContent: {
-    flex: 1,
-    justifyContent: "flex-end",
-    padding: 14,
+  gridCardPill: {
+    position: "absolute",
+    left: 8,
+    right: 8,
+    bottom: 8,
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    borderRadius: 16,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
   },
-  gridCardContentRTL: {
-    alignItems: "flex-end",
+  gridCardPillTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 6,
   },
   gridCardName: {
-    fontSize: 18,
+    flex: 1,
+    fontSize: 13.5,
     fontFamily: fonts.semibold,
-    color: "#FFFFFF",
-    letterSpacing: -0.3,
-    lineHeight: 22,
-    textShadowColor: "rgba(0, 0, 0, 0.3)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    color: colors.ink,
+    letterSpacing: -0.2,
   },
-  gridCardDivider: {
-    width: 22,
-    height: 2,
-    backgroundColor: "rgba(255, 255, 255, 0.6)",
-    marginVertical: 5,
-    borderRadius: 1,
+  gridCardRating: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  gridCardRatingText: {
+    fontSize: 11.5,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
   },
   gridCardSubtitle: {
-    fontSize: 12,
-    fontFamily: fonts.medium,
-    color: "rgba(255, 255, 255, 0.95)",
-    letterSpacing: 0.5,
-    textTransform: "uppercase",
+    fontSize: 11.5,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
+    marginTop: 1,
   },
   bottomSpacing: {
-    height: 24,
+    height: TAB_BAR_CLEARANCE,
   },
   searchResultsContainer: {
     paddingHorizontal: CONTAINER_PADDING,
@@ -795,6 +856,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 60,
+  },
+  noResultsImage: {
+    width: 140,
+    height: 140,
+    marginBottom: 12,
   },
   noResultsText: {
     fontSize: 16,

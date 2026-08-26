@@ -1,18 +1,13 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from "react-native-reanimated";
 import type { Event, Language } from "@/types";
+import { Feather } from "@expo/vector-icons";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
-import { categoryColors, colors, fonts } from "@/constants/colors";
+import { colors, fonts } from "@/constants/colors";
 import { ReportSheet } from "@/components/ReportSheet";
+import { PressableScale } from "@/components/ui";
 import type { Id } from "../../../convex/_generated/dataModel";
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface EventCardProps {
   event: Event;
@@ -27,38 +22,23 @@ export function EventCard({
   isRTL,
   onPress,
 }: EventCardProps) {
-  const scale = useSharedValue(1);
   const [reportOpen, setReportOpen] = useState(false);
   const { t } = useLanguage();
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-  };
 
   const title = getLocalizedText(event.title, event.titleAr, language);
   const location = getLocalizedText(event.location, event.locationAr, language);
   const categoryLabel = t(`cat_${event.category}` as const);
-  const categoryColor = categoryColors[event.category] || categoryColors.festival;
 
   return (
-    <AnimatedPressable
-      style={[styles.container, animatedStyle]}
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      accessibilityRole="button"
-      accessibilityLabel={`${title}, ${categoryLabel}, ${location}, ${event.date}`}
-    >
-      {/* Image */}
-      <View style={styles.imageContainer}>
+    // Shadow lives on a wrapper that doesn't clip; iOS drops the shadow if the
+    // same view has overflow: hidden.
+    <View style={styles.shadowWrap}>
+      <PressableScale
+        style={styles.card}
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel={`${title}, ${categoryLabel}, ${location}, ${event.date}`}
+      >
         <Image
           source={event.images?.[0] ? { uri: event.images[0] } : undefined}
           style={styles.image}
@@ -67,18 +47,13 @@ export function EventCard({
         />
 
         {/* Date Badge */}
-        <View style={styles.dateBadge}>
+        <View style={[styles.dateBadge, isRTL && styles.dateBadgeRTL]}>
           <Text style={styles.dateText}>{event.date}</Text>
-        </View>
-
-        {/* Category Badge */}
-        <View style={[styles.categoryBadge, { backgroundColor: categoryColor }]}>
-          <Text style={styles.categoryText}>{categoryLabel}</Text>
         </View>
 
         {/* More actions */}
         <Pressable
-          style={styles.moreButton}
+          style={[styles.moreButton, isRTL && styles.moreButtonRTL]}
           onPress={() => setReportOpen(true)}
           hitSlop={10}
           accessibilityRole="button"
@@ -86,7 +61,34 @@ export function EventCard({
         >
           <Text style={styles.moreText}>⋯</Text>
         </Pressable>
-      </View>
+
+        {/* Floating info pill */}
+        <View style={styles.pill}>
+          <View style={[styles.pillTopRow, isRTL && styles.rowRTL]}>
+            <Text
+              style={[styles.title, isRTL && styles.textRTL]}
+              numberOfLines={1}
+            >
+              {title}
+            </Text>
+            <View style={styles.typeChip}>
+              <Text style={styles.typeText}>{categoryLabel}</Text>
+            </View>
+          </View>
+          <View style={[styles.pillBottomRow, isRTL && styles.rowRTL]}>
+            <View style={[styles.locationGroup, isRTL && styles.rowRTL]}>
+              <Feather name="map-pin" size={12} color={colors.onSurface.muted} />
+              <Text
+                style={[styles.location, isRTL && styles.textRTL]}
+                numberOfLines={1}
+              >
+                {location}
+              </Text>
+            </View>
+            <Text style={styles.time}>{event.time}</Text>
+          </View>
+        </View>
+      </PressableScale>
 
       <ReportSheet
         visible={reportOpen}
@@ -95,56 +97,28 @@ export function EventCard({
         targetId={event.id}
         ownerId={event.owner_id ? (event.owner_id as Id<"users">) : null}
       />
-
-      {/* Content */}
-      <View style={[styles.content, isRTL && styles.contentRTL]}>
-        {/* Title */}
-        <Text
-          style={[styles.title, isRTL && styles.textRTL]}
-          numberOfLines={2}
-        >
-          {title}
-        </Text>
-
-        {/* Time */}
-        <Text style={[styles.time, isRTL && styles.textRTL]}>
-          {event.time}
-        </Text>
-
-        {/* Location */}
-        <Text
-          style={[styles.location, isRTL && styles.textRTL]}
-          numberOfLines={1}
-        >
-          {location}
-        </Text>
-      </View>
-    </AnimatedPressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 24,
-    padding: 10,
-    shadowColor: "#1F1D17",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
+  shadowWrap: {
+    marginBottom: 20,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
     shadowRadius: 16,
     elevation: 4,
-    marginBottom: 16,
+    borderRadius: 24,
   },
-  imageContainer: {
-    height: 180,
-    position: "relative",
-    backgroundColor: colors.sand,
-    borderRadius: 18,
+  card: {
+    height: 240,
+    borderRadius: 24,
     overflow: "hidden",
+    backgroundColor: colors.sand,
   },
   image: {
-    width: "100%",
-    height: "100%",
+    ...StyleSheet.absoluteFillObject,
   },
   dateBadge: {
     position: "absolute",
@@ -153,29 +127,20 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255, 255, 255, 0.92)",
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 14,
+    borderRadius: 999,
+  },
+  dateBadgeRTL: {
+    left: undefined,
+    right: 12,
   },
   dateText: {
     color: colors.ink,
     fontSize: 12,
     fontFamily: fonts.semibold,
   },
-  categoryBadge: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 11,
-  },
-  categoryText: {
-    color: "#FFFFFF",
-    fontSize: 11.5,
-    fontFamily: fonts.semibold,
-  },
   moreButton: {
     position: "absolute",
-    bottom: 12,
+    top: 12,
     right: 12,
     backgroundColor: "rgba(0, 0, 0, 0.45)",
     width: 32,
@@ -184,36 +149,76 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  moreButtonRTL: {
+    right: undefined,
+    left: 12,
+  },
   moreText: {
     fontSize: 18,
     color: "#FFFFFF",
     fontFamily: fonts.bold,
     lineHeight: 18,
   },
-  content: {
-    padding: 14,
-    paddingBottom: 6,
+  pill: {
+    position: "absolute",
+    left: 10,
+    right: 10,
+    bottom: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
   },
-  contentRTL: {
-    alignItems: "flex-end",
+  pillTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  pillBottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginTop: 5,
+  },
+  rowRTL: {
+    flexDirection: "row-reverse",
   },
   title: {
-    fontSize: 16.5,
+    flex: 1,
+    fontSize: 15.5,
     fontFamily: fonts.semibold,
     color: colors.ink,
-    marginBottom: 6,
-    lineHeight: 22,
+    letterSpacing: -0.2,
   },
-  time: {
-    fontSize: 13,
-    fontFamily: fonts.medium,
+  typeChip: {
+    backgroundColor: colors.mint,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  typeText: {
     color: colors.primary.DEFAULT,
-    marginBottom: 4,
+    fontSize: 11,
+    fontFamily: fonts.semibold,
+  },
+  locationGroup: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   location: {
-    fontSize: 13,
+    flexShrink: 1,
+    fontSize: 12,
     fontFamily: fonts.regular,
     color: colors.onSurface.muted,
+  },
+  time: {
+    fontSize: 12.5,
+    fontFamily: fonts.semibold,
+    color: colors.primary.DEFAULT,
   },
   textRTL: {
     textAlign: "right",

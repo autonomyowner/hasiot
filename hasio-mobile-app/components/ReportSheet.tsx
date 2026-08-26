@@ -1,3 +1,5 @@
+import { appAlert } from "@/stores/dialogStore";
+import { AppDialogHost } from "@/components/ui/AppDialog";
 import React, { useState } from "react";
 import {
   Modal,
@@ -74,7 +76,7 @@ export function ReportSheet({
 
   const handleSubmit = async () => {
     if (!isAuthenticated) {
-      Alert.alert(t("reportSignInRequired"));
+      appAlert(t("reportSignInRequired"));
       return;
     }
     if (!selectedReason || submitting) return;
@@ -87,19 +89,19 @@ export function ReportSheet({
         reason: selectedReason,
         details: details.trim() || undefined,
       });
-      Alert.alert(
+      appAlert(
         result.alreadyReported ? t("reportAlreadySubmitted") : t("reportSuccess")
       );
       handleClose();
     } catch (err) {
-      Alert.alert(t("reportFailed"));
+      appAlert(t("reportFailed"));
       setSubmitting(false);
     }
   };
 
   const handleBlock = () => {
     if (!isAuthenticated || !ownerId) return;
-    Alert.alert(
+    appAlert(
       t("blockProvider"),
       t("blockConfirm"),
       [
@@ -110,15 +112,14 @@ export function ReportSheet({
           onPress: async () => {
             try {
               await blockUser({ blockedUserId: ownerId });
-              Alert.alert(t("blockSuccess"));
+              appAlert(t("blockSuccess"));
               handleClose();
             } catch {
-              Alert.alert(t("blockFailed"));
+              appAlert(t("blockFailed"));
             }
           },
         },
-      ],
-      { cancelable: true }
+      ]
     );
   };
 
@@ -227,6 +228,8 @@ export function ReportSheet({
         </ScrollView>
       </View>
       </KeyboardAvoidingView>
+      {/* Alerts fired while this modal is open render above it. */}
+      <AppDialogHost />
     </Modal>
   );
 }

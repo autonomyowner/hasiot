@@ -1,3 +1,4 @@
+import { appAlert } from "@/stores/dialogStore";
 import React, { useState } from "react";
 import {
   View,
@@ -59,7 +60,7 @@ export default function PostFoodScreen() {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
+      appAlert(
         t("permissionRequired"),
         t("photoPermissionMessage"),
         [
@@ -90,7 +91,7 @@ export default function PostFoodScreen() {
     if (isLoading) return;
 
     if (!name.trim() || !nameAr.trim()) {
-      Alert.alert(t("error"), t("fillRequiredFields"));
+      appAlert(t("error"), t("fillRequiredFields"));
       return;
     }
 
@@ -116,13 +117,13 @@ export default function PostFoodScreen() {
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
       });
 
-      Alert.alert(
+      appAlert(
         t("success"),
         t("listingSubmittedForReview"),
         [{ text: t("done"), onPress: () => router.back() }]
       );
     } catch (error) {
-      Alert.alert(t("error"), t(getSubmitErrorKey(error)));
+      appAlert(t("error"), t(getSubmitErrorKey(error)));
     } finally {
       setIsLoading(false);
     }

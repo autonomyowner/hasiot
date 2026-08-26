@@ -2,6 +2,8 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { colors } from "@/constants/colors";
 import {
+  CATEGORY_CARD_HEIGHT,
+  CATEGORY_CARD_WIDTH,
   HOME_CARD_GAP,
   HOME_CARD_WIDTH,
   HOME_CONTAINER_PADDING,
@@ -28,11 +30,11 @@ import { Skeleton, SkeletonLine, sweepPhase } from "./Skeleton";
 
 type ListingVariant = "lodging" | "food" | "event";
 
-// LodgingCard / FoodCard / EventCard `imageContainer`.
+// LodgingCard / FoodCard / EventCard image (the image *is* the card now).
 const IMAGE_HEIGHT: Record<ListingVariant, number> = {
-  lodging: 180,
-  food: 160,
-  event: 180,
+  lodging: 240,
+  food: 220,
+  event: 240,
 };
 
 interface SkeletonListingCardProps {
@@ -52,83 +54,33 @@ export function SkeletonListingCard({
   return (
     <View style={styles.listingCard}>
       <Skeleton
-        radius={18}
+        radius={24}
         phase={sweepPhase(seed)}
         style={[styles.listingImage, { height: IMAGE_HEIGHT[variant] }]}
       />
 
-      <View style={styles.listingContent}>
-        {variant === "event" ? (
-          <>
-            {/* EventCard title: two lines at an explicit lineHeight of 22. */}
-            <SkeletonLine
-              width="88%"
-              box={22}
-              isRTL={isRTL}
-              phase={sweepPhase(seed + 1)}
-            />
-            <SkeletonLine
-              width="58%"
-              box={22}
-              isRTL={isRTL}
-              phase={sweepPhase(seed + 2)}
-              style={styles.gap6}
-            />
-            {/* Time, then location. */}
-            <SkeletonLine
-              width="28%"
-              box={16}
-              isRTL={isRTL}
-              phase={sweepPhase(seed + 3)}
-              style={styles.gap4}
-            />
-            <SkeletonLine
-              width="46%"
-              box={16}
-              isRTL={isRTL}
-              phase={sweepPhase(seed + 4)}
-            />
-          </>
-        ) : (
-          <>
-            {/* Type / category badge: radius 11, ~26 tall with its padding. */}
-            <Skeleton
-              radius={11}
-              phase={sweepPhase(seed + 1)}
-              style={[styles.listingBadge, isRTL && styles.alignEnd]}
-            />
-            <SkeletonLine
-              width={variant === "food" ? "70%" : "68%"}
-              box={21}
-              isRTL={isRTL}
-              phase={sweepPhase(seed + 2)}
-              style={styles.gap4}
-            />
-            <SkeletonLine
-              width={variant === "food" ? "45%" : "42%"}
-              box={16}
-              isRTL={isRTL}
-              phase={sweepPhase(seed + 3)}
-              style={variant === "food" ? styles.gap4 : styles.gap8}
-            />
-            {/* FoodCard carries an extra line — cuisine *and* opening hours. */}
-            {variant === "food" && (
-              <SkeletonLine
-                width="38%"
-                box={16}
-                isRTL={isRTL}
-                phase={sweepPhase(seed + 4)}
-                style={styles.gap8}
-              />
-            )}
-            <SkeletonLine
-              width={variant === "food" ? "34%" : "36%"}
-              box={20}
-              isRTL={isRTL}
-              phase={sweepPhase(seed + 5)}
-            />
-          </>
-        )}
+      {/* The floating white info pill the real cards render over the image. */}
+      <View style={styles.listingPill}>
+        <View style={[styles.listingPillRow, isRTL && styles.rowReverse]}>
+          <SkeletonLine
+            width="52%"
+            box={20}
+            isRTL={isRTL}
+            phase={sweepPhase(seed + 1)}
+          />
+          <Skeleton
+            radius={999}
+            phase={sweepPhase(seed + 2)}
+            style={styles.listingPillChip}
+          />
+        </View>
+        <SkeletonLine
+          width="68%"
+          box={17}
+          isRTL={isRTL}
+          phase={sweepPhase(seed + 3)}
+          style={styles.gapTop4}
+        />
       </View>
     </View>
   );
@@ -169,9 +121,7 @@ function SkeletonSectionHeader({
 }) {
   return (
     <View style={[styles.sectionHeader, isRTL && styles.rowReverse]}>
-      {/* Section title, then the "See all" link. */}
       <SkeletonLine width={150} box={22} bar={16} phase={sweepPhase(seed)} />
-      <SkeletonLine width={48} box={16} bar={12} phase={sweepPhase(seed + 1)} />
     </View>
   );
 }
@@ -212,7 +162,7 @@ export function SkeletonHomeSections({ isRTL = false }: { isRTL?: boolean }) {
           {[0, 1].map((index) => (
             <Skeleton
               key={index}
-              radius={18}
+              radius={24}
               phase={sweepPhase(index)}
               style={styles.categoryCard}
             />
@@ -335,39 +285,38 @@ const styles = StyleSheet.create({
     paddingTop: 8,
   },
   listingCard: {
-    backgroundColor: colors.surface.DEFAULT,
-    borderRadius: 24,
-    padding: 10,
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 16,
-    elevation: 4,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   listingImage: {
     width: "100%",
   },
-  listingContent: {
-    padding: 14,
-    paddingBottom: 6,
+  // Mirrors the real cards' floating info pill (inset 10, radius 18).
+  listingPill: {
+    position: "absolute",
+    left: 10,
+    right: 10,
+    bottom: 10,
+    backgroundColor: "rgba(255, 255, 255, 0.96)",
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
   },
-  listingBadge: {
-    width: 76,
-    height: 26,
-    marginBottom: 10,
-    alignSelf: "flex-start",
+  listingPillRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
   },
-  alignEnd: {
-    alignSelf: "flex-end",
+  listingPillChip: {
+    width: 64,
+    height: 22,
   },
-  // The real text carries these margins; the placeholders inherit them so the
-  // vertical rhythm of a card survives the swap.
+  gapTop4: {
+    marginTop: 4,
+  },
+  // Used by the owner-list skeleton, whose card layout is unchanged.
   gap4: {
     marginBottom: 4,
-  },
-  gap6: {
-    marginBottom: 6,
   },
   gap8: {
     marginBottom: 8,
@@ -390,8 +339,8 @@ const styles = StyleSheet.create({
   },
   // CategoryCard.
   categoryCard: {
-    width: 280,
-    height: 160,
+    width: CATEGORY_CARD_WIDTH,
+    height: CATEGORY_CARD_HEIGHT,
     marginRight: 16,
   },
   grid: {
@@ -452,7 +401,7 @@ const styles = StyleSheet.create({
   momentCard: {
     width: MOMENT_CARD_WIDTH,
     backgroundColor: colors.surface.DEFAULT,
-    borderRadius: 18,
+    borderRadius: 22,
     overflow: "hidden",
     shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 4 },

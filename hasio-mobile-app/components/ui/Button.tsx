@@ -12,7 +12,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { fonts } from "@/constants/colors";
+import { colors, fonts } from "@/constants/colors";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -87,15 +87,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   primary: {
-    backgroundColor: "#0D7A5F",
+    backgroundColor: colors.primary.DEFAULT,
   },
   secondary: {
-    backgroundColor: "#F5F1EB",
+    backgroundColor: colors.surface.variant,
   },
   outline: {
     backgroundColor: "transparent",
     borderWidth: 1.5,
-    borderColor: "#0D7A5F",
+    borderColor: colors.primary.DEFAULT,
   },
   ghost: {
     backgroundColor: "transparent",
@@ -123,16 +123,16 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   primaryText: {
-    color: "#FFFFFF",
+    color: colors.surface.DEFAULT,
   },
   secondaryText: {
-    color: "#1A1A1A",
+    color: colors.ink,
   },
   outlineText: {
-    color: "#0D7A5F",
+    color: colors.primary.DEFAULT,
   },
   ghostText: {
-    color: "#0D7A5F",
+    color: colors.primary.DEFAULT,
   },
   smText: {
     fontSize: 14,

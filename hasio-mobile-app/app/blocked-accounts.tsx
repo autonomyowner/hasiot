@@ -1,3 +1,4 @@
+import { appAlert } from "@/stores/dialogStore";
 import React, { useState } from "react";
 import {
   View,
@@ -38,7 +39,7 @@ export default function BlockedAccountsScreen() {
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const handleUnblock = (blockedUserId: Id<"users">) => {
-    Alert.alert(t("unblockConfirmTitle"), t("unblockConfirmMessage"), [
+    appAlert(t("unblockConfirmTitle"), t("unblockConfirmMessage"), [
       { text: t("cancel"), style: "cancel" },
       {
         text: t("unblock"),
@@ -47,7 +48,7 @@ export default function BlockedAccountsScreen() {
           try {
             await unblockUser({ blockedUserId });
           } catch (error) {
-            Alert.alert(t("error"), t("unblockFailed"));
+            appAlert(t("error"), t("unblockFailed"));
           } finally {
             setPendingId(null);
           }

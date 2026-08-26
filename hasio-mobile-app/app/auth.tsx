@@ -1,3 +1,4 @@
+import { appAlert } from "@/stores/dialogStore";
 import React, { useRef, useState } from "react";
 import {
   View,
@@ -58,16 +59,16 @@ export default function AuthScreen() {
     if (loading) return;
 
     if (!email.trim()) {
-      Alert.alert(t("error"), t("emailRequired"));
+      appAlert(t("error"), t("emailRequired"));
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      Alert.alert(t("error"), t("invalidEmail"));
+      appAlert(t("error"), t("invalidEmail"));
       return;
     }
     if (!password.trim() || password.length < 8) {
-      Alert.alert(t("error"), t("passwordTooShort"));
+      appAlert(t("error"), t("passwordTooShort"));
       return;
     }
 
@@ -113,7 +114,7 @@ export default function AuthScreen() {
       router.replace("/(tabs)");
     } catch (err: any) {
 
-      Alert.alert(t("error"), t(getAuthErrorKey(err) as any));
+      appAlert(t("error"), t(getAuthErrorKey(err) as any));
     } finally {
       setLoading(false);
     }

@@ -16,6 +16,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ConvexProviderWithAuth } from "convex/react";
 import { convex, useAuthFromSecureStore } from "@/lib/convex";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AppDialogHost } from "@/components/ui/AppDialog";
 
 import "../global.css";
 
@@ -64,6 +65,9 @@ function InnerLayout() {
         <Stack.Screen name="blocked-accounts" />
       </Stack>
       <StatusBar style="dark" />
+      {/* Branded alert dialog (appAlert). Native Modals that fire alerts while
+          open mount their own AppDialogHost inside the modal. */}
+      <AppDialogHost />
     </>
   );
 }

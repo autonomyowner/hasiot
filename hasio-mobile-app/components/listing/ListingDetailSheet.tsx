@@ -1,3 +1,5 @@
+import { appAlert } from "@/stores/dialogStore";
+import { AppDialogHost } from "@/components/ui/AppDialog";
 import React, { useState } from "react";
 import {
   View,
@@ -14,6 +16,7 @@ import {
   type NativeScrollEvent,
 } from "react-native";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { colors, fonts } from "@/constants/colors";
@@ -52,7 +55,9 @@ interface ListingDetailSheetProps {
   onClose: () => void;
 }
 
-const IMAGE_HEIGHT = 300;
+const IMAGE_HEIGHT = 380;
+// The body sheet pulls up over the hero by this much.
+const SHEET_OVERLAP = 28;
 
 export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   const { t, isRTL } = useLanguage();
@@ -60,6 +65,12 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   const { width } = useWindowDimensions();
   const [imageIndex, setImageIndex] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
+  const galleryRef = React.useRef<ScrollView>(null);
+
+  const scrollGalleryTo = (index: number) => {
+    galleryRef.current?.scrollTo({ x: index * width, animated: true });
+    setImageIndex(index);
+  };
 
   // Rendered even with no item so the exit animation has something to play
   // against; `visible` alone drives it.
@@ -70,12 +81,12 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     try {
       const supported = await Linking.canOpenURL(url);
       if (!supported) {
-        Alert.alert(t("error"), t(failureKey));
+        appAlert(t("error"), t(failureKey));
         return;
       }
       await Linking.openURL(url);
     } catch {
-      Alert.alert(t("error"), t(failureKey));
+      appAlert(t("error"), t(failureKey));
     }
   };
 
@@ -152,6 +163,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
               <View style={styles.gallery}>
                 {images.length > 0 ? (
                   <ScrollView
+                    ref={galleryRef}
                     horizontal
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
@@ -178,6 +190,13 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                   </View>
                 )}
 
+                {/* Legibility scrim under the sheet's rounded top edge. */}
+                <LinearGradient
+                  colors={["transparent", "rgba(31,29,23,0.35)"]}
+                  style={styles.galleryScrim}
+                  pointerEvents="none"
+                />
+
                 {images.length > 1 && (
                   <View style={styles.dots}>
                     {images.map((_, i) => (
@@ -191,15 +210,36 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
               </View>
 
               <View style={styles.body}>
+                {/* Thumbnail rail — jumps the gallery to the tapped image. */}
+                {images.length > 1 && (
+                  <View style={[styles.thumbRail, isRTL && styles.rowRTL]}>
+                    {images.slice(0, 6).map((uri, i) => (
+                      <Pressable
+                        key={`thumb-${uri}-${i}`}
+                        onPress={() => scrollGalleryTo(i)}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("detailImageCount")
+                          .replace("{current}", String(i + 1))
+                          .replace("{total}", String(images.length))}
+                      >
+                        <Image
+                          source={{ uri }}
+                          style={[
+                            styles.thumb,
+                            i === imageIndex && styles.thumbActive,
+                          ]}
+                          contentFit="cover"
+                          transition={200}
+                        />
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
+
                 {/* Title block */}
                 <View style={[styles.titleRow, isRTL && styles.rowRTL]}>
                   {item.badge && (
-                    <View
-                      style={[
-                        styles.badge,
-                        { backgroundColor: item.badgeColor || colors.primary.DEFAULT },
-                      ]}
-                    >
+                    <View style={styles.badge}>
                       <Text style={styles.badgeText}>{item.badge}</Text>
                     </View>
                   )}
@@ -345,6 +385,8 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
           </>
         )}
       </View>
+      {/* Alerts fired while this modal is open render above it. */}
+      <AppDialogHost />
     </Modal>
 
     {/* Sibling of the detail modal, not a child of it. A transparent modal
@@ -457,9 +499,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  galleryScrim: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 120,
+  },
   dots: {
     position: "absolute",
-    bottom: 12,
+    bottom: SHEET_OVERLAP + 12,
     left: 0,
     right: 0,
     flexDirection: "row",
@@ -490,9 +539,30 @@ const styles = StyleSheet.create({
     right: undefined,
     left: 16,
   },
+  // Rounded sheet pulled up over the hero — the inspiration's overlap move.
   body: {
+    marginTop: -SHEET_OVERLAP,
+    borderTopLeftRadius: SHEET_OVERLAP,
+    borderTopRightRadius: SHEET_OVERLAP,
+    backgroundColor: colors.background,
     padding: 24,
     gap: 4,
+  },
+  thumbRail: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+  },
+  thumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: colors.sand,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  thumbActive: {
+    borderColor: colors.primary.DEFAULT,
   },
   titleRow: {
     flexDirection: "row",
@@ -503,15 +573,18 @@ const styles = StyleSheet.create({
   rowRTL: {
     flexDirection: "row-reverse",
   },
+  // Neutral chip — the coloured per-category badges were retired with the
+  // card redesign; green stays reserved for prices and primary actions.
   badge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
+    backgroundColor: colors.mint,
   },
   badgeText: {
     fontFamily: fonts.semibold,
     fontSize: 11,
-    color: "#FFFFFF",
+    color: colors.primary.DEFAULT,
   },
   ratingRow: {
     flexDirection: "row",

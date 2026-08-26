@@ -1,3 +1,4 @@
+import { appAlert } from "@/stores/dialogStore";
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
 import { colors, fonts } from "@/constants/colors";
@@ -28,7 +29,7 @@ export function ChatBubble({ message, isRTL, t, onReport }: ChatBubbleProps) {
 
   const handleReport = () => {
     if (onReport) {
-      Alert.alert(
+      appAlert(
         t("reportMessage"),
         t("reportConfirm"),
         [
@@ -43,7 +44,7 @@ export function ChatBubble({ message, isRTL, t, onReport }: ChatBubbleProps) {
             onPress: () => {
               onReport(message.id);
               setShowReportButton(false);
-              Alert.alert(t("thankYou"), t("reportReceived"));
+              appAlert(t("thankYou"), t("reportReceived"));
             },
           },
         ]
@@ -154,12 +155,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderRadius: 20,
   },
+  // Ink rather than green: green is reserved for prices and primary actions.
   userBubble: {
-    backgroundColor: colors.primary.DEFAULT,
+    backgroundColor: colors.ink,
     borderBottomRightRadius: 6,
-    shadowColor: colors.primary.DEFAULT,
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 4,
     elevation: 3,
   },

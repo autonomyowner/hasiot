@@ -1,3 +1,4 @@
+import { appAlert } from "@/stores/dialogStore";
 import React, { useState } from "react";
 import {
   View,
@@ -62,7 +63,7 @@ export default function PostLodgingScreen() {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(
+      appAlert(
         t("permissionRequired"),
         t("photoPermissionMessage"),
         [
@@ -94,7 +95,7 @@ export default function PostLodgingScreen() {
 
     // Validation
     if (!name.trim() || !nameAr.trim() || !city.trim() || !cityAr.trim()) {
-      Alert.alert(t("error"), t("fillRequiredFields"));
+      appAlert(t("error"), t("fillRequiredFields"));
       return;
     }
 
@@ -121,13 +122,13 @@ export default function PostLodgingScreen() {
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
       });
 
-      Alert.alert(
+      appAlert(
         t("success"),
         t("listingSubmittedForReview"),
         [{ text: t("done"), onPress: () => router.back() }]
       );
     } catch (error) {
-      Alert.alert(t("error"), t(getSubmitErrorKey(error)));
+      appAlert(t("error"), t(getSubmitErrorKey(error)));
     } finally {
       setIsLoading(false);
     }

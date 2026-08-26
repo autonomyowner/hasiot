@@ -1,3 +1,4 @@
+import { appAlert } from "@/stores/dialogStore";
 import React, { useState } from "react";
 import {
   View,
@@ -53,7 +54,7 @@ export default function VerificationScreenContent() {
   const pickPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert(t("permissionRequired"), t("photoPermissionMessage"), [
+      appAlert(t("permissionRequired"), t("photoPermissionMessage"), [
         { text: t("cancel"), style: "cancel" },
         { text: t("openSettings"), onPress: () => Linking.openSettings() },
       ]);
@@ -93,7 +94,7 @@ export default function VerificationScreenContent() {
     if (isSubmitting) return;
 
     if (!docUri) {
-      Alert.alert(t("error"), t("verificationNoDocSelected"));
+      appAlert(t("error"), t("verificationNoDocSelected"));
       return;
     }
 
@@ -102,7 +103,7 @@ export default function VerificationScreenContent() {
       const storageId = await uploadDocumentToConvex(docUri, docMimeType);
       await saveBusinessDoc({ fileId: storageId });
 
-      Alert.alert(
+      appAlert(
         t("verificationSubmitted"),
         t("verificationSubmittedMessage"),
         [{ text: t("done"), onPress: () => router.back() }]
@@ -111,7 +112,7 @@ export default function VerificationScreenContent() {
       // Surface the underlying reason too — a silent "try again later" made an
       // upload failure here impossible to diagnose from a tester's report.
       const detail = error instanceof Error ? error.message : String(error);
-      Alert.alert(t("error"), `${t("pleaseTryAgain")}\n\n${detail}`);
+      appAlert(t("error"), `${t("pleaseTryAgain")}\n\n${detail}`);
     } finally {
       setIsSubmitting(false);
     }
