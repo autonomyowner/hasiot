@@ -1,6 +1,6 @@
 # iOS Release Status & Playbook
 
-_Last updated: 2026-08-16. This file is the source of truth for shipping iOS builds.
+_Last updated: 2026-08-26. This file is the source of truth for shipping iOS builds.
 Read it fully before building — it encodes hard-won fixes. Update it after every build/submission._
 
 ## Current state
@@ -9,11 +9,12 @@ Read it fully before building — it encodes hard-won fixes. Update it after eve
   owner's own Apple enrollment is blocked (Apple case 20000130148873). He handles App Store Connect
   metadata; we build + upload from this Windows PC. **Get the app-transfer agreement honored later.**
 - App Store Connect app: **"Hasio Travel"**, `com.hasio.travel`, **ascAppId `6800297588`**.
-- Last shipped build: **v1.0.1 (build 5)** — uploaded to TestFlight, crash-free after fixes below.
-- **v1.0.1 was REJECTED by App Review (Aug 2026): "user generated content settings missing from the
-  App Information page."** Nabil has since filled in the UGC declaration in ASC. Remedy: upload a new
-  build (bump version) and resubmit. No code change was demanded — the app already has
-  report/block/delete-account (guideline 1.2 compliance).
+- Last shipped build: **v1.0.2 (build 6)** — uploaded 2026-08-26 (submission dbe1c7bb), carries the
+  full UI modernization (floating tab bar, image-forward cards, branded dialogs, bundled AI imagery).
+  **Waiting on Nabil to select build 6 in ASC and submit for review.**
+- Background: v1.0.1 was REJECTED by App Review (Aug 2026): "user generated content settings missing
+  from the App Information page" — metadata only. Nabil filled in the UGC declaration in ASC; no code
+  change was demanded (the app already has report/block/delete-account for guideline 1.2).
 - Support page live: `https://www.hasio.xyz/support.html` (bilingual, support@hasio.xyz).
 - Reviewer demo account (verified working, in ASC review notes):
   `applereview@hasio.xyz` / `HasioReview2026!` — pre-approved business_owner, defaults to Arabic.
@@ -77,7 +78,7 @@ At expiry, regenerate the same way (scripts pattern: ES256 JWT, `iss`=IssuerID, 
 |---|---|---|---|
 | 1.0.0 | 4 | 2026-08-11 | Crashed on TestFlight (stale OTA bundle + missing Convex fn) |
 | 1.0.1 | 5 | 2026-08-13 | Crash fixed, uploaded — **rejected: UGC settings missing in ASC App Information (metadata only)** |
-| 1.0.2 | 6 (auto) | pending | Next: rebuild after owner's app updates; UGC section now filled by Nabil |
+| 1.0.2 | 6 | 2026-08-26 | Uploaded (build 5cd34da0, submission dbe1c7bb) with full UI modernization; awaiting Nabil's resubmit for review |
 
 ## ASC listing copy (already delivered to Nabil)
 
