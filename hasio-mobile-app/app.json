@@ -2,7 +2,7 @@
   "expo": {
     "name": "Hasio",
     "slug": "hasio",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "scheme": "hasio",
     "icon": "./assets/IconKitchen-Output/android/play_store_512.png",
@@ -13,7 +13,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.hasio.travel",
       "userInterfaceStyle": "light",
-      "buildNumber": "1",
+      "buildNumber": "5",
       "icon": "./assets/icon-ios-1024.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,

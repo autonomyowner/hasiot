@@ -83,7 +83,7 @@ All admin queries/mutations in `convex/admin/` and `approveBusinessAccount` in `
 
 ### Mobile App (React Native + Expo)
 
-Located in `hasio  mobile app/` (note the double space in directory name). Shares the same Convex backend.
+Located in `hasio-mobile-app/`. **Renamed 2026-08-11** from `hasio<SPACE><SPACE>mobile app` (two spaces) — the double space broke iOS builds (CocoaPods script phases over-escape the path, failing with `bash: /Users/expo/workingdir/build/hasio: No such file or directory`). Never reintroduce spaces in this directory name. Shares the same Convex backend.
 
 - `app/business/` — Business owner screens: `post-lodging.tsx`, `post-food.tsx`, `post-event.tsx`, `post-destination.tsx`, `my-listings.tsx`
 - `app/provider/` — Service provider screens: `post-service.tsx`, `my-services.tsx`
@@ -238,9 +238,9 @@ EXPO_PUBLIC_CONVEX_SITE_URL=https://hearty-ram-74.eu-west-1.convex.site
 ```
 
 **CRITICAL — EU region prefix:** The production Convex deployment is in `eu-west-1`. All Convex URLs **must** include the region: `hearty-ram-74.eu-west-1.convex.cloud` (NOT `hearty-ram-74.convex.cloud`). Missing the region causes auth requests to hit the wrong endpoint → 401 errors. This applies to three files:
-- `hasio  mobile app/.env`
-- `hasio  mobile app/.env.local`
-- `hasio  mobile app/eas.json` (in `build.production.env`)
+- `hasio-mobile-app/.env`
+- `hasio-mobile-app/.env.local`
+- `hasio-mobile-app/eas.json` (in `build.production.env`)
 
 **`.env.local` overrides `.env`** in Expo — if both exist, `.env.local` wins. Always keep them in sync or remove `.env.local` if not needed.
 
@@ -255,7 +255,7 @@ EXPO_PUBLIC_CONVEX_SITE_URL=https://hearty-ram-74.eu-west-1.convex.site
 
 ## Mobile App Production Patterns
 
-The mobile app (`hasio  mobile app/`) includes these reliability features:
+The mobile app (`hasio-mobile-app/`) includes these reliability features:
 
 - **Error Boundary**: `components/ErrorBoundary.tsx` wraps root layout. Class component, reads language from Zustand outside React tree (`useAppStore.getState().language`). Bilingual fallback UI with retry button.
 - **Search Debounce**: `hooks/useDebounce.ts` (300ms default). Used in `HomeScreenContent.tsx` — raw query drives the input, debounced query drives filtering.
@@ -281,7 +281,7 @@ Algeria, Australia, Bahrain, Kuwait, Oman, Qatar, Saudi Arabia, United Arab Emir
 
 ### EAS Build & Submit
 ```bash
-cd "hasio  mobile app"
+cd "hasio-mobile-app"
 npx eas build -p android --profile production   # Builds AAB, auto-increments versionCode
 npx eas submit -p android --profile production   # Uploads to Play Store (track set in eas.json)
 npx eas update --channel production --message "description"  # OTA update (JS-only, no review)

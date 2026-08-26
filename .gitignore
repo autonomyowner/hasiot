@@ -29,7 +29,21 @@ dist-ssr
 *.aab
 *.apk
 
+# Signing secrets — App Store Connect API keys, distribution certs, profiles.
+# Belt-and-braces: the mobile app has its own rules, this catches keys that
+# land at the repo root straight out of a browser download.
+*.p8
+*.p12
+*.pfx
+*.mobileprovision
+*.keystore
+*.jks
+google-service-account.json
+
 # Design mockups / scratch copies — not part of either app. Kept out of the repo
 # so nobody handed the project builds from the wrong tree.
 hasio v5/
 ChatGPT Image *.png
+
+# Pasted screenshots
+*.jpg

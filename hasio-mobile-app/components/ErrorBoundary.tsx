@@ -21,23 +21,35 @@ interface Props {
 
 interface State {
   hasError: boolean;
+  message: string | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, message: null };
   }
 
-  static getDerivedStateFromError(): State {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error): State {
+    return { hasError: true, message: error?.message ?? String(error) };
   }
 
+  // Swallowing the error here left crashes undiagnosable in release builds —
+  // the only signal was the fallback UI itself. Log it so it reaches the
+  // device console (Xcode / Console.app / adb logcat) on a tester's machine.
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error(
+      "[ErrorBoundary]",
+      error?.message,
+      "\n",
+      error?.stack,
+      "\n",
+      errorInfo?.componentStack
+    );
   }
 
   handleRetry = () => {
-    this.setState({ hasError: false });
+    this.setState({ hasError: false, message: null });
   };
 
   render() {
@@ -50,6 +62,11 @@ export class ErrorBoundary extends Component<Props, State> {
           <Text style={styles.emoji}>!</Text>
           <Text style={styles.title}>{t.title}</Text>
           <Text style={styles.subtitle}>{t.subtitle}</Text>
+          {this.state.message ? (
+            <Text style={styles.detail} numberOfLines={4}>
+              {this.state.message}
+            </Text>
+          ) : null}
           <Pressable style={styles.button} onPress={this.handleRetry}>
             <Text style={styles.buttonText}>{t.tryAgain}</Text>
           </Pressable>
@@ -93,6 +110,17 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
     marginBottom: 32,
+  },
+  // Small and muted: useful to a tester reading a screenshot, quiet enough
+  // that it does not compete with the apology above it.
+  detail: {
+    fontSize: 12,
+    color: "#A3A3A3",
+    textAlign: "center",
+    lineHeight: 17,
+    marginTop: -20,
+    marginBottom: 28,
+    paddingHorizontal: 8,
   },
   button: {
     backgroundColor: "#0D7A5F",

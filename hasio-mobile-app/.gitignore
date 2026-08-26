@@ -28,3 +28,6 @@ android/
 
 expo-env.d.ts
 # @end expo-cli
+# Local signing credentials (contains .p12 password)
+credentials.json
+credentials/

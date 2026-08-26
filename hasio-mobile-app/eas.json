@@ -30,6 +30,16 @@
         "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site"
       }
     },
+    "simulator": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://hearty-ram-74.eu-west-1.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site"
+      }
+    },
     "production": {
       "autoIncrement": true,
       "channel": "production",
@@ -37,7 +47,8 @@
         "buildType": "app-bundle"
       },
       "ios": {
-        "distribution": "store"
+        "distribution": "store",
+        "credentialsSource": "local"
       },
       "env": {
         "EXPO_NO_CAPABILITY_SYNC": "1",
@@ -54,10 +65,10 @@
       },
       "ios": {
         "ascApiKeyPath": "./appstore-connect-api-key.p8",
-        "ascApiKeyIssuerId": "REPLACE_WITH_ASC_API_KEY_ISSUER_ID",
-        "ascApiKeyId": "REPLACE_WITH_ASC_API_KEY_ID",
-        "ascAppId": "REPLACE_WITH_ASC_APP_ID",
-        "appleTeamId": "REPLACE_WITH_APPLE_TEAM_ID"
+        "ascApiKeyIssuerId": "30cc1bab-a280-4644-8b93-900bcb21b973",
+        "ascApiKeyId": "UR3PAK97LX",
+        "ascAppId": "6800297588",
+        "appleTeamId": "W23759GRP4"
       }
     }
   }
