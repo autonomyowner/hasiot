@@ -47,3 +47,4 @@ ChatGPT Image *.png
 
 # Pasted screenshots
 *.jpg
+!public/og-image.jpg

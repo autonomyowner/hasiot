@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { authClient } from '../lib/auth-client'
 import { useLanguage } from '../hooks/useLanguage'
 import AuthVisual from '../components/auth/AuthVisual'
@@ -12,8 +12,6 @@ const translations = {
     email: 'البريد الإلكتروني',
     password: 'كلمة المرور',
     signIn: 'تسجيل الدخول',
-    noAccount: 'ليس لديك حساب؟',
-    signUp: 'إنشاء حساب',
     backHome: 'العودة للرئيسية',
     error: 'البريد الإلكتروني أو كلمة المرور غير صحيحة',
     loading: 'جاري التحميل...',
@@ -30,8 +28,6 @@ const translations = {
     email: 'Email',
     password: 'Password',
     signIn: 'Sign In',
-    noAccount: "Don't have an account?",
-    signUp: 'Sign Up',
     backHome: 'Back to Home',
     error: 'Invalid email or password',
     loading: 'Loading...',
@@ -50,6 +46,7 @@ export default function SignInPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { lang, toggleLang } = useLanguage()
+  const [searchParams] = useSearchParams()
   const t = translations[lang] || translations.ar
 
   const handleSubmit = async (e) => {
@@ -69,8 +66,11 @@ export default function SignInPage() {
         return
       }
 
-      // Redirect to home — the app will check role and redirect as needed
-      window.location.href = '/home'
+      // Sign-in only exists to reach the admin portal and the account
+      // deletion page, so honour ?next= and default to /admin. Relative
+      // paths only — never redirect to a caller-supplied absolute URL.
+      const next = searchParams.get('next')
+      window.location.href = next && next.startsWith('/') && !next.startsWith('//') ? next : '/admin'
     } catch {
       setError(t.error)
       setLoading(false)
@@ -126,10 +126,6 @@ export default function SignInPage() {
           </button>
         </form>
 
-        <p className="auth-footer-text">
-          {t.noAccount}{' '}
-          <Link to="/sign-up">{t.signUp}</Link>
-        </p>
         {/* Plain anchors, not react-router <Link>: these are static files in
             public/, not routes. A <Link> is intercepted client-side, matches no
             route, and renders a blank page. */}

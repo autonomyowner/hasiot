@@ -94,7 +94,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      window.location.href = '/sign-in'
+      window.location.href = '/sign-in?next=/admin'
     }
   }, [isLoading, isAuthenticated])
 

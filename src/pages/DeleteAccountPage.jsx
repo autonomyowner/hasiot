@@ -124,7 +124,7 @@ export default function DeleteAccountPage() {
           ) : !isAuthenticated || !user ? (
             <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
               <p style={{ color: '#6b7280', marginBottom: '1rem' }}>{t.signInFirst}</p>
-              <Link to="/sign-in" className="auth-link" style={{ fontSize: '1rem' }}>{t.signIn}</Link>
+              <Link to="/sign-in?next=/delete-account" className="auth-link" style={{ fontSize: '1rem' }}>{t.signIn}</Link>
             </div>
           ) : (
             <>
