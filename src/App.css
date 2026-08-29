@@ -113,7 +113,7 @@ html{scroll-behavior:smooth}
 .concierge-copy p{max-width:470px;color:#ffffffb3;font-size:14px;line-height:1.7;margin:30px 0 0}
 /* Concierge preview card — soft, layered and slightly lifted so it reads as a
    piece of product UI floating over the photo rather than a flat panel. */
-.planner-card{position:absolute;left:clamp(35px,9vw,150px);top:50%;transform:translateY(-50%);width:342px;padding:22px 22px 18px;color:var(--ink);background:linear-gradient(180deg,#fcfaf5,#f0ece1);border:1px solid #ffffff96;border-radius:22px;box-shadow:0 1px 2px #0a1c1218,0 14px 28px -10px #0a1c1226,0 44px 84px -24px #0a1c1266}
+.planner-card{position:absolute;inset-inline-start:clamp(35px,9vw,150px);top:50%;transform:translateY(-50%);width:342px;padding:22px 22px 18px;color:var(--ink);background:linear-gradient(180deg,#fcfaf5,#f0ece1);border:1px solid #ffffff96;border-radius:22px;box-shadow:0 1px 2px #0a1c1218,0 14px 28px -10px #0a1c1226,0 44px 84px -24px #0a1c1266}
 .planner-top{display:flex;gap:12px;align-items:center;padding-bottom:16px;border-bottom:1px solid #17241d14}
 .planner-top .brand-mark{width:36px;height:36px;border-radius:12px;box-shadow:0 2px 7px #0a1c121f}
 .planner-top div,.planner-route div{display:flex;flex-direction:column;min-width:0}
@@ -192,10 +192,15 @@ html{scroll-behavior:smooth}
  .shot{text-align:center}
  .shot p{margin:0 auto}
  .phone{width:min(100%,260px)}
- .concierge{min-height:0;display:block;padding-top:390px}
- .concierge-photo{position:absolute;inset:0 0 auto;height:470px;width:100%;background:linear-gradient(0deg,var(--green),transparent 70%),url("/concierge-bg.webp") center/cover}
- .concierge-copy{position:relative;padding:55px 24px 65px}
- .planner-card{top:300px;left:50%;transform:translateX(-50%);width:min(342px,calc(100% - 40px))}
+ /* Stack it for real rather than absolutely positioning the card over a
+    padding reserve — the old `padding-top:390px` + `top:300px` pair was tuned to
+    one card height and broke the moment the card grew. Flex order puts the card
+    between the photo and the copy despite the DOM order, and the negative
+    margin keeps it lapping over the photo's edge. */
+ .concierge{min-height:0;display:flex;flex-direction:column;padding-top:0}
+ .concierge-photo{order:1;position:relative;inset:auto;height:340px;width:100%;background:linear-gradient(0deg,var(--green),transparent 70%),url("/concierge-bg.webp") center/cover}
+ .planner-card{order:2;position:relative;inset:auto;transform:none;margin:-96px auto 0;width:min(342px,calc(100% - 40px))}
+ .concierge-copy{order:3;position:relative;padding:44px 24px 65px}
  .quote{padding-top:90px;padding-bottom:90px}
  .download{padding-top:90px;padding-bottom:100px}
  .home-footer{grid-template-columns:1fr;gap:34px}
