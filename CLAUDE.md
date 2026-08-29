@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hasio is an **Al-Ahsa travel guide platform** with two codebases in this repo: a **React + Vite website** and a **React Native (Expo) mobile app**. Both share the same Convex backend. Features include an AI travel planner, hotel/restaurant/attraction directory with interactive map, booking system, trip itinerary builder, freelancer services marketplace, and favorite listings.
+Hasio is an **Al-Ahsa travel guide platform**. The product is the **React Native (Expo) mobile app** — AI travel planner, hotel/restaurant/attraction directory with map, bookings, trip itinerary builder, freelancer services marketplace and favourites. The **React + Vite website** in this repo is now only a **marketing landing page plus a hidden admin portal**; the public product pages (map, listings, services, dashboards, signup) were removed 2026-08-29. Both share the same Convex backend, and the backend still serves every feature — only the website's UI for them is gone.
 
 **Al-Ahsa Focus:** The app is specifically for Al-Ahsa (الأحساء), the largest governorate in Saudi Arabia's Eastern Province, named after the Al-Ahsa Oasis. In Classical Arabic, 'Ahsa' means the sound of water underground. All content, city dropdowns, map center, AI planner, and seed data should reference Al-Ahsa area locations — NOT all of Saudi Arabia.
 
@@ -61,29 +61,34 @@ All admin queries/mutations in `convex/admin/` and `approveBusinessAccount` in `
 
 ### User Roles & Approval Flow
 
-- **Tourists**: Sign up → immediate access. Can upgrade to business owner or service provider from `/dashboard` upgrade tab.
+- **Tourists**: Sign up → immediate access. Can upgrade to business owner or service provider from the mobile app. (The website's `/dashboard` upgrade tab was removed 2026-08-29 — sign-up and role upgrade are mobile-only now.)
 - **Business Owners**: Post hotels, restaurants, attractions, events. Require doc upload + admin approval.
 - **Service Providers**: Post freelancer services (photographer, driver, guide, etc.). Require doc upload + admin approval.
-- **Role upgrade**: Tourist → calls `setUserRole` → redirected to `/business` → upload doc → admin approves at `/admin`
+- **Role upgrade**: Tourist → calls `setUserRole` → uploads doc in the app → admin approves at `/admin` on the website
 - Business documents stored in Convex file storage (`_storage`), referenced by `cvFileId` on user record.
 
-### Frontend (React + Vite)
+### Frontend (React + Vite) — landing page + admin only
 
-- `src/main.jsx` — Routing: `/`, `/explore`, `/listings`, `/services`, `/sign-in`, `/sign-up`, `/dashboard`, `/business`, `/admin`. All routes lazy-loaded with `Suspense`.
-- `src/App.jsx` — Landing page with `translations` object for AR/EN. Lazy-loads Convex-dependent components. Has a **mobile-only fixed bottom nav** (bottom-left, above chat FAB) with Destinations and Services buttons.
-- `src/MapPage.jsx` — Mapbox GL map centered on Al-Ahsa/Hofuf (25.3854, 49.5683). Token loaded at runtime from Convex via `config.queries.getPublicConfig`.
-- `src/AdminPage.jsx` — Arabic RTL admin dashboard. Auth via Better-Auth (`useCurrentUser()` + `role === "admin"` check). Redirects to `/sign-in` if not logged in, shows "access denied" if not admin. Tabs: stats, listings, content approval, services approval, pending businesses, knowledge base, bookings, emails.
-- `src/pages/DoctorDashboard.jsx` — **Business/service provider dashboard**. Role-adaptive tabs: service providers see services tab, business owners see listings tab. Includes `ImageUploader` component for multi-image upload to Convex storage.
-- `src/pages/ListingsPage.jsx` — **Public browse page** for approved hotels, restaurants, attractions, events, tours. Filter by type/city/search. Bilingual. Uses `api.listings.queries.listListings` and `searchListings`.
-- `src/pages/ServicesPage.jsx` — **Public browse page** for approved freelancer services. Filter by service type/city/search. Expandable cards with contact info. Uses `api.services.queries.listServices` and `searchServices`.
-- `src/components/ImageCarousel.jsx` — Reusable image carousel with dot indicators, prev/next arrows, fallback placeholder. Used in ListingsPage and ServicesPage cards.
-- `src/pages/PatientDashboard.jsx` — **Tourist dashboard**. Tabs: bookings, favorites, profile, trips, upgrade (role upgrade to business/service).
+- `src/main.jsx` — Four routes, all lazy: `/` (landing), `/sign-in`, `/delete-account`, `/admin`. A `*` route redirects everything else to `/` so old links never render blank.
+- `src/AuthedLayout.jsx` — Layout route that owns `ConvexReactClient` + `ConvexBetterAuthProvider` + `authClient`. **Only** `/sign-in`, `/delete-account` and `/admin` sit inside it, so the convex and better-auth chunks never load for anonymous visitors on `/`. Keep Convex imports out of `main.jsx` or that isolation breaks.
+- `src/App.jsx` — The landing page. Bilingual `content = { en, ar }`, sections: hero → story → places carousel → in-app showcase → concierge → quote → download → footer. Every CTA points at the App Store / Play Store; there are no internal links left except the static legal pages.
+- `src/hooks/useReveal.js` — IntersectionObserver scroll reveals (replaced framer-motion on the landing page). Elements opt in with `data-reveal`; the hidden start state is scoped to `.reveal-ready` so the page still renders if JS fails.
+- `src/AdminPage.jsx` — Arabic RTL admin dashboard, the only real app left on the web. Auth via Better-Auth (`useCurrentUser()` + `role === "admin"`). Redirects to `/sign-in?next=/admin` if not logged in. Tabs: stats, listings, content approval, services approval, pending businesses, knowledge base, bookings, emails. Still uses framer-motion (lazy admin chunk only).
+- `src/pages/SignInPage.jsx` — **Unlinked from everywhere.** It exists so the admin portal has a login. Honours `?next=` (relative paths only), defaults to `/admin`. No public sign-up.
+- `src/pages/DeleteAccountPage.jsx` — **Do not remove.** App Store guideline 5.1.1(v); linked from `public/support.html`, which is the live App Store Support URL.
 
-**File naming caveat**: `PatientDashboard.jsx` is the tourist dashboard, `DoctorDashboard.jsx` is the business dashboard. Legacy names — `main.jsx` imports them with aliases (`BusinessDashboard`, `TouristDashboard`).
+**Static pages in `public/` are not routes** — `privacy-policy.html`, `terms-of-service.html`, `support.html`, `download.html`. Vercel's filesystem check beats the SPA rewrite in `vercel.json`, so React routing cannot affect them. **The shipped mobile binaries open two of them by absolute URL** (`hasio-mobile-app/app/auth.tsx:31-32`, `components/screens/SettingsScreenContent.tsx:38-39`), so their paths are frozen — a redirect is the only safe way to ever move them.
+
+**Landing page assets** (all local, no external image hosts):
+- `public/hasio-oasis-hero{,-mobile}.webp` — hero, swapped by media query
+- `public/app/*.webp` — app screenshots, cropped from `hasio-mobile-app/assets/screenshots/` (OS status/nav bars removed; the stale voice-assistant mic is painted out of `plan.webp`)
+- `public/places/*.webp` — carousel cards, cropped from `hasio-mobile-app/assets/images/generated/`
+- `public/logo-mark.webp` — trimmed `logo.png`, shown in a white chip so it reads on the dark nav and footer
+- PNG masters live in `design-assets/` (outside `public/`) so Vite stops copying ~7 MB into every deploy
 
 ### Mobile App (React Native + Expo)
 
-Located in `hasio  mobile app/` (note the double space in directory name). Shares the same Convex backend.
+Located in `hasio-mobile-app/`. **Renamed 2026-08-11** from `hasio<SPACE><SPACE>mobile app` (two spaces) — the double space broke iOS builds (CocoaPods script phases over-escape the path, failing with `bash: /Users/expo/workingdir/build/hasio: No such file or directory`). Never reintroduce spaces in this directory name. Shares the same Convex backend.
 
 - `app/business/` — Business owner screens: `post-lodging.tsx`, `post-food.tsx`, `post-event.tsx`, `post-destination.tsx`, `my-listings.tsx`
 - `app/provider/` — Service provider screens: `post-service.tsx`, `my-services.tsx`
@@ -162,7 +167,7 @@ Both follow the same approval flow: pending → admin approves/rejects → appro
 
 ### Image Upload Pattern
 
-Website uses Convex file storage: `generateUploadUrl()` → POST file → get storageId → resolve URL via `getStorageUrl` query. Mobile app uses R2 external storage via `uploadMultipleToR2()`, storing URL strings directly.
+Convex file storage: `generateUploadUrl()` → POST file → get storageId → resolve URL via `getStorageUrl` query. Used by the admin panel and by the mobile app (`lib/convexUpload.ts`). The website's uploader lived in the business dashboard, which was removed 2026-08-29.
 
 **Seed listing images**: `convex/listings/seedImages.ts` contains curated Unsplash URLs for all 56 Al-Ahsa seeded listings. Run `npx convex run listings/seedImages:addImagesToListings --prod` to populate images on listings that don't have any.
 
@@ -194,7 +199,9 @@ Each component defines its own `translations` object with `ar` and `en` keys. No
 
 ### Bundle & Code Splitting
 
-All routes in `src/main.jsx` are lazy-loaded with `React.lazy()` + `<Suspense>`. Vite config (`vite.config.js`) splits vendor chunks: `mapbox-gl` (~1.6MB, only loads on `/explore`), `framer-motion`, `convex`, `better-auth`. Main bundle is ~235KB.
+All routes in `src/main.jsx` are lazy-loaded with `React.lazy()` + `<Suspense>`. `vite.config.js` has **no `manualChunks`** — it used to, and it forced `convex` and `better-auth` into the entry's `modulepreload` list so every anonymous visitor downloaded them. Rollup's automatic splitting follows the real dynamic-import graph instead; don't reintroduce `manualChunks` without re-checking `dist/index.html`.
+
+The landing page loads only the entry chunk (~234 kB raw / ~75 kB gzip: React + react-dom + react-router) plus a ~11 kB `App` chunk. No convex, no better-auth, no framer-motion, no admin. Verify with: `grep modulepreload dist/index.html`.
 
 ## Key Technologies
 
@@ -203,8 +210,8 @@ All routes in `src/main.jsx` are lazy-loaded with `React.lazy()` + `<Suspense>`.
 - **Convex** — Serverless backend with real-time subscriptions
 - **Better-Auth** (`@convex-dev/better-auth`) — Email/password authentication
 - **OpenRouter** — AI API (Claude 3.5 Haiku for travel planning)
-- **Mapbox GL JS** — Interactive maps and geocoding
-- **Framer Motion** — Animations
+- **Mapbox GL JS** — Interactive maps and geocoding (mobile app only; `mapbox-gl` was removed from the website's dependencies 2026-08-29)
+- **Framer Motion** — Animations (website: admin panel only — the landing page uses `useReveal`)
 - **React Router DOM 7** — Client-side routing
 
 ## Environment Variables
@@ -238,9 +245,9 @@ EXPO_PUBLIC_CONVEX_SITE_URL=https://hearty-ram-74.eu-west-1.convex.site
 ```
 
 **CRITICAL — EU region prefix:** The production Convex deployment is in `eu-west-1`. All Convex URLs **must** include the region: `hearty-ram-74.eu-west-1.convex.cloud` (NOT `hearty-ram-74.convex.cloud`). Missing the region causes auth requests to hit the wrong endpoint → 401 errors. This applies to three files:
-- `hasio  mobile app/.env`
-- `hasio  mobile app/.env.local`
-- `hasio  mobile app/eas.json` (in `build.production.env`)
+- `hasio-mobile-app/.env`
+- `hasio-mobile-app/.env.local`
+- `hasio-mobile-app/eas.json` (in `build.production.env`)
 
 **`.env.local` overrides `.env`** in Expo — if both exist, `.env.local` wins. Always keep them in sync or remove `.env.local` if not needed.
 
@@ -255,7 +262,7 @@ EXPO_PUBLIC_CONVEX_SITE_URL=https://hearty-ram-74.eu-west-1.convex.site
 
 ## Mobile App Production Patterns
 
-The mobile app (`hasio  mobile app/`) includes these reliability features:
+The mobile app (`hasio-mobile-app/`) includes these reliability features:
 
 - **Error Boundary**: `components/ErrorBoundary.tsx` wraps root layout. Class component, reads language from Zustand outside React tree (`useAppStore.getState().language`). Bilingual fallback UI with retry button.
 - **Search Debounce**: `hooks/useDebounce.ts` (300ms default). Used in `HomeScreenContent.tsx` — raw query drives the input, debounced query drives filtering.
@@ -281,7 +288,7 @@ Algeria, Australia, Bahrain, Kuwait, Oman, Qatar, Saudi Arabia, United Arab Emir
 
 ### EAS Build & Submit
 ```bash
-cd "hasio  mobile app"
+cd "hasio-mobile-app"
 npx eas build -p android --profile production   # Builds AAB, auto-increments versionCode
 npx eas submit -p android --profile production   # Uploads to Play Store (track set in eas.json)
 npx eas update --channel production --message "description"  # OTA update (JS-only, no review)

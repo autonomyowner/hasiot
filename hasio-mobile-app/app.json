@@ -1,0 +1,89 @@
+{
+  "expo": {
+    "name": "Hasio",
+    "slug": "hasio",
+    "version": "1.0.2",
+    "orientation": "portrait",
+    "scheme": "hasio",
+    "icon": "./assets/IconKitchen-Output/android/play_store_512.png",
+    "userInterfaceStyle": "automatic",
+    "sdkVersion": "54.0.0",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.hasio.travel",
+      "userInterfaceStyle": "light",
+      "buildNumber": "6",
+      "icon": "./assets/icon-ios-1024.png",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": false
+        }
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/IconKitchen-Output/android/play_store_512.png",
+        "backgroundColor": "#F5A623"
+      },
+      "package": "com.hasio.travel",
+      "versionCode": 12,
+      "permissions": []
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static",
+      "favicon": "./assets/IconKitchen-Output/web/icon-192.png"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/8859775e-cedf-45b7-aa94-3c7cbfb7be12"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Hasio uses your photo library so you can attach pictures to your travel moments, listings, and verification documents.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FAF7F2",
+          "image": "./assets/icon-ios-1024.png",
+          "imageWidth": 200,
+          "resizeMode": "contain"
+        }
+      ],
+      "expo-updates",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0"
+          }
+        }
+      ],
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "owner": "autonomy",
+    "extra": {
+      "eas": {
+        "projectId": "8859775e-cedf-45b7-aa94-3c7cbfb7be12"
+      },
+      "router": {}
+    }
+  }
+}

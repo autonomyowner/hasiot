@@ -1,0 +1,590 @@
+import { appAlert } from "@/stores/dialogStore";
+import { AppDialogHost } from "@/components/ui/AppDialog";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Pressable,
+  Modal,
+  TextInput,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
+import * as ImagePicker from "expo-image-picker";
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+import { useLanguage } from "@/hooks/useLanguage";
+import { useConvexUser } from "@/hooks/useConvexUser";
+import { useMoments } from "@/hooks/useMoments";
+import { MomentCard } from "@/components/moments/MomentCard";
+import { Button, SkeletonFade, SkeletonMomentsGrid } from "@/components/ui";
+import { colors, fonts } from "@/constants/colors";
+import { TAB_BAR_CLEARANCE } from "@/constants/layout";
+import { generatedImages } from "@/assets/images/generated";
+import { Image } from "expo-image";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+export function MomentsScreenContent() {
+  const insets = useSafeAreaInsets();
+  const { t, isRTL } = useLanguage();
+
+  const { userId, isLoaded } = useConvexUser();
+
+  return <UserMomentsView insets={insets} t={t} isRTL={isRTL} userId={userId} isAuthLoaded={isLoaded} />;
+}
+
+// ============================================
+// USER MOMENTS VIEW - Personal Moments
+// ============================================
+interface UserMomentsViewProps {
+  insets: any;
+  t: (key: any) => string;
+  isRTL: boolean;
+  userId: string | null;
+  isAuthLoaded: boolean;
+}
+
+function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMomentsViewProps) {
+  const { moments, isLoading, addMoment, deleteMoment } = useMoments(userId);
+  const mountedRef = useRef(true);
+
+  const [modalVisible, setModalVisible] = useState(false);
+  const {
+    ref: keyboardRef,
+    overlap: keyboardOverlap,
+    onLayout: keyboardOnLayout,
+  } = useKeyboardOverlap();
+  const [newMomentImage, setNewMomentImage] = useState<string | null>(null);
+  const [newMomentNote, setNewMomentNote] = useState("");
+  const [newMomentLocation, setNewMomentLocation] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [viewingMoment, setViewingMoment] = useState<{ image: string | null; note?: string; location?: string; timestamp: string } | null>(null);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setNewMomentImage(result.assets[0].uri);
+    }
+  };
+
+  const handleAddMoment = async () => {
+    if (!newMomentImage || isSaving) return;
+
+    setIsSaving(true);
+
+    const success = await addMoment(
+      newMomentImage,
+      newMomentNote || undefined,
+      newMomentLocation || undefined
+    );
+
+    if (!mountedRef.current) return;
+
+    setIsSaving(false);
+
+    if (success) {
+      setModalVisible(false);
+      setNewMomentImage(null);
+      setNewMomentNote("");
+      setNewMomentLocation("");
+    } else {
+      appAlert(t("error"), t("momentSaveError"));
+    }
+  };
+
+  const handleDeleteMoment = async (id: string) => {
+    appAlert(
+      t("delete"),
+      t("deleteMomentConfirm"),
+      [
+        { text: t("cancel"), style: "cancel" },
+        {
+          text: t("delete"),
+          style: "destructive",
+          onPress: async () => {
+            const ok = await deleteMoment(id);
+            if (!ok && mountedRef.current) {
+              appAlert(t("error"), t("pleaseTryAgain"));
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // No per-card entrance: the grid cross-fades in from its skeleton, and a
+  // card sliding up under a stationary placeholder reads as a stumble.
+  const renderItem = ({ item }: { item: any }) => (
+    <View style={styles.cardWrapper}>
+      <MomentCard
+        moment={{
+          id: item.id,
+          image: item.image_url,
+          note: item.note || "",
+          location: item.location || undefined,
+          timestamp: item.created_at,
+        }}
+        isRTL={isRTL}
+        onPress={() => setViewingMoment({
+          image: item.image_url,
+          note: item.note || undefined,
+          location: item.location || undefined,
+          timestamp: item.created_at,
+        })}
+        onDelete={() => handleDeleteMoment(item.id)}
+      />
+    </View>
+  );
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Header */}
+      <Animated.View
+        entering={FadeInDown.delay(100).duration(600)}
+        style={[styles.header, isRTL && styles.headerRTL]}
+      >
+        <Text style={[styles.title, isRTL && styles.textRTL]}>
+          {t("myMoments")}
+        </Text>
+        {userId && <AddButton onPress={() => setModalVisible(true)} />}
+      </Animated.View>
+
+      {/* The Mine/Community segmented control lived here. Community moments are
+          not built, and a tab whose only content is "coming soon" reads as an
+          unfinished feature at App Review. Restore it with the feature. */}
+
+      {/* Not logged in */}
+      {isAuthLoaded && !userId ? (
+        <View style={styles.emptyState}>
+          <Text style={[styles.emptyTitle, isRTL && styles.textRTL]}>
+            {t("myMoments")}
+          </Text>
+          <Text style={[styles.emptyMessage, isRTL && styles.textRTL]}>
+            {isRTL ? "سجل دخولك لحفظ لحظاتك" : "Sign in to save your moments"}
+          </Text>
+        </View>
+      ) : (
+        <SkeletonFade
+          fill
+          loading={isLoading && moments.length === 0}
+          skeleton={<SkeletonMomentsGrid isRTL={isRTL} />}
+        >
+          {moments.length > 0 ? (
+            <FlatList
+              data={moments}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              numColumns={2}
+              columnWrapperStyle={styles.row}
+              contentContainerStyle={[
+                styles.listContent,
+                { paddingBottom: TAB_BAR_CLEARANCE + insets.bottom },
+              ]}
+              showsVerticalScrollIndicator={false}
+              // No RefreshControl: the Convex query is a live subscription, so
+              // the grid is already current and a pull would only ever appear
+              // to do something.
+            />
+          ) : (
+            <View style={styles.emptyState}>
+              <Image
+                source={generatedImages.emptyMoments}
+                style={styles.emptyImage}
+                contentFit="contain"
+                transition={200}
+              />
+              <Text style={[styles.emptyTitle, isRTL && styles.textRTL]}>
+                {t("emptyMomentsTitle")}
+              </Text>
+              <Text style={[styles.emptyMessage, isRTL && styles.textRTL]}>
+                {t("emptyMomentsMessage")}
+              </Text>
+              <Button
+                title={t("emptyMomentsAction")}
+                onPress={() => setModalVisible(true)}
+                style={styles.emptyButton}
+              />
+            </View>
+          )}
+        </SkeletonFade>
+      )}
+
+      {/* Image Viewer Modal */}
+      <Modal
+        visible={!!viewingMoment}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setViewingMoment(null)}
+      >
+        <Pressable style={styles.viewerOverlay} onPress={() => setViewingMoment(null)}>
+          <View style={[styles.viewerHeader, { paddingTop: insets.top + 8 }]}>
+            <Pressable
+              onPress={() => setViewingMoment(null)}
+              style={styles.viewerClose}
+              hitSlop={8}
+            >
+              <Text style={styles.viewerCloseText}>✕</Text>
+            </Pressable>
+          </View>
+          {viewingMoment && (
+            <View style={[styles.viewerContent, { paddingBottom: insets.bottom }]}>
+              {viewingMoment.image && (
+                <Animated.Image
+                  source={{ uri: viewingMoment.image }}
+                  style={styles.viewerImage}
+                  resizeMode="contain"
+                />
+              )}
+              {(viewingMoment.note || viewingMoment.location) && (
+                <View style={styles.viewerInfo}>
+                  {viewingMoment.note && (
+                    <Text style={[styles.viewerNote, isRTL && styles.textRTL]}>{viewingMoment.note}</Text>
+                  )}
+                  {viewingMoment.location && (
+                    <Text style={[styles.viewerLocation, isRTL && styles.textRTL]}>{viewingMoment.location}</Text>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+        </Pressable>
+      </Modal>
+
+      {/* Add Moment Modal */}
+      <Modal
+        visible={modalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View
+            ref={keyboardRef}
+            onLayout={keyboardOnLayout}
+            style={[
+              styles.modalContent,
+              {
+                paddingBottom:
+                  keyboardOverlap > 0 ? keyboardOverlap + 20 : insets.bottom + 20,
+              },
+            ]}
+          >
+            <View style={[styles.modalHeader, isRTL && styles.modalHeaderRTL]}>
+              <Text style={[styles.modalTitle, isRTL && styles.textRTL]}>
+                {t("addMoment")}
+              </Text>
+              <Pressable onPress={() => setModalVisible(false)} disabled={isSaving}>
+                <Text style={styles.cancelText}>{t("cancel")}</Text>
+              </Pressable>
+            </View>
+
+            <Pressable style={styles.imagePicker} onPress={pickImage} disabled={isSaving}>
+              {newMomentImage ? (
+                <Animated.Image
+                  source={{ uri: newMomentImage }}
+                  style={styles.previewImage}
+                />
+              ) : (
+                <Text style={styles.imagePickerText}>{t("selectPhoto")}</Text>
+              )}
+            </Pressable>
+
+            <TextInput
+              style={[styles.input, isRTL && styles.inputRTL]}
+              placeholder={t("writeNote")}
+              placeholderTextColor="#A3A3A3"
+              value={newMomentNote}
+              onChangeText={setNewMomentNote}
+              multiline
+              numberOfLines={3}
+              textAlign={isRTL ? "right" : "left"}
+              editable={!isSaving}
+            />
+
+            <TextInput
+              style={[styles.input, isRTL && styles.inputRTL]}
+              placeholder={t("addLocation")}
+              placeholderTextColor="#A3A3A3"
+              value={newMomentLocation}
+              onChangeText={setNewMomentLocation}
+              textAlign={isRTL ? "right" : "left"}
+              editable={!isSaving}
+            />
+
+            <Button
+              title={isSaving ? t("saving") : t("save")}
+              onPress={handleAddMoment}
+              fullWidth
+              disabled={!newMomentImage || isSaving}
+            />
+          </View>
+        </KeyboardAvoidingView>
+        {/* Alerts fired while this modal is open render above it. */}
+        <AppDialogHost />
+      </Modal>
+    </View>
+  );
+}
+
+// ============================================
+// SHARED COMPONENTS
+// ============================================
+interface AddButtonProps {
+  onPress: () => void;
+}
+
+function AddButton({ onPress }: AddButtonProps) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.95, { damping: 15, stiffness: 400 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+  };
+
+  return (
+    <AnimatedPressable
+      style={[styles.addButton, animatedStyle]}
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+    >
+      <Text style={styles.addButtonText}>+</Text>
+    </AnimatedPressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 16,
+  },
+  headerRTL: {
+    flexDirection: "row-reverse",
+  },
+  title: {
+    fontFamily: fonts.serif,
+    fontSize: 34,
+    color: colors.ink,
+    letterSpacing: -0.5,
+  },
+  textRTL: {
+    textAlign: "right",
+  },
+  addButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: colors.primary.DEFAULT,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: colors.primary.DEFAULT,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  addButtonText: {
+    fontFamily: fonts.regular,
+    color: "#FFFFFF",
+    fontSize: 24,
+    lineHeight: 28,
+  },
+  // List
+  listContent: {
+    paddingHorizontal: 24,
+  },
+  // Moments
+  row: {
+    justifyContent: "space-between",
+  },
+  cardWrapper: {
+    marginBottom: 0,
+  },
+  // States
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 40,
+  },
+  emptyImage: {
+    width: 150,
+    height: 150,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontFamily: fonts.serif,
+    fontSize: 24,
+    color: colors.ink,
+    marginBottom: 8,
+  },
+  emptyMessage: {
+    fontFamily: fonts.medium,
+    fontSize: 15,
+    color: colors.onSurface.variant,
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  emptyButton: {
+    paddingHorizontal: 32,
+  },
+  // Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: colors.surface.DEFAULT,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalHeaderRTL: {
+    flexDirection: "row-reverse",
+  },
+  modalTitle: {
+    fontFamily: fonts.serif,
+    fontSize: 24,
+    color: colors.ink,
+  },
+  cancelText: {
+    fontFamily: fonts.medium,
+    fontSize: 16,
+    color: colors.onSurface.variant,
+  },
+  imagePicker: {
+    width: "100%",
+    aspectRatio: 1,
+    backgroundColor: colors.surface.variant,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  imagePickerText: {
+    fontFamily: fonts.medium,
+    fontSize: 16,
+    color: colors.onSurface.variant,
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+  },
+  input: {
+    fontFamily: fonts.regular,
+    backgroundColor: colors.surface.variant,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 15,
+    color: colors.ink,
+    marginBottom: 12,
+  },
+  inputRTL: {
+    writingDirection: "rtl",
+  },
+  // Image Viewer
+  viewerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.95)",
+    justifyContent: "center",
+  },
+  viewerHeader: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    left: 0,
+    zIndex: 10,
+    alignItems: "flex-end",
+    paddingHorizontal: 16,
+  },
+  viewerClose: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  viewerCloseText: {
+    fontFamily: fonts.regular,
+    color: "#FFFFFF",
+    fontSize: 18,
+  },
+  viewerContent: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  viewerImage: {
+    width: "100%",
+    height: "70%",
+  },
+  viewerInfo: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    alignItems: "center",
+  },
+  viewerNote: {
+    fontFamily: fonts.regular,
+    color: "#FFFFFF",
+    fontSize: 16,
+    lineHeight: 22,
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  viewerLocation: {
+    fontFamily: fonts.medium,
+    color: "rgba(255, 255, 255, 0.6)",
+    fontSize: 14,
+  },
+});

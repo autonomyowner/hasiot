@@ -1,142 +1,26 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Download Hasio APK - Saudi Arabia Travel Guide</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: #FAF7F2;
-            color: #333;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        .card {
-            background: #fff;
-            border-radius: 24px;
-            padding: 48px 40px;
-            max-width: 480px;
-            width: 100%;
-            text-align: center;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.08);
-        }
-        .logo {
-            font-size: 3rem;
-            font-weight: 800;
-            color: #0D7A5F;
-            margin-bottom: 4px;
-            letter-spacing: -1px;
-        }
-        .tagline {
-            color: #6B7280;
-            font-size: 0.95rem;
-            margin-bottom: 32px;
-        }
-        .version {
-            display: inline-block;
-            background: #ECFDF5;
-            color: #0D7A5F;
-            padding: 4px 14px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin-bottom: 24px;
-        }
-        .download-btn {
-            display: block;
-            background: #0D7A5F;
-            color: #fff;
-            text-decoration: none;
-            padding: 18px 32px;
-            border-radius: 16px;
-            font-size: 1.15rem;
-            font-weight: 700;
-            margin: 0 auto 16px;
-            transition: transform 0.15s, box-shadow 0.15s;
-            box-shadow: 0 4px 16px rgba(13, 122, 95, 0.3);
-        }
-        .download-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 24px rgba(13, 122, 95, 0.4);
-        }
-        .download-btn:active { transform: translateY(0); }
-        .size { color: #9CA3AF; font-size: 0.85rem; margin-bottom: 32px; }
-        .steps {
-            text-align: left;
-            background: #F9FAFB;
-            border-radius: 16px;
-            padding: 20px 24px;
-            margin-bottom: 24px;
-        }
-        .steps h3 {
-            color: #0D7A5F;
-            font-size: 0.9rem;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .steps ol {
-            margin-left: 18px;
-            color: #4B5563;
-            font-size: 0.9rem;
-            line-height: 1.8;
-        }
-        .footer {
-            color: #9CA3AF;
-            font-size: 0.8rem;
-            margin-top: 8px;
-        }
-        .footer a { color: #0D7A5F; text-decoration: none; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Get Hasio</title>
+  <meta name="robots" content="noindex" />
+  <!-- This page used to hand out a sideload APK from an Expo artifact URL that
+       had to be re-pasted after every build. Hasio now ships on both stores, so
+       the URL is kept alive only to forward old links to the download section. -->
+  <meta http-equiv="refresh" content="0; url=/#download" />
+  <link rel="canonical" href="https://www.hasio.xyz/" />
+  <style>
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f3f0e7;color:#17241d;
+         font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center;padding:24px}
+    a{color:#183b2b}
+  </style>
 </head>
 <body>
-    <div class="card">
-        <div class="logo">Hasio</div>
-        <p class="tagline">Saudi Arabia Travel Guide</p>
-        <div class="version">v1.0.0 Beta</div>
-
-        <a id="downloadBtn" class="download-btn" href="#">
-            Download APK for Android
-        </a>
-        <p class="size" id="sizeText">Loading build info...</p>
-
-        <div class="steps">
-            <h3>How to install</h3>
-            <ol>
-                <li>Tap "Download APK" above</li>
-                <li>Open the downloaded .apk file</li>
-                <li>If prompted, allow "Install from unknown sources"</li>
-                <li>Tap "Install" and open the app</li>
-            </ol>
-        </div>
-
-        <p class="footer">
-            <a href="/">Back to Hasio</a> &middot;
-            <a href="/privacy-policy.html">Privacy Policy</a>
-        </p>
-    </div>
-
-    <script>
-        // APK download URL - update this after each build
-        const APK_URL = "https://expo.dev/artifacts/eas/aYhDKCHaAa7h2YqThQmrdu.apk";
-
-        const btn = document.getElementById('downloadBtn');
-        const sizeText = document.getElementById('sizeText');
-
-        if (APK_URL === "APK_URL_PLACEHOLDER") {
-            btn.style.background = '#9CA3AF';
-            btn.style.cursor = 'not-allowed';
-            btn.textContent = 'Build in progress...';
-            sizeText.textContent = 'APK is being built. Check back in a few minutes.';
-        } else {
-            btn.href = APK_URL;
-            sizeText.textContent = 'Android 8.0+ required (~30 MB)';
-        }
-    </script>
+  <div>
+    <p>Hasio is on the App Store and Google Play.</p>
+    <p><a href="/#download">Continue to the download page</a></p>
+  </div>
+  <script>location.replace('/#download')</script>
 </body>
 </html>

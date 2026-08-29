@@ -250,6 +250,16 @@ export const deleteMyAccount = mutation({
       await ctx.db.delete(review._id);
     }
 
+    // Delete user's moments, and the stored image behind each one
+    const moments = await ctx.db
+      .query("moments")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+    for (const moment of moments) {
+      await ctx.storage.delete(moment.storageId);
+      await ctx.db.delete(moment._id);
+    }
+
     // Delete uploaded business document from storage
     if (user.cvFileId) {
       await ctx.storage.delete(user.cvFileId);
