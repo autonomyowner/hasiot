@@ -1,77 +1,49 @@
-import { useEffect, useRef } from 'react'
-import { motion } from 'framer-motion'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../ui/dialog'
 
 /**
- * The panel's one modal shell. Every dialog used to hand-roll the overlay, the
- * stopPropagation and the framer transitions, which is why some of them closed
- * on Escape and some did not.
+ * The panel's one dialog shell, now Radix underneath.
  *
- * Render it inside an <AnimatePresence> so the exit animation runs:
- *   <AnimatePresence>{open && <Modal …>…</Modal>}</AnimatePresence>
+ * Radix handles the things the hand-rolled version got wrong or had to
+ * re-implement per dialog: focus moves to the first field and is trapped,
+ * Escape and outside-click close it, the page behind is inert and does not
+ * scroll, and the whole thing is announced correctly.
+ *
+ * Callers mount it conditionally, so it is always `open` while rendered.
  */
 export default function Modal({ title, subtitle, onClose, children, footer, width = '640px' }) {
-  const cardRef = useRef(null)
-
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') onClose?.()
-    }
-    document.addEventListener('keydown', onKeyDown)
-
-    // Stop the page behind the overlay from scrolling with the dialog open.
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-
-    // Move focus into the dialog, but to its first field rather than to the card
-    // itself: focusing the card stole focus from an `autoFocus` textarea, so an
-    // operator who opened the reject dialog and started typing had their
-    // keystrokes go nowhere — and their spaces scroll the page — until they
-    // clicked the box. Fall back to the card only when there is nothing to type
-    // into, so a plain confirm dialog still traps focus.
-    const card = cardRef.current
-    const field = card?.querySelector(
-      'textarea, input:not([type="hidden"]), select, [autofocus]'
-    )
-    ;(field || card)?.focus()
-
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      document.body.style.overflow = previousOverflow
-    }
-  }, [onClose])
-
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="admin-modal-overlay"
-      onClick={onClose}
-      role="presentation"
-    >
-      <motion.div
-        ref={cardRef}
-        initial={{ scale: 0.96, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.96, opacity: 0 }}
-        transition={{ duration: 0.16 }}
-        className="admin-modal"
+    <Dialog open onOpenChange={(open) => { if (!open) onClose?.() }}>
+      <DialogContent
+        dir="rtl"
+        className="text-start max-h-[90vh] gap-0 overflow-hidden p-0"
         style={{ maxWidth: width }}
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        tabIndex={-1}
       >
-        {title && (
-          <div className="admin-modal-header">
-            <h3 className="admin-modal-title">{title}</h3>
-            {subtitle && <p className="admin-modal-subtitle">{subtitle}</p>}
-          </div>
+        <DialogHeader className="px-6 pt-6 pb-3">
+          <DialogTitle>{title}</DialogTitle>
+          {subtitle
+            ? <DialogDescription>{subtitle}</DialogDescription>
+            /* Radix warns when a dialog has no description; this keeps the
+               a11y tree correct for dialogs that genuinely have no subtitle. */
+            : <DialogDescription className="sr-only">{title}</DialogDescription>}
+        </DialogHeader>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {children}
+        </div>
+
+        {footer && (
+          <DialogFooter className="border-t bg-muted/40 px-6 py-4">
+            {footer}
+          </DialogFooter>
         )}
-        {children}
-        {footer && <div className="admin-modal-footer">{footer}</div>}
-      </motion.div>
-    </motion.div>
+      </DialogContent>
+    </Dialog>
   )
 }

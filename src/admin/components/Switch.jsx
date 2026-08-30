@@ -1,26 +1,25 @@
+import { Switch as ShadSwitch } from '../ui/switch'
+
 /**
- * An on/off switch.
- *
- * A real `role="switch"` button rather than a styled checkbox, so screen readers
- * announce the state and the whole control is one tab stop. The label is always
- * rendered beside it: the panel never lets colour or position be the only thing
- * carrying meaning.
+ * Visibility toggle. Radix's Switch underneath, so it is a real `role="switch"`
+ * with keyboard support; the written label stays beside it because the panel
+ * never lets colour or position be the only thing carrying meaning.
  */
 export default function Switch({ checked, onChange, disabled, busy, label, onLabel, offLabel }) {
   return (
-    <span className="ar-switch-wrap">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
+    <span className="inline-flex items-center gap-2">
+      <ShadSwitch
+        checked={checked}
+        onCheckedChange={onChange}
         disabled={disabled || busy}
-        onClick={() => onChange(!checked)}
-        className={`ar-switch ${checked ? 'on' : 'off'} ${busy ? 'busy' : ''}`}
+        aria-label={label}
+        className="data-[state=checked]:bg-primary"
+      />
+      <span
+        className={`text-xs font-semibold whitespace-nowrap ${
+          checked ? 'text-primary' : 'text-muted-foreground'
+        }`}
       >
-        <span className="ar-switch-thumb" />
-      </button>
-      <span className={`ar-switch-label ${checked ? 'on' : 'off'}`}>
         {busy ? '...' : checked ? onLabel : offLabel}
       </span>
     </span>

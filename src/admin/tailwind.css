@@ -1,0 +1,101 @@
+/* ==========================================================================
+   Tailwind + shadcn theme for the admin panel.
+   --------------------------------------------------------------------------
+   Deliberately imported from AdminPage.jsx and nowhere else. AdminPage is a
+   lazy route, so Tailwind's output — preflight included — lands in the admin
+   chunk and never reaches the public landing page. `@source` keeps the scan to
+   this directory for the same reason: the landing page is plain CSS and must
+   stay that way.
+
+   The palette is Hasio's, not shadcn's defaults: green #0D7A5F is the brand and
+   the panel sits on warm sand, so the neutrals are warm rather than zinc.
+   ========================================================================== */
+
+@import "tailwindcss";
+@source "./";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.875rem;
+
+  /* Warm ivory ground, white cards. */
+  --background: oklch(0.98 0.006 95);
+  --foreground: oklch(0.24 0.012 160);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.24 0.012 160);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.24 0.012 160);
+
+  /* Hasio green #0D7A5F. */
+  --primary: oklch(0.48 0.085 168);
+  --primary-foreground: oklch(0.99 0.005 95);
+
+  --secondary: oklch(0.96 0.008 95);
+  --secondary-foreground: oklch(0.28 0.012 160);
+
+  --muted: oklch(0.96 0.008 95);
+  --muted-foreground: oklch(0.52 0.014 160);
+
+  --accent: oklch(0.95 0.012 95);
+  --accent-foreground: oklch(0.28 0.012 160);
+
+  /* Gold #D4AF37 — the reference's yellow role, kept as a real token so badges
+     and the dark card do not reach for a hex. */
+  --gold: oklch(0.75 0.12 87);
+  --gold-foreground: oklch(0.24 0.012 160);
+
+  --destructive: oklch(0.55 0.19 27);
+  --destructive-foreground: oklch(0.99 0.005 95);
+
+  --border: oklch(0.9 0.008 95);
+  --input: oklch(0.9 0.008 95);
+  --ring: oklch(0.48 0.085 168);
+
+  /* The near-black used by the active nav pill, the dark card and the primary
+     task row. */
+  --ink: oklch(0.22 0.006 160);
+  --ink-foreground: oklch(0.96 0.006 95);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
+  --color-ink: var(--ink);
+  --color-ink-foreground: var(--ink-foreground);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.9);
+
+  /* Cairo is the only face in this panel with Arabic glyphs. */
+  --font-sans: "Cairo", "Outfit", system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/40;
+  }
+}
