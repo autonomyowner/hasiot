@@ -57,9 +57,9 @@ export default function EmailCapturesTab() {
               {emails.map((entry, index) => (
                 <tr key={entry._id}>
                   <td className="admin-table-sub">{index + 1}</td>
-                  <td className="admin-table-name" dir="ltr">{entry.email}</td>
-                  <td><span className="admin-badge gray">{entry.source || '—'}</span></td>
-                  <td className="admin-table-sub">{formatDateTime(entry.createdAt)}</td>
+                  <td data-label="البريد الإلكتروني" className="admin-table-name" dir="ltr">{entry.email}</td>
+                  <td data-label="المصدر"><span className="admin-badge gray">{entry.source || '—'}</span></td>
+                  <td data-label="التاريخ" className="admin-table-sub">{formatDateTime(entry.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

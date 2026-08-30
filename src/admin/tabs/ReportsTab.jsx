@@ -117,7 +117,7 @@ export default function ReportsTab() {
             <tbody>
               {reports.map((report) => (
                 <tr key={report._id} className={busyId === report._id ? 'is-busy' : ''}>
-                  <td>
+                  <td data-label="المحتوى">
                     {report.target ? (
                       <>
                         <div className="admin-table-name">{report.target.title || '—'}</div>
@@ -130,10 +130,10 @@ export default function ReportsTab() {
                       <span className="admin-badge gray">المحتوى محذوف</span>
                     )}
                   </td>
-                  <td>{REPORT_TARGET_TYPES_AR[report.targetType] || report.targetType}</td>
-                  <td>{REPORT_REASONS_AR[report.reason] || report.reason}</td>
-                  <td style={{ maxWidth: '240px', whiteSpace: 'pre-wrap' }}>{report.details || '—'}</td>
-                  <td>
+                  <td data-label="النوع">{REPORT_TARGET_TYPES_AR[report.targetType] || report.targetType}</td>
+                  <td data-label="السبب">{REPORT_REASONS_AR[report.reason] || report.reason}</td>
+                  <td data-label="التفاصيل" style={{ maxWidth: '240px', whiteSpace: 'pre-wrap' }}>{report.details || '—'}</td>
+                  <td data-label="المُبلِّغ">
                     {report.reporter ? (
                       <>
                         <div className="admin-table-name">
@@ -145,7 +145,7 @@ export default function ReportsTab() {
                       <span className="admin-table-sub">—</span>
                     )}
                   </td>
-                  <td>{formatDate(report.createdAt)}</td>
+                  <td data-label="التاريخ">{formatDate(report.createdAt)}</td>
                   <td>
                     {report.status === 'pending' ? (
                       <div className="admin-actions">

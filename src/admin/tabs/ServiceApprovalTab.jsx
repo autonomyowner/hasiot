@@ -179,18 +179,18 @@ export default function ServiceApprovalTab() {
                         aria-label={`تحديد ${service.title_ar}`}
                       />
                     </td>
-                    <td>
+                    <td data-label="العنوان">
                       <div className="admin-table-name">{service.title_ar}</div>
                       <div className="admin-table-sub" dir="ltr">{service.title_en}</div>
                     </td>
-                    <td>{SERVICE_TYPE_LABELS[service.serviceType] || service.serviceType}</td>
-                    <td>
+                    <td data-label="نوع الخدمة">{SERVICE_TYPE_LABELS[service.serviceType] || service.serviceType}</td>
+                    <td data-label="مقدم الخدمة">
                       <div className="admin-table-name">{service.ownerName || '—'}</div>
                       <div className="admin-table-sub" dir="ltr">{service.ownerEmail}</div>
                     </td>
-                    <td>{service.city ? cityLabel(service.city) : '—'}</td>
-                    <td dir="ltr">{service.priceRange || '—'}</td>
-                    <td>{formatDate(service.createdAt)}</td>
+                    <td data-label="المدينة">{service.city ? cityLabel(service.city) : '—'}</td>
+                    <td data-label="السعر" dir="ltr">{service.priceRange || '—'}</td>
+                    <td data-label="تاريخ الإرسال">{formatDate(service.createdAt)}</td>
                     <td>
                       <div className="admin-actions">
                         <button

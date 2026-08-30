@@ -242,20 +242,20 @@ export default function ListingsTab({ initialFilters }) {
                         <span className="admin-row-thumb empty" title="لا توجد صور">—</span>
                       )}
                     </td>
-                    <td>
+                    <td data-label="الاسم">
                       <div className="admin-table-name">{listing.name_ar}</div>
                       <div className="admin-table-sub" dir="ltr">{listing.name_en}</div>
                     </td>
-                    <td>{TYPE_LABELS[listing.type] || listing.type}</td>
-                    <td>{cityLabel(listing.city)}</td>
-                    <td>
+                    <td data-label="النوع">{TYPE_LABELS[listing.type] || listing.type}</td>
+                    <td data-label="المدينة">{cityLabel(listing.city)}</td>
+                    <td data-label="الحالة">
                       <span className={`admin-badge ${listing.isActive !== false ? 'green' : 'gray'}`}>
                         {listing.isActive !== false ? 'نشط' : 'غير نشط'}
                       </span>
                       {listing.isVerified && <span className="admin-badge blue">موثق</span>}
                     </td>
-                    <td><ReviewBadge status={listing.status} /></td>
-                    <td>
+                    <td data-label="المراجعة"><ReviewBadge status={listing.status} /></td>
+                    <td data-label="أوقات العمل">
                       {listing.workingHours?.length ? (
                         <span className="admin-badge green">محددة</span>
                       ) : (

@@ -155,14 +155,14 @@ export default function BookingsTab() {
                 <tbody>
                   {section.rows.map((booking) => (
                     <tr key={booking._id} className={busyId === booking._id ? 'is-busy' : ''}>
-                      <td>
+                      <td data-label="السائح">
                         <div className="admin-table-name">{booking.userName}</div>
                         <div className="admin-table-sub" dir="ltr">{booking.userEmail}</div>
                         {booking.userPhone && (
                           <div className="admin-table-sub" dir="ltr">{booking.userPhone}</div>
                         )}
                       </td>
-                      <td>
+                      <td data-label="المكان">
                         <div className="admin-table-name">{booking.listingName_ar}</div>
                         <div className="admin-table-sub" dir="ltr">{booking.listingName}</div>
                         {booking.listingPhone && (
@@ -174,11 +174,11 @@ export default function BookingsTab() {
                           </span>
                         )}
                       </td>
-                      <td>
+                      <td data-label="الموعد">
                         <div className="admin-table-name" dir="ltr">{booking.date}</div>
                         <div className="admin-table-sub" dir="ltr">{booking.time}</div>
                       </td>
-                      <td>
+                      <td data-label="التفاصيل">
                         {booking.partySize ? <div>{booking.partySize} أشخاص</div> : null}
                         {booking.notes && <div className="admin-table-sub">{booking.notes}</div>}
                         {booking.cancellationReason && (
@@ -186,7 +186,7 @@ export default function BookingsTab() {
                         )}
                         {!booking.partySize && !booking.notes && !booking.cancellationReason && '—'}
                       </td>
-                      <td>
+                      <td data-label="الحالة">
                         <span className={`admin-badge ${BOOKING_STATUS_COLORS[booking.status] || 'gray'}`}>
                           {BOOKING_STATUS_LABELS[booking.status] || booking.status}
                         </span>

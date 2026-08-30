@@ -140,18 +140,18 @@ export default function PendingBusinessesTab() {
                         aria-label={`تحديد ${displayName(user)}`}
                       />
                     </td>
-                    <td className="admin-table-name">{displayName(user)}</td>
-                    <td dir="ltr">{user.email}</td>
-                    <td>{ROLE_LABELS[user.role] || user.role}</td>
-                    <td>{user.businessType || '—'}</td>
-                    <td>
+                    <td data-label="الاسم" className="admin-table-name">{displayName(user)}</td>
+                    <td data-label="البريد الإلكتروني" dir="ltr">{user.email}</td>
+                    <td data-label="الدور">{ROLE_LABELS[user.role] || user.role}</td>
+                    <td data-label="نوع النشاط">{user.businessType || '—'}</td>
+                    <td data-label="وثيقة العمل">
                       {user.cvFileId ? (
                         <BusinessDocLink fileId={user.cvFileId} />
                       ) : (
                         <span className="admin-badge yellow">لم تُرفع بعد</span>
                       )}
                     </td>
-                    <td>{formatDate(user.createdAt)}</td>
+                    <td data-label="تاريخ التسجيل">{formatDate(user.createdAt)}</td>
                     <td>
                       <button
                         className="admin-btn admin-btn-primary admin-btn-small"

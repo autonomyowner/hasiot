@@ -133,23 +133,23 @@ export default function ActivityTab() {
               <tbody>
                 {log.results.map((row) => (
                   <tr key={row._id}>
-                    <td title={formatDateTime(row.createdAt)}>
+                    <td data-label="الوقت" title={formatDateTime(row.createdAt)}>
                       <div className="admin-table-name">{formatRelative(row.createdAt)}</div>
                       <div className="admin-table-sub">{formatDateTime(row.createdAt)}</div>
                     </td>
-                    <td>
+                    <td data-label="الإجراء">
                       <span className={`admin-badge ${TONE[row.action] || 'blue'}`}>
                         {ACTION_LABELS[row.action] || row.action}
                       </span>
                     </td>
-                    <td>
+                    <td data-label="العنصر">
                       <div className="admin-table-name">{row.summary || '—'}</div>
                       <div className="admin-table-sub">
                         {TARGET_LABELS[row.targetType] || row.targetType}
                       </div>
                     </td>
-                    <td className="admin-table-sub" dir="ltr">{row.adminEmail}</td>
-                    <td className="admin-table-sub">{row.details || '—'}</td>
+                    <td data-label="المدير" className="admin-table-sub" dir="ltr">{row.adminEmail}</td>
+                    <td data-label="ملاحظات" className="admin-table-sub">{row.details || '—'}</td>
                   </tr>
                 ))}
               </tbody>

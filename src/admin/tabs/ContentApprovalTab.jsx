@@ -182,7 +182,7 @@ export default function ContentApprovalTab() {
                         aria-label={`تحديد ${listing.name_ar}`}
                       />
                     </td>
-                    <td>
+                    <td data-label="الاسم">
                       <div className="admin-pending-name">
                         {listing.images?.length ? (
                           <img className="admin-row-thumb" src={listing.images[0]} alt="" loading="lazy" />
@@ -195,13 +195,13 @@ export default function ContentApprovalTab() {
                         </div>
                       </div>
                     </td>
-                    <td>{TYPE_LABELS[listing.type] || listing.type}</td>
-                    <td>{cityLabel(listing.city)}</td>
-                    <td>
+                    <td data-label="النوع">{TYPE_LABELS[listing.type] || listing.type}</td>
+                    <td data-label="المدينة">{cityLabel(listing.city)}</td>
+                    <td data-label="المالك">
                       <div className="admin-table-name">{listing.ownerName || '—'}</div>
                       <div className="admin-table-sub" dir="ltr">{listing.ownerEmail}</div>
                     </td>
-                    <td>{formatDate(listing.createdAt)}</td>
+                    <td data-label="تاريخ الإرسال">{formatDate(listing.createdAt)}</td>
                     <td>
                       <div className="admin-actions">
                         <button

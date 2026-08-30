@@ -56,6 +56,31 @@ export const getDashboardStats = query({
     const today = new Date().toISOString().split("T")[0];
     const inAWeek = new Date(Date.now() + 7 * DAY_MS).toISOString().split("T")[0];
 
+    // Daily buckets for the dashboard's trend charts. Built from the rows
+    // already fetched above by bucketing createdAt, so the charts cost nothing:
+    // no extra query, no extra document read.
+    const TREND_DAYS = 14;
+    const dayKeys: string[] = [];
+    for (let i = TREND_DAYS - 1; i >= 0; i--) {
+      dayKeys.push(new Date(Date.now() - i * DAY_MS).toISOString().split("T")[0]);
+    }
+    const bucket = (rows: { createdAt: number }[]) => {
+      const counts = new Map(dayKeys.map((d) => [d, 0]));
+      for (const row of rows) {
+        const key = new Date(row.createdAt).toISOString().split("T")[0];
+        const current = counts.get(key);
+        if (current !== undefined) counts.set(key, current + 1);
+      }
+      return dayKeys.map((d) => counts.get(d) ?? 0);
+    };
+
+    const trend = {
+      days: dayKeys,
+      listings: bucket(listings),
+      bookings: bucket(bookings),
+      users: bucket(users),
+    };
+
     const pendingBusinesses = users.filter(
       u => (u.role === "business_owner" || u.role === "service_provider") && u.isApproved === false
     ).length;
@@ -94,6 +119,8 @@ export const getDashboardStats = query({
       upcomingBookings: bookings.filter(
         b => b.date >= today && b.date <= inAWeek && b.status !== "cancelled"
       ).length,
+
+      trend,
     };
   },
 });
