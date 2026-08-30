@@ -12,7 +12,7 @@ const App = lazy(() => import('./App.jsx'))
 // Convex + Better-Auth are confined to this layout chunk so they never load for
 // anonymous visitors on /.
 const AuthedLayout = lazy(() => import('./AuthedLayout.jsx'))
-const AdminPage = lazy(() => import('./AdminPage.jsx'))
+const AdminPage = lazy(() => import('./admin/AdminPage.jsx'))
 const SignInPage = lazy(() => import('./pages/SignInPage.jsx'))
 const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage.jsx'))
 

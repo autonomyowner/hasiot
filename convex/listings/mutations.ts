@@ -2,6 +2,7 @@ import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser, requireAdmin } from "../auth";
 import { enforceRateLimit } from "../rateLimit";
+import { logAdminAction, labelFor } from "../admin/activity";
 
 // Create a new listing
 export const createListing = mutation({
@@ -211,7 +212,7 @@ export const saveWorkingHours = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
 
     const listing = await ctx.db.get(args.listingId);
     if (!listing) {
@@ -221,6 +222,13 @@ export const saveWorkingHours = mutation({
     await ctx.db.patch(args.listingId, {
       workingHours: args.workingHours,
       updatedAt: Date.now(),
+    });
+
+    await logAdminAction(ctx, admin, {
+      action: "listing.hours",
+      targetType: "listing",
+      targetId: args.listingId,
+      summary: labelFor(listing),
     });
 
     return { success: true };

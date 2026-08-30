@@ -76,6 +76,12 @@ export default defineSchema({
     .searchIndex("search_listings", {
       searchField: "name_en",
       filterFields: ["type", "category", "city"],
+    })
+    // The admin panel searches by the Arabic name too, and a Convex search index
+    // covers exactly one field. The public app keeps using search_listings.
+    .searchIndex("search_listings_ar", {
+      searchField: "name_ar",
+      filterFields: ["type", "city", "status"],
     }),
 
   // Freelancer services (photographers, drivers, guides, etc.)
@@ -262,6 +268,23 @@ export default defineSchema({
   })
     .index("by_blocker", ["blockerId"])
     .index("by_blocker_and_blocked", ["blockerId", "blockedUserId"]),
+
+  // Admin action log. Every write an admin makes through /admin lands here, so
+  // "who approved this listing, and when" has an answer. Append-only: nothing in
+  // the app or the panel updates or deletes a row.
+  adminActivity: defineTable({
+    adminId: v.id("users"),
+    adminEmail: v.string(),
+    action: v.string(), // "listing.create" | "content.approve" | "booking.cancel" | …
+    targetType: v.string(), // "listing" | "service" | "user" | "booking" | "knowledge" | "report"
+    targetId: v.optional(v.string()), // polymorphic, so stored as a plain string
+    summary: v.optional(v.string()), // human label for the target, e.g. the listing name
+    details: v.optional(v.string()), // e.g. a rejection reason
+    createdAt: v.number(),
+  })
+    .index("by_target", ["targetType", "targetId"])
+    .index("by_admin", ["adminId"])
+    .index("by_action", ["action"]),
 
   // Rate limiting — one row per key (user, session, or global), fixed 24h window
   rateLimits: defineTable({

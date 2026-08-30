@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser, requireAdmin, authComponent, createAuth } from "../auth";
 import { enforceRateLimit } from "../rateLimit";
+import { logAdminAction, labelFor } from "../admin/activity";
 
 // Maximum favorites a single user can hold. Bounds both the user document and
 // the Promise.all fan-out in users/queries.ts:getFavorites.
@@ -160,7 +161,7 @@ export const setUserRole = mutation({
 export const approveBusinessAccount = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
-    await requireAdmin(ctx);
+    const admin = await requireAdmin(ctx);
     const targetUser = await ctx.db.get(args.userId);
     if (!targetUser) {
       throw new Error("User not found");
@@ -173,6 +174,13 @@ export const approveBusinessAccount = mutation({
     await ctx.db.patch(args.userId, {
       isApproved: true,
       updatedAt: Date.now(),
+    });
+
+    await logAdminAction(ctx, admin, {
+      action: "account.approve",
+      targetType: "user",
+      targetId: args.userId,
+      summary: labelFor(targetUser),
     });
 
     return { success: true };

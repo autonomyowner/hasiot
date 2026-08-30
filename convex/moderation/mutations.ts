@@ -2,6 +2,7 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser, requireAdmin } from "../auth";
 import { enforceRateLimit } from "../rateLimit";
+import { logAdminAction } from "../admin/activity";
 
 const VALID_REASONS = ["spam", "inappropriate", "offensive", "fraud", "other"];
 const VALID_TARGET_TYPES = ["listing", "service", "review"];
@@ -123,6 +124,14 @@ export const resolveReport = mutation({
       status: args.status,
       reviewedByAdminId: admin._id,
       reviewedAt: Date.now(),
+    });
+
+    const report = await ctx.db.get(args.reportId);
+    await logAdminAction(ctx, admin, {
+      action: "report." + args.status,
+      targetType: "report",
+      targetId: args.reportId,
+      summary: report ? report.targetType + ": " + report.reason : undefined,
     });
     return { success: true };
   },
