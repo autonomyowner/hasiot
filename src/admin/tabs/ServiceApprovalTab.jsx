@@ -7,6 +7,9 @@ import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
 import { useSelection, describeBulkResult } from '../useSelection'
 import { SERVICE_TYPE_LABELS, cityLabel, formatDate } from '../constants'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '../ui/table'
 
 /** Freelancer services (guides, photographers, drivers) awaiting a decision. */
 export default function ServiceApprovalTab() {
@@ -147,51 +150,50 @@ export default function ServiceApprovalTab() {
             </div>
           )}
 
-          <div className="admin-table-wrapper">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '40px' }}>
+          <Table className="admin-table">
+              <TableHeader>
+                <TableRow>
+                  <TableHead style={{ width: '40px' }}>
                     <input
                       type="checkbox"
                       checked={selection.allSelected}
                       onChange={selection.toggleAll}
                       aria-label="تحديد الكل"
                     />
-                  </th>
-                  <th>العنوان</th>
-                  <th>نوع الخدمة</th>
-                  <th>مقدم الخدمة</th>
-                  <th>المدينة</th>
-                  <th>السعر</th>
-                  <th>تاريخ الإرسال</th>
-                  <th style={{ textAlign: 'left' }}>الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                  <TableHead>العنوان</TableHead>
+                  <TableHead>نوع الخدمة</TableHead>
+                  <TableHead>مقدم الخدمة</TableHead>
+                  <TableHead>المدينة</TableHead>
+                  <TableHead>السعر</TableHead>
+                  <TableHead>تاريخ الإرسال</TableHead>
+                  <TableHead style={{ textAlign: 'left' }}>الإجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {pending.map((service) => (
-                  <tr key={service._id} className={selection.isSelected(service._id) ? 'is-selected' : ''}>
-                    <td>
+                  <TableRow key={service._id} className={selection.isSelected(service._id) ? 'is-selected' : ''}>
+                    <TableCell>
                       <input
                         type="checkbox"
                         checked={selection.isSelected(service._id)}
                         onChange={() => selection.toggle(service._id)}
                         aria-label={`تحديد ${service.title_ar}`}
                       />
-                    </td>
-                    <td data-label="العنوان">
+                    </TableCell>
+                    <TableCell data-label="العنوان">
                       <div className="admin-table-name">{service.title_ar}</div>
                       <div className="admin-table-sub" dir="ltr">{service.title_en}</div>
-                    </td>
-                    <td data-label="نوع الخدمة">{SERVICE_TYPE_LABELS[service.serviceType] || service.serviceType}</td>
-                    <td data-label="مقدم الخدمة">
+                    </TableCell>
+                    <TableCell data-label="نوع الخدمة">{SERVICE_TYPE_LABELS[service.serviceType] || service.serviceType}</TableCell>
+                    <TableCell data-label="مقدم الخدمة">
                       <div className="admin-table-name">{service.ownerName || '—'}</div>
                       <div className="admin-table-sub" dir="ltr">{service.ownerEmail}</div>
-                    </td>
-                    <td data-label="المدينة">{service.city ? cityLabel(service.city) : '—'}</td>
-                    <td data-label="السعر" dir="ltr">{service.priceRange || '—'}</td>
-                    <td data-label="تاريخ الإرسال">{formatDate(service.createdAt)}</td>
-                    <td>
+                    </TableCell>
+                    <TableCell data-label="المدينة">{service.city ? cityLabel(service.city) : '—'}</TableCell>
+                    <TableCell data-label="السعر" dir="ltr">{service.priceRange || '—'}</TableCell>
+                    <TableCell data-label="تاريخ الإرسال">{formatDate(service.createdAt)}</TableCell>
+                    <TableCell>
                       <div className="admin-actions">
                         <button
                           onClick={() => handleApprove(service)}
@@ -208,12 +210,11 @@ export default function ServiceApprovalTab() {
                           رفض
                         </button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
         </>
       )}
 

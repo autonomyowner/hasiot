@@ -5,7 +5,11 @@ import { api } from '../../../convex/_generated/api'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
+import FilterSelect from '../components/FilterSelect'
 import { BOOKING_STATUSES, BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, todayISO } from '../constants'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '../ui/table'
 
 /**
  * Booking management, on behalf of the businesses.
@@ -115,16 +119,15 @@ export default function BookingsTab() {
       </div>
 
       <div className="admin-filters">
-        <select
+        <FilterSelect
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="admin-form-select"
-        >
-          <option value="">كل الحالات</option>
-          {BOOKING_STATUSES.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </select>
+          onChange={setStatus}
+          placeholder="كل الحالات"
+          options={[
+            { value: '', label: 'كل الحالات' },
+            ...BOOKING_STATUSES.map((s) => ({ value: s.value, label: s.label })),
+          ]}
+        />
       </div>
 
       {bookings.length === 0 ? (
@@ -140,29 +143,28 @@ export default function BookingsTab() {
               <span className="admin-badge gray">{section.rows.length}</span>
             </div>
 
-            <div className="admin-table-wrapper">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>السائح</th>
-                    <th>المكان</th>
-                    <th>الموعد</th>
-                    <th>التفاصيل</th>
-                    <th>الحالة</th>
-                    <th style={{ textAlign: 'left' }}>الإجراءات</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <Table className="admin-table">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>السائح</TableHead>
+                    <TableHead>المكان</TableHead>
+                    <TableHead>الموعد</TableHead>
+                    <TableHead>التفاصيل</TableHead>
+                    <TableHead>الحالة</TableHead>
+                    <TableHead style={{ textAlign: 'left' }}>الإجراءات</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {section.rows.map((booking) => (
-                    <tr key={booking._id} className={busyId === booking._id ? 'is-busy' : ''}>
-                      <td data-label="السائح">
+                    <TableRow key={booking._id} className={busyId === booking._id ? 'is-busy' : ''}>
+                      <TableCell data-label="السائح">
                         <div className="admin-table-name">{booking.userName}</div>
                         <div className="admin-table-sub" dir="ltr">{booking.userEmail}</div>
                         {booking.userPhone && (
                           <div className="admin-table-sub" dir="ltr">{booking.userPhone}</div>
                         )}
-                      </td>
-                      <td data-label="المكان">
+                      </TableCell>
+                      <TableCell data-label="المكان">
                         <div className="admin-table-name">{booking.listingName_ar}</div>
                         <div className="admin-table-sub" dir="ltr">{booking.listingName}</div>
                         {booking.listingPhone && (
@@ -173,25 +175,25 @@ export default function BookingsTab() {
                             بلا أوقات عمل
                           </span>
                         )}
-                      </td>
-                      <td data-label="الموعد">
+                      </TableCell>
+                      <TableCell data-label="الموعد">
                         <div className="admin-table-name" dir="ltr">{booking.date}</div>
                         <div className="admin-table-sub" dir="ltr">{booking.time}</div>
-                      </td>
-                      <td data-label="التفاصيل">
+                      </TableCell>
+                      <TableCell data-label="التفاصيل">
                         {booking.partySize ? <div>{booking.partySize} أشخاص</div> : null}
                         {booking.notes && <div className="admin-table-sub">{booking.notes}</div>}
                         {booking.cancellationReason && (
                           <div className="admin-table-sub">سبب الإلغاء: {booking.cancellationReason}</div>
                         )}
                         {!booking.partySize && !booking.notes && !booking.cancellationReason && '—'}
-                      </td>
-                      <td data-label="الحالة">
+                      </TableCell>
+                      <TableCell data-label="الحالة">
                         <span className={`admin-badge ${BOOKING_STATUS_COLORS[booking.status] || 'gray'}`}>
                           {BOOKING_STATUS_LABELS[booking.status] || booking.status}
                         </span>
-                      </td>
-                      <td>
+                      </TableCell>
+                      <TableCell>
                         <div className="admin-actions">
                           {booking.status === 'pending' && (
                             <button
@@ -233,12 +235,11 @@ export default function BookingsTab() {
                             <span className="admin-table-sub">—</span>
                           )}
                         </div>
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </TableBody>
+              </Table>
           </section>
         ))
       )}

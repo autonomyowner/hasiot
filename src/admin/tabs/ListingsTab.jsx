@@ -5,10 +5,14 @@ import { api } from '../../../convex/_generated/api'
 import ListingForm from './ListingForm'
 import WorkingHoursModal from '../components/WorkingHoursModal'
 import Switch from '../components/Switch'
+import FilterSelect from '../components/FilterSelect'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
 import { CITIES, CITY_LABELS, LISTING_TYPES, TYPE_LABELS, cityLabel } from '../constants'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '../ui/table'
 
 const PAGE_SIZE = 25
 
@@ -184,37 +188,64 @@ export default function ListingsTab({ initialFilters }) {
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
         />
-        <select value={type} onChange={(e) => setType(e.target.value)} className="admin-form-select">
-          <option value="">كل الأنواع</option>
-          {LISTING_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-        <select value={city} onChange={(e) => setCity(e.target.value)} className="admin-form-select">
-          <option value="">كل المدن</option>
-          {CITIES.map((c) => <option key={c} value={c}>{CITY_LABELS[c] || c}</option>)}
-        </select>
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="admin-form-select">
-          <option value="">كل حالات المراجعة</option>
-          <option value="pending">قيد المراجعة</option>
-          <option value="approved">معتمد</option>
-          <option value="rejected">مرفوض</option>
-          <option value="seed">أصلي (بيانات أولية)</option>
-        </select>
-        <select value={photos} onChange={(e) => setPhotos(e.target.value)} className="admin-form-select">
-          <option value="">الصور: الكل</option>
-          <option value="no">بدون صور</option>
-          <option value="yes">لديها صور</option>
-        </select>
-        <select value={hours} onChange={(e) => setHours(e.target.value)} className="admin-form-select">
-          <option value="">أوقات العمل: الكل</option>
-          <option value="no">بدون أوقات</option>
-          <option value="yes">لديها أوقات</option>
-        </select>
-        <select value={sort} onChange={(e) => setSort(e.target.value)} className="admin-form-select">
-          <option value="newest">الأحدث أولاً</option>
-          <option value="oldest">الأقدم أولاً</option>
-          <option value="name">الاسم (أ - ي)</option>
-          <option value="rating">الأعلى تقييماً</option>
-        </select>
+        <FilterSelect
+          value={type}
+          onChange={setType}
+          placeholder="كل الأنواع"
+          options={[{ value: '', label: 'كل الأنواع' }, ...LISTING_TYPES]}
+        />
+        <FilterSelect
+          value={city}
+          onChange={setCity}
+          placeholder="كل المدن"
+          options={[
+            { value: '', label: 'كل المدن' },
+            ...CITIES.map((c) => ({ value: c, label: CITY_LABELS[c] || c })),
+          ]}
+        />
+        <FilterSelect
+          value={status}
+          onChange={setStatus}
+          placeholder="كل حالات المراجعة"
+          options={[
+            { value: '', label: 'كل حالات المراجعة' },
+            { value: 'pending', label: 'قيد المراجعة' },
+            { value: 'approved', label: 'معتمد' },
+            { value: 'rejected', label: 'مرفوض' },
+            { value: 'seed', label: 'أصلي (بيانات أولية)' },
+          ]}
+        />
+        <FilterSelect
+          value={photos}
+          onChange={setPhotos}
+          placeholder="الصور: الكل"
+          options={[
+            { value: '', label: 'الصور: الكل' },
+            { value: 'no', label: 'بدون صور' },
+            { value: 'yes', label: 'لديها صور' },
+          ]}
+        />
+        <FilterSelect
+          value={hours}
+          onChange={setHours}
+          placeholder="أوقات العمل: الكل"
+          options={[
+            { value: '', label: 'أوقات العمل: الكل' },
+            { value: 'no', label: 'بدون أوقات' },
+            { value: 'yes', label: 'لديها أوقات' },
+          ]}
+        />
+        <FilterSelect
+          value={sort}
+          onChange={setSort}
+          placeholder="الترتيب"
+          options={[
+            { value: 'newest', label: 'الأحدث أولاً' },
+            { value: 'oldest', label: 'الأقدم أولاً' },
+            { value: 'name', label: 'الاسم (أ - ي)' },
+            { value: 'rating', label: 'الأعلى تقييماً' },
+          ]}
+        />
         {hasFilters && (
           <button type="button" className="admin-btn admin-btn-secondary admin-btn-small" onClick={resetFilters}>
             مسح الفلاتر
@@ -240,37 +271,36 @@ export default function ListingsTab({ initialFilters }) {
         />
       ) : (
         <>
-          <div className="admin-table-wrapper">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '64px' }}>الصورة</th>
-                  <th>الاسم</th>
-                  <th>النوع</th>
-                  <th>المدينة</th>
-                  <th>الظهور</th>
-                  <th>المراجعة</th>
-                  <th>أوقات العمل</th>
-                  <th style={{ textAlign: 'left' }}>الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
+          <Table className="admin-table">
+              <TableHeader>
+                <TableRow>
+                  <TableHead style={{ width: '64px' }}>الصورة</TableHead>
+                  <TableHead>الاسم</TableHead>
+                  <TableHead>النوع</TableHead>
+                  <TableHead>المدينة</TableHead>
+                  <TableHead>الظهور</TableHead>
+                  <TableHead>المراجعة</TableHead>
+                  <TableHead>أوقات العمل</TableHead>
+                  <TableHead style={{ textAlign: 'left' }}>الإجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {visibleRows.map((listing) => (
-                  <tr key={listing._id} className={busyId === listing._id ? 'is-busy' : ''}>
-                    <td>
+                  <TableRow key={listing._id} className={busyId === listing._id ? 'is-busy' : ''}>
+                    <TableCell>
                       {listing.images?.length ? (
                         <img className="admin-row-thumb" src={listing.images[0]} alt="" loading="lazy" />
                       ) : (
                         <span className="admin-row-thumb empty" title="لا توجد صور">—</span>
                       )}
-                    </td>
-                    <td data-label="الاسم">
+                    </TableCell>
+                    <TableCell data-label="الاسم">
                       <div className="admin-table-name">{listing.name_ar}</div>
                       <div className="admin-table-sub" dir="ltr">{listing.name_en}</div>
-                    </td>
-                    <td data-label="النوع">{TYPE_LABELS[listing.type] || listing.type}</td>
-                    <td data-label="المدينة">{cityLabel(listing.city)}</td>
-                    <td data-label="الظهور">
+                    </TableCell>
+                    <TableCell data-label="النوع">{TYPE_LABELS[listing.type] || listing.type}</TableCell>
+                    <TableCell data-label="المدينة">{cityLabel(listing.city)}</TableCell>
+                    <TableCell data-label="الظهور">
                       <Switch
                         checked={listing.isActive !== false}
                         busy={togglingId === listing._id}
@@ -280,9 +310,9 @@ export default function ListingsTab({ initialFilters }) {
                         offLabel="مخفي"
                       />
                       {listing.isVerified && <span className="admin-badge blue">موثق</span>}
-                    </td>
-                    <td data-label="المراجعة"><ReviewBadge status={listing.status} /></td>
-                    <td data-label="أوقات العمل">
+                    </TableCell>
+                    <TableCell data-label="المراجعة"><ReviewBadge status={listing.status} /></TableCell>
+                    <TableCell data-label="أوقات العمل">
                       {listing.workingHours?.length ? (
                         <span className="admin-badge green">محددة</span>
                       ) : (
@@ -290,8 +320,8 @@ export default function ListingsTab({ initialFilters }) {
                           غير محددة
                         </span>
                       )}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       <div className="admin-actions">
                         <button
                           onClick={() => { setFormListing(listing); setShowForm(true) }}
@@ -313,12 +343,11 @@ export default function ListingsTab({ initialFilters }) {
                           {busyId === listing._id ? 'جاري...' : 'حذف'}
                         </button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
 
           {!isSearching && browse.status === 'CanLoadMore' && (
             <div className="admin-load-more">

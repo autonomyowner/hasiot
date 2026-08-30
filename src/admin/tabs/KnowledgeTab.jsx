@@ -6,6 +6,7 @@ import KnowledgeForm from './KnowledgeForm'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
 import { EmptyState, LoadingState } from '../components/States'
+import FilterSelect from '../components/FilterSelect'
 import { KNOWLEDGE_CATEGORIES, KNOWLEDGE_CATEGORY_LABELS, cityLabel, formatDate } from '../constants'
 
 /** The knowledge base behind the AI travel planner. */
@@ -100,16 +101,15 @@ export default function KnowledgeTab() {
       </div>
 
       <div className="admin-filters">
-        <select
+        <FilterSelect
           value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="admin-form-select"
-        >
-          <option value="">كل الفئات</option>
-          {KNOWLEDGE_CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
+          onChange={setCategory}
+          placeholder="كل الفئات"
+          options={[
+            { value: '', label: 'كل الفئات' },
+            ...KNOWLEDGE_CATEGORIES,
+          ]}
+        />
       </div>
 
       {entries === undefined ? (

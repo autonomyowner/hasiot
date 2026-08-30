@@ -4,6 +4,9 @@ import { api } from '../../../convex/_generated/api'
 import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
 import { formatDateTime } from '../constants'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '../ui/table'
 
 /** Early-access email signups. Read-only — these are only ever exported. */
 export default function EmailCapturesTab() {
@@ -43,28 +46,26 @@ export default function EmailCapturesTab() {
           hint="عناوين البريد التي يتركها الزوار للوصول المبكر تظهر هنا."
         />
       ) : (
-        <div className="admin-table-wrapper">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th style={{ width: '48px' }}>#</th>
-                <th>البريد الإلكتروني</th>
-                <th>المصدر</th>
-                <th>التاريخ</th>
-              </tr>
-            </thead>
-            <tbody>
+        <Table className="admin-table">
+            <TableHeader>
+              <TableRow>
+                <TableHead style={{ width: '48px' }}>#</TableHead>
+                <TableHead>البريد الإلكتروني</TableHead>
+                <TableHead>المصدر</TableHead>
+                <TableHead>التاريخ</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {emails.map((entry, index) => (
-                <tr key={entry._id}>
-                  <td className="admin-table-sub">{index + 1}</td>
-                  <td data-label="البريد الإلكتروني" className="admin-table-name" dir="ltr">{entry.email}</td>
-                  <td data-label="المصدر"><span className="admin-badge gray">{entry.source || '—'}</span></td>
-                  <td data-label="التاريخ" className="admin-table-sub">{formatDateTime(entry.createdAt)}</td>
-                </tr>
+                <TableRow key={entry._id}>
+                  <TableCell className="admin-table-sub">{index + 1}</TableCell>
+                  <TableCell data-label="البريد الإلكتروني" className="admin-table-name" dir="ltr">{entry.email}</TableCell>
+                  <TableCell data-label="المصدر"><span className="admin-badge gray">{entry.source || '—'}</span></TableCell>
+                  <TableCell data-label="التاريخ" className="admin-table-sub">{formatDateTime(entry.createdAt)}</TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
       )}
     </motion.div>
   )

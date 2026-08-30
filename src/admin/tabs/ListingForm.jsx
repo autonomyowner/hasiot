@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import Modal from '../components/Modal'
 import ImageUploader from '../components/ImageUploader'
+import FilterSelect from '../components/FilterSelect'
 import {
   CATEGORIES, CATEGORIES_BY_TYPE, CATEGORY_LABELS,
   CITIES, CITY_LABELS, LISTING_TYPES, PRICE_RANGES,
@@ -116,30 +117,23 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
             <div className="admin-form-row">
               <div className="admin-form-group">
                 <label className="admin-form-label">النوع *</label>
-                <select
+                <FilterSelect
                   value={form.type}
-                  onChange={(e) => handleTypeChange(e.target.value)}
-                  className="admin-form-select"
-                >
-                  {LISTING_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>{t.label}</option>
-                  ))}
-                </select>
+                  onChange={handleTypeChange}
+                  placeholder="النوع"
+                  className="w-full"
+                  options={LISTING_TYPES}
+                />
               </div>
               <div className="admin-form-group">
                 <label className="admin-form-label">الفئة *</label>
-                <select
+                <FilterSelect
                   value={form.category}
-                  onChange={(e) => set({
-                    category: e.target.value,
-                    category_ar: CATEGORY_LABELS[e.target.value] || '',
-                  })}
-                  className="admin-form-select"
-                >
-                  {categoryOptions.map((c) => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </select>
+                  onChange={(v) => set({ category: v, category_ar: CATEGORY_LABELS[v] || '' })}
+                  placeholder="الفئة"
+                  className="w-full"
+                  options={categoryOptions}
+                />
               </div>
             </div>
 
@@ -183,15 +177,13 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
             <div className="admin-form-row-3">
               <div className="admin-form-group">
                 <label className="admin-form-label">المدينة *</label>
-                <select
+                <FilterSelect
                   value={form.city}
-                  onChange={(e) => set({ city: e.target.value })}
-                  className="admin-form-select"
-                >
-                  {CITIES.map((c) => (
-                    <option key={c} value={c}>{CITY_LABELS[c] || c}</option>
-                  ))}
-                </select>
+                  onChange={(v) => set({ city: v })}
+                  placeholder="المدينة"
+                  className="w-full"
+                  options={CITIES.map((c) => ({ value: c, label: CITY_LABELS[c] || c }))}
+                />
               </div>
               <div className="admin-form-group">
                 <label className="admin-form-label">خط العرض *</label>
@@ -232,16 +224,13 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
               </div>
               <div className="admin-form-group">
                 <label className="admin-form-label">نطاق السعر</label>
-                <select
+                <FilterSelect
                   value={form.priceRange}
-                  onChange={(e) => set({ priceRange: e.target.value })}
-                  className="admin-form-select"
-                >
-                  <option value="">غير محدد</option>
-                  {PRICE_RANGES.map((p) => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
-                </select>
+                  onChange={(v) => set({ priceRange: v })}
+                  placeholder="غير محدد"
+                  className="w-full"
+                  options={[{ value: '', label: 'غير محدد' }, ...PRICE_RANGES]}
+                />
               </div>
             </div>
 

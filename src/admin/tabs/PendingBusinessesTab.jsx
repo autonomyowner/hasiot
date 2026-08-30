@@ -7,6 +7,9 @@ import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
 import { useSelection, describeBulkResult } from '../useSelection'
 import { ROLE_LABELS, formatDate } from '../constants'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '../ui/table'
 
 /**
  * Business and service-provider accounts awaiting verification.
@@ -108,51 +111,50 @@ export default function PendingBusinessesTab() {
             </div>
           )}
 
-          <div className="admin-table-wrapper">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '40px' }}>
+          <Table className="admin-table">
+              <TableHeader>
+                <TableRow>
+                  <TableHead style={{ width: '40px' }}>
                     <input
                       type="checkbox"
                       checked={selection.allSelected}
                       onChange={selection.toggleAll}
                       aria-label="تحديد الكل"
                     />
-                  </th>
-                  <th>الاسم</th>
-                  <th>البريد الإلكتروني</th>
-                  <th>الدور</th>
-                  <th>نوع النشاط</th>
-                  <th>وثيقة العمل</th>
-                  <th>تاريخ التسجيل</th>
-                  <th style={{ textAlign: 'left' }}>إجراء</th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                  <TableHead>الاسم</TableHead>
+                  <TableHead>البريد الإلكتروني</TableHead>
+                  <TableHead>الدور</TableHead>
+                  <TableHead>نوع النشاط</TableHead>
+                  <TableHead>وثيقة العمل</TableHead>
+                  <TableHead>تاريخ التسجيل</TableHead>
+                  <TableHead style={{ textAlign: 'left' }}>إجراء</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {pending.map((user) => (
-                  <tr key={user._id} className={selection.isSelected(user._id) ? 'is-selected' : ''}>
-                    <td>
+                  <TableRow key={user._id} className={selection.isSelected(user._id) ? 'is-selected' : ''}>
+                    <TableCell>
                       <input
                         type="checkbox"
                         checked={selection.isSelected(user._id)}
                         onChange={() => selection.toggle(user._id)}
                         aria-label={`تحديد ${displayName(user)}`}
                       />
-                    </td>
-                    <td data-label="الاسم" className="admin-table-name">{displayName(user)}</td>
-                    <td data-label="البريد الإلكتروني" dir="ltr">{user.email}</td>
-                    <td data-label="الدور">{ROLE_LABELS[user.role] || user.role}</td>
-                    <td data-label="نوع النشاط">{user.businessType || '—'}</td>
-                    <td data-label="وثيقة العمل">
+                    </TableCell>
+                    <TableCell data-label="الاسم" className="admin-table-name">{displayName(user)}</TableCell>
+                    <TableCell data-label="البريد الإلكتروني" dir="ltr">{user.email}</TableCell>
+                    <TableCell data-label="الدور">{ROLE_LABELS[user.role] || user.role}</TableCell>
+                    <TableCell data-label="نوع النشاط">{user.businessType || '—'}</TableCell>
+                    <TableCell data-label="وثيقة العمل">
                       {user.cvFileId ? (
                         <BusinessDocLink fileId={user.cvFileId} />
                       ) : (
                         <span className="admin-badge yellow">لم تُرفع بعد</span>
                       )}
-                    </td>
-                    <td data-label="تاريخ التسجيل">{formatDate(user.createdAt)}</td>
-                    <td>
+                    </TableCell>
+                    <TableCell data-label="تاريخ التسجيل">{formatDate(user.createdAt)}</TableCell>
+                    <TableCell>
                       <button
                         className="admin-btn admin-btn-primary admin-btn-small"
                         onClick={() => handleApprove(user)}
@@ -161,12 +163,11 @@ export default function PendingBusinessesTab() {
                       >
                         {busyId === user._id ? 'جاري...' : 'اعتماد'}
                       </button>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
         </>
       )}
 
