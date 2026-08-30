@@ -58,25 +58,35 @@
   }
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* Element-level resets live in a cascade layer.
 
-html {
-  scroll-behavior: smooth;
-  font-size: 16px;
-}
+   Unlayered CSS wins over every cascade layer regardless of specificity, so
+   an unlayered `* { padding: 0 }` here silently defeated every Tailwind
+   spacing utility in the admin panel — dialog headers and footers rendered
+   with no padding at all. Layering these keeps the landing page identical
+   (nothing else on it targets bare elements) while letting the panel's
+   utilities apply. Keep new element resets inside this block. */
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
 
-body {
-  font-family: var(--font-body);
-  background: var(--color-bg);
-  color: var(--color-text);
-  line-height: 1.6;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  html {
+    scroll-behavior: smooth;
+    font-size: 16px;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--color-bg);
+    color: var(--color-text);
+    line-height: 1.6;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
 }
 
 /* RTL Support */
@@ -98,16 +108,24 @@ html[dir="rtl"] h4 {
   color: var(--white);
 }
 
-a {
-  text-decoration: none;
-  color: inherit;
-}
+/* These element resets sit in a cascade layer on purpose. Unlayered CSS beats
+   every layer, so an unlayered `button { background: none }` silently overrode
+   every Tailwind utility on every button in the admin panel — which is most of
+   its shadcn components. Inside a layer they still win against nothing else on
+   the landing page (no other rule targets bare `a`/`button`), but the panel's
+   utilities can now do their job. */
+@layer base {
+  a {
+    text-decoration: none;
+    color: inherit;
+  }
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-  border: none;
-  background: none;
+  button {
+    font-family: inherit;
+    cursor: pointer;
+    border: none;
+    background: none;
+  }
 }
 
 .container {

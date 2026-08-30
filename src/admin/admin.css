@@ -14,12 +14,12 @@
       attribute or it loses its label on phones.
    ========================================================================== */
 
-.admin-page,
-.admin-login,
-/* The toast host is a sibling of .admin-page, not a descendant — ToastProvider
-   wraps the panel and renders the stack after it — so it needs the tokens
-   declared on it directly or its surface and border resolve to nothing. */
-.admin-toasts {
+/* Declared on :root, not on .admin-page. Radix portals dialogs, popovers and
+   selects to document.body, which is outside the panel's DOM subtree — tokens
+   scoped to .admin-page do not reach them, so every .admin-* control inside a
+   dialog lost its colour. This file only loads on /admin, so :root here still
+   means "the admin panel". */
+:root {
   /* Panel-scoped tokens. Soft, consistent radii are the whole visual premise:
      nothing in here has a hard corner. */
   --ar-r-xs: 8px;
@@ -36,7 +36,7 @@
   --ar-line-soft: #f0ede7;
   --ar-surface: #ffffff;
   --ar-bg: #f7f5f0;
-  --ar-brand: #0D7A5F;
+  --ar-brand: var(--primary, #0D7A5F);
   --ar-brand-dark: #065F46;
   --ar-brand-wash: #e8f4ef;
   --ar-gold: #b8860b;
@@ -561,100 +561,6 @@
   100% { background-position: 0 50%; }
 }
 
-/* --- Modals -------------------------------------------------------------- */
-.admin-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(20, 32, 28, 0.45);
-  backdrop-filter: blur(3px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-  z-index: 100;
-}
-
-.admin-modal {
-  background: var(--ar-surface);
-  border-radius: var(--ar-r-xl);
-  width: 100%;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: var(--ar-shadow-lg);
-  overflow: hidden;
-}
-
-.admin-modal-header { padding: 1.5rem 1.75rem 0.75rem; }
-
-.admin-modal-title {
-  font-family: var(--font-arabic);
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--ar-ink);
-}
-
-.admin-modal-subtitle { margin-top: 0.25rem; font-size: 0.875rem; color: var(--ar-ink-3); }
-
-.admin-modal-body { padding: 0.75rem 1.75rem 1.5rem; overflow-y: auto; }
-
-.admin-confirm-message { font-size: 0.9375rem; line-height: 1.9; color: var(--ar-ink-2); }
-
-.admin-modal-footer {
-  padding: 1rem 1.75rem;
-  border-top: 1px solid var(--ar-line-soft);
-  display: flex;
-  gap: 0.625rem;
-  justify-content: flex-start;
-  background: #fcfcfa;
-}
-
-.admin-modal-footer .admin-btn { flex: 0 0 auto; }
-
-/* --- Toasts -------------------------------------------------------------- */
-.admin-toasts {
-  position: fixed;
-  /* Clear of the floating shell's header — at 1rem the toast landed on the pill
-     nav and covered the very control the operator had just used. */
-  top: 5.25rem;
-  inset-inline: 0;
-  margin-inline: auto;
-  width: min(28rem, calc(100vw - 2rem));
-  z-index: 200;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  pointer-events: none;
-}
-
-.admin-toast {
-  pointer-events: auto;
-  cursor: pointer;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.625rem;
-  background: var(--ar-surface);
-  border: 1px solid var(--ar-line);
-  border-radius: var(--ar-r-md);
-  padding: 0.875rem 1rem;
-  box-shadow: var(--ar-shadow-lg);
-  font-size: 0.875rem;
-  line-height: 1.7;
-}
-
-.admin-toast-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-top: 0.5rem;
-  flex-shrink: 0;
-  background: var(--ar-ink-3);
-}
-.admin-toast.success .admin-toast-dot { background: var(--ar-brand); }
-.admin-toast.error .admin-toast-dot { background: var(--ar-danger); }
-.admin-toast.error { border-color: #f0c4c2; }
-.admin-toast-text { flex: 1; word-break: break-word; }
-
 /* --- Image uploader ------------------------------------------------------ */
 .admin-uploader-grid { display: flex; flex-wrap: wrap; gap: 0.625rem; margin-bottom: 0.625rem; }
 
@@ -1085,7 +991,6 @@
   .admin-bulk-bar .admin-btn { flex: 1; }
 
   /* Dialogs sit at the bottom of the screen, where a thumb reaches. */
-  .admin-modal-overlay { padding: 0; align-items: flex-end; }
   .admin-modal {
     max-height: 92vh;
     border-radius: var(--ar-r-xl) var(--ar-r-xl) 0 0;
@@ -1836,5 +1741,176 @@
 
 @media (max-width: 900px) {
   /* The header stacks to two rows on phones, so the toast has to clear both. */
-  .admin-toasts { top: 7.75rem; }
+}
+
+/* --- Inside a Radix dialog ----------------------------------------------- */
+.admin-modal-body { padding: 0.25rem 1.5rem 1.5rem; }
+
+.admin-modal-footer {
+  display: flex;
+  gap: 0.625rem;
+  justify-content: flex-start;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border);
+  background: color-mix(in oklab, var(--muted) 40%, transparent);
+}
+.admin-modal-footer .admin-btn { flex: 0 0 auto; }
+
+/* ==========================================================================
+   Polish pass — controls tuned against the shadcn tokens
+   --------------------------------------------------------------------------
+   The panel mixes real shadcn components (dialog, switch, select, toasts) with
+   older markup that still uses `.admin-*` classes. These rules give that older
+   markup the same measurements the shadcn primitives use — 36px control height,
+   the shared --radius scale, a 3px focus ring, an xs shadow — so the two are
+   indistinguishable on screen and a control does not change shape depending on
+   which tab it lives in.
+   ========================================================================== */
+
+/* --- Buttons ------------------------------------------------------------- */
+.admin-btn,
+.ar-btn {
+  min-height: 36px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  box-shadow: 0 1px 2px rgba(20, 32, 28, 0.05);
+  transition: background-color 0.16s var(--ar-ease), box-shadow 0.16s var(--ar-ease),
+              transform 0.12s var(--ar-ease), color 0.16s var(--ar-ease);
+}
+
+.admin-btn:focus-visible,
+.ar-btn:focus-visible,
+.admin-action-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 45%, transparent);
+}
+
+.admin-btn-primary { box-shadow: 0 1px 2px color-mix(in oklab, var(--primary) 32%, transparent); }
+.admin-btn-primary:hover:not(:disabled) { background: color-mix(in oklab, var(--primary) 90%, black); }
+
+.admin-btn-secondary {
+  border-color: var(--border);
+  box-shadow: 0 1px 2px rgba(20, 32, 28, 0.04);
+}
+.admin-btn-secondary:hover:not(:disabled) { background: var(--muted); }
+
+.admin-btn-small {
+  min-height: 32px;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+}
+
+/* Row actions read as compact ghost buttons rather than bare links: they are
+   the densest controls in the panel and were the easiest to mis-tap. */
+.admin-action-btn {
+  min-height: 32px;
+  padding: 0.375rem 0.75rem;
+  border-radius: calc(var(--radius) * 0.8);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  transition: background-color 0.14s var(--ar-ease), color 0.14s var(--ar-ease);
+}
+
+.admin-actions { gap: 0.125rem; }
+
+/* --- Fields -------------------------------------------------------------- */
+.admin-form-input,
+.admin-form-textarea,
+.admin-form-select {
+  min-height: 36px;
+  padding: 0.5rem 0.75rem;
+  border-radius: calc(var(--radius) * 0.8);
+  border-color: var(--input);
+  font-size: 0.875rem;
+  box-shadow: 0 1px 2px rgba(20, 32, 28, 0.04);
+  transition: border-color 0.16s, box-shadow 0.16s;
+}
+
+.admin-form-input::placeholder,
+.admin-form-textarea::placeholder { color: var(--muted-foreground); }
+
+.admin-form-input:focus,
+.admin-form-textarea:focus,
+.admin-form-select:focus {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 40%, transparent);
+}
+
+.admin-form-select { padding-inline-start: 2rem; background-size: 0.875rem; }
+.admin-form-textarea { min-height: 80px; }
+
+.admin-form-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--foreground);
+  letter-spacing: -0.005em;
+}
+
+/* --- Filter bar ---------------------------------------------------------- */
+.admin-filters {
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: calc(var(--radius) * 1.4);
+  box-shadow: 0 1px 2px rgba(20, 32, 28, 0.03);
+}
+
+/* --- Tables -------------------------------------------------------------- */
+.admin-table-wrapper {
+  border-radius: calc(var(--radius) * 1.4);
+  box-shadow: 0 1px 2px rgba(20, 32, 28, 0.03);
+}
+
+.admin-table th {
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  background: color-mix(in oklab, var(--muted) 55%, transparent);
+  letter-spacing: 0;
+}
+
+.admin-table td { padding: 0.8125rem 1rem; font-size: 0.875rem; }
+.admin-table tbody tr:hover { background: color-mix(in oklab, var(--muted) 45%, transparent); }
+.admin-table tr.is-selected { background: color-mix(in oklab, var(--primary) 8%, transparent); }
+.admin-table-sub { font-size: 0.75rem; }
+
+/* --- Badges -------------------------------------------------------------- */
+.admin-badge {
+  padding: 0.125rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid transparent;
+}
+
+/* --- Cards --------------------------------------------------------------- */
+.ar-card,
+.admin-list-item {
+  border-radius: calc(var(--radius) * 1.7);
+  border-color: color-mix(in oklab, var(--border) 70%, transparent);
+}
+
+.ar-expand {
+  border-radius: calc(var(--radius) * 0.9);
+  border-color: var(--border);
+}
+.ar-expand:hover { background: var(--muted); }
+
+/* --- Empty states -------------------------------------------------------- */
+.admin-empty {
+  border-radius: calc(var(--radius) * 1.4);
+  border-style: dashed;
+  border-color: var(--border);
+  box-shadow: none;
+  background: color-mix(in oklab, var(--card) 70%, transparent);
+}
+
+/* --- Bulk bar ------------------------------------------------------------ */
+.admin-bulk-bar {
+  border-radius: calc(var(--radius) * 1.4);
+  border-color: color-mix(in oklab, var(--primary) 35%, transparent);
+  background: color-mix(in oklab, var(--primary) 5%, var(--card));
+  box-shadow: 0 1px 2px rgba(20, 32, 28, 0.04);
 }

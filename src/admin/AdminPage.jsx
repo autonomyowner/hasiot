@@ -6,7 +6,7 @@ import { api } from '../../convex/_generated/api'
 import { useCurrentUser } from '../hooks/useCurrentUser'
 import { useSyncHtmlLang } from '../hooks/useLanguage'
 import { authClient } from '../lib/auth-client'
-import { ToastProvider } from './components/ToastProvider'
+import { Toaster } from './ui/sonner'
 import { TabErrorBoundary } from './components/States'
 import DashboardTab from './tabs/DashboardTab'
 import ListingsTab from './tabs/ListingsTab'
@@ -18,6 +18,7 @@ import KnowledgeTab from './tabs/KnowledgeTab'
 import BookingsTab from './tabs/BookingsTab'
 import ActivityTab from './tabs/ActivityTab'
 import EmailCapturesTab from './tabs/EmailCapturesTab'
+import './tailwind.css'
 import './admin.css'
 
 const TABS = [
@@ -88,7 +89,7 @@ export default function AdminPage() {
   }
 
   return (
-    <ToastProvider>
+    <>
       {/* The panel is a single floating sheet on a neutral ground, rather than a
           full-bleed page. It keeps the working area visually bounded, which is
           what makes a dense operator tool feel calm. */}
@@ -113,7 +114,8 @@ export default function AdminPage() {
           </main>
         </div>
       </div>
-    </ToastProvider>
+      <Toaster />
+    </>
   )
 }
 

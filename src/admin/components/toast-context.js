@@ -1,11 +1,27 @@
-import { createContext, useContext } from 'react'
+import { toast as sonner } from 'sonner'
 
-export const ToastContext = createContext(null)
-
+/**
+ * Toast feedback for every mutation in the panel.
+ *
+ * This is a thin shim over sonner rather than a context: the ten call sites all
+ * use `const toast = useToast()` followed by `toast.success(...)` /
+ * `toast.error(err)`, so keeping that shape meant the migration touched no tab
+ * at all. `toast.error` still accepts a raw Convex error and digs the readable
+ * sentence out of it.
+ */
 export function useToast() {
-  const ctx = useContext(ToastContext)
-  if (!ctx) throw new Error('useToast must be used inside <ToastProvider>')
-  return ctx
+  return toastApi
+}
+
+export const toastApi = {
+  success: (message) => sonner.success(message),
+  info: (message) => sonner.info(message),
+  error: (errorOrMessage) =>
+    sonner.error(
+      typeof errorOrMessage === 'string'
+        ? errorOrMessage
+        : formatConvexError(errorOrMessage)
+    ),
 }
 
 /**

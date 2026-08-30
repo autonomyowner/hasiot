@@ -30,4 +30,11 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^([A-Z_]|motion$)' }],
     },
   },
+  {
+    // shadcn generates these; they export their cva variants next to the
+    // component by design. Restructuring vendor files to satisfy a fast-refresh
+    // rule would just make `npx shadcn add` overwrite the fix.
+    files: ['src/admin/ui/**'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 ])
