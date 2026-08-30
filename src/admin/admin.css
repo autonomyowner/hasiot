@@ -14,7 +14,7 @@
       attribute or it loses its label on phones.
    ========================================================================== */
 
-.admin-layout,
+.admin-page,
 .admin-login {
   /* Panel-scoped tokens. Soft, consistent radii are the whole visual premise:
      nothing in here has a hard corner. */
@@ -50,10 +50,6 @@
   -webkit-font-smoothing: antialiased;
 }
 
-.admin-layout {
-  min-height: 100vh;
-  background: var(--ar-bg);
-}
 
 /* --- Sign-in / access-denied card ---------------------------------------- */
 .admin-login {
@@ -96,114 +92,6 @@
   text-decoration: none;
 }
 .admin-link:hover { text-decoration: underline; }
-
-/* --- Header -------------------------------------------------------------- */
-.admin-header {
-  background: var(--ar-surface);
-  border-bottom: 1px solid var(--ar-line);
-  position: sticky;
-  top: 0;
-  z-index: 30;
-}
-
-.admin-header-inner {
-  max-width: 1360px;
-  margin: 0 auto;
-  padding: 0.875rem 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.admin-logo {
-  font-size: 1.0625rem;
-  font-weight: 700;
-  color: var(--ar-brand);
-  text-decoration: none;
-  letter-spacing: -0.01em;
-}
-
-.admin-header-right {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.admin-header-user {
-  font-size: 0.875rem;
-  color: var(--ar-ink-2);
-}
-
-/* --- Nav ----------------------------------------------------------------- */
-.admin-nav {
-  background: var(--ar-surface);
-  border-bottom: 1px solid var(--ar-line);
-  position: sticky;
-  top: 61px;
-  z-index: 29;
-}
-
-.admin-nav-inner {
-  max-width: 1360px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-  display: flex;
-  gap: 0.25rem;
-  overflow-x: auto;
-  scrollbar-width: none;
-  scroll-snap-type: x proximity;
-}
-.admin-nav-inner::-webkit-scrollbar { display: none; }
-
-.admin-nav-btn {
-  position: relative;
-  flex: 0 0 auto;
-  scroll-snap-align: start;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.875rem 0.875rem;
-  border: none;
-  background: none;
-  font-family: inherit;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  color: var(--ar-ink-2);
-  cursor: pointer;
-  white-space: nowrap;
-  border-radius: var(--ar-r-sm) var(--ar-r-sm) 0 0;
-  transition: color 0.16s var(--ar-ease), background 0.16s var(--ar-ease);
-}
-
-.admin-nav-btn:hover { color: var(--ar-ink); background: var(--ar-line-soft); }
-
-.admin-nav-btn.active { color: var(--ar-brand); font-weight: 700; }
-
-.admin-nav-btn.active::after {
-  content: '';
-  position: absolute;
-  inset-inline: 0.5rem;
-  bottom: -1px;
-  height: 3px;
-  border-radius: var(--ar-r-pill) var(--ar-r-pill) 0 0;
-  background: var(--ar-brand);
-}
-
-.admin-nav-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 1.375rem;
-  height: 1.375rem;
-  padding: 0 0.4rem;
-  border-radius: var(--ar-r-pill);
-  background: var(--ar-gold);
-  color: #fff;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  line-height: 1;
-}
 
 /* --- Page frame ---------------------------------------------------------- */
 .admin-main {
@@ -1235,3 +1123,650 @@
 }
 
 .ar-chart-peak { font-weight: 700; color: var(--ar-ink-2); }
+
+/* ==========================================================================
+   The shell — a single floating sheet on a neutral ground
+   --------------------------------------------------------------------------
+   The panel is not a full-bleed page. It sits as one rounded sheet with a warm
+   gradient, which bounds the working area and is what keeps a dense operator
+   tool feeling calm rather than cramped.
+   ========================================================================== */
+
+.admin-page {
+  min-height: 100vh;
+  padding: 1.25rem;
+  background: #d9dbdb;
+  font-family: var(--font-arabic);
+}
+
+.admin-page-centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-shell {
+  max-width: 1420px;
+  margin: 0 auto;
+  min-height: calc(100vh - 2.5rem);
+  border-radius: 34px;
+  /* Warm ivory core drifting to gold at the corners — the sheet reads as
+     lit rather than flat, without any element having to carry a shadow. */
+  background:
+    radial-gradient(90% 70% at 92% 0%, #f4e6b0 0%, rgba(244, 230, 176, 0) 52%),
+    radial-gradient(80% 60% at 2% 100%, #f1e6bd 0%, rgba(241, 230, 189, 0) 50%),
+    linear-gradient(160deg, #fefdfa 0%, #fcfaf3 62%, #faf6e9 100%);
+  box-shadow: 0 24px 70px rgba(24, 26, 26, 0.18);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Top bar ------------------------------------------------------------- */
+.admin-topbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.125rem 1.5rem;
+}
+
+.admin-brand {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1.25rem;
+  border: 1px solid rgba(20, 32, 28, 0.16);
+  border-radius: var(--ar-r-pill);
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ar-ink);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.admin-pillnav {
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.3125rem;
+  border-radius: var(--ar-r-pill);
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(20, 32, 28, 0.07);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.admin-pillnav::-webkit-scrollbar { display: none; }
+
+.admin-pill {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.5rem 0.9375rem;
+  border: none;
+  border-radius: var(--ar-r-pill);
+  background: none;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--ar-ink-2);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.18s var(--ar-ease), color 0.18s var(--ar-ease);
+}
+
+.admin-pill:hover { color: var(--ar-ink); background: rgba(255, 255, 255, 0.8); }
+
+.admin-pill.active {
+  background: var(--ar-ink);
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(20, 32, 28, 0.24);
+}
+
+.admin-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.3rem;
+  border-radius: var(--ar-r-pill);
+  background: var(--ar-gold);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 1;
+}
+.admin-pill.active .admin-pill-badge { background: #fff; color: var(--ar-ink); }
+
+.admin-topbar-actions { display: flex; align-items: center; gap: 0.5rem; }
+
+.admin-icon-btn,
+.admin-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(20, 32, 28, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ar-ink-2);
+  cursor: pointer;
+  font-family: inherit;
+}
+.admin-icon-btn svg { width: 1.125rem; height: 1.125rem; }
+
+.admin-icon-btn { position: relative; }
+.admin-icon-btn.has-dot::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ar-gold);
+  border: 2px solid #fdfcf7;
+}
+
+.admin-avatar {
+  background: var(--ar-ink);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9375rem;
+  border-color: transparent;
+}
+
+.admin-avatar-wrap { position: relative; }
+.admin-menu-scrim { position: fixed; inset: 0; z-index: 40; }
+
+.admin-menu {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  inset-inline-end: 0;
+  z-index: 41;
+  min-width: 14rem;
+  background: var(--ar-surface);
+  border: 1px solid var(--ar-line);
+  border-radius: var(--ar-r-lg);
+  box-shadow: var(--ar-shadow-lg);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.admin-menu-name { font-weight: 700; }
+.admin-menu-mail { font-size: 0.8125rem; color: var(--ar-ink-3); margin-bottom: 0.75rem; word-break: break-all; }
+.admin-menu .admin-btn { width: 100%; }
+
+/* --- Page frame ---------------------------------------------------------- */
+.admin-main {
+  flex: 1;
+  max-width: none;
+  padding: 0.5rem 1.5rem 2rem;
+}
+
+/* ==========================================================================
+   Greeting + headline figures
+   ========================================================================== */
+
+.ar-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 2rem;
+  padding: 0.5rem 0.25rem 1.75rem;
+}
+
+.ar-hero-title {
+  font-family: var(--font-arabic);
+  font-size: 2.5rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--ar-ink);
+  margin: 0 0 1.5rem;
+  line-height: 1.15;
+}
+
+.ar-segments { display: flex; align-items: flex-end; gap: 0.5rem; }
+
+.ar-segment { display: flex; flex-direction: column; gap: 0.375rem; min-width: 0; }
+
+.ar-segment-label {
+  font-size: 0.6875rem;
+  color: var(--ar-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ar-segment-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 34px;
+  padding-inline: 0.875rem;
+  border-radius: var(--ar-r-pill);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ar-segment-bar.ink { background: var(--ar-ink); color: #fff; }
+.ar-segment-bar.gold { background: var(--ar-gold); color: #fff; }
+.ar-segment-bar.ghost {
+  background: transparent;
+  border: 1px solid rgba(20, 32, 28, 0.18);
+  color: var(--ar-ink-2);
+}
+/* A hatched fill, so the fourth share is distinguishable without a fourth hue
+   and stays readable in forced-colors and in print. */
+.ar-segment-bar.hatch {
+  color: var(--ar-ink-2);
+  background: repeating-linear-gradient(
+    -45deg,
+    rgba(20, 32, 28, 0.13) 0 3px,
+    transparent 3px 7px
+  );
+  border: 1px solid rgba(20, 32, 28, 0.12);
+}
+
+.ar-hero-figures { display: flex; align-items: flex-end; gap: 2.25rem; }
+
+.ar-figure { display: flex; flex-direction: column; align-items: flex-start; gap: 0.125rem; }
+
+.ar-figure-value {
+  font-size: 3rem;
+  font-weight: 300;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  color: var(--ar-ink);
+}
+
+.ar-figure-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  font-size: 0.75rem;
+  color: var(--ar-ink-3);
+}
+.ar-figure-label svg { width: 0.875rem; height: 0.875rem; }
+
+/* ==========================================================================
+   Bento grid
+   ========================================================================== */
+
+.ar-bento {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.ar-bento-queue    { grid-column: span 3; grid-row: span 2; }
+.ar-bento-table    { grid-column: span 5; }
+.ar-bento-activity { grid-column: span 4; grid-row: span 2; }
+.ar-bento-line     { grid-column: span 5; }
+.ar-bento-donut    { grid-column: span 4; }
+.ar-bento-types    { grid-column: span 8; }
+
+.ar-card {
+  background: var(--ar-surface);
+  border: 1px solid rgba(20, 32, 28, 0.06);
+  border-radius: 24px;
+  padding: 1.25rem 1.375rem 1.375rem;
+  box-shadow: 0 1px 2px rgba(20, 32, 28, 0.03);
+  min-width: 0;
+}
+
+.ar-card-dark {
+  background: #1e1f1e;
+  border-color: #1e1f1e;
+  color: #f4f2ec;
+}
+.ar-card-dark .ar-card-title { color: #f4f2ec; }
+.ar-card-dark .ar-expand { border-color: rgba(255, 255, 255, 0.22); color: #f4f2ec; }
+.ar-card-dark .ar-expand:hover { background: rgba(255, 255, 255, 0.12); }
+
+.ar-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1.125rem;
+}
+
+.ar-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ar-ink);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.ar-card-note { font-size: 0.75rem; color: var(--ar-ink-3); }
+
+.ar-card-count {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--ar-ink);
+}
+
+.ar-expand {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(20, 32, 28, 0.14);
+  background: none;
+  color: var(--ar-ink-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.16s;
+}
+.ar-expand svg { width: 0.875rem; height: 0.875rem; }
+.ar-expand:hover { background: var(--ar-line-soft); }
+
+.ar-card-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+
+/* --- Task list (the tall queue card) ------------------------------------- */
+.ar-tasks { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.ar-task {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--ar-line);
+  border-radius: 18px;
+  background: var(--ar-surface);
+  font-family: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: transform 0.16s var(--ar-ease), box-shadow 0.16s, background 0.16s;
+}
+.ar-task:hover { transform: translateY(-1px); box-shadow: var(--ar-shadow-sm); }
+
+.ar-task.primary {
+  background: var(--ar-ink);
+  border-color: var(--ar-ink);
+  color: #fff;
+}
+.ar-task.primary .ar-task-label { color: rgba(255, 255, 255, 0.72); }
+.ar-task.primary .ar-task-count { color: #fff; }
+
+.ar-task-count { font-size: 1.375rem; font-weight: 700; line-height: 1; color: var(--ar-ink); }
+.ar-task-label { font-size: 0.8125rem; color: var(--ar-ink-2); line-height: 1.4; }
+.ar-task-go { width: 1rem; height: 1rem; opacity: 0.5; }
+
+.ar-clear {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 1rem 0;
+}
+
+.ar-clear-mark {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--ar-brand-wash);
+  color: var(--ar-brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ar-clear-mark svg { width: 1.375rem; height: 1.375rem; }
+.ar-clear-title { font-weight: 700; color: var(--ar-ink); }
+.ar-clear-hint { font-size: 0.8125rem; color: var(--ar-ink-2); margin-top: 0.125rem; }
+
+/* --- Mini rows (the table card) ------------------------------------------ */
+.ar-minirows { display: flex; flex-direction: column; }
+
+.ar-minirow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--ar-line-soft);
+}
+.ar-minirow:last-child { border-bottom: none; }
+
+.ar-minirow-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--ar-brand-wash);
+  color: var(--ar-brand-dark);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8125rem;
+  flex-shrink: 0;
+}
+
+.ar-minirow-main { display: flex; flex-direction: column; min-width: 0; }
+.ar-minirow-name { font-size: 0.875rem; font-weight: 600; color: var(--ar-ink); }
+.ar-minirow-sub {
+  font-size: 0.75rem;
+  color: var(--ar-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ar-minirow-date { font-size: 0.75rem; color: var(--ar-ink-3); }
+
+/* Status colour always arrives with its written label — the reserved status
+   palette is not colourblind-separable on its own. */
+.ar-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--ar-r-pill);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--ar-ink-2);
+  background: var(--ar-line-soft);
+  white-space: nowrap;
+}
+.ar-chip::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--chip, var(--ar-ink-3));
+}
+
+/* --- Dark activity card -------------------------------------------------- */
+.ar-dark-figures { display: flex; gap: 1.5rem; margin-bottom: 1.25rem; }
+
+.ar-dark-figure {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3125rem;
+  font-size: 2.25rem;
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: #f4f2ec;
+}
+.ar-dark-figure svg { width: 1rem; height: 1rem; color: var(--ar-gold); align-self: center; }
+.ar-dark-figure small { font-size: 0.75rem; font-weight: 500; color: rgba(244, 242, 236, 0.55); }
+
+.ar-dots { display: flex; flex-direction: column; gap: 0.625rem; }
+.ar-dots-row { display: grid; grid-template-columns: 4.25rem 1fr; align-items: center; gap: 0.625rem; }
+.ar-dots-label { font-size: 0.6875rem; color: rgba(244, 242, 236, 0.55); }
+.ar-dots-track { display: flex; gap: 4px; }
+
+.ar-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  background: rgba(244, 242, 236, 0.12);
+}
+.ar-dot.lvl-1 { background: rgba(244, 242, 236, 0.45); }
+.ar-dot.lvl-2 { background: #e8c65a; }
+.ar-dot.lvl-3 { background: var(--ar-gold); }
+
+/* --- Line chart ---------------------------------------------------------- */
+.ar-line { position: relative; }
+.ar-line svg { width: 100%; height: auto; display: block; overflow: visible; }
+
+.ar-line-legend { display: flex; gap: 1rem; margin-bottom: 0.5rem; }
+
+.ar-line-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--ar-ink-2);
+}
+
+.ar-line-swatch { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+.ar-chart-grid { stroke: var(--ar-line-soft); stroke-width: 1; }
+.ar-chart-tick { font-size: 9px; fill: var(--ar-ink-3); text-anchor: end; font-family: var(--font-arabic); }
+.ar-chart-xlabel { font-size: 9px; fill: var(--ar-ink-3); text-anchor: middle; font-family: var(--font-arabic); }
+
+.ar-line-tip {
+  position: absolute;
+  bottom: 1.75rem;
+  transform: translateX(50%);
+  background: var(--ar-ink);
+  color: #fff;
+  border-radius: var(--ar-r-pill);
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: var(--ar-shadow-md);
+}
+.ar-line-tip-date { opacity: 0.6; }
+.ar-line-tip-row { display: inline-flex; align-items: center; gap: 0.25rem; font-weight: 700; }
+
+/* --- Donut --------------------------------------------------------------- */
+.ar-donut { position: relative; display: flex; flex-direction: column; align-items: center; }
+.ar-donut svg { width: 168px; height: 168px; }
+
+.ar-donut-center {
+  position: absolute;
+  top: 84px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.ar-donut-value { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; color: var(--ar-ink); line-height: 1; }
+.ar-donut-label { font-size: 0.6875rem; color: var(--ar-ink-3); }
+
+.ar-donut-legend { display: flex; gap: 1.25rem; margin-top: 1rem; }
+.ar-donut-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  font-size: 0.75rem;
+  color: var(--ar-ink-3);
+}
+.ar-donut-key strong { font-size: 0.875rem; color: var(--ar-ink); }
+
+/* --- Type grid ----------------------------------------------------------- */
+.ar-typegrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+  gap: 0.625rem;
+}
+
+.ar-typecell {
+  background: var(--ar-line-soft);
+  border-radius: 18px;
+  padding: 0.875rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+.ar-typecell-value { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; color: var(--ar-ink); line-height: 1.1; }
+.ar-typecell-label { font-size: 0.75rem; color: var(--ar-ink-3); }
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+  .ar-bento-queue    { grid-column: span 4; }
+  .ar-bento-table    { grid-column: span 8; }
+  .ar-bento-activity { grid-column: span 6; }
+  .ar-bento-line     { grid-column: span 6; }
+  .ar-bento-donut    { grid-column: span 5; }
+  .ar-bento-types    { grid-column: span 7; }
+}
+
+@media (max-width: 900px) {
+  .admin-page { padding: 0.625rem; }
+  .admin-shell { border-radius: 26px; min-height: calc(100vh - 1.25rem); }
+
+  .admin-topbar {
+    grid-template-columns: auto auto;
+    grid-template-areas: 'brand actions' 'nav nav';
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+  }
+  .admin-brand { grid-area: brand; justify-self: start; }
+  .admin-topbar-actions { grid-area: actions; justify-self: end; }
+  .admin-pillnav { grid-area: nav; justify-self: stretch; justify-content: flex-start; }
+
+  .admin-main { padding: 0.25rem 1rem 2rem; }
+
+  .ar-hero { grid-template-columns: 1fr; gap: 1.5rem; padding-bottom: 1.25rem; }
+  .ar-hero-title { font-size: 1.875rem; margin-bottom: 1.125rem; }
+  .ar-hero-figures { gap: 1.5rem; justify-content: space-between; }
+  .ar-figure-value { font-size: 2.25rem; }
+
+  .ar-bento { grid-template-columns: 1fr; }
+  .ar-bento-queue, .ar-bento-table, .ar-bento-activity,
+  .ar-bento-line, .ar-bento-donut, .ar-bento-types {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .ar-segment-label { display: none; }
+  .ar-segments { gap: 0.375rem; }
+  .ar-dots-row { grid-template-columns: 3.5rem 1fr; }
+  .ar-dot { width: 9px; height: 9px; }
+}
+
+@media (max-width: 480px) {
+  .ar-hero-title { font-size: 1.625rem; }
+  .ar-figure-value { font-size: 1.875rem; }
+  .ar-minirow { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .ar-minirow-date { display: none; }
+  .ar-dark-figures { gap: 1rem; }
+  .ar-dark-figure { font-size: 1.75rem; }
+}
+
+/* index.css only resets the lists it knew about, so the panel's own lists keep
+   their markers. Reset them where they are used as layout, not as prose. */
+.ar-tasks,
+.ar-minirows,
+.ar-typegrid,
+.ar-barlist,
+.admin-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}

@@ -44,6 +44,16 @@ export const getDashboardStats = query({
       no_show: bookings.filter(b => b.status === "no_show").length,
     };
 
+    // Every listing sits in exactly one review state, which makes this a true
+    // part-to-whole — the shape the dashboard's segmented bar needs. Seed rows
+    // carry no status at all and are treated as published everywhere else.
+    const listingsByStatus = {
+      approved: listings.filter(l => l.status === "approved").length,
+      pending: listings.filter(l => l.status === "pending").length,
+      rejected: listings.filter(l => l.status === "rejected").length,
+      seed: listings.filter(l => l.status === undefined).length,
+    };
+
     const listingsByType = {
       hotel: listings.filter(l => l.type === "hotel").length,
       restaurant: listings.filter(l => l.type === "restaurant").length,
@@ -96,6 +106,7 @@ export const getDashboardStats = query({
       totalTravelPlans: travelPlans.length,
       bookingsByStatus,
       listingsByType,
+      listingsByStatus,
       totalEmailCaptures: emailCaptures.length,
       activeListings: listings.filter(l => l.isActive !== false).length,
       verifiedListings: listings.filter(l => l.isVerified === true).length,
