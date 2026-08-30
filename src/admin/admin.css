@@ -365,11 +365,16 @@
 .admin-search-input { min-width: 16rem; flex: 1 1 16rem; }
 
 /* --- Tables -------------------------------------------------------------- */
-.admin-table-wrapper {
+.admin-table-wrapper,
+[data-slot="table-container"] {
   background: var(--ar-surface);
   border: 1px solid var(--ar-line);
   border-radius: var(--ar-r-lg);
-  overflow: hidden;
+  /* Scroll, never clip. The listings table is eight columns wide and `hidden`
+     cut the last columns off on narrow laptops with no way to reach them. */
+  overflow-x: auto;
+  overflow-y: visible;
+  overscroll-behavior-x: contain;
   box-shadow: var(--ar-shadow-sm);
 }
 
@@ -935,7 +940,8 @@
 
   /* Tables become cards. Every <td> prints its own field name from data-label,
      so a row stays readable without a header row to line up against. */
-  .admin-table-wrapper {
+  .admin-table-wrapper,
+  [data-slot="table-container"] {
     border: none;
     background: none;
     box-shadow: none;
@@ -1068,7 +1074,6 @@
     radial-gradient(80% 60% at 2% 100%, #f1e6bd 0%, rgba(241, 230, 189, 0) 50%),
     linear-gradient(160deg, #fefdfa 0%, #fcfaf3 62%, #faf6e9 100%);
   box-shadow: 0 24px 70px rgba(24, 26, 26, 0.18);
-  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -1097,6 +1102,10 @@
 }
 
 .admin-pillnav {
+  /* The nav spans the top on phones. Without this a downward swipe starting
+     on it is captured as a horizontal pan and the page never scrolls. */
+  touch-action: pan-x;
+  overscroll-behavior-x: contain;
   justify-self: center;
   display: flex;
   align-items: center;
@@ -1752,7 +1761,14 @@
   justify-content: flex-start;
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--border);
-  background: color-mix(in oklab, var(--muted) 40%, transparent);
+  /* ListingForm and KnowledgeForm render their footer inside the scrolling
+     region (it lives in the <form>), so it is pinned to the bottom — otherwise
+     the submit button on a long form is only reachable after scrolling past
+     every field. Opaque, so content passes underneath it cleanly. */
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: var(--card);
 }
 .admin-modal-footer .admin-btn { flex: 0 0 auto; }
 
@@ -1857,7 +1873,8 @@
 }
 
 /* --- Tables -------------------------------------------------------------- */
-.admin-table-wrapper {
+.admin-table-wrapper,
+[data-slot="table-container"] {
   border-radius: calc(var(--radius) * 1.4);
   box-shadow: 0 1px 2px rgba(20, 32, 28, 0.03);
 }
@@ -1913,4 +1930,14 @@
   border-color: color-mix(in oklab, var(--primary) 35%, transparent);
   background: color-mix(in oklab, var(--primary) 5%, var(--card));
   box-shadow: 0 1px 2px rgba(20, 32, 28, 0.04);
+}
+
+/* A hero figure's total never visibly changes; the week's delta is the number
+   the operator reacts to, so it rides just under the figure. */
+.ar-figure-delta {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.2;
+  margin-top: 0.125rem;
 }

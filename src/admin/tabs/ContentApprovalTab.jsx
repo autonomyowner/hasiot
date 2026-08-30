@@ -7,6 +7,9 @@ import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
 import { useSelection, describeBulkResult } from '../useSelection'
 import { TYPE_LABELS, cityLabel, formatDate } from '../constants'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '../ui/table'
 
 /**
  * Listings submitted from the mobile app, waiting on a decision. This is the
@@ -151,38 +154,37 @@ export default function ContentApprovalTab() {
             </div>
           )}
 
-          <div className="admin-table-wrapper">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '40px' }}>
+          <Table className="admin-table">
+              <TableHeader>
+                <TableRow>
+                  <TableHead style={{ width: '40px' }}>
                     <input
                       type="checkbox"
                       checked={selection.allSelected}
                       onChange={selection.toggleAll}
                       aria-label="تحديد الكل"
                     />
-                  </th>
-                  <th>الاسم</th>
-                  <th>النوع</th>
-                  <th>المدينة</th>
-                  <th>المالك</th>
-                  <th>تاريخ الإرسال</th>
-                  <th style={{ textAlign: 'left' }}>الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                  <TableHead>الاسم</TableHead>
+                  <TableHead>النوع</TableHead>
+                  <TableHead>المدينة</TableHead>
+                  <TableHead>المالك</TableHead>
+                  <TableHead>تاريخ الإرسال</TableHead>
+                  <TableHead style={{ textAlign: 'left' }}>الإجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {pending.map((listing) => (
-                  <tr key={listing._id} className={selection.isSelected(listing._id) ? 'is-selected' : ''}>
-                    <td>
+                  <TableRow key={listing._id} className={selection.isSelected(listing._id) ? 'is-selected' : ''}>
+                    <TableCell>
                       <input
                         type="checkbox"
                         checked={selection.isSelected(listing._id)}
                         onChange={() => selection.toggle(listing._id)}
                         aria-label={`تحديد ${listing.name_ar}`}
                       />
-                    </td>
-                    <td data-label="الاسم">
+                    </TableCell>
+                    <TableCell data-label="الاسم">
                       <div className="admin-pending-name">
                         {listing.images?.length ? (
                           <img className="admin-row-thumb" src={listing.images[0]} alt="" loading="lazy" />
@@ -194,15 +196,15 @@ export default function ContentApprovalTab() {
                           <div className="admin-table-sub" dir="ltr">{listing.name_en}</div>
                         </div>
                       </div>
-                    </td>
-                    <td data-label="النوع">{TYPE_LABELS[listing.type] || listing.type}</td>
-                    <td data-label="المدينة">{cityLabel(listing.city)}</td>
-                    <td data-label="المالك">
+                    </TableCell>
+                    <TableCell data-label="النوع">{TYPE_LABELS[listing.type] || listing.type}</TableCell>
+                    <TableCell data-label="المدينة">{cityLabel(listing.city)}</TableCell>
+                    <TableCell data-label="المالك">
                       <div className="admin-table-name">{listing.ownerName || '—'}</div>
                       <div className="admin-table-sub" dir="ltr">{listing.ownerEmail}</div>
-                    </td>
-                    <td data-label="تاريخ الإرسال">{formatDate(listing.createdAt)}</td>
-                    <td>
+                    </TableCell>
+                    <TableCell data-label="تاريخ الإرسال">{formatDate(listing.createdAt)}</TableCell>
+                    <TableCell>
                       <div className="admin-actions">
                         <button
                           onClick={() => handleApprove(listing)}
@@ -219,12 +221,11 @@ export default function ContentApprovalTab() {
                           رفض
                         </button>
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
         </>
       )}
 

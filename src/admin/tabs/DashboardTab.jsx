@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
-import { LoadingState } from '../components/States'
+import { Skeleton } from '../ui/skeleton'
 import { DotMatrix, Donut, LineChart, SegmentBar } from '../components/Charts'
 import { STATUS_COLORS, formatNumber } from '../components/chart-tokens'
 import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, TYPE_LABELS } from '../constants'
@@ -21,7 +21,7 @@ export default function DashboardTab({ onNavigate, user }) {
   const stats = useQuery(api.admin.queries.getDashboardStats)
   const recentBookings = useQuery(api.admin.queries.listAllBookings, { limit: 4 })
 
-  if (stats === undefined) return <LoadingState />
+  if (stats === undefined) return <DashboardSkeleton />
 
   const queues = [
     { label: 'محتوى بانتظار المراجعة', value: stats.pendingContent, tab: 'content' },
@@ -59,8 +59,18 @@ export default function DashboardTab({ onNavigate, user }) {
         </div>
 
         <div className="ar-hero-figures">
-          <HeroFigure value={stats.totalListings} label="مكان" icon="pin" />
-          <HeroFigure value={stats.totalUsers} label="مستخدم" icon="user" />
+          <HeroFigure
+            value={stats.totalListings}
+            label="مكان"
+            icon="pin"
+            added={stats.newListingsThisWeek}
+          />
+          <HeroFigure
+            value={stats.totalUsers}
+            label="مستخدم"
+            icon="user"
+            added={stats.newUsersThisWeek}
+          />
           <HeroFigure value={stats.totalBookings} label="حجز" icon="calendar" />
         </div>
       </section>
@@ -276,14 +286,48 @@ const ICONS = {
   calendar: <><rect x="4" y="5.5" width="16" height="14" rx="3" stroke="currentColor" strokeWidth="1.6" /><path d="M4 10h16M9 3.5v4M15 3.5v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></>,
 }
 
-function HeroFigure({ value, label, icon }) {
+function HeroFigure({ value, label, icon, added }) {
   return (
     <div className="ar-figure">
       <span className="ar-figure-value">{formatNumber(value)}</span>
+      {added > 0 && (
+        <span className="ar-figure-delta">+{formatNumber(added)} هذا الأسبوع</span>
+      )}
       <span className="ar-figure-label">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">{ICONS[icon]}</svg>
         {label}
       </span>
+    </div>
+  )
+}
+
+/** Mirrors the bento so the layout does not shift when the data arrives. */
+function DashboardSkeleton() {
+  return (
+    <div>
+      <section className="ar-hero">
+        <div className="ar-hero-main">
+          <Skeleton className="h-10 w-64 mb-6" />
+          <Skeleton className="h-9 w-full max-w-xl rounded-full" />
+        </div>
+        <div className="ar-hero-figures">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="ar-figure">
+              <Skeleton className="h-12 w-20" />
+              <Skeleton className="h-3 w-14 mt-2" />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="ar-bento">
+        <article className="ar-card ar-bento-queue"><Skeleton className="h-40 w-full" /></article>
+        <article className="ar-card ar-bento-table"><Skeleton className="h-40 w-full" /></article>
+        <article className="ar-card ar-bento-activity"><Skeleton className="h-56 w-full" /></article>
+        <article className="ar-card ar-bento-line"><Skeleton className="h-44 w-full" /></article>
+        <article className="ar-card ar-bento-donut"><Skeleton className="h-52 w-full" /></article>
+        <article className="ar-card ar-bento-types"><Skeleton className="h-24 w-full" /></article>
+      </div>
     </div>
   )
 }

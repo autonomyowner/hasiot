@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Modal from '../components/Modal'
+import FilterSelect from '../components/FilterSelect'
 import { CITIES, CITY_LABELS, KNOWLEDGE_CATEGORIES } from '../constants'
 
 /**
@@ -74,28 +75,26 @@ export default function KnowledgeForm({ initialData, onSubmit, onClose }) {
             <div className="admin-form-row">
               <div className="admin-form-group">
                 <label className="admin-form-label">الفئة *</label>
-                <select
+                <FilterSelect
                   value={form.category}
-                  onChange={(e) => set({ category: e.target.value })}
-                  className="admin-form-select"
-                >
-                  {KNOWLEDGE_CATEGORIES.map((c) => (
-                    <option key={c.value} value={c.value}>{c.label}</option>
-                  ))}
-                </select>
+                  onChange={(v) => set({ category: v })}
+                  placeholder="الفئة"
+                  className="w-full"
+                  options={KNOWLEDGE_CATEGORIES}
+                />
               </div>
               <div className="admin-form-group">
                 <label className="admin-form-label">المدينة المتعلقة</label>
-                <select
+                <FilterSelect
                   value={form.region}
-                  onChange={(e) => set({ region: e.target.value })}
-                  className="admin-form-select"
-                >
-                  <option value="">عام (كل الأحساء)</option>
-                  {CITIES.map((c) => (
-                    <option key={c} value={c}>{CITY_LABELS[c] || c}</option>
-                  ))}
-                </select>
+                  onChange={(v) => set({ region: v })}
+                  placeholder="عام (كل الأحساء)"
+                  className="w-full"
+                  options={[
+                    { value: '', label: 'عام (كل الأحساء)' },
+                    ...CITIES.map((c) => ({ value: c, label: CITY_LABELS[c] || c })),
+                  ]}
+                />
               </div>
             </div>
 

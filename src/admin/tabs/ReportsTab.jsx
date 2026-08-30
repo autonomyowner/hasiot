@@ -5,9 +5,13 @@ import { api } from '../../../convex/_generated/api'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
+import FilterSelect from '../components/FilterSelect'
 import {
   REPORT_REASONS_AR, REPORT_STATUSES, REPORT_TARGET_TYPES_AR, formatDate,
 } from '../constants'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '../ui/table'
 
 /**
  * User-submitted content reports (the UGC-compliance queue both stores require).
@@ -84,15 +88,12 @@ export default function ReportsTab() {
       </div>
 
       <div className="admin-filters">
-        <select
+        <FilterSelect
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="admin-form-select"
-        >
-          {REPORT_STATUSES.map((s) => (
-            <option key={s.value} value={s.value}>{s.label}</option>
-          ))}
-        </select>
+          onChange={setStatus}
+          placeholder="الحالة"
+          options={REPORT_STATUSES.map((s) => ({ value: s.value, label: s.label }))}
+        />
       </div>
 
       {reports.length === 0 ? (
@@ -101,23 +102,22 @@ export default function ReportsTab() {
           hint="التبليغات التي يرسلها المستخدمون من التطبيق عن محتوى مخالف تظهر هنا."
         />
       ) : (
-        <div className="admin-table-wrapper">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>المحتوى المبلغ عنه</th>
-                <th>النوع</th>
-                <th>السبب</th>
-                <th>التفاصيل</th>
-                <th>المُبلِّغ</th>
-                <th>التاريخ</th>
-                <th style={{ textAlign: 'left' }}>الإجراءات</th>
-              </tr>
-            </thead>
-            <tbody>
+        <Table className="admin-table">
+            <TableHeader>
+              <TableRow>
+                <TableHead>المحتوى المبلغ عنه</TableHead>
+                <TableHead>النوع</TableHead>
+                <TableHead>السبب</TableHead>
+                <TableHead>التفاصيل</TableHead>
+                <TableHead>المُبلِّغ</TableHead>
+                <TableHead>التاريخ</TableHead>
+                <TableHead style={{ textAlign: 'left' }}>الإجراءات</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {reports.map((report) => (
-                <tr key={report._id} className={busyId === report._id ? 'is-busy' : ''}>
-                  <td data-label="المحتوى">
+                <TableRow key={report._id} className={busyId === report._id ? 'is-busy' : ''}>
+                  <TableCell data-label="المحتوى">
                     {report.target ? (
                       <>
                         <div className="admin-table-name">{report.target.title || '—'}</div>
@@ -129,11 +129,11 @@ export default function ReportsTab() {
                     ) : (
                       <span className="admin-badge gray">المحتوى محذوف</span>
                     )}
-                  </td>
-                  <td data-label="النوع">{REPORT_TARGET_TYPES_AR[report.targetType] || report.targetType}</td>
-                  <td data-label="السبب">{REPORT_REASONS_AR[report.reason] || report.reason}</td>
-                  <td data-label="التفاصيل" style={{ maxWidth: '240px', whiteSpace: 'pre-wrap' }}>{report.details || '—'}</td>
-                  <td data-label="المُبلِّغ">
+                  </TableCell>
+                  <TableCell data-label="النوع">{REPORT_TARGET_TYPES_AR[report.targetType] || report.targetType}</TableCell>
+                  <TableCell data-label="السبب">{REPORT_REASONS_AR[report.reason] || report.reason}</TableCell>
+                  <TableCell data-label="التفاصيل" style={{ maxWidth: '240px', whiteSpace: 'pre-wrap' }}>{report.details || '—'}</TableCell>
+                  <TableCell data-label="المُبلِّغ">
                     {report.reporter ? (
                       <>
                         <div className="admin-table-name">
@@ -144,9 +144,9 @@ export default function ReportsTab() {
                     ) : (
                       <span className="admin-table-sub">—</span>
                     )}
-                  </td>
-                  <td data-label="التاريخ">{formatDate(report.createdAt)}</td>
-                  <td>
+                  </TableCell>
+                  <TableCell data-label="التاريخ">{formatDate(report.createdAt)}</TableCell>
+                  <TableCell>
                     {report.status === 'pending' ? (
                       <div className="admin-actions">
                         {report.target && report.targetType !== 'review' && (
@@ -171,12 +171,11 @@ export default function ReportsTab() {
                         {REPORT_STATUSES.find((s) => s.value === report.status)?.label || report.status}
                       </span>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </TableBody>
+          </Table>
       )}
 
       {confirmDialog}

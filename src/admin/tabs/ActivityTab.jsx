@@ -3,7 +3,11 @@ import { motion } from 'framer-motion'
 import { usePaginatedQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { EmptyState, TableSkeleton } from '../components/States'
+import FilterSelect from '../components/FilterSelect'
 import { formatDateTime, formatRelative } from '../constants'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '../ui/table'
 
 const PAGE_SIZE = 30
 
@@ -92,18 +96,24 @@ export default function ActivityTab() {
       </div>
 
       <div className="admin-filters">
-        <select value={action} onChange={(e) => setAction(e.target.value)} className="admin-form-select">
-          <option value="">كل الإجراءات</option>
-          {Object.entries(ACTION_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-        <select value={targetType} onChange={(e) => setTargetType(e.target.value)} className="admin-form-select">
-          <option value="">كل الأنواع</option>
-          {Object.entries(TARGET_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
+        <FilterSelect
+          value={action}
+          onChange={setAction}
+          placeholder="كل الإجراءات"
+          options={[
+            { value: '', label: 'كل الإجراءات' },
+            ...Object.entries(ACTION_LABELS).map(([value, label]) => ({ value, label })),
+          ]}
+        />
+        <FilterSelect
+          value={targetType}
+          onChange={setTargetType}
+          placeholder="كل الأنواع"
+          options={[
+            { value: '', label: 'كل الأنواع' },
+            ...Object.entries(TARGET_LABELS).map(([value, label]) => ({ value, label })),
+          ]}
+        />
         {hasFilters && (
           <button
             className="admin-btn admin-btn-secondary admin-btn-small"
@@ -123,42 +133,40 @@ export default function ActivityTab() {
         />
       ) : (
         <>
-          <div className="admin-table-wrapper">
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '160px' }}>الوقت</th>
-                  <th>الإجراء</th>
-                  <th>العنصر</th>
-                  <th>المدير</th>
-                  <th>ملاحظات</th>
-                </tr>
-              </thead>
-              <tbody>
+          <Table className="admin-table">
+              <TableHeader>
+                <TableRow>
+                  <TableHead style={{ width: '160px' }}>الوقت</TableHead>
+                  <TableHead>الإجراء</TableHead>
+                  <TableHead>العنصر</TableHead>
+                  <TableHead>المدير</TableHead>
+                  <TableHead>ملاحظات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {log.results.map((row) => (
-                  <tr key={row._id}>
-                    <td data-label="الوقت" title={formatDateTime(row.createdAt)}>
+                  <TableRow key={row._id}>
+                    <TableCell data-label="الوقت" title={formatDateTime(row.createdAt)}>
                       <div className="admin-table-name">{formatRelative(row.createdAt)}</div>
                       <div className="admin-table-sub">{formatDateTime(row.createdAt)}</div>
-                    </td>
-                    <td data-label="الإجراء">
+                    </TableCell>
+                    <TableCell data-label="الإجراء">
                       <span className={`admin-badge ${TONE[row.action] || 'blue'}`}>
                         {ACTION_LABELS[row.action] || row.action}
                       </span>
-                    </td>
-                    <td data-label="العنصر">
+                    </TableCell>
+                    <TableCell data-label="العنصر">
                       <div className="admin-table-name">{row.summary || '—'}</div>
                       <div className="admin-table-sub">
                         {TARGET_LABELS[row.targetType] || row.targetType}
                       </div>
-                    </td>
-                    <td data-label="المدير" className="admin-table-sub" dir="ltr">{row.adminEmail}</td>
-                    <td data-label="ملاحظات" className="admin-table-sub">{row.details || '—'}</td>
-                  </tr>
+                    </TableCell>
+                    <TableCell data-label="المدير" className="admin-table-sub" dir="ltr">{row.adminEmail}</TableCell>
+                    <TableCell data-label="ملاحظات" className="admin-table-sub">{row.details || '—'}</TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </TableBody>
+            </Table>
 
           {log.status === 'CanLoadMore' && (
             <div className="admin-load-more">
