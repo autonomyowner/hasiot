@@ -22,7 +22,17 @@ export default function Modal({ title, subtitle, onClose, children, footer, widt
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
-    cardRef.current?.focus()
+    // Move focus into the dialog, but to its first field rather than to the card
+    // itself: focusing the card stole focus from an `autoFocus` textarea, so an
+    // operator who opened the reject dialog and started typing had their
+    // keystrokes go nowhere — and their spaces scroll the page — until they
+    // clicked the box. Fall back to the card only when there is nothing to type
+    // into, so a plain confirm dialog still traps focus.
+    const card = cardRef.current
+    const field = card?.querySelector(
+      'textarea, input:not([type="hidden"]), select, [autofocus]'
+    )
+    ;(field || card)?.focus()
 
     return () => {
       document.removeEventListener('keydown', onKeyDown)
