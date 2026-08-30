@@ -170,14 +170,24 @@ export const deleteKnowledgeData = mutation({
   },
 });
 
+// The statuses a booking is allowed to hold. The mutation below used to write
+// whatever string it was handed, so a typo in a client could park a booking in
+// a status no query filters on and no UI can display.
+const BOOKING_STATUSES = ["pending", "confirmed", "completed", "cancelled", "no_show"];
+
 // Update booking status (admin)
 export const updateBookingStatus = mutation({
   args: {
     id: v.id("bookings"),
     status: v.string(),
+    cancellationReason: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    if (!BOOKING_STATUSES.includes(args.status)) {
+      throw new Error("Invalid booking status: " + args.status);
+    }
+
     const existing = await ctx.db.get(args.id);
     if (!existing) {
       throw new Error("Booking not found");
@@ -185,6 +195,12 @@ export const updateBookingStatus = mutation({
 
     await ctx.db.patch(args.id, {
       status: args.status,
+      // Only carry a reason onto a cancellation, and never blank an existing one
+      // when the status is being changed for some other purpose.
+      cancellationReason:
+        args.status === "cancelled"
+          ? args.cancellationReason ?? existing.cancellationReason
+          : existing.cancellationReason,
       updatedAt: Date.now(),
     });
     return { success: true };

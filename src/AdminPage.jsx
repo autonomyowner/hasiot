@@ -872,7 +872,7 @@ function KnowledgeForm({ onSubmit, onClose, initialData }) {
     content_ar: initialData?.content_ar || '',
     keywords: initialData?.keywords?.join(', ') || '',
     source: initialData?.metadata?.source || '',
-    relatedCity: initialData?.metadata?.relatedCity || '',
+    region: initialData?.metadata?.region || '',
     isActive: initialData?.isActive !== false,
   })
 
@@ -890,9 +890,9 @@ function KnowledgeForm({ onSubmit, onClose, initialData }) {
       content: formData.content,
       content_ar: formData.content_ar || undefined,
       keywords: keywords.length > 0 ? keywords : undefined,
-      metadata: (formData.source || formData.relatedCity) ? {
+      metadata: (formData.source || formData.region) ? {
         source: formData.source || undefined,
-        relatedCity: formData.relatedCity || undefined,
+        region: formData.region || undefined,
         lastReviewed: new Date().toISOString().split('T')[0],
       } : undefined,
       isActive: formData.isActive,
@@ -939,8 +939,8 @@ function KnowledgeForm({ onSubmit, onClose, initialData }) {
                 <div className="admin-form-group">
                   <label className="admin-form-label">المدينة المتعلقة</label>
                   <select
-                    value={formData.relatedCity}
-                    onChange={(e) => setFormData({...formData, relatedCity: e.target.value})}
+                    value={formData.region}
+                    onChange={(e) => setFormData({...formData, region: e.target.value})}
                     className="admin-form-select"
                   >
                     <option value="">عام (كل المدن)</option>
@@ -1492,9 +1492,6 @@ function PendingBusinessesTab() {
 
   if (pendingBusinesses === undefined) return <LoadingState />
 
-  const categoryLabels = {}
-  CATEGORIES.forEach(c => { categoryLabels[c.value] = c.label })
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -1518,7 +1515,7 @@ function PendingBusinessesTab() {
                 <th>الاسم</th>
                 <th>البريد الإلكتروني</th>
                 <th>الدور</th>
-                <th>الفئة</th>
+                <th>نوع النشاط</th>
                 <th>وثائق العمل</th>
                 <th>تاريخ التسجيل</th>
                 <th>إجراء</th>
@@ -1530,10 +1527,10 @@ function PendingBusinessesTab() {
                   <td>{`${business.firstName || ''} ${business.lastName || ''}`.trim() || '-'}</td>
                   <td>{business.email}</td>
                   <td>{business.role === 'business_owner' ? 'صاحب عمل' : 'مزود خدمة'}</td>
-                  <td>{categoryLabels[business.category] || business.category || '-'}</td>
+                  <td>{business.businessType || '-'}</td>
                   <td>
-                    {business.businessDocFileId ? (
-                      <BusinessDocDownloadLink fileId={business.businessDocFileId} />
+                    {business.cvFileId ? (
+                      <BusinessDocDownloadLink fileId={business.cvFileId} />
                     ) : (
                       <span style={{ color: '#ef4444', fontSize: '0.8125rem' }}>لم يُرفع بعد</span>
                     )}
@@ -1543,8 +1540,8 @@ function PendingBusinessesTab() {
                     <button
                       className="admin-btn admin-btn-primary admin-btn-small"
                       onClick={() => handleApprove(business._id)}
-                      disabled={approving === business._id || !business.businessDocFileId}
-                      title={!business.businessDocFileId ? 'يجب رفع وثائق العمل أولاً' : ''}
+                      disabled={approving === business._id || !business.cvFileId}
+                      title={!business.cvFileId ? 'يجب رفع وثائق العمل أولاً' : ''}
                     >
                       {approving === business._id ? 'جاري...' : 'موافقة'}
                     </button>
