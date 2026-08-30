@@ -23,7 +23,11 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // ESLint core resolves <Component /> but not JSX member expressions like
+      // <motion.div />, so framer-motion's lowercase `motion` import reads as
+      // unused in every file that animates anything. Allow it by name rather
+      // than pulling in eslint-plugin-react for one rule.
+      'no-unused-vars': ['error', { varsIgnorePattern: '^([A-Z_]|motion$)' }],
     },
   },
 ])

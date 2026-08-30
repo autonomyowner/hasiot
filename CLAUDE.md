@@ -73,7 +73,15 @@ All admin queries/mutations in `convex/admin/` and `approveBusinessAccount` in `
 - `src/AuthedLayout.jsx` — Layout route that owns `ConvexReactClient` + `ConvexBetterAuthProvider` + `authClient`. **Only** `/sign-in`, `/delete-account` and `/admin` sit inside it, so the convex and better-auth chunks never load for anonymous visitors on `/`. Keep Convex imports out of `main.jsx` or that isolation breaks.
 - `src/App.jsx` — The landing page. Bilingual `content = { en, ar }`, sections: hero → story → places carousel → in-app showcase → concierge → quote → download → footer. Every CTA points at the App Store / Play Store; there are no internal links left except the static legal pages.
 - `src/hooks/useReveal.js` — IntersectionObserver scroll reveals (replaced framer-motion on the landing page). Elements opt in with `data-reveal`; the hidden start state is scoped to `.reveal-ready` so the page still renders if JS fails.
-- `src/AdminPage.jsx` — Arabic RTL admin dashboard, the only real app left on the web. Auth via Better-Auth (`useCurrentUser()` + `role === "admin"`). Redirects to `/sign-in?next=/admin` if not logged in. Tabs: stats, listings, content approval, services approval, pending businesses, knowledge base, bookings, emails. Still uses framer-motion (lazy admin chunk only).
+- `src/admin/` — Arabic RTL admin dashboard, the only real app left on the web. `AdminPage.jsx` is the
+  shell (auth gate + nav with live pending badges); one file per tab in `tabs/`; shared primitives in
+  `components/` (Modal, ConfirmDialog, ToastProvider + `toast-context`, ImageUploader,
+  WorkingHoursModal, States); shared lookups and date helpers in `constants.js`. Auth via Better-Auth
+  (`useCurrentUser()` + `role === "admin"`); redirects to `/sign-in?next=/admin` when logged out.
+  Ten tabs: stats, listings, content approval, services approval, pending accounts, reports, bookings,
+  knowledge base, activity log, emails. Still uses framer-motion (lazy admin chunk only).
+  **No `window.confirm`/`alert`** — destructive actions go through `useConfirm()` and every mutation
+  reports through `useToast()`; each tab renders explicit loading, empty and error states.
 - `src/pages/SignInPage.jsx` — **Unlinked from everywhere.** It exists so the admin portal has a login. Honours `?next=` (relative paths only), defaults to `/admin`. No public sign-up.
 - `src/pages/DeleteAccountPage.jsx` — **Do not remove.** App Store guideline 5.1.1(v); linked from `public/support.html`, which is the live App Store Support URL.
 
@@ -103,7 +111,7 @@ Located in `hasio-mobile-app/`. **Renamed 2026-08-11** from `hasio<SPACE><SPACE>
 
 ```
 convex/
-├── schema.ts              # Database schema (11 tables)
+├── schema.ts              # Database schema (adminActivity added 2026-08-30)
 ├── convex.config.ts       # Registers betterAuth component
 ├── auth.config.ts         # getAuthConfigProvider()
 ├── auth.ts                # Better-Auth instance + getAuthenticatedAppUser helper
@@ -111,8 +119,12 @@ convex/
 ├── config/
 │   └── queries.ts         # getPublicConfig (exposes MAPBOX_PUBLIC_TOKEN to frontend)
 ├── admin/
-│   ├── queries.ts         # getDashboardStats, listAllListings, listPendingBusinesses, listPendingServices
-│   └── mutations.ts       # CRUD for listings, knowledge data, approveService/rejectService, approveContent/rejectContent
+│   ├── queries.ts         # getDashboardStats, adminListListings (paginated), adminSearchListings,
+│   │                     # listPending{Content,Services,Businesses}, listAllBookings, listAdminActivity
+│   ├── mutations.ts       # listing/knowledge CRUD, approve+reject content/services,
+│   │                     # updateBookingStatus, bulkApprove*/bulkReject*
+│   ├── activity.ts        # logAdminAction() — called by every admin write
+│   └── devTools.ts        # internalMutation grantAdmin/revokeAdmin/listAdmins (CLI only)
 ├── users/
 │   ├── queries.ts         # getCurrentUser, getFavorites, isFavorite, getBusinessDocUrl, getStorageUrl
 │   └── mutations.ts       # updateProfile, toggleFavorite, setUserRole, approveBusinessAccount, generateUploadUrl, saveBusinessDoc, createUser
@@ -148,10 +160,11 @@ convex/
 | `reviews` | Listing ratings & reviews |
 | `emailCaptures` | Early access signups |
 | `travelKnowledge` | Knowledge base for AI travel planner |
+| `adminActivity` | Append-only log of every admin action (who / what / when), read by the السجل tab |
 
 ### Listings vs Services
 
-**Listings** (`listings` table): Physical places — hotels, restaurants, attractions, events, tours. Created by business owners via `submitListing` (auth-protected, sets ownerId + status "pending"). Admin creates via `createListing` (no auth check, status "approved"). Seed data has no ownerId or status (treated as approved).
+**Listings** (`listings` table): Physical places — hotels, restaurants, attractions, events, tours. Created by business owners via `submitListing` (auth-protected, sets ownerId + status "pending"). Admin creates via `createListing` (`requireAdmin`, status "approved"). Seed data has no ownerId or status (treated as approved).
 
 **Services** (`services` table): Freelancer offerings — tour_guide, photographer, driver, translator, event_planner, catering, equipment_rental, other. Created only by service providers via `submitService`. All start as "pending" and require admin approval.
 
@@ -257,8 +270,21 @@ EXPO_PUBLIC_CONVEX_SITE_URL=https://hearty-ram-74.eu-west-1.convex.site
 - **Auth**: Better-Auth role-based — user must have `role: "admin"` in `users` table. Set via Convex Dashboard Data tab.
 - **Backend**: All admin queries/mutations require `requireAdmin(ctx)` — throws if not admin. No unauthenticated access possible.
 - **Frontend**: `useCurrentUser()` checks role client-side. Not logged in → redirect to `/sign-in`. Logged in but not admin → "access denied" page.
-- **Features**: Dashboard stats, listing CRUD, content approval (listings), services approval, pending business account approvals (with doc review), travel knowledge data, bookings, email captures
-- **Setup**: To grant admin access, edit user's `role` field to `"admin"` in Convex Dashboard → Data → `users` table. No redeploy needed.
+- **Features**: dashboard built around pending work (queue cards link into the tab that clears them),
+  listing CRUD **with photo upload** (multi-image, reorder, cover = index 0), **working-hours editor**
+  per listing, **booking management** (confirm / complete / cancel-with-reason / no-show, grouped
+  today / upcoming / past), content + service approval with **bulk approve/reject**, pending account
+  approvals with document review, reports, knowledge base, **admin activity log**, email captures.
+- **Listing search**: Arabic *and* English names, via two search indexes (`search_listings` on
+  `name_en`, `search_listings_ar` on `name_ar`) merged in `adminSearchListings`. Browsing uses
+  `adminListListings` with cursor pagination; filters for type/city/review-status/has-photos/has-hours.
+- **Audit trail**: every admin write appends to `adminActivity` via `logAdminAction()` in the same
+  transaction, so the log cannot record something that did not commit. Add a call there when adding
+  any new admin mutation.
+- **Setup**: To grant admin access, either edit the user's `role` field to `"admin"` in Convex
+  Dashboard → Data → `users`, or run
+  `npx convex run admin/devTools:grantAdmin '{"email":"..."}' --prod`. The user must have signed in
+  at least once (they need a `users` row). No redeploy needed.
 
 ## Mobile App Production Patterns
 

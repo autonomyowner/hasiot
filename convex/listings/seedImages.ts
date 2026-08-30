@@ -1,4 +1,4 @@
-import { mutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 
 // Curated Unsplash images for Al-Ahsa listings
 const imageMap: Record<string, string[]> = {
@@ -240,7 +240,7 @@ const imageMap: Record<string, string[]> = {
 };
 
 // One-time migration: add images to all listings that don't have them
-export const addImagesToListings = mutation({
+export const addImagesToListings = internalMutation({
   args: {},
   handler: async (ctx) => {
     const listings = await ctx.db.query("listings").collect();

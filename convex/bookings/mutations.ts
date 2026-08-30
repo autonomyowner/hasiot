@@ -1,4 +1,5 @@
-import { mutation } from "../_generated/server";
+import { mutation, type MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 import { enforceRateLimit } from "../rateLimit";
@@ -175,15 +176,11 @@ export const rescheduleBooking = mutation({
   },
 });
 
-// Confirm a booking (business/admin action)
+// Confirm a booking (listing owner or admin)
 export const confirmBooking = mutation({
   args: { bookingId: v.id("bookings") },
   handler: async (ctx, args) => {
-    const booking = await ctx.db.get(args.bookingId);
-
-    if (!booking) {
-      throw new Error("Booking not found");
-    }
+    const booking = await requireBookingManager(ctx, args.bookingId);
 
     if (booking.status !== "pending") {
       throw new Error("Can only confirm pending bookings");
@@ -198,18 +195,14 @@ export const confirmBooking = mutation({
   },
 });
 
-// Mark booking as completed (business/admin action)
+// Mark booking as completed (listing owner or admin)
 export const completeBooking = mutation({
   args: {
     bookingId: v.id("bookings"),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const booking = await ctx.db.get(args.bookingId);
-
-    if (!booking) {
-      throw new Error("Booking not found");
-    }
+    const booking = await requireBookingManager(ctx, args.bookingId);
 
     if (booking.status === "cancelled") {
       throw new Error("Cannot complete a cancelled booking");
@@ -224,3 +217,33 @@ export const completeBooking = mutation({
     return { success: true };
   },
 });
+
+/**
+ * Resolve a booking for a caller allowed to move it through the flow: an admin,
+ * or the owner of the listing it belongs to.
+ *
+ * `confirmBooking` and `completeBooking` previously ran no auth check at all, so
+ * any caller holding a booking id could confirm or complete it. The tourist who
+ * made the booking is deliberately not included — they cancel and reschedule
+ * through their own mutations above, but they do not get to confirm themselves.
+ */
+async function requireBookingManager(ctx: MutationCtx, bookingId: Id<"bookings">) {
+  const user = await getAuthenticatedAppUser(ctx);
+  if (!user) {
+    throw new Error("Not authenticated");
+  }
+
+  const booking = await ctx.db.get(bookingId);
+  if (!booking) {
+    throw new Error("Booking not found");
+  }
+
+  if (user.role !== "admin") {
+    const listing = await ctx.db.get(booking.listingId);
+    if (!listing || listing.ownerId !== user._id) {
+      throw new Error("Not authorized to manage this booking");
+    }
+  }
+
+  return booking;
+}

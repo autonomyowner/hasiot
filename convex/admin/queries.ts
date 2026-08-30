@@ -1,4 +1,5 @@
 import { query } from "../_generated/server";
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { requireAdmin } from "../auth";
 
@@ -8,6 +9,9 @@ import { requireAdmin } from "../auth";
 const MAX_LIST = 200;
 const MAX_SCAN = 1000;
 const STATS_CAP = 5000;
+const MAX_SEARCH = 100;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Get dashboard statistics
 export const getDashboardStats = query({
@@ -24,11 +28,30 @@ export const getDashboardStats = query({
     const emailCaptures = await ctx.db.query("emailCaptures").take(STATS_CAP);
     const services = await ctx.db.query("services").take(STATS_CAP);
 
+    // Everything below is derived from the rows already fetched above, apart
+    // from the two indexed counts — the point is to add the numbers the operator
+    // acts on without adding table scans.
+    const pendingReports = await ctx.db
+      .query("contentReports")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .take(MAX_LIST);
+
     const bookingsByStatus = {
       pending: bookings.filter(b => b.status === "pending").length,
       confirmed: bookings.filter(b => b.status === "confirmed").length,
       completed: bookings.filter(b => b.status === "completed").length,
       cancelled: bookings.filter(b => b.status === "cancelled").length,
+      no_show: bookings.filter(b => b.status === "no_show").length,
+    };
+
+    // Every listing sits in exactly one review state, which makes this a true
+    // part-to-whole — the shape the dashboard's segmented bar needs. Seed rows
+    // carry no status at all and are treated as published everywhere else.
+    const listingsByStatus = {
+      approved: listings.filter(l => l.status === "approved").length,
+      pending: listings.filter(l => l.status === "pending").length,
+      rejected: listings.filter(l => l.status === "rejected").length,
+      seed: listings.filter(l => l.status === undefined).length,
     };
 
     const listingsByType = {
@@ -38,6 +61,39 @@ export const getDashboardStats = query({
       event: listings.filter(l => l.type === "event").length,
       tour: listings.filter(l => l.type === "tour").length,
     };
+
+    const weekAgo = Date.now() - 7 * DAY_MS;
+    const today = new Date().toISOString().split("T")[0];
+    const inAWeek = new Date(Date.now() + 7 * DAY_MS).toISOString().split("T")[0];
+
+    // Daily buckets for the dashboard's trend charts. Built from the rows
+    // already fetched above by bucketing createdAt, so the charts cost nothing:
+    // no extra query, no extra document read.
+    const TREND_DAYS = 14;
+    const dayKeys: string[] = [];
+    for (let i = TREND_DAYS - 1; i >= 0; i--) {
+      dayKeys.push(new Date(Date.now() - i * DAY_MS).toISOString().split("T")[0]);
+    }
+    const bucket = (rows: { createdAt: number }[]) => {
+      const counts = new Map(dayKeys.map((d) => [d, 0]));
+      for (const row of rows) {
+        const key = new Date(row.createdAt).toISOString().split("T")[0];
+        const current = counts.get(key);
+        if (current !== undefined) counts.set(key, current + 1);
+      }
+      return dayKeys.map((d) => counts.get(d) ?? 0);
+    };
+
+    const trend = {
+      days: dayKeys,
+      listings: bucket(listings),
+      bookings: bucket(bookings),
+      users: bucket(users),
+    };
+
+    const pendingBusinesses = users.filter(
+      u => (u.role === "business_owner" || u.role === "service_provider") && u.isApproved === false
+    ).length;
 
     return {
       statsCap: STATS_CAP,
@@ -50,12 +106,32 @@ export const getDashboardStats = query({
       totalTravelPlans: travelPlans.length,
       bookingsByStatus,
       listingsByType,
+      listingsByStatus,
       totalEmailCaptures: emailCaptures.length,
       activeListings: listings.filter(l => l.isActive !== false).length,
       verifiedListings: listings.filter(l => l.isVerified === true).length,
       pendingContent: listings.filter(l => l.status === "pending").length,
       totalServices: services.length,
       pendingServices: services.filter(s => s.status === "pending").length,
+
+      // Work waiting on the operator, which is what the dashboard leads with.
+      pendingBusinesses,
+      pendingReports: pendingReports.length,
+      pendingBookings: bookingsByStatus.pending,
+
+      // Content quality: a listing with no photo renders as a blank card in the
+      // app, and one with no working hours can never offer a booking slot.
+      listingsMissingImages: listings.filter(l => !l.images || l.images.length === 0).length,
+      listingsMissingHours: listings.filter(l => !l.workingHours || l.workingHours.length === 0).length,
+
+      // Momentum
+      newUsersThisWeek: users.filter(u => u.createdAt >= weekAgo).length,
+      newListingsThisWeek: listings.filter(l => l.createdAt >= weekAgo).length,
+      upcomingBookings: bookings.filter(
+        b => b.date >= today && b.date <= inAWeek && b.status !== "cancelled"
+      ).length,
+
+      trend,
     };
   },
 });
@@ -85,6 +161,144 @@ export const listAllListings = query({
     }
 
     return listings;
+  },
+});
+
+/**
+ * `status` in the UI has a fourth value the database does not: seed listings
+ * carry no status at all and are treated as approved everywhere. "seed" selects
+ * exactly those.
+ */
+function matchesStatus(listing: { status?: string }, status?: string) {
+  if (!status) return true;
+  if (status === "seed") return listing.status === undefined;
+  return listing.status === status;
+}
+
+function matchesFlags(
+  listing: { images?: string[]; workingHours?: unknown[] },
+  args: { hasImages?: boolean; hasWorkingHours?: boolean }
+) {
+  if (args.hasImages !== undefined) {
+    const has = (listing.images?.length ?? 0) > 0;
+    if (has !== args.hasImages) return false;
+  }
+  if (args.hasWorkingHours !== undefined) {
+    const has = (listing.workingHours?.length ?? 0) > 0;
+    if (has !== args.hasWorkingHours) return false;
+  }
+  return true;
+}
+
+/**
+ * Cursor-paginated listings for the admin table.
+ *
+ * `listAllListings` above caps at 200 rows with no way to reach row 201, which
+ * was survivable at 56 seeded listings and will not be. Filtering happens per
+ * page, so a page can come back shorter than requested — `isDone` still
+ * terminates correctly.
+ */
+export const adminListListings = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    type: v.optional(v.string()),
+    city: v.optional(v.string()),
+    status: v.optional(v.string()),
+    hasImages: v.optional(v.boolean()),
+    hasWorkingHours: v.optional(v.boolean()),
+    order: v.optional(v.string()), // "newest" (default) | "oldest"
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    // Use the narrowest index the filters allow. Status wins over type because
+    // the pending queue is the one that grows unboundedly.
+    const build = () => {
+      if (args.status && args.status !== "seed") {
+        return ctx.db.query("listings").withIndex("by_status", (q) => q.eq("status", args.status!));
+      }
+      if (args.type) {
+        return ctx.db.query("listings").withIndex("by_type", (q) => q.eq("type", args.type!));
+      }
+      if (args.city) {
+        return ctx.db.query("listings").withIndex("by_city", (q) => q.eq("city", args.city!));
+      }
+      return ctx.db.query("listings");
+    };
+
+    const result = await build()
+      .order(args.order === "oldest" ? "asc" : "desc")
+      .paginate(args.paginationOpts);
+
+    return {
+      ...result,
+      page: result.page.filter(
+        (l) =>
+          (!args.type || l.type === args.type) &&
+          (!args.city || l.city === args.city) &&
+          matchesStatus(l, args.status) &&
+          matchesFlags(l, args)
+      ),
+    };
+  },
+});
+
+/**
+ * Search listings by name for the admin table.
+ *
+ * A Convex search index covers one field, and this panel is Arabic-first while
+ * the seed data is named in both languages — so both indexes are queried and the
+ * results merged. Search results are narrow by nature, so this returns a plain
+ * capped array rather than a page.
+ */
+export const adminSearchListings = query({
+  args: {
+    searchQuery: v.string(),
+    type: v.optional(v.string()),
+    city: v.optional(v.string()),
+    status: v.optional(v.string()),
+    hasImages: v.optional(v.boolean()),
+    hasWorkingHours: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const term = args.searchQuery.trim();
+    if (!term) return [];
+
+    const [byEnglish, byArabic] = await Promise.all([
+      ctx.db
+        .query("listings")
+        .withSearchIndex("search_listings", (q) => {
+          let search = q.search("name_en", term);
+          if (args.type) search = search.eq("type", args.type);
+          if (args.city) search = search.eq("city", args.city);
+          return search;
+        })
+        .take(MAX_SEARCH),
+      ctx.db
+        .query("listings")
+        .withSearchIndex("search_listings_ar", (q) => {
+          let search = q.search("name_ar", term);
+          if (args.type) search = search.eq("type", args.type);
+          if (args.city) search = search.eq("city", args.city);
+          return search;
+        })
+        .take(MAX_SEARCH),
+    ]);
+
+    // Relevance order is per-index, so merge with the English hits first and
+    // drop duplicates rather than interleaving two incomparable scores.
+    const seen = new Set<string>();
+    const merged = [];
+    for (const listing of [...byEnglish, ...byArabic]) {
+      if (seen.has(listing._id)) continue;
+      seen.add(listing._id);
+      if (!matchesStatus(listing, args.status)) continue;
+      if (!matchesFlags(listing, args)) continue;
+      merged.push(listing);
+    }
+
+    return merged.slice(0, MAX_SEARCH);
   },
 });
 
@@ -145,7 +359,7 @@ export const listAllBookings = query({
     const take = Math.min(args.limit ?? 50, MAX_LIST);
 
     // Filter by status on the index rather than scanning every booking.
-    let bookings = args.status
+    const bookings = args.status
       ? await ctx.db
           .query("bookings")
           .withIndex("by_status", (q) => q.eq("status", args.status!))
@@ -157,12 +371,22 @@ export const listAllBookings = query({
       bookings.map(async (booking) => {
         const listing = await ctx.db.get(booking.listingId);
         const user = await ctx.db.get(booking.userId);
+        // The owner is who the admin has to phone when confirming on a
+        // business's behalf, so it travels with the row.
+        const owner = listing?.ownerId ? await ctx.db.get(listing.ownerId) : null;
         return {
           ...booking,
           listingName: listing?.name_en || "Unknown",
           listingName_ar: listing?.name_ar || "غير معروف",
+          listingPhone: listing?.phone,
+          listingHasHours: (listing?.workingHours?.length ?? 0) > 0,
+          ownerName: owner
+            ? `${owner.firstName || ""} ${owner.lastName || ""}`.trim() || owner.email
+            : null,
+          ownerPhone: owner?.phone ?? null,
           userName: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email : "Unknown",
           userEmail: user?.email,
+          userPhone: user?.phone,
         };
       })
     );
@@ -269,5 +493,55 @@ export const listPendingBusinesses = query({
       .take(MAX_LIST);
 
     return [...pendingOwners, ...pendingProviders];
+  },
+});
+
+/**
+ * The admin action log, newest first. Rows are append-only, so the default
+ * `_creationTime` ordering is the chronology — no extra index needed.
+ */
+export const listAdminActivity = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    action: v.optional(v.string()),
+    targetType: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const build = () => {
+      if (args.action) {
+        return ctx.db.query("adminActivity").withIndex("by_action", (q) => q.eq("action", args.action!));
+      }
+      return ctx.db.query("adminActivity");
+    };
+
+    const result = await build().order("desc").paginate(args.paginationOpts);
+
+    return {
+      ...result,
+      page: args.targetType
+        ? result.page.filter((row) => row.targetType === args.targetType)
+        : result.page,
+    };
+  },
+});
+
+/**
+ * Everything the log knows about one listing or service, for the "history"
+ * affordance on a row. Kept separate from the paginated feed so opening a
+ * history panel never re-reads the whole log.
+ */
+export const listActivityForTarget = query({
+  args: { targetType: v.string(), targetId: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await ctx.db
+      .query("adminActivity")
+      .withIndex("by_target", (q) =>
+        q.eq("targetType", args.targetType).eq("targetId", args.targetId)
+      )
+      .order("desc")
+      .take(50);
   },
 });
