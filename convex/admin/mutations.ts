@@ -113,6 +113,43 @@ export const updateListing = mutation({
   },
 });
 
+/**
+ * Flip a listing's visibility in the app.
+ *
+ * Separate from updateListing so the action log reads "deactivated" rather than
+ * a generic "edited" — hiding a hotel from every tourist is worth its own line
+ * in the history. Deactivating is deliberately not a delete: the listing, its
+ * photos, its working hours and its bookings all stay put, so turning it back on
+ * restores exactly what was there.
+ */
+export const setListingActive = mutation({
+  args: {
+    id: v.id("listings"),
+    isActive: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    const listing = await ctx.db.get(args.id);
+    if (!listing) {
+      throw new Error("Listing not found");
+    }
+
+    await ctx.db.patch(args.id, {
+      isActive: args.isActive,
+      updatedAt: Date.now(),
+    });
+
+    await logAdminAction(ctx, admin, {
+      action: args.isActive ? "listing.activate" : "listing.deactivate",
+      targetType: "listing",
+      targetId: args.id,
+      summary: labelFor(listing),
+    });
+
+    return { success: true, isActive: args.isActive };
+  },
+});
+
 // Delete a listing
 export const deleteListing = mutation({
   args: { id: v.id("listings") },

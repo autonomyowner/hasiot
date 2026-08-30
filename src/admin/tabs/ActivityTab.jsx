@@ -14,6 +14,8 @@ const ACTION_LABELS = {
   'listing.delete': 'حذف مكان',
   'listing.import': 'استيراد أماكن',
   'listing.hours': 'تحديث أوقات العمل',
+  'listing.activate': 'تفعيل مكان',
+  'listing.deactivate': 'إيقاف مكان',
   'content.approve': 'الموافقة على محتوى',
   'content.reject': 'رفض محتوى',
   'service.approve': 'الموافقة على خدمة',
@@ -44,11 +46,13 @@ const TARGET_LABELS = {
 // Destructive actions are tinted so a scan down the log finds them first.
 const TONE = {
   'listing.delete': 'red',
+  'listing.deactivate': 'red',
   'knowledge.delete': 'red',
   'content.reject': 'red',
   'service.reject': 'red',
   'booking.cancelled': 'red',
   'report.actioned': 'red',
+  'listing.activate': 'green',
   'content.approve': 'green',
   'service.approve': 'green',
   'account.approve': 'green',

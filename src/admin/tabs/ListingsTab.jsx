@@ -4,6 +4,7 @@ import { useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import ListingForm from './ListingForm'
 import WorkingHoursModal from '../components/WorkingHoursModal'
+import Switch from '../components/Switch'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
@@ -49,10 +50,12 @@ export default function ListingsTab({ initialFilters }) {
   const [showForm, setShowForm] = useState(false)
   const [hoursListing, setHoursListing] = useState(null)
   const [busyId, setBusyId] = useState(null)
+  const [togglingId, setTogglingId] = useState(null)
 
   const createListing = useMutation(api.admin.mutations.createListing)
   const updateListing = useMutation(api.admin.mutations.updateListing)
   const deleteListing = useMutation(api.admin.mutations.deleteListing)
+  const setListingActive = useMutation(api.admin.mutations.setListingActive)
 
   const isSearching = searchQuery.length > 0
   const filters = {
@@ -109,6 +112,25 @@ export default function ListingsTab({ initialFilters }) {
     } catch (error) {
       toast.error(error)
       throw error
+    }
+  }
+
+  // Visibility is a switch, not a form field: hiding a listing from the app is a
+  // one-click, one-click-back action, so it gets no confirmation dialog — the
+  // toast names what changed and the switch itself shows the new state.
+  const handleToggleActive = async (listing, next) => {
+    setTogglingId(listing._id)
+    try {
+      await setListingActive({ id: listing._id, isActive: next })
+      toast.success(
+        next
+          ? `"${listing.name_ar || listing.name_en}" ظاهر الآن في التطبيق`
+          : `"${listing.name_ar || listing.name_en}" مخفي الآن عن التطبيق`
+      )
+    } catch (error) {
+      toast.error(error)
+    } finally {
+      setTogglingId(null)
     }
   }
 
@@ -226,7 +248,7 @@ export default function ListingsTab({ initialFilters }) {
                   <th>الاسم</th>
                   <th>النوع</th>
                   <th>المدينة</th>
-                  <th>الحالة</th>
+                  <th>الظهور</th>
                   <th>المراجعة</th>
                   <th>أوقات العمل</th>
                   <th style={{ textAlign: 'left' }}>الإجراءات</th>
@@ -248,10 +270,15 @@ export default function ListingsTab({ initialFilters }) {
                     </td>
                     <td data-label="النوع">{TYPE_LABELS[listing.type] || listing.type}</td>
                     <td data-label="المدينة">{cityLabel(listing.city)}</td>
-                    <td data-label="الحالة">
-                      <span className={`admin-badge ${listing.isActive !== false ? 'green' : 'gray'}`}>
-                        {listing.isActive !== false ? 'نشط' : 'غير نشط'}
-                      </span>
+                    <td data-label="الظهور">
+                      <Switch
+                        checked={listing.isActive !== false}
+                        busy={togglingId === listing._id}
+                        onChange={(next) => handleToggleActive(listing, next)}
+                        label={`ظهور ${listing.name_ar || listing.name_en} في التطبيق`}
+                        onLabel="ظاهر"
+                        offLabel="مخفي"
+                      />
                       {listing.isVerified && <span className="admin-badge blue">موثق</span>}
                     </td>
                     <td data-label="المراجعة"><ReviewBadge status={listing.status} /></td>

@@ -15,7 +15,11 @@
    ========================================================================== */
 
 .admin-page,
-.admin-login {
+.admin-login,
+/* The toast host is a sibling of .admin-page, not a descendant — ToastProvider
+   wraps the panel and renders the stack after it — so it needs the tokens
+   declared on it directly or its surface and border resolve to nothing. */
+.admin-toasts {
   /* Panel-scoped tokens. Soft, consistent radii are the whole visual premise:
      nothing in here has a hard corner. */
   --ar-r-xs: 8px;
@@ -610,7 +614,9 @@
 /* --- Toasts -------------------------------------------------------------- */
 .admin-toasts {
   position: fixed;
-  top: 1rem;
+  /* Clear of the floating shell's header — at 1rem the toast landed on the pill
+     nav and covered the very control the operator had just used. */
+  top: 5.25rem;
   inset-inline: 0;
   margin-inline: auto;
   width: min(28rem, calc(100vw - 2rem));
@@ -1769,4 +1775,66 @@
   list-style: none;
   margin: 0;
   padding: 0;
+}
+
+/* --- On/off switch ------------------------------------------------------- */
+.ar-switch-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ar-switch {
+  position: relative;
+  width: 40px;
+  height: 23px;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--ar-r-pill);
+  background: #d3d0c9;
+  cursor: pointer;
+  transition: background 0.2s var(--ar-ease);
+}
+
+.ar-switch.on { background: var(--ar-brand); }
+.ar-switch.busy { opacity: 0.6; cursor: progress; }
+.ar-switch:disabled { cursor: not-allowed; }
+
+.ar-switch:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(13, 122, 95, 0.22);
+}
+
+.ar-switch-thumb {
+  position: absolute;
+  top: 3px;
+  /* RTL: "off" parks the thumb at the start edge, which is the right. */
+  inset-inline-start: 3px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(20, 32, 28, 0.28);
+  transition: transform 0.2s var(--ar-ease);
+}
+
+.ar-switch.on .ar-switch-thumb { transform: translateX(calc(-1 * (40px - 23px))); }
+[dir="ltr"] .ar-switch.on .ar-switch-thumb { transform: translateX(calc(40px - 23px)); }
+
+.ar-switch-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ar-switch-label.on { color: var(--ar-brand-dark); }
+.ar-switch-label.off { color: var(--ar-ink-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ar-switch, .ar-switch-thumb { transition: none; }
+}
+
+@media (max-width: 900px) {
+  /* The header stacks to two rows on phones, so the toast has to clear both. */
+  .admin-toasts { top: 7.75rem; }
 }
