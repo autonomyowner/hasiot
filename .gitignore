@@ -48,3 +48,8 @@ ChatGPT Image *.png
 # Pasted screenshots
 *.jpg
 !public/og-image.jpg
+# Photo masters the shipped place cards are cropped from — losing these means
+# the crop can never be redone, so they are tracked despite the blanket *.jpg
+# rule. Deliberately this one folder, not design-assets/**: a wider exception
+# also picks up the mockups sitting alongside it, which are disposable.
+!design-assets/place-sources/*.jpg
