@@ -113,7 +113,10 @@ html{scroll-behavior:smooth}
 .story-copy{width:42%;margin:45px 0 76px auto}
 .rtl .story-copy{margin-left:0;margin-right:auto}
 .story-copy p{font:21px/1.5 var(--font-display)}
-.story-image{height:clamp(340px,42vw,560px);overflow:hidden;border-radius:4px}
+/* Generously rounded, not a 4px near-square: at this size a hairline radius
+   just reads as a rendering artefact. The same radius scale is used by the
+   place cards and the poster plates so every image on the page rhymes. */
+.story-image{height:clamp(340px,42vw,560px);overflow:hidden;border-radius:clamp(18px,2.2vw,30px);box-shadow:0 1px 2px #0a1c1214,0 34px 60px -44px #0a1c1275}
 .story-image img{width:100%;height:100%;object-fit:cover;filter:saturate(.78);transition:scale 1.4s cubic-bezier(.22,1,.36,1)}
 .story-image:hover img{scale:1.03}
 .values{display:grid;grid-template-columns:1.2fr repeat(3,1fr);border-top:1px solid var(--line);margin:64px 0 0}
@@ -135,15 +138,26 @@ html{scroll-behavior:smooth}
 .places-inner{display:grid;grid-template-columns:minmax(300px,430px) 1fr;gap:56px;align-items:center}
 .places-copy h2{font-size:clamp(36px,3.4vw,50px);font-weight:400;line-height:1.06;margin-bottom:22px}
 .places-copy p{font-size:14.5px;line-height:1.75;color:var(--muted);max-width:340px;margin-bottom:34px}
-.place-cta{display:inline-flex;align-items:center;gap:14px;background:var(--green);color:#f3f0e7;padding:15px 26px;border-radius:999px;font-size:12px;font-weight:600;transition:background-color .25s,translate .25s,box-shadow .25s}
-.place-cta span{transition:translate .3s cubic-bezier(.22,1,.36,1)}
+/* The arrow rides in its own pale puck at the end of the pill, so it is a
+   deliberate mark rather than a stray glyph after the label. */
+.place-cta{display:inline-flex;align-items:center;gap:14px;background:var(--green);color:#f3f0e7;padding:8px 8px 8px 26px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.01em;transition:background-color .25s,translate .25s,box-shadow .25s}
+.rtl .place-cta{padding:8px 26px 8px 8px}
+/* 36/18, not 34/17: an odd puck-minus-icon gap centres the svg on a half pixel
+   and the whole arrow renders at half alpha across two rows. Every arrow chip
+   on the page keeps (chip - icon) even for that reason. */
+.place-cta span{width:36px;height:36px;border-radius:50%;background:#f3f0e7;color:var(--green);display:grid;place-items:center;flex:none;transition:translate .3s cubic-bezier(.22,1,.36,1),background-color .25s}
+/* stroke-width is in viewBox units, so it has to be scaled per icon size to
+   land on the same 2px rendered weight the card arrows have. */
+.place-cta span svg{width:18px;height:18px;stroke-width:2.67}
 .place-cta:hover{background:var(--green-deep);translate:0 -2px;box-shadow:0 16px 28px -18px #0a1c12b3}
-.place-cta:hover span{translate:4px 0}
+.place-cta:hover span{translate:3px 0}
 .rail-wrap{position:relative;min-width:0;padding-top:58px}
 .rail-nav{position:absolute;top:0;inset-inline-end:0;display:flex;gap:10px}
-.rail-nav button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line-strong);display:grid;place-items:center;font-size:14px;color:var(--ink);transition:background-color .25s,color .25s,border-color .25s,opacity .25s}
+.rail-nav button{width:44px;height:44px;border-radius:50%;border:1px solid var(--line-strong);display:grid;place-items:center;color:var(--ink);transition:background-color .25s,color .25s,border-color .25s,opacity .25s,scale .18s}
+.rail-nav button svg{width:18px;height:18px;stroke-width:2.4}
 .rail-nav button:hover{background:var(--green);color:#f3f0e7;border-color:var(--green)}
-.rail-nav button:disabled{opacity:.3;pointer-events:none}
+.rail-nav button:active{scale:.94}
+.rail-nav button:disabled{opacity:.28;pointer-events:none}
 .rail{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:4px;scrollbar-width:none;-ms-overflow-style:none}
 .rail::-webkit-scrollbar{display:none}
 .rail:focus-visible{outline:2px solid var(--green);outline-offset:6px;border-radius:4px}
@@ -158,28 +172,50 @@ html{scroll-behavior:smooth}
 .place-shade{position:absolute;inset:0;background:linear-gradient(0deg,#08150deb,#08150d59 44%,#08150d17 70%);transition:opacity .4s}
 .place-card:hover .place-shade{opacity:.9}
 .place-body{position:absolute;inset-inline:20px;bottom:20px}
-.place-body svg{width:23px;height:23px;margin-bottom:14px;opacity:.92}
+/* Direct child only — this is the category icon. Left unscoped it also matched
+   the arrow nested in .place-go, whose margin-bottom then shunted it 14px above
+   the centre of its puck and dimmed it to .92. */
+.place-body>svg{width:23px;height:23px;margin-bottom:14px;opacity:.92}
 .place-body h3{font-family:var(--font-body);font-size:19px;font-weight:500;letter-spacing:-.01em}
 .place-body p{font-size:12.5px;line-height:1.55;color:#ffffffc9;margin-top:6px}
-.place-go{margin-top:17px;width:36px;height:36px;border-radius:50%;border:1px solid #ffffff5c;display:grid;place-items:center;font-size:14px;transition:background-color .25s,color .25s,border-color .25s}
-.place-card:hover .place-go{background:#fff;color:#17241d;border-color:#fff}
-/* Arrow glyphs are directional: mirror them in RTL so "next" points the way
-   the rail actually moves. Flex already reverses the buttons' positions. */
-.rtl .place-go,.rtl .rail-nav button,.rtl .place-cta span{transform:scaleX(-1)}
+/* Solid, not a translucent outline. Over five different photographs a 36%-white
+   hairline ring reads as smudge on at least three of them; a filled paper puck
+   holds the same contrast on every card and matches the .place-cta arrow. */
+.place-go{margin-top:17px;width:40px;height:40px;border-radius:50%;background:var(--paper);color:var(--green);display:grid;place-items:center;box-shadow:0 2px 10px -2px #0a1c1266;transition:background-color .3s,color .3s,translate .3s cubic-bezier(.22,1,.36,1)}
+/* Heavier than the shared 1.9: inside a filled puck the arrow is the only mark
+   carrying the affordance, and a hairline reads as decoration. */
+.place-go svg{width:20px;height:20px;stroke-width:2.4;margin:0;opacity:1}
+.place-card:hover .place-go{background:var(--green);color:var(--paper);translate:5px 0}
+.rtl .place-card:hover .place-go{translate:-5px 0}
+/* Arrows are directional: mirror the icon (not its chip) in RTL so "next"
+   points the way the rail actually moves. Flex already reverses the buttons'
+   positions, and the chips themselves are circles, so only the svg turns. */
+.rtl .place-go svg,.rtl .rail-nav button svg,.rtl .place-cta span svg{transform:scaleX(-1)}
 
-/* ---- in-app showcase ---- */
+/* ---- in-app showcase ----
+   Two brand posters presented as framed plates, then the app's three promises
+   as a text strip. The posters carry their own typography, so they are shown
+   whole and nothing is laid over them. */
 .showcase{padding-bottom:var(--sy)}
 .section-title{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:56px}
 .section-title h2{font-size:clamp(40px,5vw,64px);font-weight:400}
-.shot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:46px}
-/* A real bezel. The screenshots are white-backgrounded UI, so without a frame
-   they read as flat cards floating on the paper rather than as a phone. */
-.phone{width:min(100%,300px);padding:8px;border-radius:42px;background:linear-gradient(155deg,#2b3f34,#101f17 46%,#25382d);box-shadow:0 2px 4px #0a1c121f,0 30px 60px -28px #0a1c1273,inset 0 0 0 1px #ffffff1c;transition:translate .5s cubic-bezier(.22,1,.36,1),box-shadow .5s}
-.shot:hover .phone{translate:0 -8px;box-shadow:0 2px 4px #0a1c121f,0 44px 70px -30px #0a1c1280,inset 0 0 0 1px #ffffff2b}
-.phone-screen{aspect-ratio:440/892;border-radius:35px;overflow:hidden;background:#fff}
-.phone-screen img{width:100%;height:100%;object-fit:cover;display:block}
-.shot h3{font-size:27px;font-weight:400;margin:34px 0 9px}
-.shot p{font-size:14px;line-height:1.7;color:var(--muted);max-width:320px}
+.plates{display:grid;grid-template-columns:1fr 1fr;gap:clamp(20px,2.6vw,34px);max-width:1040px;margin:0 auto;align-items:start}
+/* The second plate drops half a step — an even pair of tall portraits reads as
+   a table, the offset reads as a spread. */
+.plates .plate:last-child{margin-top:clamp(24px,5vw,58px)}
+.plate{margin:0;border-radius:clamp(14px,1.7vw,24px);overflow:hidden;background:#101f17;box-shadow:0 2px 4px #0a1c1217,0 40px 72px -44px #0a1c128f;transition:translate .55s cubic-bezier(.22,1,.36,1),box-shadow .55s}
+.plate:hover{translate:0 -8px;box-shadow:0 2px 4px #0a1c1217,0 54px 86px -46px #0a1c1299}
+/* width/height, never object-fit: cover — cropping would cut the wordmark. */
+.plate img{display:block;width:100%;height:auto;transition:scale 1.4s cubic-bezier(.22,1,.36,1)}
+.plate:hover img{scale:1.03}
+/* Mirrors .values so the two feature strips on the page read as one system. */
+.app-features{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);margin-top:clamp(64px,7vw,100px)}
+.app-features .feature{border-inline-start:1px solid var(--line);padding:34px 26px 30px;padding-inline-start:26px;transition:background-color .35s}
+.app-features .feature:first-child{border-inline-start:0;padding-inline-start:0}
+.app-features .feature:hover{background:#17241d07}
+.app-features .feature>span{font-size:9px;letter-spacing:.16em;color:var(--gold)}
+.app-features h3{font-size:27px;font-weight:400;margin:24px 0 9px}
+.app-features p{font-size:14px;line-height:1.7;color:var(--muted);max-width:34ch}
 
 /* ---- concierge ---- */
 .concierge{min-height:780px;background:var(--green);color:#fff;display:grid;grid-template-columns:55% 45%;position:relative;overflow:hidden}
@@ -229,7 +265,7 @@ html{scroll-behavior:smooth}
 .rtl .story-heading h2,.rtl .concierge-copy h2,.rtl .download h2{line-height:1.22}
 .rtl .quote blockquote{line-height:1.5;font-size:clamp(30px,4.2vw,54px)}
 .rtl em{font-style:normal}
-.rtl .hero-copy p,.rtl .story-copy p,.rtl .shot p,.rtl .values p,.rtl .concierge-copy p{line-height:1.9}
+.rtl .hero-copy p,.rtl .story-copy p,.rtl .app-features p,.rtl .values p,.rtl .concierge-copy p{line-height:1.9}
 
 /* ---- footer ---- */
 .home-footer{background:var(--green-deep);color:#fff;padding:78px clamp(24px,6vw,90px) 34px}
@@ -245,8 +281,10 @@ html{scroll-behavior:smooth}
 .foot-bottom span{direction:ltr}
 
 @media(max-width:980px){
- .shot-grid{gap:34px}
  .values{grid-template-columns:1fr 1fr}
+ .app-features{grid-template-columns:1fr}
+ .app-features .feature{border-inline-start:0;padding-inline:0;padding-bottom:26px;border-bottom:1px solid var(--line)}
+ .app-features p{max-width:none}
 }
 
 /* Phones only: four controls do not fit one 390px bar. The CTA lives in the
@@ -291,10 +329,11 @@ html{scroll-behavior:smooth}
  .rail-progress{margin-top:20px}
  .place-card{width:min(74vw,262px)}
  .section-title{align-items:flex-start;margin-bottom:36px}
- .shot-grid{grid-template-columns:1fr;gap:56px;justify-items:center}
- .shot{text-align:center}
- .shot p{margin:0 auto}
- .phone{width:min(100%,272px)}
+ /* Two portraits side by side on a phone leaves each ~150px wide, too small to
+    read the poster type at all — one column, full width, no offset. */
+ .plates{grid-template-columns:1fr;gap:20px}
+ .plates .plate:last-child{margin-top:0}
+ .app-features{margin-top:52px}
  /* Stack it for real rather than absolutely positioning the card over a
     padding reserve — the old `padding-top:390px` + `top:300px` pair was tuned to
     one card height and broke the moment the card grew. Flex order puts the card

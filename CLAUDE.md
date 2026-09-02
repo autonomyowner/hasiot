@@ -72,6 +72,13 @@ All admin queries/mutations in `convex/admin/` and `approveBusinessAccount` in `
 - `src/main.jsx` — Four routes, all lazy: `/` (landing), `/sign-in`, `/delete-account`, `/admin`. A `*` route redirects everything else to `/` so old links never render blank.
 - `src/AuthedLayout.jsx` — Layout route that owns `ConvexReactClient` + `ConvexBetterAuthProvider` + `authClient`. **Only** `/sign-in`, `/delete-account` and `/admin` sit inside it, so the convex and better-auth chunks never load for anonymous visitors on `/`. Keep Convex imports out of `main.jsx` or that isolation breaks.
 - `src/App.jsx` — The landing page. Bilingual `content = { en, ar }`, sections: hero → story → places carousel → in-app showcase → concierge → quote → download → footer. Every CTA points at the App Store / Play Store; there are no internal links left except the static legal pages. The header is `position: fixed` and swaps to a solid paper bar (`.is-stuck`) once the hero scrolls under it — driven by an IntersectionObserver on `.hero-wrap`, not a scroll listener. `.home-redesign` sets `overflow: hidden`, which is why the header is fixed rather than sticky. Below 850px the section links move into a burger panel; below 640px the header's "Get the app" pill is dropped (four controls do not fit a 390px bar — the CTA is in the panel, the hero and its own section).
+- **Arrow chips** (`.place-cta span`, `.place-go`, `.rail-nav button`) — all use the shared `Arrow` /
+  `Chevron` SVGs in `App.jsx`, never the `&#8594;` / `&#8592;` entities, which render as a hairline in
+  Instrument Serif. Two rules keep them crisp, and both were bugs once: **(chip size − icon size) must
+  be even**, or `place-items: center` puts the svg on a half pixel and the whole arrow renders at half
+  alpha; and `stroke-width` is in viewBox units, so it has to be re-scaled per icon size (2.4@20px,
+  2.67@18px) to land on the same 2px rendered weight. The paths are symmetric about `x=12` for the
+  same reason. In RTL only the `svg` is mirrored, not its chip.
 - `src/hooks/useReveal.js` — IntersectionObserver scroll reveals (replaced framer-motion on the landing page). Elements opt in with `data-reveal`; the hidden start state is scoped to `.reveal-ready` so the page still renders if JS fails. **Takes a `dep`** (`useReveal(lang)`): the landing page keys its lists by translated strings, so a language toggle unmounts every revealed node and mounts new ones — without a re-scan they are never observed and stay at `opacity: 0` forever. Stagger a group with `style={{'--d': i}}`.
 - `src/admin/` — Arabic RTL admin dashboard, the only real app left on the web. `AdminPage.jsx` is the
   shell (auth gate + nav with live pending badges); one file per tab in `tabs/`; shared primitives in
@@ -94,7 +101,8 @@ All admin queries/mutations in `convex/admin/` and `approveBusinessAccount` in `
 
 **Landing page assets** (all local, no external image hosts):
 - `public/hasio-oasis-hero{,-mobile}.webp` — hero, swapped by media query
-- `public/app/*.webp` — app screenshots, cropped from `hasio-mobile-app/assets/screenshots/` (OS status/nav bars removed; the stale voice-assistant mic is painted out of `plan.webp`)
+- `public/posters/{gate,arch}.webp` — the two art-directed brand posters in the "inside the app" section. **Shown whole, never `object-fit: cover`** — their typography is part of the artwork, so cropping cuts the wordmark, and nothing may be laid over them. `gate.webp` is deliberately cropped short of its master (1085×1335 of 1450): the master's bottom band is portfolio metadata ("Brand Identity / Tourism / Art Direction", "2026") that has no place on a live tourism site. Masters: `design-assets/poster-{gate,arch}.png`.
+- The phone-mockup screenshots that used to fill that section were dropped 2026-09-02; they now live in `design-assets/app-screens/` (they are hand-cropped from `hasio-mobile-app/assets/screenshots/` with OS bars removed and the stale voice-assistant mic painted out of `plan.webp`, so they are worth keeping even though nothing references them).
 - `public/places/*.webp` — carousel cards, cropped from `hasio-mobile-app/assets/images/generated/`
 - `public/logo-mark.webp` — trimmed `logo.png`, shown in a white chip so it reads on the dark nav and footer
 - PNG masters live in `design-assets/` (outside `public/`) so Vite stops copying ~7 MB into every deploy
