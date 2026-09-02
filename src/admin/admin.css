@@ -138,7 +138,12 @@
   margin: 0;
 }
 
+/* Every tab opens with the same block: title, one line of context under it,
+   and any primary action pushed to the far end. Four tabs used to open with a
+   small inline heading plus a count badge instead, which made the panel read as
+   several tools bolted together. */
 .admin-card-header,
+.admin-page-head,
 .ar-page-head {
   display: flex;
   align-items: flex-end;
@@ -237,32 +242,48 @@
 }
 .ar-btn-ghost:hover { background: #d8ece4; }
 
-/* Row-level actions read as links, not a wall of buttons. */
+/* Row-level actions.
+   Soft chips rather than bare text: as plain links they were indistinguishable
+   from the data in the cell beside them, and the destructive one carried the
+   same weight as the safe ones. Still not a wall of bordered buttons — the
+   fills are barely-there until hover, and `delete` stays transparent at rest so
+   the most dangerous action is the least prominent thing in the row. */
 .admin-actions {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.375rem;
   flex-wrap: wrap;
 }
 
 .admin-action-btn {
-  padding: 0.375rem 0.625rem;
-  border: none;
-  border-radius: var(--ar-r-xs);
-  background: none;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid transparent;
+  border-radius: var(--ar-r-pill);
+  background: rgba(20, 32, 28, 0.05);
   font-family: inherit;
   font-size: 0.8125rem;
   font-weight: 600;
+  line-height: 1.2;
   color: var(--ar-ink-2);
   cursor: pointer;
-  transition: background 0.14s, color 0.14s;
+  white-space: nowrap;
+  transition: background 0.16s, color 0.16s, border-color 0.16s;
 }
-.admin-action-btn:hover:not(:disabled) { background: var(--ar-line-soft); color: var(--ar-ink); }
-.admin-action-btn.edit { color: var(--ar-brand); }
-.admin-action-btn.edit:hover:not(:disabled) { background: var(--ar-brand-wash); }
-.admin-action-btn.delete { color: var(--ar-danger); }
-.admin-action-btn.delete:hover:not(:disabled) { background: var(--ar-danger-wash); }
+.admin-action-btn:hover:not(:disabled) { background: rgba(20, 32, 28, 0.1); color: var(--ar-ink); }
+.admin-action-btn.edit { background: var(--ar-brand-wash); color: #17513f; }
+.admin-action-btn.edit:hover:not(:disabled) { background: #d5e9e0; color: #0f3d2e; }
+.admin-action-btn.delete { background: transparent; color: var(--ar-danger); }
+.admin-action-btn.delete:hover:not(:disabled) {
+  background: var(--ar-danger-wash);
+  border-color: #f1cbc8;
+}
 .admin-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Every actions column header is pinned to the far edge (`text-align: left` in
+   this RTL panel), but the buttons under it started from the column's other
+   side, so header and controls never lined up. Send the cluster to the same
+   edge. Reset in the phone card layout, where there is no header to match. */
+.admin-table td:last-child > .admin-actions { justify-content: flex-end; }
 
 /* --- Forms --------------------------------------------------------------- */
 .admin-form { display: flex; flex-direction: column; }
@@ -364,6 +385,11 @@
 .admin-filters .admin-form-select { width: auto; min-width: 9.5rem; }
 .admin-search-input { min-width: 16rem; flex: 1 1 16rem; }
 
+/* A bar holding a single control does not need to span the page — full width it
+   read as an empty card with a dropdown pushed into one corner. Tabs with a row
+   of filters are unaffected. */
+.admin-filters:has(> :only-child) { width: fit-content; max-width: 100%; }
+
 /* --- Tables -------------------------------------------------------------- */
 .admin-table-wrapper,
 [data-slot="table-container"] {
@@ -404,6 +430,16 @@
 .admin-table tbody tr:hover { background: #fafaf8; }
 .admin-table tr.is-selected { background: var(--ar-brand-wash); }
 .admin-table tr.is-busy { opacity: 0.5; }
+
+/* Two independent facts in one cell — stacked, so neither reads as a label of
+   the other and the row height stays predictable. */
+.admin-cell-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.375rem;
+}
+.admin-cell-stack .admin-badge + .admin-badge { margin-inline-start: 0; }
 
 .admin-table-name { font-weight: 600; color: var(--ar-ink); }
 .admin-table-sub { font-size: 0.8125rem; color: var(--ar-ink-3); margin-top: 0.125rem; }
@@ -779,6 +815,12 @@
 /* --- Chart internals ----------------------------------------------------- */
 .ar-chart { position: relative; }
 .ar-chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+
+/* The growth chart spans two thirds of the board, and with `height: auto` the
+   viewBox aspect turned that width into a chart half the card tall. Pin the
+   height so extra width widens the plot instead. Safe to stretch: the svg is
+   already `preserveAspectRatio="none"` and every stroke is non-scaling. */
+.ar-bento-line .ar-chart svg { height: 208px; }
 .ar-chart-axis { stroke: var(--ar-line); stroke-width: 1; }
 .ar-chart-crosshair { stroke: var(--ar-ink-3); stroke-width: 1; stroke-dasharray: 3 3; }
 
@@ -972,6 +1014,8 @@
     text-align: start;
   }
   .admin-table td:last-child { border-bottom: none; }
+  /* No header row to line up against in the card layout. */
+  .admin-table td:last-child > .admin-actions { justify-content: flex-start; }
 
   .admin-table td::before {
     content: attr(data-label);
@@ -1068,11 +1112,14 @@
   min-height: calc(100vh - 2.5rem);
   border-radius: 34px;
   /* Warm ivory core drifting to gold at the corners — the sheet reads as
-     lit rather than flat, without any element having to carry a shadow. */
+     lit rather than flat, without any element having to carry a shadow.
+     Kept deliberately faint: the blooms are sized to the sheet, so on a short
+     tab (one row of results) they used to fill most of the empty area and read
+     as a stain rather than as light. */
   background:
-    radial-gradient(90% 70% at 92% 0%, #f4e6b0 0%, rgba(244, 230, 176, 0) 52%),
-    radial-gradient(80% 60% at 2% 100%, #f1e6bd 0%, rgba(241, 230, 189, 0) 50%),
-    linear-gradient(160deg, #fefdfa 0%, #fcfaf3 62%, #faf6e9 100%);
+    radial-gradient(62% 46% at 96% -8%, #f7eece 0%, rgba(247, 238, 206, 0) 60%),
+    radial-gradient(54% 38% at -4% 106%, #f6efd8 0%, rgba(246, 239, 216, 0) 58%),
+    linear-gradient(165deg, #fefdfb 0%, #fdfcf7 68%, #fcf9f1 100%);
   box-shadow: 0 24px 70px rgba(24, 26, 26, 0.18);
   display: flex;
   flex-direction: column;
@@ -1180,6 +1227,10 @@
   font-family: inherit;
 }
 .admin-icon-btn svg { width: 1.125rem; height: 1.125rem; }
+.admin-icon-btn:hover:not(:disabled),
+.admin-avatar:hover { background: #fff; color: var(--ar-ink); border-color: rgba(20, 32, 28, 0.2); }
+/* Nothing waiting: still a status light, but honestly not pressable. */
+.admin-icon-btn:disabled { cursor: default; opacity: 0.75; }
 
 .admin-icon-btn { position: relative; }
 .admin-icon-btn.has-dot::after {
@@ -1320,6 +1371,12 @@
    Bento grid
    ========================================================================== */
 
+/* Three bands, no row spans.
+   Two cards used to declare `grid-row: span 2` while holding one row's worth of
+   content, which left a card-sized hole under each. Spanning rows only works
+   when the tall card actually has more to show; here it never did. Each band is
+   one row instead, grouped by what the cards are for: what needs attention now,
+   then the two trend charts, then the breakdown strip. */
 .ar-bento {
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
@@ -1327,12 +1384,15 @@
   align-items: start;
 }
 
-.ar-bento-queue    { grid-column: span 3; grid-row: span 2; }
+/* Band 1 — what needs attention now. */
+.ar-bento-queue    { grid-column: span 3; }
 .ar-bento-table    { grid-column: span 5; }
-.ar-bento-activity { grid-column: span 4; grid-row: span 2; }
-.ar-bento-line     { grid-column: span 5; }
+.ar-bento-activity { grid-column: span 4; }
+/* Band 2 — trends. The growth chart is a time series, so it takes the width. */
+.ar-bento-line     { grid-column: span 8; }
 .ar-bento-donut    { grid-column: span 4; }
-.ar-bento-types    { grid-column: span 8; }
+/* Band 3 — the breakdown strip. */
+.ar-bento-types    { grid-column: span 12; }
 
 .ar-card {
   background: var(--ar-surface);
@@ -1341,7 +1401,17 @@
   padding: 1.25rem 1.375rem 1.375rem;
   box-shadow: 0 1px 2px rgba(20, 32, 28, 0.03);
   min-width: 0;
+  /* Column flex so a stretched card can push its last block to the bottom
+     rather than leaving the extra height as dead space under the content. */
+  display: flex;
+  flex-direction: column;
 }
+
+/* Whatever sits at the foot of a card takes any slack, so a card that ends up
+   taller than its content reads as spacing between blocks, not a stranded one. */
+.ar-bento-activity .ar-dots,
+.ar-bento-line .ar-chart,
+.ar-bento-types .ar-typegrid { margin-top: auto; }
 
 .ar-card-dark {
   background: #1e1f1e;
@@ -1632,8 +1702,8 @@
   .ar-bento-table    { grid-column: span 8; }
   .ar-bento-activity { grid-column: span 6; }
   .ar-bento-line     { grid-column: span 6; }
-  .ar-bento-donut    { grid-column: span 5; }
-  .ar-bento-types    { grid-column: span 7; }
+  .ar-bento-donut    { grid-column: span 6; }
+  .ar-bento-types    { grid-column: span 12; }
 }
 
 @media (max-width: 900px) {

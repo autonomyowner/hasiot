@@ -109,9 +109,15 @@ export default function ServiceApprovalTab() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <div className="admin-section-header">
-        <h2 className="admin-section-title">خدمات معلقة للمراجعة</h2>
-        <span className="admin-badge admin-badge-warning">{pending.length} خدمة</span>
+      <div className="admin-page-head">
+        <div>
+          <h2 className="admin-page-title">الخدمات</h2>
+          <p className="admin-page-subtitle">
+            {pending.length === 0
+              ? 'لا توجد خدمات بانتظار المراجعة'
+              : `${pending.length} خدمة بانتظار قرارك`}
+          </p>
+        </div>
       </div>
 
       {pending.length === 0 ? (

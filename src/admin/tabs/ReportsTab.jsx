@@ -82,9 +82,13 @@ export default function ReportsTab() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <div className="admin-section-header">
-        <h2 className="admin-section-title">تبليغات المستخدمين</h2>
-        <span className="admin-badge admin-badge-warning">{reports.length} تبليغ</span>
+      <div className="admin-page-head">
+        <div>
+          <h2 className="admin-page-title">التبليغات</h2>
+          <p className="admin-page-subtitle">
+            {reports.length === 0 ? 'لا توجد تبليغات' : `${reports.length} تبليغ من المستخدمين`}
+          </p>
+        </div>
       </div>
 
       <div className="admin-filters">

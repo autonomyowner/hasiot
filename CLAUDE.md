@@ -82,6 +82,11 @@ All admin queries/mutations in `convex/admin/` and `approveBusinessAccount` in `
   knowledge base, activity log, emails. Still uses framer-motion (lazy admin chunk only).
   **No `window.confirm`/`alert`** — destructive actions go through `useConfirm()` and every mutation
   reports through `useToast()`; each tab renders explicit loading, empty and error states.
+  **Every tab opens with the same block**: `.admin-page-head` (or `.admin-card-header`, same rule)
+  wrapping an `.admin-page-title` and a one-line `.admin-page-subtitle` that carries the count, with
+  any primary action pushed to the far end. Four tabs used to open with a small `.admin-section-title`
+  plus a count badge instead, which made the panel read as several tools bolted together — don't
+  reintroduce that for a new tab. `.admin-section-title` is for sections *within* a tab.
 - `src/pages/SignInPage.jsx` — **Unlinked from everywhere.** It exists so the admin portal has a login. Honours `?next=` (relative paths only), defaults to `/admin`. No public sign-up.
 - `src/pages/DeleteAccountPage.jsx` — **Do not remove.** App Store guideline 5.1.1(v); linked from `public/support.html`, which is the live App Store Support URL.
 

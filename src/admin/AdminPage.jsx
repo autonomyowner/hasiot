@@ -147,6 +147,10 @@ function AdminHeader({ user, activeTab, onSelect }) {
     (stats?.pendingBusinesses ?? 0) + (stats?.pendingReports ?? 0) +
     (stats?.pendingBookings ?? 0)
 
+  // Whichever queue the bell should open — the first one, in nav order, that
+  // has anything in it.
+  const firstWaiting = TABS.find((tab) => tab.badge && (stats?.[tab.badge] ?? 0) > 0)
+
   const handleLogout = async () => {
     setSigningOut(true)
     try {
@@ -181,17 +185,23 @@ function AdminHeader({ user, activeTab, onSelect }) {
       </nav>
 
       <div className="admin-topbar-actions">
-        <span
+        {/* Was a <span>: it carried the panel's button styling, including the
+            pointer cursor, but nothing happened on click. It now jumps to the
+            first queue with work in it, and goes flat when there is none. */}
+        <button
+          type="button"
           className={`admin-icon-btn ${waiting > 0 ? 'has-dot' : ''}`}
+          onClick={() => firstWaiting && onSelect(firstWaiting.id)}
+          disabled={!firstWaiting}
           title={waiting > 0 ? `${waiting} عنصر ينتظر إجراءً` : 'لا يوجد شيء بانتظارك'}
-          aria-label="التنبيهات"
+          aria-label={waiting > 0 ? `${waiting} عنصر ينتظر إجراءً` : 'لا يوجد شيء بانتظارك'}
         >
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M6 9a6 6 0 0112 0c0 3.5.8 5 1.5 5.8.4.4.1 1.2-.5 1.2h-14c-.6 0-.9-.8-.5-1.2C5.2 14 6 12.5 6 9Z"
                   stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
             <path d="M10 19a2 2 0 004 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
-        </span>
+        </button>
 
         <div className="admin-avatar-wrap">
           <button
