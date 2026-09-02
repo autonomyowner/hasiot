@@ -271,6 +271,18 @@ html{scroll-behavior:smooth}
 .home-footer{background:var(--green-deep);color:#fff;padding:78px clamp(24px,6vw,90px) 34px}
 .foot-top{display:grid;grid-template-columns:1.8fr repeat(3,1fr);gap:48px;padding-bottom:52px;border-bottom:1px solid #ffffff1f}
 .foot-brand p{font:26px/1.35 var(--font-display);color:#cad0c7;margin-top:22px;max-width:24ch}
+/* Support and social sit under the brand tagline rather than in a link column:
+   the WhatsApp number is a real CTA and reads as chrome at 12.5px in a list. */
+.foot-contact{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:28px}
+.wa-btn{display:inline-flex;align-items:center;gap:12px;padding:10px 20px;padding-inline-start:16px;border-radius:999px;border:1px solid #ffffff40;color:#fff;transition:background-color .25s,border-color .25s,translate .25s}
+.wa-btn:hover{background:#ffffff14;border-color:#ffffff8c;translate:0 -2px}
+.wa-btn svg{width:21px;height:21px;flex:none}
+.wa-btn small{display:block;font-size:9px;letter-spacing:.14em;color:#8ea395}
+.wa-btn b{display:block;font-size:14px;font-weight:500;margin-top:2px}
+/* 44 - 20 keeps (chip - icon) even, so the mark lands on whole pixels. */
+.foot-social{width:44px;height:44px;border-radius:50%;border:1px solid #ffffff40;display:grid;place-items:center;color:#fff;flex:none;transition:background-color .25s,color .25s,border-color .25s,translate .25s}
+.foot-social svg{width:20px;height:20px}
+.foot-social:hover{background:#fff;color:var(--green-deep);border-color:#fff;translate:0 -2px}
 .foot-col{display:flex;flex-direction:column;align-items:flex-start;gap:14px;font-size:12.5px;padding-top:6px}
 .foot-col b{font-size:9px;letter-spacing:.2em;font-weight:600;color:#8ea395;margin-bottom:4px}
 .foot-col a{color:#ffffffc4;transition:color .2s}

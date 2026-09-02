@@ -8,16 +8,22 @@ import './App.css'
 const IOS_URL = 'https://apps.apple.com/app/id6800297588'
 const ANDROID_URL = 'https://play.google.com/store/apps/details?id=com.hasio.travel'
 
+// Support runs through WhatsApp. wa.me wants the number bare — country code, no
+// "+", no spaces — while the footer shows the readable form.
+const WHATSAPP_URL = 'https://wa.me/966537577789'
+const WHATSAPP_DISPLAY = '+966 53 757 7789'
+const LINKEDIN_URL = 'https://www.linkedin.com/in/marzouq-alshammari-339897160/'
+
 const content = {
   en: { nav:['The edit','Places','The app','Concierge'],getApp:'Get the app',switch:'العربية',eyebrow:'THE OASIS, CURATED',titleA:'Al-Ahsa,',titleB:'beyond the expected.',intro:'A considered guide to the world’s largest oasis—rare stays, storied places and local encounters, selected with care. Now in your pocket.',onIos:'Download on the',appStore:'App Store',onAndroid:'Get it on',playStore:'Google Play',storyKicker:'THE HASIO EDIT',storyTitle:['Travel slowly.','Remember deeply.'],storyBody:'We look beyond the obvious to bring you closer to the people, flavours and landscapes that give Al-Ahsa its soul.',why:'Why travel with us',values:[['Locally considered','Recommendations shaped by people who know the oasis by heart.'],['Quietly exceptional','Distinctive stays and experiences, chosen for character—not crowds.'],['Effortlessly yours','Save, plan and book your entire escape from one beautifully simple place.']],placesKicker:'EXPLORE AL-AHSA',placesTitle:['Timeless places','waiting for you.'],placesBody:'From heritage quarters to natural wonders — experience Al-Ahsa like never before.',placesCta:'Explore in the app',places:[['Heritage','Step into history that still lives.'],['Nature','Breathe in the beauty of the oasis.'],['Culture','Traditions that tell our story.'],['Flavours','A table set by the oasis.'],['Mountains','Caves carved by wind and time.']],showKicker:'INSIDE THE APP',showTitle:'Everything the oasis holds',shots:[['Discover','Heritage sites, oasis paths and the places locals actually go.'],['Plan','Tell Hasio your pace and your dates. Get an itinerary built around them.'],['Stay & taste','Hotels, farm stays and the tables worth crossing town for.']],plannerName:'Hasio Concierge',plannerStatus:'Online',plannerQuote:'“A quiet three-day escape with heritage, palms and memorable local food.”',plannerRoutes:[['Old Hofuf','Souq, architecture & slow lunch'],['Oasis paths','Private palms & golden hour'],['Al Qarah','Caves & an open-air supper']],serviceKicker:'YOUR PERSONAL CONCIERGE',serviceTitle:['One journey.','Entirely your own.'],serviceBody:'Tell Hasio what moves you. The planner turns your pace, tastes and travel dates into a considered Al-Ahsa itinerary—in Arabic or English.',quote:'“The beauty of Al-Ahsa is not only what you see. It is how time feels while you are here.”',dlKicker:'AVAILABLE NOW',dlTitle:'Carry the oasis with you.',dlBody:'Free on iPhone and Android, in Arabic and English throughout.',footTag:'Curating the soul of Al-Ahsa.',privacy:'Privacy',terms:'Terms',support:'Support' },
   ar: { nav:['اختيارات Hasio','الأماكن','التطبيق','مرشدك'],getApp:'حمّل التطبيق',switch:'English',eyebrow:'الواحة، كما لم ترها من قبل',titleA:'الأحساء،',titleB:'أبعد من المتوقّع.',intro:'دليلك المختار بعناية إلى أكبر واحة في العالم—إقامات نادرة، أماكن تحكي التاريخ، وتجارب محلية أصيلة. الآن بين يديك.',onIos:'حمّله من',appStore:'App Store',onAndroid:'متوفر على',playStore:'Google Play',storyKicker:'اختيارات Hasio',storyTitle:['تمهّل في رحلتك.','واصنع ذكرى أعمق.'],storyBody:'نأخذك إلى ما وراء المألوف، لتقترب من الناس والنكهات والطبيعة التي تمنح الأحساء روحها.',why:'لماذا تسافر معنا',values:[['برؤية محلية','توصيات يصنعها من يعرف الواحة عن قرب.'],['استثنائي بهدوء','إقامات وتجارب لها طابعها الخاص، بعيداً عن الزحام.'],['رحلتك ببساطة','احفظ وخطط واحجز رحلتك كاملة من مكان واحد جميل وسهل.']],placesKicker:'استكشف الأحساء',placesTitle:['أماكن خالدة','بانتظارك.'],placesBody:'من الأحياء التراثية إلى عجائب الطبيعة، عِش الأحساء كما لم تعشها من قبل.',placesCta:'استكشفها في التطبيق',places:[['التراث','ادخل إلى تاريخ ما زال حياً.'],['الطبيعة','تنفّس جمال الواحة.'],['الثقافة','عادات تروي حكايتنا.'],['النكهات','مائدة تصنعها الواحة.'],['الجبال','كهوف نحتتها الريح والزمن.']],showKicker:'داخل التطبيق',showTitle:'كل ما تحتضنه الواحة',shots:[['اكتشف','مواقع تراثية ودروب الواحة والأماكن التي يقصدها الأهالي فعلاً.'],['خطط','أخبر Hasio بإيقاعك وتواريخك، واحصل على برنامج مصمم لك.'],['أقم وتذوّق','فنادق ومزارع للإقامة وموائد تستحق عناء الطريق.']],plannerName:'مرشد Hasio',plannerStatus:'متصل',plannerQuote:'«ثلاثة أيام هادئة بين التراث والنخيل ومائدة محلية لا تُنسى.»',plannerRoutes:[['الهفوف القديمة','السوق والعمارة وغداء على مهل'],['دروب الواحة','نخيل خاص وساعة الغروب'],['جبل القارة','كهوف وعشاء في الهواء الطلق']],serviceKicker:'مرشدك الشخصي',serviceTitle:['رحلة واحدة.','مصممة لك.'],serviceBody:'أخبر Hasio بما تحب. يحوّل المخطط وقتك وذوقك وتواريخ سفرك إلى برنامج مدروس للأحساء—بالعربية أو الإنجليزية.',quote:'«جمال الأحساء ليس فقط فيما تراه، بل في إحساس الوقت وأنت هنا.»',dlKicker:'متوفر الآن',dlTitle:'خذ الواحة معك.',dlBody:'مجاناً على أجهزة iPhone وأجهزة Android، بالعربية والإنجليزية بالكامل.',footTag:'نحتفي بروح الأحساء.',privacy:'الخصوصية',terms:'الشروط',support:'الدعم' },
 }
 
-// Two strings the marketing copy never shows but keyboard and small-screen
-// navigation need, so they live outside `content`.
+// Chrome the marketing copy never shows but keyboard navigation, the burger
+// panel and the footer need, so it lives outside `content`.
 const ui = {
-  en: { skip: 'Skip to content', menu: 'Menu', explore: 'Explore', legal: 'Legal' },
-  ar: { skip: 'تخطي إلى المحتوى', menu: 'القائمة', explore: 'استكشف', legal: 'الشروط والسياسات' },
+  en: { skip: 'Skip to content', menu: 'Menu', explore: 'Explore', legal: 'Legal', support: 'WhatsApp support' },
+  ar: { skip: 'تخطي إلى المحتوى', menu: 'القائمة', explore: 'استكشف', legal: 'الشروط والسياسات', support: 'الدعم عبر واتساب' },
 }
 
 // Section ids, in nav order — drives both the anchors and the active-link state.
@@ -61,6 +67,21 @@ const Chevron = ({ back }) => (
     {/* Also symmetric about x=12: the chevron spans exactly 7 units, so it has
         to start at 8.5, not the usual 9. */}
     <path d={back ? 'M15.5 5l-7 7 7 7' : 'M8.5 5l7 7-7 7'} />
+  </svg>
+)
+
+// Brand marks are drawn monochrome and inherit currentColor — the design rules
+// forbid coloured iconography, so no WhatsApp green or LinkedIn blue anywhere.
+// LinkedIn is the "in" letterform rather than the boxed logo: a square badge
+// inside a round chip reads as two competing containers.
+const WhatsAppMark = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M19.05 4.91A9.82 9.82 0 0 0 12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.45 9.91-9.91a9.86 9.86 0 0 0-2.91-7.01Zm-7.01 15.24h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.25-8.23a8.2 8.2 0 0 1 8.23 8.24c0 4.54-3.7 8.23-8.23 8.23Zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.78.97-.15.16-.29.19-.54.06-.25-.12-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.5.11-.11.25-.29.37-.43.13-.15.17-.25.25-.41.09-.17.04-.31-.02-.43-.06-.13-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.42l-.48-.01c-.16 0-.43.06-.66.31-.23.25-.86.85-.86 2.06s.89 2.39 1.01 2.56c.12.16 1.74 2.66 4.22 3.73.59.25 1.05.41 1.41.52.59.19 1.13.16 1.56.1.47-.07 1.46-.6 1.67-1.18.21-.57.21-1.07.14-1.17-.06-.11-.22-.17-.46-.29Z" />
+  </svg>
+)
+const LinkedInMark = () => (
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+    <path d="M6.94 5a2 2 0 1 1-4 0 2 2 0 0 1 4 0ZM7 8.48H3V21h4V8.48Zm6.32 0H9.34V21h3.94v-6.57c0-3.66 4.77-4 4.77 0V21H22v-7.93c0-6.17-7.06-5.94-8.72-2.91l.04-1.68Z" />
   </svg>
 )
 
@@ -333,6 +354,17 @@ export default function App() {
           <div className="foot-brand">
             <a className="wordmark" href="#top"><img className="brand-mark" src="/logo-mark.webp" alt="" width="38" height="38" /><span>Hasio</span></a>
             <p>{t.footTag}</p>
+            <div className="foot-contact">
+              <a className="wa-btn" href={WHATSAPP_URL} target="_blank" rel="noopener noreferrer">
+                <WhatsAppMark />
+                {/* dir=ltr for the same reason .foot-bottom needs it: bidi moves
+                    the leading "+" to the wrong end of the number in Arabic. */}
+                <span><small>{u.support}</small><b dir="ltr">{WHATSAPP_DISPLAY}</b></span>
+              </a>
+              <a className="foot-social" href={LINKEDIN_URL} target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+                <LinkedInMark />
+              </a>
+            </div>
           </div>
           <nav className="foot-col">
             <b>{u.explore}</b>
