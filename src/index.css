@@ -1,4 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Cairo:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+/* The Google Fonts stylesheet is linked from index.html, not @import-ed here.
+   An @import inside the bundled CSS cannot start downloading until this file
+   itself has parsed, which serialises two round trips in front of first paint;
+   a <link> in the document head races with the bundle instead. */
 
 :root {
   --primary: #0D7A5F;

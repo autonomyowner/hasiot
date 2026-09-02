@@ -71,8 +71,8 @@ All admin queries/mutations in `convex/admin/` and `approveBusinessAccount` in `
 
 - `src/main.jsx` — Four routes, all lazy: `/` (landing), `/sign-in`, `/delete-account`, `/admin`. A `*` route redirects everything else to `/` so old links never render blank.
 - `src/AuthedLayout.jsx` — Layout route that owns `ConvexReactClient` + `ConvexBetterAuthProvider` + `authClient`. **Only** `/sign-in`, `/delete-account` and `/admin` sit inside it, so the convex and better-auth chunks never load for anonymous visitors on `/`. Keep Convex imports out of `main.jsx` or that isolation breaks.
-- `src/App.jsx` — The landing page. Bilingual `content = { en, ar }`, sections: hero → story → places carousel → in-app showcase → concierge → quote → download → footer. Every CTA points at the App Store / Play Store; there are no internal links left except the static legal pages.
-- `src/hooks/useReveal.js` — IntersectionObserver scroll reveals (replaced framer-motion on the landing page). Elements opt in with `data-reveal`; the hidden start state is scoped to `.reveal-ready` so the page still renders if JS fails.
+- `src/App.jsx` — The landing page. Bilingual `content = { en, ar }`, sections: hero → story → places carousel → in-app showcase → concierge → quote → download → footer. Every CTA points at the App Store / Play Store; there are no internal links left except the static legal pages. The header is `position: fixed` and swaps to a solid paper bar (`.is-stuck`) once the hero scrolls under it — driven by an IntersectionObserver on `.hero-wrap`, not a scroll listener. `.home-redesign` sets `overflow: hidden`, which is why the header is fixed rather than sticky. Below 850px the section links move into a burger panel; below 640px the header's "Get the app" pill is dropped (four controls do not fit a 390px bar — the CTA is in the panel, the hero and its own section).
+- `src/hooks/useReveal.js` — IntersectionObserver scroll reveals (replaced framer-motion on the landing page). Elements opt in with `data-reveal`; the hidden start state is scoped to `.reveal-ready` so the page still renders if JS fails. **Takes a `dep`** (`useReveal(lang)`): the landing page keys its lists by translated strings, so a language toggle unmounts every revealed node and mounts new ones — without a re-scan they are never observed and stay at `opacity: 0` forever. Stagger a group with `style={{'--d': i}}`.
 - `src/admin/` — Arabic RTL admin dashboard, the only real app left on the web. `AdminPage.jsx` is the
   shell (auth gate + nav with live pending badges); one file per tab in `tabs/`; shared primitives in
   `components/` (Modal, ConfirmDialog, ToastProvider + `toast-context`, ImageUploader,
@@ -214,7 +214,9 @@ Each component defines its own `translations` object with `ar` and `en` keys. No
 
 All routes in `src/main.jsx` are lazy-loaded with `React.lazy()` + `<Suspense>`. `vite.config.js` has **no `manualChunks`** — it used to, and it forced `convex` and `better-auth` into the entry's `modulepreload` list so every anonymous visitor downloaded them. Rollup's automatic splitting follows the real dynamic-import graph instead; don't reintroduce `manualChunks` without re-checking `dist/index.html`.
 
-The landing page loads only the entry chunk (~234 kB raw / ~75 kB gzip: React + react-dom + react-router) plus a ~11 kB `App` chunk. No convex, no better-auth, no framer-motion, no admin. Verify with: `grep modulepreload dist/index.html`.
+The landing page loads only the entry chunk (~234 kB raw / ~75 kB gzip: React + react-dom + react-router) plus an ~18 kB / ~7 kB gzip `App` chunk. No convex, no better-auth, no framer-motion, no admin. Verify with: `grep modulepreload dist/index.html` (expect zero matches).
+
+The Google Fonts stylesheet is a `<link>` in `index.html`, **not** an `@import` in `src/index.css`. An `@import` inside the bundled CSS cannot begin downloading until that file has itself downloaded and parsed, which puts two serial round trips in front of first paint; the `<link>` races the bundle instead. Don't move it back.
 
 ## Key Technologies
 

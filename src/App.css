@@ -1,116 +1,192 @@
 html{scroll-behavior:smooth}
 
 /* Scroll reveals. The hidden start state is scoped to .reveal-ready, which
-   useReveal() sets on <html>, so the page still renders if JS never runs. */
-[data-reveal]{transition:opacity .7s ease,translate .7s cubic-bezier(.22,1,.36,1)}
-.reveal-ready [data-reveal]{opacity:0;translate:0 28px}
+   useReveal() sets on <html>, so the page still renders if JS never runs.
+   --d staggers siblings: set style={{'--d':i}} on each child of a group. */
+[data-reveal]{transition:opacity .8s ease,translate .8s cubic-bezier(.22,1,.36,1);transition-delay:calc(var(--d,0)*80ms)}
+.reveal-ready [data-reveal]{opacity:0;translate:0 26px}
 .reveal-ready [data-reveal].is-in{opacity:1;translate:0 0}
 @keyframes heroIn{from{opacity:0;translate:0 24px}to{opacity:1;translate:0 0}}
+@keyframes cueSlide{0%{translate:-100% 0}55%,100%{translate:100% 0}}
+@keyframes panelIn{from{opacity:0;translate:0 -10px}to{opacity:1;translate:0 0}}
 
-.home-redesign{--ink:#17241d;--green:#183b2b;--paper:#f3f0e7;--line:rgba(23,36,29,.16);background:var(--paper);color:var(--ink);min-height:100vh;font-family:var(--font-body);overflow:hidden}
+.home-redesign{
+ --ink:#17241d;--green:#183b2b;--green-deep:#10251a;--paper:#f3f0e7;--gold:#a8842c;
+ --muted:#5b6560;--line:rgba(23,36,29,.14);--line-strong:rgba(23,36,29,.26);
+ --sy:clamp(84px,9.5vw,142px);      /* one unit of vertical rhythm between sections */
+ --nav:84px;
+ background:var(--paper);color:var(--ink);min-height:100vh;font-family:var(--font-body);overflow:hidden}
+/* The nav is fixed, so in-page anchors have to stop short of it. */
+.home-redesign section[id]{scroll-margin-top:96px}
 
-/* ---- nav ---- */
-.home-nav{height:84px;display:flex;align-items:center;justify-content:space-between;padding:0 clamp(22px,4vw,66px);position:absolute;z-index:20;width:100%;color:#fff}
-.wordmark{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-size:25px}
+.skip-link{position:fixed;top:12px;inset-inline-start:12px;z-index:60;padding:11px 18px;border-radius:999px;background:var(--green);color:var(--paper);font-size:12px;translate:0 -250%;transition:translate .25s}
+.skip-link:focus-visible{translate:0 0;outline-offset:3px}
+
+/* ---- nav ----
+   Fixed rather than absolute so the download CTA stays reachable down the whole
+   page. Over the hero it is transparent with white text; past the hero it turns
+   into a frosted paper bar (.is-stuck, set from an IntersectionObserver). */
+.home-nav{position:fixed;top:0;inset-inline:0;z-index:50;height:var(--nav);display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 clamp(20px,4vw,66px);color:#fff;transition:height .35s ease,background-color .35s ease,color .35s ease,box-shadow .35s ease}
+.home-nav.is-stuck{height:66px;background:#f3f0e7f2;backdrop-filter:blur(14px) saturate(1.5);-webkit-backdrop-filter:blur(14px) saturate(1.5);color:var(--ink);box-shadow:0 1px 0 var(--line),0 18px 40px -34px #0a1c1299}
+.wordmark{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-size:25px;flex:none}
 /* The supplied logo is artwork on an opaque white plate, so it sits in a
    white chip — the plate and the chip are the same colour and the seam is
    invisible, which also keeps it legible on the dark nav and footer. */
 .brand-mark{width:38px;height:38px;border-radius:10px;background:#fff;object-fit:contain;padding:2px;flex:none}
-.nav-menu{display:flex;gap:36px;font-size:13px}
-.nav-actions{display:flex;align-items:center;gap:20px;font-size:12px}
+.home-nav.is-stuck .brand-mark{box-shadow:0 1px 3px #0a1c1214}
+
+.nav-menu{display:flex;gap:clamp(18px,2.5vw,36px);font-size:13px}
+.nav-menu a{position:relative;padding:6px 1px;opacity:.8;transition:opacity .25s}
+.nav-menu a::after{content:'';position:absolute;inset-inline:0;bottom:0;height:1px;background:currentColor;scale:0 1;transform-origin:left;transition:scale .4s cubic-bezier(.22,1,.36,1)}
+.rtl .nav-menu a::after{transform-origin:right}
+.nav-menu a:hover,.nav-menu a[aria-current="true"]{opacity:1}
+.nav-menu a:hover::after,.nav-menu a[aria-current="true"]::after{scale:1 1}
+
+.nav-actions{display:flex;align-items:center;gap:12px;font-size:12px}
 .nav-actions>*{color:inherit}
-.join{border:1px solid rgba(255,255,255,.5);padding:11px 16px;display:flex;gap:22px}
-.join:hover{background:rgba(255,255,255,.12)}
+.lang-btn{padding:9px 15px;border-radius:999px;border:1px solid #ffffff5c;font-size:11px;letter-spacing:.04em;transition:background-color .25s,border-color .35s}
+.lang-btn:hover{background:#ffffff1f}
+.home-nav.is-stuck .lang-btn{border-color:var(--line-strong)}
+.home-nav.is-stuck .lang-btn:hover{background:#17241d0d}
+.join{display:inline-flex;align-items:center;gap:10px;padding:11px 19px;border-radius:999px;border:1px solid #ffffff73;font-size:12px;font-weight:500;white-space:nowrap;transition:background-color .28s,color .28s,border-color .28s}
+.join span{transition:translate .3s cubic-bezier(.22,1,.36,1)}
+.join:hover{background:#fff;color:var(--ink);border-color:#fff}
+.join:hover span{translate:0 3px}
+.home-nav.is-stuck .join{background:var(--green);border-color:var(--green);color:var(--paper)}
+.home-nav.is-stuck .join:hover{background:var(--green-deep);border-color:var(--green-deep)}
+
+/* Burger — only rendered below 850px, where .nav-menu is gone. */
+.nav-toggle{display:none;width:40px;height:40px;border:1px solid #ffffff5c;border-radius:999px;place-items:center;transition:border-color .35s}
+.home-nav.is-stuck .nav-toggle{border-color:var(--line-strong)}
+.nav-toggle i{display:block;width:15px;height:1.4px;background:currentColor;border-radius:2px;position:relative;transition:background-color .2s}
+.nav-toggle i::before,.nav-toggle i::after{content:'';position:absolute;inset-inline-start:0;width:15px;height:1.4px;background:currentColor;border-radius:2px;transition:top .25s,rotate .25s}
+.nav-toggle i::before{top:-5px}
+.nav-toggle i::after{top:5px}
+.nav-toggle[aria-expanded="true"] i{background:transparent}
+.nav-toggle[aria-expanded="true"] i::before{top:0;rotate:45deg}
+.nav-toggle[aria-expanded="true"] i::after{top:0;rotate:-45deg}
+.nav-panel{position:fixed;top:64px;inset-inline:0;z-index:49;background:var(--paper);color:var(--ink);border-bottom:1px solid var(--line);padding:8px clamp(20px,5vw,32px) 24px;display:grid;animation:panelIn .3s cubic-bezier(.22,1,.36,1) both;box-shadow:0 24px 40px -30px #0a1c1266}
+.nav-panel a{padding:15px 2px;font-size:16px;border-bottom:1px solid var(--line)}
+.nav-panel .panel-cta{margin-top:20px;border:0;background:var(--green);color:var(--paper);border-radius:999px;text-align:center;padding:15px;font-size:13px;font-weight:600}
 
 /* ---- hero ---- */
-.hero-wrap{height:min(900px,94vh);margin:0 14px;border-radius:0 0 12px 12px;position:relative;overflow:hidden;color:#fff}
+.hero-wrap{height:min(920px,94vh);margin:0 14px;border-radius:0 0 14px 14px;position:relative;overflow:hidden;color:#fff}
 .hero-media{position:absolute;inset:0;background:url("/hasio-oasis-hero.webp") center/cover}
-.hero-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(6,21,13,.62),rgba(6,21,13,.08) 66%),linear-gradient(0deg,rgba(4,15,9,.4),transparent 50%)}
-.hero-copy{animation:heroIn .9s cubic-bezier(.22,1,.36,1) both;position:absolute;left:clamp(30px,8vw,130px);top:50%;transform:translateY(-46%);max-width:790px}
+.hero-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(6,21,13,.66),rgba(6,21,13,.08) 66%),linear-gradient(0deg,rgba(4,15,9,.5),transparent 46%),linear-gradient(180deg,rgba(4,15,9,.34),transparent 22%)}
+.hero-copy{animation:heroIn .9s cubic-bezier(.22,1,.36,1) both;position:absolute;left:clamp(30px,8vw,130px);top:50%;transform:translateY(-48%);max-width:790px}
 .rtl .hero-copy{left:auto;right:clamp(30px,8vw,130px)}
-.eyebrow{font-size:10px;letter-spacing:.22em;font-weight:600;display:block;margin-bottom:24px}
+.eyebrow{display:flex;align-items:center;gap:12px;font-size:10px;letter-spacing:.22em;font-weight:600;margin-bottom:24px}
+.eyebrow::before{content:'';flex:none;width:26px;height:1px;background:currentColor;opacity:.55}
 .eyebrow.light{color:#e2e6d5}
-.hero-copy h1{font-size:clamp(58px,8vw,118px);line-height:.83;letter-spacing:-.055em;font-weight:400}
+.eyebrow.gold{color:var(--gold)}
+.hero-copy h1{font-size:clamp(54px,7.6vw,112px);line-height:.85;letter-spacing:-.055em;font-weight:400;text-wrap:balance}
 .hero-copy h1 em,.story h2 em{font-weight:400;color:#d5d8be}
-.hero-copy p{font-size:16px;line-height:1.65;max-width:560px;margin:34px 0 0;color:#ffffffd1}
-.hero-index{position:absolute;right:28px;bottom:38px;font-size:9px;letter-spacing:.14em}
+.hero-copy p{font-size:16.5px;line-height:1.7;max-width:560px;margin:34px 0 0;color:#ffffffd6}
+/* The coordinates are Latin, so the span forces direction:ltr — which also
+   makes any inset-inline-* on it resolve LTR. Mirror it with physical sides
+   instead, or it lands on top of the scroll cue in Arabic. */
+.hero-index{position:absolute;right:28px;bottom:38px;font-size:9px;letter-spacing:.14em;color:#ffffffb0;direction:ltr}
+.rtl .hero-index{right:auto;left:28px}
+.hero-cue{position:absolute;inset-inline-start:clamp(30px,8vw,130px);bottom:36px;display:flex;align-items:center;gap:13px;font-size:9px;letter-spacing:.2em;color:#ffffffab}
+.hero-cue i{display:block;width:46px;height:1px;background:#ffffff45;position:relative;overflow:hidden}
+.hero-cue i::after{content:'';position:absolute;inset:0;background:#fff;animation:cueSlide 2.6s ease-in-out infinite}
 
 /* ---- store badges ---- */
 .badges{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
-.badge{display:inline-flex;align-items:center;gap:11px;padding:11px 19px 11px 16px;border-radius:9px;border:1px solid;line-height:1;transition:background .25s}
+.badge{display:inline-flex;align-items:center;gap:11px;padding:11px 19px 11px 16px;border-radius:11px;border:1px solid;line-height:1;transition:background-color .25s,translate .25s,box-shadow .25s}
 .badge svg{width:22px;height:22px;flex:none}
 .badge span{display:flex;flex-direction:column;gap:4px;text-align:left}
 .rtl .badge span{text-align:right}
 .badge small{font-size:9px;letter-spacing:.08em;opacity:.72}
 .badge b{font-size:15px;font-weight:500;letter-spacing:-.01em}
 .badges.light .badge{color:#fff;border-color:#ffffff73;background:#0a181047;backdrop-filter:blur(6px)}
-.badges.light .badge:hover{background:#ffffff26}
+.badges.light .badge:hover{background:#ffffff26;translate:0 -2px}
 .badges.dark .badge{color:#f3f0e7;background:var(--green);border-color:var(--green)}
-.badges.dark .badge:hover{background:#0f2c1f}
+.badges.dark .badge:hover{background:var(--green-deep);translate:0 -2px;box-shadow:0 14px 26px -16px #0a1c1299}
 
 /* ---- story ---- */
 .section-shell{max-width:1280px;margin:auto;padding-left:40px;padding-right:40px}
-.story{padding-top:150px}
-.story-heading{display:grid;grid-template-columns:1fr 2fr}
+.story{padding-top:var(--sy)}
+.story-heading{display:grid;grid-template-columns:1fr 2fr;column-gap:30px}
+.story-heading .eyebrow{margin-top:14px}
 .story-heading h2{grid-column:2;font-size:clamp(52px,6vw,88px);line-height:.95;font-weight:400;white-space:nowrap}
 .story-copy{width:42%;margin:45px 0 76px auto}
 .rtl .story-copy{margin-left:0;margin-right:auto}
-.story-copy p{font:21px/1.45 var(--font-display)}
-.story-image{height:540px;overflow:hidden}
-.story-image img{width:100%;height:100%;object-fit:cover;filter:saturate(.75)}
-.values{display:grid;grid-template-columns:1.2fr repeat(3,1fr);border-top:1px solid var(--line);margin:64px 0 150px}
-.values>h3,.values article{padding:35px 25px 20px 0;border-bottom:1px solid var(--line)}
-.values article{border-left:1px solid var(--line);padding-left:26px}
-.values article>span{font-size:9px;color:#788279}
-.values h4{font-family:var(--font-body);font-size:15px;margin:30px 0 10px}
-.values p{font-size:12px;line-height:1.6;color:#5f6962}
+.story-copy p{font:21px/1.5 var(--font-display)}
+.story-image{height:clamp(340px,42vw,560px);overflow:hidden;border-radius:4px}
+.story-image img{width:100%;height:100%;object-fit:cover;filter:saturate(.78);transition:scale 1.4s cubic-bezier(.22,1,.36,1)}
+.story-image:hover img{scale:1.03}
+.values{display:grid;grid-template-columns:1.2fr repeat(3,1fr);border-top:1px solid var(--line);margin:64px 0 0}
+.values>h3,.values article{padding:34px 26px 30px 0;border-bottom:1px solid var(--line)}
+.rtl .values>h3,.rtl .values article{padding-right:0;padding-left:26px}
+.values>h3{font-size:23px;font-weight:400}
+/* Logical border and padding: the physical border-left used to land on the
+   wrong side of each cell once the grid mirrored in Arabic. */
+.values article{border-inline-start:1px solid var(--line);padding-inline-start:26px;transition:background-color .35s}
+.values article:hover{background:#17241d07}
+.values article>span{font-size:9px;letter-spacing:.16em;color:var(--gold)}
+.values h4{font-family:var(--font-body);font-size:16px;font-weight:500;margin:28px 0 10px}
+.values p{font-size:13.5px;line-height:1.65;color:var(--muted);max-width:32ch}
 
 /* ---- Timeless places carousel ----
    A native scroll-snap rail: no carousel library, works with touch, trackpad
    and keyboard, and the arrows just step it by one card. */
-.places{padding-top:150px;padding-bottom:150px;overflow:hidden}
+.places{padding-top:var(--sy);padding-bottom:var(--sy);overflow:hidden}
 .places-inner{display:grid;grid-template-columns:minmax(300px,430px) 1fr;gap:56px;align-items:center}
-.eyebrow.gold{color:#a8842c}
 .places-copy h2{font-size:clamp(36px,3.4vw,50px);font-weight:400;line-height:1.06;margin-bottom:22px}
-.places-copy p{font-size:14px;line-height:1.75;color:#5f6962;max-width:340px;margin-bottom:34px}
-.place-cta{display:inline-flex;align-items:center;gap:16px;background:var(--green);color:#f3f0e7;padding:15px 26px;border-radius:999px;font-size:12px;font-weight:600;transition:background .25s}
-.place-cta:hover{background:#0f2c1f}
+.places-copy p{font-size:14.5px;line-height:1.75;color:var(--muted);max-width:340px;margin-bottom:34px}
+.place-cta{display:inline-flex;align-items:center;gap:14px;background:var(--green);color:#f3f0e7;padding:15px 26px;border-radius:999px;font-size:12px;font-weight:600;transition:background-color .25s,translate .25s,box-shadow .25s}
+.place-cta span{transition:translate .3s cubic-bezier(.22,1,.36,1)}
+.place-cta:hover{background:var(--green-deep);translate:0 -2px;box-shadow:0 16px 28px -18px #0a1c12b3}
+.place-cta:hover span{translate:4px 0}
 .rail-wrap{position:relative;min-width:0;padding-top:58px}
 .rail-nav{position:absolute;top:0;inset-inline-end:0;display:flex;gap:10px}
-.rail-nav button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:14px;color:var(--ink);transition:.25s}
+.rail-nav button{width:40px;height:40px;border-radius:50%;border:1px solid var(--line-strong);display:grid;place-items:center;font-size:14px;color:var(--ink);transition:background-color .25s,color .25s,border-color .25s,opacity .25s}
 .rail-nav button:hover{background:var(--green);color:#f3f0e7;border-color:var(--green)}
+.rail-nav button:disabled{opacity:.3;pointer-events:none}
 .rail{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:4px;scrollbar-width:none;-ms-overflow-style:none}
 .rail::-webkit-scrollbar{display:none}
-.place-card{position:relative;flex:none;width:246px;aspect-ratio:520/880;border-radius:20px;overflow:hidden;scroll-snap-align:start;color:#fff}
-.place-card img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .8s}
-.place-card:hover img{transform:scale(1.05)}
-.place-shade{position:absolute;inset:0;background:linear-gradient(0deg,#08150de6,#08150d59 44%,#08150d17 70%)}
+.rail:focus-visible{outline:2px solid var(--green);outline-offset:6px;border-radius:4px}
+/* Slim scroll indicator. The rail bleeds off the right edge on purpose, so
+   without this there is no cue that more cards exist or how far along you are.
+   margin-inline-start (not translateX) so the thumb tracks correctly in RTL. */
+.rail-progress{display:flex;height:2px;margin-top:26px;border-radius:2px;background:var(--line);max-width:min(100%,560px)}
+.rail-progress i{height:100%;border-radius:2px;background:var(--green);width:calc(var(--w,.3)*100%);margin-inline-start:calc(var(--p,0)*100%);transition:margin .3s ease,width .3s ease}
+.place-card{position:relative;flex:none;width:256px;aspect-ratio:520/880;border-radius:20px;overflow:hidden;scroll-snap-align:start;color:#fff;box-shadow:0 1px 2px #0a1c1214}
+.place-card img{width:100%;height:100%;object-fit:cover;display:block;transition:scale .9s cubic-bezier(.22,1,.36,1)}
+.place-card:hover img{scale:1.06}
+.place-shade{position:absolute;inset:0;background:linear-gradient(0deg,#08150deb,#08150d59 44%,#08150d17 70%);transition:opacity .4s}
+.place-card:hover .place-shade{opacity:.9}
 .place-body{position:absolute;inset-inline:20px;bottom:20px}
 .place-body svg{width:23px;height:23px;margin-bottom:14px;opacity:.92}
 .place-body h3{font-family:var(--font-body);font-size:19px;font-weight:500;letter-spacing:-.01em}
-.place-body p{font-size:12px;line-height:1.55;color:#ffffffc4;margin-top:6px}
-.place-go{margin-top:17px;width:36px;height:36px;border-radius:50%;border:1px solid #ffffff5c;display:grid;place-items:center;font-size:14px;transition:.25s}
+.place-body p{font-size:12.5px;line-height:1.55;color:#ffffffc9;margin-top:6px}
+.place-go{margin-top:17px;width:36px;height:36px;border-radius:50%;border:1px solid #ffffff5c;display:grid;place-items:center;font-size:14px;transition:background-color .25s,color .25s,border-color .25s}
 .place-card:hover .place-go{background:#fff;color:#17241d;border-color:#fff}
 /* Arrow glyphs are directional: mirror them in RTL so "next" points the way
    the rail actually moves. Flex already reverses the buttons' positions. */
 .rtl .place-go,.rtl .rail-nav button,.rtl .place-cta span{transform:scaleX(-1)}
 
 /* ---- in-app showcase ---- */
-.showcase{padding-bottom:150px}
-.section-title{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:52px}
+.showcase{padding-bottom:var(--sy)}
+.section-title{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:56px}
 .section-title h2{font-size:clamp(40px,5vw,64px);font-weight:400}
 .shot-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:46px}
-.phone{width:min(100%,290px);aspect-ratio:440/892;border-radius:28px;overflow:hidden;background:#0f1f17;border:1px solid var(--line);box-shadow:0 28px 64px #0c1e1424}
-.phone img{width:100%;height:100%;object-fit:cover;display:block}
+/* A real bezel. The screenshots are white-backgrounded UI, so without a frame
+   they read as flat cards floating on the paper rather than as a phone. */
+.phone{width:min(100%,300px);padding:8px;border-radius:42px;background:linear-gradient(155deg,#2b3f34,#101f17 46%,#25382d);box-shadow:0 2px 4px #0a1c121f,0 30px 60px -28px #0a1c1273,inset 0 0 0 1px #ffffff1c;transition:translate .5s cubic-bezier(.22,1,.36,1),box-shadow .5s}
+.shot:hover .phone{translate:0 -8px;box-shadow:0 2px 4px #0a1c121f,0 44px 70px -30px #0a1c1280,inset 0 0 0 1px #ffffff2b}
+.phone-screen{aspect-ratio:440/892;border-radius:35px;overflow:hidden;background:#fff}
+.phone-screen img{width:100%;height:100%;object-fit:cover;display:block}
 .shot h3{font-size:27px;font-weight:400;margin:34px 0 9px}
-.shot p{font-size:13px;line-height:1.65;color:#5f6962;max-width:320px}
+.shot p{font-size:14px;line-height:1.7;color:var(--muted);max-width:320px}
 
 /* ---- concierge ---- */
 .concierge{min-height:780px;background:var(--green);color:#fff;display:grid;grid-template-columns:55% 45%;position:relative;overflow:hidden}
 .concierge-photo{background:linear-gradient(90deg,transparent 60%,var(--green)),url("/concierge-bg.webp") center/cover;opacity:.7}
 .concierge-copy{align-self:center;padding:70px clamp(35px,7vw,110px) 70px 40px}
 .concierge-copy h2{font-size:clamp(52px,6vw,82px);font-weight:400;line-height:.9}
-.concierge-copy p{max-width:470px;color:#ffffffb3;font-size:14px;line-height:1.7;margin:30px 0 0}
+.concierge-copy p{max-width:470px;color:#ffffffbd;font-size:14.5px;line-height:1.75;margin:30px 0 0}
 /* Concierge preview card — soft, layered and slightly lifted so it reads as a
    piece of product UI floating over the photo rather than a flat panel. */
 .planner-card{position:absolute;inset-inline-start:clamp(35px,9vw,150px);top:50%;transform:translateY(-50%);width:342px;padding:22px 22px 18px;color:var(--ink);background:linear-gradient(180deg,#fcfaf5,#f0ece1);border:1px solid #ffffff96;border-radius:22px;box-shadow:0 1px 2px #0a1c1218,0 14px 28px -10px #0a1c1226,0 44px 84px -24px #0a1c1266}
@@ -121,7 +197,7 @@ html{scroll-behavior:smooth}
 .planner-top small{display:flex;align-items:center;gap:6px;font-size:10px;color:#6c776f;margin-top:4px}
 .planner-top i{width:6px;height:6px;background:#3f9c6d;border-radius:50%;box-shadow:0 0 0 3px #3f9c6d29;flex:none}
 .planner-card>p{font:17px/1.5 var(--font-display);padding:18px 2px 12px;color:#22332a}
-.planner-route{display:flex;gap:13px;align-items:center;padding:11px 10px;margin:0 -10px;border-radius:13px;transition:background .25s}
+.planner-route{display:flex;gap:13px;align-items:center;padding:11px 10px;margin:0 -10px;border-radius:13px;transition:background-color .25s}
 .planner-route:hover{background:#17241d0a}
 .planner-route+.planner-route{box-shadow:inset 0 1px 0 #17241d12}
 .planner-route>span{flex:none;width:25px;height:25px;border-radius:9px;display:grid;place-items:center;font-size:9px;font-weight:600;background:#17241d0f;color:#4a5a51}
@@ -129,69 +205,96 @@ html{scroll-behavior:smooth}
 .planner-route small{font-size:10.5px;line-height:1.45;color:#768078;margin-top:3px}
 
 /* ---- quote + download ---- */
-.quote{text-align:center;padding-top:150px;padding-bottom:150px}
-.quote>span{font-size:28px}
-.quote blockquote{font:clamp(36px,5vw,66px)/1.15 var(--font-display);max-width:1040px;margin:30px auto}
-.quote small{font-size:9px;letter-spacing:.2em}
-.download{border-top:1px solid var(--line);padding-top:130px;padding-bottom:140px;text-align:center}
+.quote{text-align:center;padding-top:var(--sy);padding-bottom:var(--sy)}
+.quote span{display:block;font-size:22px;color:var(--gold)}
+.quote blockquote{font:clamp(36px,5vw,64px)/1.15 var(--font-display);max-width:1040px;margin:28px auto;text-wrap:balance}
+.quote small{font-size:9px;letter-spacing:.2em;color:var(--muted)}
+.download{border-top:1px solid var(--line);padding-top:var(--sy);padding-bottom:var(--sy);text-align:center}
+.download .eyebrow{justify-content:center}
 .download h2{font-size:clamp(46px,6vw,84px);font-weight:400;line-height:.95}
-.download p{color:#69736c;font-size:15px;max-width:520px;margin:22px auto 0}
+.download p{color:var(--muted);font-size:15px;max-width:520px;margin:22px auto 0}
 .download .badges{justify-content:center;margin-top:42px}
 
 /* ---- Arabic typography ----
-   The display sizes are tuned for Latin caps: -.055em tracking and .83 leading.
+   The display sizes are tuned for Latin caps: -.055em tracking and .85 leading.
    Arabic is a connected script with tall ascenders and low descenders, so
    negative tracking damages the joins and the tight leading makes stacked lines
    collide. There is also no true italic for Cairo — the browser fakes an
    oblique, which just looks broken. Loosen all three under .rtl. */
 .rtl,.rtl h1,.rtl h2,.rtl h3,.rtl h4,.rtl blockquote,.rtl .story-copy p,.rtl .planner-card>p{font-family:var(--font-arabic)}
 .rtl h1,.rtl h2,.rtl blockquote{letter-spacing:normal}
-.rtl .hero-copy h1{line-height:1.18}
-.rtl .story-heading h2,.rtl .concierge-copy h2,.rtl .download h2{line-height:1.2}
-.rtl .quote blockquote{line-height:1.5}
+/* Cairo also sets much larger than Playfair at the same px, so the display
+   sizes need their own smaller ramp or the headline swallows the whole frame. */
+.rtl .hero-copy h1{font-size:clamp(44px,5.6vw,88px);line-height:1.22}
+.rtl .story-heading h2,.rtl .concierge-copy h2,.rtl .download h2{line-height:1.22}
+.rtl .quote blockquote{line-height:1.5;font-size:clamp(30px,4.2vw,54px)}
 .rtl em{font-style:normal}
-.rtl .hero-copy p,.rtl .story-copy p,.rtl .shot p,.rtl .values p{line-height:1.85}
+.rtl .hero-copy p,.rtl .story-copy p,.rtl .shot p,.rtl .values p,.rtl .concierge-copy p{line-height:1.9}
 
 /* ---- footer ---- */
-.home-footer{background:#10251a;color:#fff;padding:70px clamp(30px,6vw,90px) 35px;display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:end}
-.home-footer p{font:28px var(--font-display);color:#cad0c7}
-.home-footer>div{display:flex;gap:30px;font-size:11px}
-.home-footer>div a:hover{text-decoration:underline}
-.home-footer small{text-align:right;font-size:9px;direction:ltr}  /* the copyright line is Latin; without an explicit direction the RTL
-     paragraph flips it to "HASIO 2026 ©" */
-.rtl .home-footer small{text-align:left}
+.home-footer{background:var(--green-deep);color:#fff;padding:78px clamp(24px,6vw,90px) 34px}
+.foot-top{display:grid;grid-template-columns:1.8fr repeat(3,1fr);gap:48px;padding-bottom:52px;border-bottom:1px solid #ffffff1f}
+.foot-brand p{font:26px/1.35 var(--font-display);color:#cad0c7;margin-top:22px;max-width:24ch}
+.foot-col{display:flex;flex-direction:column;align-items:flex-start;gap:14px;font-size:12.5px;padding-top:6px}
+.foot-col b{font-size:9px;letter-spacing:.2em;font-weight:600;color:#8ea395;margin-bottom:4px}
+.foot-col a{color:#ffffffc4;transition:color .2s}
+.foot-col a:hover{color:#fff}
+.foot-bottom{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-top:26px;font-size:9px;letter-spacing:.16em;color:#ffffff7a}
+/* Both lines are Latin; without an explicit direction the RTL paragraph flips
+   them to "HASIO 2026 ©". */
+.foot-bottom span{direction:ltr}
+
+@media(max-width:980px){
+ .shot-grid{gap:34px}
+ .values{grid-template-columns:1fr 1fr}
+}
+
+/* Phones only: four controls do not fit one 390px bar. The CTA lives in the
+   burger panel, in the hero right below, and in its own section — dropping it
+   from the bar here costs nothing and gives the wordmark room. */
+@media(max-width:640px){
+ .home-nav .join{display:none}
+}
 
 @media(max-width:850px){
- .home-nav{height:70px}
+ .home-redesign{--nav:64px}
+ .home-nav,.home-nav.is-stuck{height:64px}
  .nav-menu{display:none}
- .hero-wrap{height:auto;min-height:760px;margin:0 7px;padding:110px 0 60px}
+ .nav-toggle{display:grid}
+ /* One screenful, not a fixed 760px: the copy only fills ~450px on a phone, so
+    a taller box was just empty photo pushing the fold down. */
+ /* Grid rather than flex so the one in-flow child still stretches to the full
+    width; the media/shade layers are absolute and stay out of the flow. */
+ .hero-wrap{height:auto;min-height:700px;min-height:clamp(620px,92svh,780px);margin:0 7px;padding:104px 0 64px;display:grid;align-content:center}
  .hero-media{background-image:url("/hasio-oasis-hero-mobile.webp")}
  .hero-copy,.rtl .hero-copy{position:static;transform:none;max-width:none;padding:0 26px}
- .hero-copy h1{font-size:58px}
- .hero-index{display:none}
+ .hero-copy h1{font-size:54px}
+ .rtl .hero-copy h1{font-size:42px}
+ .hero-index,.hero-cue{display:none}
  .badges{margin-top:30px}
  .section-shell{padding-left:22px;padding-right:22px}
- .story{padding-top:90px}
  .story-heading{display:block}
- .story-heading h2{white-space:normal;font-size:48px}
+ .story-heading .eyebrow{margin-top:0}
+ .story-heading h2{white-space:normal;font-size:46px}
  .story-copy,.rtl .story-copy{width:100%;margin:30px 0 50px}
- .story-image{height:380px}
- .values{grid-template-columns:1fr;margin-bottom:90px}
- .values article{border-left:0}
- .places{padding-top:90px;padding-bottom:90px}
+ .values{grid-template-columns:1fr;margin-bottom:0}
+ .values>h3,.values article{padding-bottom:26px}
+ .values article{border-inline-start:0}
+ .rtl .values>h3,.rtl .values article{padding-left:0}
+ .values p{max-width:none}
  .places-inner{grid-template-columns:1fr;gap:34px}
- .places-copy h2{font-size:40px}
+ .places-copy h2{font-size:38px}
  .places-copy p{max-width:none}
  .rail-wrap{padding-top:0}
  .rail-nav{display:none}
  .rail{gap:14px;margin-inline:-22px;padding-inline:22px;scroll-padding-inline-start:22px}
+ .rail-progress{margin-top:20px}
  .place-card{width:min(74vw,262px)}
- .showcase{padding-bottom:90px}
  .section-title{align-items:flex-start;margin-bottom:36px}
  .shot-grid{grid-template-columns:1fr;gap:56px;justify-items:center}
  .shot{text-align:center}
  .shot p{margin:0 auto}
- .phone{width:min(100%,260px)}
+ .phone{width:min(100%,272px)}
  /* Stack it for real rather than absolutely positioning the card over a
     padding reserve — the old `padding-top:390px` + `top:300px` pair was tuned to
     one card height and broke the moment the card grew. Flex order puts the card
@@ -201,10 +304,11 @@ html{scroll-behavior:smooth}
  .concierge-photo{order:1;position:relative;inset:auto;height:340px;width:100%;background:linear-gradient(0deg,var(--green),transparent 70%),url("/concierge-bg.webp") center/cover}
  .planner-card{order:2;position:relative;inset:auto;transform:none;margin:-96px auto 0;width:min(342px,calc(100% - 40px))}
  .concierge-copy{order:3;position:relative;padding:44px 24px 65px}
- .quote{padding-top:90px;padding-bottom:90px}
- .download{padding-top:90px;padding-bottom:100px}
- .home-footer{grid-template-columns:1fr;gap:34px}
- .home-footer small,.rtl .home-footer small{text-align:left}
+ .home-footer{padding-top:60px}
+ .foot-top{grid-template-columns:1fr 1fr;gap:38px;padding-bottom:38px}
+ .foot-brand{grid-column:1/-1}
+ .foot-brand p{font-size:23px}
+ .foot-bottom{flex-direction:column;align-items:flex-start;gap:10px}
 }
 
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;animation:none!important;transition:none!important}
