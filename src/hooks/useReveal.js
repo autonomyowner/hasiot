@@ -7,8 +7,13 @@ import { useEffect } from 'react'
  * page that is otherwise static. Elements opt in with `data-reveal`; the hook
  * marks the document first so the hidden start state only applies once JS is
  * running — without that, a failed bundle would leave the page blank.
+ *
+ * Pass anything that swaps the marked-up nodes as `dep` — the landing page
+ * keys its lists by translated strings, so toggling the language unmounts every
+ * revealed element and mounts brand-new ones. Without a re-scan those new nodes
+ * are never observed and stay at opacity 0 forever.
  */
-export function useReveal() {
+export function useReveal(dep) {
   useEffect(() => {
     const root = document.documentElement
     const nodes = document.querySelectorAll('[data-reveal]')
@@ -32,10 +37,14 @@ export function useReveal() {
       })
     }, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' })
 
-    nodes.forEach((n) => io.observe(n))
+    // Already-revealed nodes keep their class, so a re-scan never re-hides
+    // anything the visitor has scrolled past.
+    nodes.forEach((n) => {
+      if (!n.classList.contains('is-in')) io.observe(n)
+    })
     return () => {
       io.disconnect()
       root.classList.remove('reveal-ready')
     }
-  }, [])
+  }, [dep])
 }

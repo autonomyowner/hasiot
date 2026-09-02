@@ -36,6 +36,10 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Linked here rather than @import-ed from index.css: an @import can only
+         start once the bundled CSS has parsed, which puts two serial round
+         trips in front of first paint. -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Cairo:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" />
   </head>
   <body>
     <div id="root"></div>

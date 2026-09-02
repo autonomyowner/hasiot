@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLanguage } from './hooks/useLanguage'
 import { useReveal } from './hooks/useReveal'
 import './App.css'
@@ -12,6 +12,16 @@ const content = {
   en: { nav:['The edit','Places','The app','Concierge'],getApp:'Get the app',switch:'العربية',eyebrow:'THE OASIS, CURATED',titleA:'Al-Ahsa,',titleB:'beyond the expected.',intro:'A considered guide to the world’s largest oasis—rare stays, storied places and local encounters, selected with care. Now in your pocket.',onIos:'Download on the',appStore:'App Store',onAndroid:'Get it on',playStore:'Google Play',storyKicker:'THE HASIO EDIT',storyTitle:['Travel slowly.','Remember deeply.'],storyBody:'We look beyond the obvious to bring you closer to the people, flavours and landscapes that give Al-Ahsa its soul.',why:'Why travel with us',values:[['Locally considered','Recommendations shaped by people who know the oasis by heart.'],['Quietly exceptional','Distinctive stays and experiences, chosen for character—not crowds.'],['Effortlessly yours','Save, plan and book your entire escape from one beautifully simple place.']],placesKicker:'EXPLORE AL-AHSA',placesTitle:['Timeless places','waiting for you.'],placesBody:'From heritage quarters to natural wonders — experience Al-Ahsa like never before.',placesCta:'Explore in the app',places:[['Heritage','Step into history that still lives.'],['Nature','Breathe in the beauty of the oasis.'],['Culture','Traditions that tell our story.'],['Flavours','A table set by the oasis.'],['Mountains','Caves carved by wind and time.']],showKicker:'INSIDE THE APP',showTitle:'Everything the oasis holds',shots:[['Discover','Heritage sites, oasis paths and the places locals actually go.'],['Plan','Tell Hasio your pace and your dates. Get an itinerary built around them.'],['Stay & taste','Hotels, farm stays and the tables worth crossing town for.']],plannerName:'Hasio Concierge',plannerStatus:'Online',plannerQuote:'“A quiet three-day escape with heritage, palms and memorable local food.”',plannerRoutes:[['Old Hofuf','Souq, architecture & slow lunch'],['Oasis paths','Private palms & golden hour'],['Al Qarah','Caves & an open-air supper']],serviceKicker:'YOUR PERSONAL CONCIERGE',serviceTitle:['One journey.','Entirely your own.'],serviceBody:'Tell Hasio what moves you. The planner turns your pace, tastes and travel dates into a considered Al-Ahsa itinerary—in Arabic or English.',quote:'“The beauty of Al-Ahsa is not only what you see. It is how time feels while you are here.”',dlKicker:'AVAILABLE NOW',dlTitle:'Carry the oasis with you.',dlBody:'Free on iPhone and Android, in Arabic and English throughout.',footTag:'Curating the soul of Al-Ahsa.',privacy:'Privacy',terms:'Terms',support:'Support' },
   ar: { nav:['اختيارات Hasio','الأماكن','التطبيق','مرشدك'],getApp:'حمّل التطبيق',switch:'English',eyebrow:'الواحة، كما لم ترها من قبل',titleA:'الأحساء،',titleB:'أبعد من المتوقّع.',intro:'دليلك المختار بعناية إلى أكبر واحة في العالم—إقامات نادرة، أماكن تحكي التاريخ، وتجارب محلية أصيلة. الآن بين يديك.',onIos:'حمّله من',appStore:'App Store',onAndroid:'متوفر على',playStore:'Google Play',storyKicker:'اختيارات Hasio',storyTitle:['تمهّل في رحلتك.','واصنع ذكرى أعمق.'],storyBody:'نأخذك إلى ما وراء المألوف، لتقترب من الناس والنكهات والطبيعة التي تمنح الأحساء روحها.',why:'لماذا تسافر معنا',values:[['برؤية محلية','توصيات يصنعها من يعرف الواحة عن قرب.'],['استثنائي بهدوء','إقامات وتجارب لها طابعها الخاص، بعيداً عن الزحام.'],['رحلتك ببساطة','احفظ وخطط واحجز رحلتك كاملة من مكان واحد جميل وسهل.']],placesKicker:'استكشف الأحساء',placesTitle:['أماكن خالدة','بانتظارك.'],placesBody:'من الأحياء التراثية إلى عجائب الطبيعة، عِش الأحساء كما لم تعشها من قبل.',placesCta:'استكشفها في التطبيق',places:[['التراث','ادخل إلى تاريخ ما زال حياً.'],['الطبيعة','تنفّس جمال الواحة.'],['الثقافة','عادات تروي حكايتنا.'],['النكهات','مائدة تصنعها الواحة.'],['الجبال','كهوف نحتتها الريح والزمن.']],showKicker:'داخل التطبيق',showTitle:'كل ما تحتضنه الواحة',shots:[['اكتشف','مواقع تراثية ودروب الواحة والأماكن التي يقصدها الأهالي فعلاً.'],['خطط','أخبر Hasio بإيقاعك وتواريخك، واحصل على برنامج مصمم لك.'],['أقم وتذوّق','فنادق ومزارع للإقامة وموائد تستحق عناء الطريق.']],plannerName:'مرشد Hasio',plannerStatus:'متصل',plannerQuote:'«ثلاثة أيام هادئة بين التراث والنخيل ومائدة محلية لا تُنسى.»',plannerRoutes:[['الهفوف القديمة','السوق والعمارة وغداء على مهل'],['دروب الواحة','نخيل خاص وساعة الغروب'],['جبل القارة','كهوف وعشاء في الهواء الطلق']],serviceKicker:'مرشدك الشخصي',serviceTitle:['رحلة واحدة.','مصممة لك.'],serviceBody:'أخبر Hasio بما تحب. يحوّل المخطط وقتك وذوقك وتواريخ سفرك إلى برنامج مدروس للأحساء—بالعربية أو الإنجليزية.',quote:'«جمال الأحساء ليس فقط فيما تراه، بل في إحساس الوقت وأنت هنا.»',dlKicker:'متوفر الآن',dlTitle:'خذ الواحة معك.',dlBody:'مجاناً على أجهزة iPhone وأجهزة Android، بالعربية والإنجليزية بالكامل.',footTag:'نحتفي بروح الأحساء.',privacy:'الخصوصية',terms:'الشروط',support:'الدعم' },
 }
+
+// Two strings the marketing copy never shows but keyboard and small-screen
+// navigation need, so they live outside `content`.
+const ui = {
+  en: { skip: 'Skip to content', menu: 'Menu', explore: 'Explore', legal: 'Legal' },
+  ar: { skip: 'تخطي إلى المحتوى', menu: 'القائمة', explore: 'استكشف', legal: 'الشروط والسياسات' },
+}
+
+// Section ids, in nav order — drives both the anchors and the active-link state.
+const SECTIONS = ['story', 'places', 'app', 'concierge']
 
 const shots = ['/app/discover.webp', '/app/plan.webp', '/app/stay.webp']
 
@@ -50,8 +60,91 @@ function StoreBadges({ t, tone = 'dark' }) {
 export default function App() {
   const { lang, toggleLang, isRtl } = useLanguage()
   const t = content[lang]
+  const u = ui[lang]
   const rail = useRef(null)
-  useReveal()
+  const [stuck, setStuck] = useState(false)
+  const [active, setActive] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [scroll, setScroll] = useState({ atStart: true, atEnd: false, w: 0.3, p: 0 })
+  // Lists here are keyed by translated strings, so switching language mounts
+  // fresh nodes — the reveal observer has to pick them up again.
+  useReveal(lang)
+
+  // The nav is fixed. Over the hero it stays transparent; once the hero's
+  // bottom edge passes under it, it turns into a solid paper bar. An observer
+  // inset by the nav height beats a scroll listener — no per-frame work, and
+  // the switch point tracks the hero's real height at any viewport.
+  useEffect(() => {
+    const hero = document.querySelector('.hero-wrap')
+    if (!hero) return
+    const io = new IntersectionObserver(([e]) => {
+      setStuck(!e.isIntersecting)
+      // Back at the top, no section link should read as current.
+      if (e.isIntersecting) setActive('')
+    }, { rootMargin: '-88px 0px 0px 0px' })
+    io.observe(hero)
+    return () => io.disconnect()
+  }, [])
+
+  // Highlight whichever section is crossing the middle of the viewport.
+  useEffect(() => {
+    const els = SECTIONS.map((id) => document.getElementById(id)).filter(Boolean)
+    if (!els.length) return
+    const io = new IntersectionObserver(
+      (entries) => entries.forEach((e) => e.isIntersecting && setActive(e.target.id)),
+      { rootMargin: '-45% 0px -50% 0px' },
+    )
+    els.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [])
+
+  // Rail position, for the progress bar and for disabling the arrows at the
+  // ends. RTL scrollLeft is negative in Chrome, hence the abs().
+  const syncRail = useCallback(() => {
+    const el = rail.current
+    if (!el) return
+    const max = el.scrollWidth - el.clientWidth
+    const x = Math.abs(el.scrollLeft)
+    setScroll({
+      atStart: x <= 2,
+      atEnd: max <= 0 || x >= max - 2,
+      w: el.clientWidth / el.scrollWidth,
+      p: el.scrollWidth ? x / el.scrollWidth : 0,
+    })
+  }, [])
+
+  useEffect(() => {
+    const el = rail.current
+    if (!el) return
+    syncRail()
+    el.addEventListener('scroll', syncRail, { passive: true })
+    window.addEventListener('resize', syncRail)
+    return () => {
+      el.removeEventListener('scroll', syncRail)
+      window.removeEventListener('resize', syncRail)
+    }
+  }, [syncRail])
+
+  // Switching language re-lays the rail out mirrored; re-measure after paint.
+  useEffect(() => {
+    const id = requestAnimationFrame(syncRail)
+    return () => cancelAnimationFrame(id)
+  }, [lang, syncRail])
+
+  // Escape or a scroll dismisses the mobile panel. Deliberately not a body
+  // scroll lock: the panel links are in-page anchors, and locking the body
+  // races the browser's own jump to the target.
+  useEffect(() => {
+    if (!menuOpen) return
+    const close = () => setMenuOpen(false)
+    const onKey = (e) => e.key === 'Escape' && close()
+    document.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', close, { passive: true })
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', close)
+    }
+  }, [menuOpen])
 
   // Step the carousel by exactly one card. scrollBy's axis is visual, not
   // logical, so RTL has to invert it.
@@ -59,21 +152,45 @@ export default function App() {
     const el = rail.current
     if (!el) return
     const card = el.querySelector('.place-card')
-    const step = card ? card.offsetWidth + 18 : 264
+    const step = card ? card.offsetWidth + 18 : 274
     el.scrollBy({ left: dir * step * (isRtl ? -1 : 1), behavior: 'smooth' })
   }
 
   return (
     <main className={`home-redesign ${isRtl ? 'rtl' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
 
-      <header className="home-nav">
+      <a className="skip-link" href="#story">{u.skip}</a>
+
+      {/* The open panel is paper-coloured, so the bar above it has to be too —
+          otherwise the hero photo shows through in a strip between them. */}
+      <header className={`home-nav ${stuck || menuOpen ? 'is-stuck' : ''}`}>
         <a className="wordmark" href="#top"><img className="brand-mark" src="/logo-mark.webp" alt="" width="38" height="38" /><span>Hasio</span></a>
-        <nav className="nav-menu"><a href="#story">{t.nav[0]}</a><a href="#places">{t.nav[1]}</a><a href="#app">{t.nav[2]}</a><a href="#concierge">{t.nav[3]}</a></nav>
+        <nav className="nav-menu">
+          {t.nav.map((label, i) => (
+            <a key={label} href={`#${SECTIONS[i]}`} aria-current={active === SECTIONS[i] ? 'true' : undefined}>{label}</a>
+          ))}
+        </nav>
         <div className="nav-actions">
-          <button onClick={toggleLang}>{t.switch}</button>
+          <button className="lang-btn" onClick={toggleLang}>{t.switch}</button>
           <a className="join" href="#download">{t.getApp}<span>↓</span></a>
+          <button
+            className="nav-toggle"
+            aria-label={u.menu}
+            aria-expanded={menuOpen}
+            aria-controls="nav-panel"
+            onClick={() => setMenuOpen((o) => !o)}
+          ><i /></button>
         </div>
       </header>
+
+      {menuOpen && (
+        <div className="nav-panel" id="nav-panel">
+          {t.nav.map((label, i) => (
+            <a key={label} href={`#${SECTIONS[i]}`} onClick={() => setMenuOpen(false)}>{label}</a>
+          ))}
+          <a className="panel-cta" href="#download" onClick={() => setMenuOpen(false)}>{t.getApp}</a>
+        </div>
+      )}
 
       <section className="hero-wrap" id="top">
         <div className="hero-media" /><div className="hero-shade" />
@@ -83,6 +200,7 @@ export default function App() {
           <p>{t.intro}</p>
           <StoreBadges t={t} tone="light" />
         </div>
+        <span className="hero-cue" aria-hidden="true"><i />SCROLL</span>
         <span className="hero-index">25°23′N&nbsp;&nbsp; 49°35′E</span>
       </section>
 
@@ -92,10 +210,12 @@ export default function App() {
           <h2>{t.storyTitle[0]}<br /><em>{t.storyTitle[1]}</em></h2>
         </div>
         <div data-reveal className="story-copy"><p>{t.storyBody}</p></div>
-        <div className="story-image"><img src="/hero.webp" alt="" loading="lazy" /></div>
+        <div data-reveal className="story-image"><img src="/hero.webp" alt="" loading="lazy" /></div>
         <div className="values">
           <h3>{t.why}</h3>
-          {t.values.map((v, i) => <article data-reveal key={v[0]}><span>0{i + 1}</span><h4>{v[0]}</h4><p>{v[1]}</p></article>)}
+          {t.values.map((v, i) => (
+            <article data-reveal key={v[0]} style={{ '--d': i }}><span>0{i + 1}</span><h4>{v[0]}</h4><p>{v[1]}</p></article>
+          ))}
         </div>
       </section>
 
@@ -110,10 +230,10 @@ export default function App() {
           </div>
           <div className="rail-wrap">
             <div className="rail-nav">
-              <button type="button" onClick={() => slide(-1)} aria-label="Previous">&#8592;</button>
-              <button type="button" onClick={() => slide(1)} aria-label="Next">&#8594;</button>
+              <button type="button" onClick={() => slide(-1)} aria-label="Previous" disabled={scroll.atStart}>&#8592;</button>
+              <button type="button" onClick={() => slide(1)} aria-label="Next" disabled={scroll.atEnd}>&#8594;</button>
             </div>
-            <div className="rail" ref={rail}>
+            <div className="rail" ref={rail} tabIndex="0" role="region" aria-label={t.placesKicker}>
               {t.places.map((c, i) => (
                 <a className="place-card" key={c[0]} href="#download">
                   <img src={places[i]} alt={c[0]} loading="lazy" width="520" height="880" />
@@ -126,16 +246,19 @@ export default function App() {
                 </a>
               ))}
             </div>
+            <div className="rail-progress" aria-hidden="true">
+              <i style={{ '--w': scroll.w, '--p': scroll.p }} />
+            </div>
           </div>
         </div>
       </section>
 
       <section className="showcase section-shell" id="app">
-        <div className="section-title"><div><span className="eyebrow">{t.showKicker}</span><h2>{t.showTitle}</h2></div></div>
+        <div data-reveal className="section-title"><div><span className="eyebrow">{t.showKicker}</span><h2>{t.showTitle}</h2></div></div>
         <div className="shot-grid">
           {t.shots.map((s, i) => (
-            <article data-reveal key={s[0]} className="shot">
-              <div className="phone"><img src={shots[i]} alt={s[0]} loading="lazy" width="440" height="892" /></div>
+            <article data-reveal key={s[0]} className="shot" style={{ '--d': i }}>
+              <div className="phone"><div className="phone-screen"><img src={shots[i]} alt={s[0]} loading="lazy" width="440" height="892" /></div></div>
               <h3>{s[0]}</h3><p>{s[1]}</p>
             </article>
           ))}
@@ -150,7 +273,7 @@ export default function App() {
           <p>{t.serviceBody}</p>
           <StoreBadges t={t} tone="light" />
         </div>
-        <div className="planner-card">
+        <div data-reveal className="planner-card" style={{ '--d': 1 }}>
           <div className="planner-top"><img className="brand-mark" src="/logo-mark.webp" alt="" width="38" height="38" /><div><b>{t.plannerName}</b><small><i /> {t.plannerStatus}</small></div></div>
           <p>{t.plannerQuote}</p>
           {t.plannerRoutes.map((r, i) => (
@@ -160,7 +283,9 @@ export default function App() {
       </section>
 
       <section className="quote section-shell">
-        <span>✦</span><blockquote>{t.quote}</blockquote><small>— HASIO FIELD NOTES, VOL. 01</small>
+        <div data-reveal>
+          <span aria-hidden="true">✦</span><blockquote>{t.quote}</blockquote><small>— HASIO FIELD NOTES, VOL. 01</small>
+        </div>
       </section>
 
       <section className="download section-shell" id="download">
@@ -173,14 +298,31 @@ export default function App() {
       </section>
 
       <footer className="home-footer">
-        <a className="wordmark" href="#top"><img className="brand-mark" src="/logo-mark.webp" alt="" width="38" height="38" /><span>Hasio</span></a>
-        <p>{t.footTag}</p>
-        <div>
-          <a href="/privacy-policy.html">{t.privacy}</a>
-          <a href="/terms-of-service.html">{t.terms}</a>
-          <a href="/support.html">{t.support}</a>
+        <div className="foot-top">
+          <div className="foot-brand">
+            <a className="wordmark" href="#top"><img className="brand-mark" src="/logo-mark.webp" alt="" width="38" height="38" /><span>Hasio</span></a>
+            <p>{t.footTag}</p>
+          </div>
+          <nav className="foot-col">
+            <b>{u.explore}</b>
+            {t.nav.map((label, i) => <a key={label} href={`#${SECTIONS[i]}`}>{label}</a>)}
+          </nav>
+          <div className="foot-col">
+            <b>{t.getApp}</b>
+            <a href={IOS_URL} target="_blank" rel="noopener noreferrer">{t.appStore}</a>
+            <a href={ANDROID_URL} target="_blank" rel="noopener noreferrer">{t.playStore}</a>
+          </div>
+          <div className="foot-col">
+            <b>{u.legal}</b>
+            <a href="/privacy-policy.html">{t.privacy}</a>
+            <a href="/terms-of-service.html">{t.terms}</a>
+            <a href="/support.html">{t.support}</a>
+          </div>
         </div>
-        <small>© 2026 HASIO</small>
+        <div className="foot-bottom">
+          <span>© 2026 HASIO</span>
+          <span>25°23′N&nbsp;&nbsp;49°35′E&nbsp;&nbsp;·&nbsp;&nbsp;AL-AHSA</span>
+        </div>
       </footer>
 
     </main>
