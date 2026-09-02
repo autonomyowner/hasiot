@@ -23,7 +23,13 @@ const ui = {
 // Section ids, in nav order — drives both the anchors and the active-link state.
 const SECTIONS = ['story', 'places', 'app', 'concierge']
 
-const shots = ['/app/discover.webp', '/app/plan.webp', '/app/stay.webp']
+// Two art-directed brand posters. Their typography is baked into the artwork,
+// so they are always shown whole — never object-fit: cover, which would crop
+// the wordmark — and nothing is ever laid over them.
+const posters = [
+  { src: '/posters/gate.webp', w: 1085, h: 1335 },
+  { src: '/posters/arch.webp', w: 1122, h: 1402 },
+]
 
 // Category art comes from the app's own generated Al-Ahsa set, cropped to
 // portrait in public/places/.
@@ -38,6 +44,25 @@ const placeIcons = [
   <svg {...icon} key="f"><path d="M3 14a9 9 0 0 1 18 0zM2 18h20M8 9c0-1.5.8-2 .8-3.2M12 8c0-1.5.8-2 .8-3.2M16 9c0-1.5.8-2 .8-3.2"/></svg>,
   <svg {...icon} key="m"><path d="M2 20h20L14.5 7l-3.6 6.2L8.2 9zM8.2 9 2 20"/></svg>,
 ]
+
+// Directional glyphs, drawn rather than typed: the &#8594; / &#8592; entities render
+// as a hairline in Instrument Serif and all but vanish inside a 40px chip.
+// Stroked at 1.9 they read at any size and inherit the button's colour.
+// The path is symmetric about x=12 (4.5 → 19.5) so that centring the svg box
+// inside a round chip actually centres the mark; the usual "M4 12h15" sits
+// half a unit left of the viewBox centre.
+const Arrow = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4.5 12h15M13.5 6l6 6-6 6" />
+  </svg>
+)
+const Chevron = ({ back }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {/* Also symmetric about x=12: the chevron spans exactly 7 units, so it has
+        to start at 8.5, not the usual 9. */}
+    <path d={back ? 'M15.5 5l-7 7 7 7' : 'M8.5 5l7 7-7 7'} />
+  </svg>
+)
 
 const AppleMark = () => <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
 const PlayMark = () => <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.61 1.81 13.79 12 3.61 22.19a1 1 0 0 1-.61-.92V2.73c0-.4.24-.74.61-.92zm10.89 10.9 2.3 2.3-10.94 6.33 8.64-8.63zm3.2-3.2 2.8 1.63a1.05 1.05 0 0 1 0 1.73l-2.8 1.62L15.29 12l2.41-2.49zM5.86 2.66 16.8 8.99l-2.3 2.3-8.64-8.63z"/></svg>
@@ -226,12 +251,12 @@ export default function App() {
             <span className="eyebrow gold">{t.placesKicker}</span>
             <h2>{t.placesTitle[0]}<br />{t.placesTitle[1]}</h2>
             <p>{t.placesBody}</p>
-            <a className="place-cta" href="#download">{t.placesCta}<span>&#8594;</span></a>
+            <a className="place-cta" href="#download">{t.placesCta}<span><Arrow /></span></a>
           </div>
           <div className="rail-wrap">
             <div className="rail-nav">
-              <button type="button" onClick={() => slide(-1)} aria-label="Previous" disabled={scroll.atStart}>&#8592;</button>
-              <button type="button" onClick={() => slide(1)} aria-label="Next" disabled={scroll.atEnd}>&#8594;</button>
+              <button type="button" onClick={() => slide(-1)} aria-label="Previous" disabled={scroll.atStart}><Chevron back /></button>
+              <button type="button" onClick={() => slide(1)} aria-label="Next" disabled={scroll.atEnd}><Chevron /></button>
             </div>
             <div className="rail" ref={rail} tabIndex="0" role="region" aria-label={t.placesKicker}>
               {t.places.map((c, i) => (
@@ -241,7 +266,7 @@ export default function App() {
                   <div className="place-body">
                     {placeIcons[i]}
                     <h3>{c[0]}</h3><p>{c[1]}</p>
-                    <span className="place-go">&#8594;</span>
+                    <span className="place-go"><Arrow /></span>
                   </div>
                 </a>
               ))}
@@ -255,11 +280,17 @@ export default function App() {
 
       <section className="showcase section-shell" id="app">
         <div data-reveal className="section-title"><div><span className="eyebrow">{t.showKicker}</span><h2>{t.showTitle}</h2></div></div>
-        <div className="shot-grid">
+        <div className="plates">
+          {posters.map((p, i) => (
+            <figure data-reveal key={p.src} className="plate" style={{ '--d': i }}>
+              <img src={p.src} alt="" loading="lazy" width={p.w} height={p.h} />
+            </figure>
+          ))}
+        </div>
+        <div className="app-features">
           {t.shots.map((s, i) => (
-            <article data-reveal key={s[0]} className="shot" style={{ '--d': i }}>
-              <div className="phone"><div className="phone-screen"><img src={shots[i]} alt={s[0]} loading="lazy" width="440" height="892" /></div></div>
-              <h3>{s[0]}</h3><p>{s[1]}</p>
+            <article data-reveal key={s[0]} className="feature" style={{ '--d': i }}>
+              <span>0{i + 1}</span><h3>{s[0]}</h3><p>{s[1]}</p>
             </article>
           ))}
         </div>
