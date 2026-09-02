@@ -300,16 +300,20 @@ export default function ListingsTab({ initialFilters }) {
                     </TableCell>
                     <TableCell data-label="النوع">{TYPE_LABELS[listing.type] || listing.type}</TableCell>
                     <TableCell data-label="المدينة">{cityLabel(listing.city)}</TableCell>
+                    {/* The verified badge is a separate fact from the toggle, so
+                        it stacks under it rather than running into it. */}
                     <TableCell data-label="الظهور">
-                      <Switch
-                        checked={listing.isActive !== false}
-                        busy={togglingId === listing._id}
-                        onChange={(next) => handleToggleActive(listing, next)}
-                        label={`ظهور ${listing.name_ar || listing.name_en} في التطبيق`}
-                        onLabel="ظاهر"
-                        offLabel="مخفي"
-                      />
-                      {listing.isVerified && <span className="admin-badge blue">موثق</span>}
+                      <div className="admin-cell-stack">
+                        <Switch
+                          checked={listing.isActive !== false}
+                          busy={togglingId === listing._id}
+                          onChange={(next) => handleToggleActive(listing, next)}
+                          label={`ظهور ${listing.name_ar || listing.name_en} في التطبيق`}
+                          onLabel="ظاهر"
+                          offLabel="مخفي"
+                        />
+                        {listing.isVerified && <span className="admin-badge blue">موثق</span>}
+                      </div>
                     </TableCell>
                     <TableCell data-label="المراجعة"><ReviewBadge status={listing.status} /></TableCell>
                     <TableCell data-label="أوقات العمل">

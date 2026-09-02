@@ -113,9 +113,15 @@ export default function ContentApprovalTab() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <div className="admin-section-header">
-        <h2 className="admin-section-title">محتوى معلق للمراجعة</h2>
-        <span className="admin-badge admin-badge-warning">{pending.length} عنصر</span>
+      <div className="admin-page-head">
+        <div>
+          <h2 className="admin-page-title">المحتوى</h2>
+          <p className="admin-page-subtitle">
+            {pending.length === 0
+              ? 'لا يوجد محتوى بانتظار المراجعة'
+              : `${pending.length} عنصر بانتظار قرارك`}
+          </p>
+        </div>
       </div>
 
       {pending.length === 0 ? (

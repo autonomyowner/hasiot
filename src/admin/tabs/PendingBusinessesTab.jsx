@@ -77,9 +77,15 @@ export default function PendingBusinessesTab() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
-      <div className="admin-section-header">
-        <h2 className="admin-section-title">حسابات بانتظار الاعتماد</h2>
-        <span className="admin-badge admin-badge-warning">{pending.length} طلب</span>
+      <div className="admin-page-head">
+        <div>
+          <h2 className="admin-page-title">الحسابات</h2>
+          <p className="admin-page-subtitle">
+            {pending.length === 0
+              ? 'لا توجد طلبات بانتظار الاعتماد'
+              : `${pending.length} طلب بانتظار الاعتماد`}
+          </p>
+        </div>
       </div>
 
       {pending.length === 0 ? (
