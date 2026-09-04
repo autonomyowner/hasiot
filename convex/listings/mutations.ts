@@ -1,5 +1,5 @@
 import { mutation, internalMutation } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { getAuthenticatedAppUser, requireAdmin } from "../auth";
 import { enforceRateLimit } from "../rateLimit";
 import { logAdminAction, labelFor } from "../admin/activity";
@@ -106,7 +106,7 @@ export const updateListing = mutation({
 
     const listing = await ctx.db.get(listingId);
     if (!listing) {
-      throw new Error("Listing not found");
+      throw new ConvexError("Listing not found");
     }
 
     const filteredUpdates: Record<string, unknown> = { updatedAt: Date.now() };
@@ -140,7 +140,7 @@ export const saveWorkingHours = mutation({
 
     const listing = await ctx.db.get(args.listingId);
     if (!listing) {
-      throw new Error("Listing not found");
+      throw new ConvexError("Listing not found");
     }
 
     await ctx.db.patch(args.listingId, {
@@ -301,22 +301,22 @@ export const submitListing = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
 
     const role = user.role;
     if (role !== "business_owner" && role !== "service_provider") {
-      throw new Error("Only business owners and service providers can submit listings");
+      throw new ConvexError("Only business owners and service providers can submit listings");
     }
     if (!user.isApproved) {
-      throw new Error("Your account must be approved before submitting listings");
+      throw new ConvexError("Your account must be approved before submitting listings");
     }
 
     // Validate type based on role
     if (role === "business_owner" && !BUSINESS_OWNER_TYPES.includes(args.type)) {
-      throw new Error("Business owners can post: hotel, restaurant, attraction, event");
+      throw new ConvexError("Business owners can post: hotel, restaurant, attraction, event");
     }
     if (role === "service_provider" && !SERVICE_PROVIDER_TYPES.includes(args.type)) {
-      throw new Error("Service providers can post: tour");
+      throw new ConvexError("Service providers can post: tour");
     }
 
     validatePricing(args);
@@ -385,11 +385,11 @@ export const updateMyListing = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
 
     const listing = await ctx.db.get(args.listingId);
-    if (!listing) throw new Error("Listing not found");
-    if (listing.ownerId !== user._id) throw new Error("Not your listing");
+    if (!listing) throw new ConvexError("Listing not found");
+    if (listing.ownerId !== user._id) throw new ConvexError("Not your listing");
 
     validatePricing(args);
 
@@ -419,11 +419,11 @@ export const deleteMyListing = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user) throw new Error("Not authenticated");
+    if (!user) throw new ConvexError("Not authenticated");
 
     const listing = await ctx.db.get(args.listingId);
-    if (!listing) throw new Error("Listing not found");
-    if (listing.ownerId !== user._id) throw new Error("Not your listing");
+    if (!listing) throw new ConvexError("Listing not found");
+    if (listing.ownerId !== user._id) throw new ConvexError("Not your listing");
 
     await ctx.db.delete(args.listingId);
     return { success: true };

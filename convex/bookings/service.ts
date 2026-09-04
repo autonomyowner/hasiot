@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { enforceRateLimit } from "../rateLimit";
@@ -55,7 +56,7 @@ export async function createStayForUser(
   // The host has to be able to reach the guest — a stay is someone arriving at
   // a physical building, possibly late at night.
   if (!user.phoneVerified) {
-    throw new Error(BOOKING_ERRORS.PHONE_REQUIRED);
+    throw new ConvexError(BOOKING_ERRORS.PHONE_REQUIRED);
   }
 
   await enforceRateLimit(
@@ -66,14 +67,14 @@ export async function createStayForUser(
   );
 
   const listing = await ctx.db.get(args.listingId);
-  if (!listing) throw new Error(BOOKING_ERRORS.LISTING_UNAVAILABLE);
-  if (!isBookableStay(listing)) throw new Error(BOOKING_ERRORS.NOT_BOOKABLE);
+  if (!listing) throw new ConvexError(BOOKING_ERRORS.LISTING_UNAVAILABLE);
+  if (!isBookableStay(listing)) throw new ConvexError(BOOKING_ERRORS.NOT_BOOKABLE);
   if (listing.ownerId && listing.ownerId === user._id) {
-    throw new Error(BOOKING_ERRORS.OWN_LISTING);
+    throw new ConvexError(BOOKING_ERRORS.OWN_LISTING);
   }
 
   const quoted = computeStayQuote(listing, args, todayRiyadhISO(now));
-  if (!quoted.ok) throw new Error(quoted.error);
+  if (!quoted.ok) throw new ConvexError(quoted.error);
   const quote = quoted.quote;
 
   // Availability. Phase 1 counts concurrent stays against unitCount rather
@@ -95,13 +96,13 @@ export async function createStayForUser(
     // A guest re-submitting the same dates is almost always a double tap or a
     // retry, and telling them "no availability" would be misleading.
     if (booking.userId === user._id) {
-      throw new Error(BOOKING_ERRORS.DUPLICATE);
+      throw new ConvexError(BOOKING_ERRORS.DUPLICATE);
     }
     occupied += 1;
   }
 
   if (listing.unitCount !== undefined && occupied >= listing.unitCount) {
-    throw new Error(BOOKING_ERRORS.NO_AVAILABILITY);
+    throw new ConvexError(BOOKING_ERRORS.NO_AVAILABILITY);
   }
 
   const confirmationCode = await uniqueConfirmationCode(ctx);
@@ -170,7 +171,7 @@ export async function createSlotForUser(
   // Previously this checked only isActive, so a pending or rejected listing
   // could be booked by anyone who knew its id.
   if (!listing || !isPublicListing(listing)) {
-    throw new Error(BOOKING_ERRORS.LISTING_UNAVAILABLE);
+    throw new ConvexError(BOOKING_ERRORS.LISTING_UNAVAILABLE);
   }
 
   const clash = await ctx.db
@@ -182,13 +183,13 @@ export async function createSlotForUser(
       q.and(q.eq(q.field("time"), args.time), q.neq(q.field("status"), "cancelled"))
     )
     .first();
-  if (clash) throw new Error("This time slot is no longer available");
+  if (clash) throw new ConvexError("This time slot is no longer available");
 
   // The old check built a Date from `${date}T${time}` and compared it to now,
   // which parses as UTC on the server — so an evening slot in Riyadh looked
   // three hours further away than it was.
   if (riyadhDateTimeToTimestamp(args.date, args.time) < now) {
-    throw new Error(BOOKING_ERRORS.PAST_CHECK_IN);
+    throw new ConvexError(BOOKING_ERRORS.PAST_CHECK_IN);
   }
 
   const bookingId = await ctx.db.insert("bookings", {
@@ -215,7 +216,7 @@ export async function confirmAsManager(
   booking: Doc<"bookings">,
   now: number = Date.now()
 ): Promise<void> {
-  if (booking.status !== "pending") throw new Error(BOOKING_ERRORS.NOT_PENDING);
+  if (booking.status !== "pending") throw new ConvexError(BOOKING_ERRORS.NOT_PENDING);
 
   await ctx.db.patch(booking._id, {
     status: "confirmed",
@@ -233,7 +234,7 @@ export async function declineAsManager(
   reason: string | undefined,
   now: number = Date.now()
 ): Promise<void> {
-  if (booking.status !== "pending") throw new Error(BOOKING_ERRORS.NOT_PENDING);
+  if (booking.status !== "pending") throw new ConvexError(BOOKING_ERRORS.NOT_PENDING);
 
   await ctx.db.patch(booking._id, {
     status: "declined",
@@ -253,7 +254,7 @@ export async function completeAsManager(
   now: number = Date.now()
 ): Promise<void> {
   if (TERMINAL_STATUSES.includes(booking.status as BookingStatus)) {
-    throw new Error(BOOKING_ERRORS.ALREADY_CLOSED);
+    throw new ConvexError(BOOKING_ERRORS.ALREADY_CLOSED);
   }
 
   await ctx.db.patch(booking._id, {
@@ -271,13 +272,13 @@ export async function cancelAsTourist(
   now: number = Date.now()
 ): Promise<void> {
   if (TERMINAL_STATUSES.includes(booking.status as BookingStatus)) {
-    throw new Error(BOOKING_ERRORS.ALREADY_CLOSED);
+    throw new ConvexError(BOOKING_ERRORS.ALREADY_CLOSED);
   }
 
   // Once the guest has arrived, cancelling is a conversation with the host,
   // not a button — the room was held and the night may already be owed.
   if (booking.kind === "stay" && booking.checkIn && booking.checkIn <= todayRiyadhISO(now)) {
-    throw new Error(BOOKING_ERRORS.STAY_STARTED);
+    throw new ConvexError(BOOKING_ERRORS.STAY_STARTED);
   }
 
   await ctx.db.patch(booking._id, {
@@ -308,5 +309,5 @@ async function uniqueConfirmationCode(ctx: MutationCtx): Promise<string> {
       .first();
     if (!taken) return code;
   }
-  throw new Error("تعذّر إنشاء رمز تأكيد. حاول مرة أخرى. / Could not allocate a confirmation code.");
+  throw new ConvexError("تعذّر إنشاء رمز تأكيد. حاول مرة أخرى. / Could not allocate a confirmation code.");
 }
