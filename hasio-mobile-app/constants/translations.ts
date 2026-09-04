@@ -304,6 +304,7 @@ export const translations = {
     signUp: "Sign Up",
     continueAsGuest: "Continue as Guest",
     continueWithEmail: "Continue with Email",
+    continueWithPhone: "Continue with phone number",
     welcomeBack: "Welcome Back",
     createAccount: "Create Account",
     signInToContinue: "Sign in to your account to continue",
@@ -576,6 +577,16 @@ export const translations = {
     resendCode: "Resend code",
     resendIn: "Resend in {seconds}s",
     changeNumber: "Change number",
+
+    // Phone sign-in — the only way to create an account from the app
+    phoneSignInTitle: "Sign in with your phone",
+    phoneSignInSubtitle: "We'll text you a 6-digit code",
+    phoneNumber: "Phone number",
+    verificationCode: "Verification code",
+    signInWithEmail: "Sign in with email",
+    backToPhone: "Use a phone number",
+    emailSignInOnlyNote:
+      "Email sign-in is for existing accounts. New accounts are created with a phone number.",
 
     // Reviews and ratings
     reviewsTitle: "Reviews",
@@ -952,6 +963,7 @@ export const translations = {
     signUp: "إنشاء حساب",
     continueAsGuest: "المتابعة كضيف",
     continueWithEmail: "المتابعة بالبريد الإلكتروني",
+    continueWithPhone: "المتابعة برقم الجوال",
     welcomeBack: "مرحباً بعودتك",
     createAccount: "إنشاء حساب",
     signInToContinue: "سجل الدخول للمتابعة",
@@ -1222,6 +1234,16 @@ export const translations = {
     resendCode: "إعادة إرسال الرمز",
     resendIn: "إعادة الإرسال خلال {seconds} ث",
     changeNumber: "تغيير الرقم",
+
+    // Phone sign-in — the only way to create an account from the app
+    phoneSignInTitle: "سجّل الدخول برقم جوالك",
+    phoneSignInSubtitle: "سنرسل لك رمزًا من 6 أرقام",
+    phoneNumber: "رقم الجوال",
+    verificationCode: "رمز التحقق",
+    signInWithEmail: "الدخول بالبريد الإلكتروني",
+    backToPhone: "استخدام رقم الجوال",
+    emailSignInOnlyNote:
+      "الدخول بالبريد للحسابات الحالية فقط. الحسابات الجديدة تُنشأ برقم الجوال.",
 
     // Reviews and ratings
     reviewsTitle: "التقييمات",

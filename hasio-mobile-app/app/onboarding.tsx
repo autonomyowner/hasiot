@@ -109,7 +109,7 @@ export default function OnboardingScreen() {
             style={styles.authSection}
           >
             <Button
-              title={t("continueWithEmail")}
+              title={t("continueWithPhone")}
               variant="secondary"
               fullWidth
               onPress={() => router.push("/auth")}
