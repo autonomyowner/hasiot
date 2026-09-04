@@ -17,7 +17,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { getAuthErrorKey, sendPhoneOtp, verifyPhoneOtp } from "@/lib/auth";
 import { formatPhoneForDisplay, normalizeKsaPhone } from "@/lib/phone";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { TranslationKey } from "@/constants/translations";
 
 const CODE_LENGTH = 6;
@@ -42,6 +43,7 @@ interface VerifyPhoneSheetProps {
  * trigger, so any screen watching the current user updates without a refetch.
  */
 export function VerifyPhoneSheet({ visible, onClose, onVerified }: VerifyPhoneSheetProps) {
+  const styles = useThemedStyles(makeStyles);
   const { t, isRTL, language } = useLanguage();
   const insets = useSafeAreaInsets();
   const {
@@ -276,7 +278,7 @@ export function VerifyPhoneSheet({ visible, onClose, onVerified }: VerifyPhoneSh
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
