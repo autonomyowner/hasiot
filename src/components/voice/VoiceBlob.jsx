@@ -72,116 +72,30 @@ uniform float uFreq;    // 0..1 audio amplitude
 uniform float uCalm;
 
 out vec3 vPos;          // view-space position
-out vec3 vNrm;          // view-space normal, computed smoothly (never per-facet)
-out vec3 vObj;          // object-space direction, for stable colour banding
-out float vDisp;        // how far this vertex was pushed out
-
-// Simplex 3D noise — Ashima Arts / Stefan Gustavson, the standard implementation.
-vec4 permute(vec4 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
-vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-float snoise(vec3 v) {
-  const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
-  const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-
-  vec3 i  = floor(v + dot(v, C.yyy));
-  vec3 x0 = v - i + dot(i, C.xxx);
-
-  vec3 g = step(x0.yzx, x0.xyz);
-  vec3 l = 1.0 - g;
-  vec3 i1 = min(g.xyz, l.zxy);
-  vec3 i2 = max(g.xyz, l.zxy);
-
-  vec3 x1 = x0 - i1 + 1.0 * C.xxx;
-  vec3 x2 = x0 - i2 + 2.0 * C.xxx;
-  vec3 x3 = x0 - 1.0 + 3.0 * C.xxx;
-
-  i = mod(i, 289.0);
-  vec4 p = permute(permute(permute(
-             i.z + vec4(0.0, i1.z, i2.z, 1.0))
-           + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-           + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-
-  float n_ = 1.0 / 7.0;
-  vec3 ns = n_ * D.wyz - D.xzx;
-
-  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-
-  vec4 x_ = floor(j * ns.z);
-  vec4 y_ = floor(j - 7.0 * x_);
-
-  vec4 x = x_ * ns.x + ns.yyyy;
-  vec4 y = y_ * ns.x + ns.yyyy;
-  vec4 h = 1.0 - abs(x) - abs(y);
-
-  vec4 b0 = vec4(x.xy, y.xy);
-  vec4 b1 = vec4(x.zw, y.zw);
-
-  vec4 s0 = floor(b0) * 2.0 + 1.0;
-  vec4 s1 = floor(b1) * 2.0 + 1.0;
-  vec4 sh = -step(h, vec4(0.0));
-
-  vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
-  vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
-
-  vec3 p0 = vec3(a0.xy, h.x);
-  vec3 p1 = vec3(a0.zw, h.y);
-  vec3 p2 = vec3(a1.xy, h.z);
-  vec3 p3 = vec3(a1.zw, h.w);
-
-  vec4 nrm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
-  p0 *= nrm.x; p1 *= nrm.y; p2 *= nrm.z; p3 *= nrm.w;
-
-  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-  m = m * m;
-  return 42.0 * dot(m * m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
-}
-
-/**
- * Displacement at a point on the unit sphere.
- *
- * Every term is multiplied by uFreq, so at rest this returns exactly 0.0 and the
- * geometry is a perfect sphere. The blob only ever deforms because of the voice.
- */
-float displacement(vec3 dir, float t, float freq) {
-  if (freq <= 0.0) return 0.0;
-  float slow = snoise(dir * 1.15 + vec3(0.0, t * 0.16, 0.0));
-  float fast = snoise(dir * 2.60 + vec3(t * 0.42, 0.0, t * 0.30));
-  // Tuned so loud speech ripples the surface and never dissolves the silhouette:
-  // at full volume the radius varies by roughly a fifth, not a half.
-  return (slow * 0.175 + fast * 0.075) * freq;
-}
+out vec3 vNrm;          // view-space normal
+out vec3 vObj;          // object-space direction, for the colour band
+out float vGain;        // 0..1, how much the voice is driving it
 
 void main() {
   float t = uTime * mix(1.0, 0.25, uCalm);
   vec3 n = normalize(aPos);
 
-  float disp = displacement(n, t, uFreq);
-  vec3 displaced = n * (1.0 + disp);
+  // The sphere stays a sphere. The voice scales it uniformly rather than displacing
+  // its surface, so it reads as smooth at every volume — noise displacement turned
+  // it into a lump the moment anyone spoke.
+  float breath = sin(t * 0.55) * 0.008 * (1.0 - uCalm);
+  float scale = 1.0 + breath + uFreq * 0.20;
 
-  // Normals from two neighbours on the surface rather than from screen-space
-  // derivatives. Derivatives give the *facet* normal, which on a smooth ball reads
-  // as visible triangles — the faceting is unmissable once the sphere is perfect.
-  // Sampling the same displacement function at two nearby points is smooth at rest
-  // and still follows the ripples when the voice pushes them out.
-  vec3 tangent = normalize(cross(abs(n.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0), n));
-  vec3 bitan = cross(n, tangent);
-  const float E = 0.045;
+  vec3 pos = n * scale;
+  vec4 viewPos = uView * vec4(pos, 1.0);
 
-  vec3 na = normalize(n + tangent * E);
-  vec3 nb = normalize(n + bitan * E);
-  vec3 pa = na * (1.0 + displacement(na, t, uFreq));
-  vec3 pb = nb * (1.0 + displacement(nb, t, uFreq));
-
-  vec3 nrm = normalize(cross(pa - displaced, pb - displaced));
-  if (dot(nrm, n) < 0.0) nrm = -nrm;
-
-  vec4 viewPos = uView * vec4(displaced, 1.0);
   vPos = viewPos.xyz;
+  // Uniform scaling leaves normals untouched, so this is exact — no neighbour
+  // sampling and no screen-space derivatives, which means no facets anywhere.
   // uView is rotation + translation only, so its upper 3x3 transforms directions.
-  vNrm = normalize(mat3(uView) * nrm);
+  vNrm = normalize(mat3(uView) * n);
   vObj = n;
-  vDisp = disp;
+  vGain = uFreq;
 
   gl_Position = uProj * viewPos;
 }
@@ -193,7 +107,7 @@ precision highp float;
 in vec3 vPos;
 in vec3 vNrm;
 in vec3 vObj;
-in float vDisp;
+in float vGain;
 
 uniform float uFreq;
 uniform float uTime;
@@ -221,12 +135,12 @@ void main() {
 
   // Iridescence travels with the surface and with how far it is pushed out, so the
   // colour moves when the voice does.
-  float shift = (vObj.y * 0.5 + 0.5) * 0.45 + vDisp * 2.10 + fres * 0.30 + uTime * 0.03;
+  float shift = (vObj.y * 0.5 + 0.5) * 0.45 + vGain * 0.40 + fres * 0.30 + uTime * 0.03;
 
   // Body: dark by default and lit by the key, so the sphere has a light and a dark
   // side. Previously every term was additive and the whole surface sat at one value.
   vec3 col = mix(deep, green, wrap * wrap);
-  col = mix(col, mint, smoothstep(0.55, 1.0, shift) * wrap * (0.45 + uFreq * 0.5));
+  col = mix(col, mint, smoothstep(0.55, 1.0, shift) * wrap * (0.40 + uFreq * 0.28));
   col += green * pow(diff, 1.8) * 0.55;
 
   // Rim, and the gold only in the last few degrees of grazing.
@@ -237,8 +151,9 @@ void main() {
   vec3 H = normalize(L + V);
   col += vec3(0.85, 0.98, 0.94) * pow(max(dot(N, H), 0.0), 42.0) * (0.7 + uFreq * 0.6);
 
-  // Crests glow: where the noise pushed furthest out, let a little light through.
-  col += mint * smoothstep(0.05, 0.26, vDisp) * (0.20 + uFreq * 0.75);
+  // The body lifts a little as the voice rises, so loudness still reads now that it
+  // no longer reads as deformation — but gently, or it washes out to milk at peak.
+  col += mint * vGain * 0.13;
 
   outColor = vec4(col, 1.0);
 }
