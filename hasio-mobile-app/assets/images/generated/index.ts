@@ -6,4 +6,8 @@ export const generatedImages = {
   heroDesert: require("./hero-desert.webp"),
   emptyMoments: require("./empty-moments.webp"),
   emptySearch: require("./empty-search.webp"),
+  // The Hasio arch poster (master: public/posters/arch.webp, 125 KB). Art-
+  // directed rather than script-generated, but bundled the same way so the
+  // onboarding screen needs no network to paint its first frame.
+  posterArch: require("./poster-arch.webp"),
 } as const;

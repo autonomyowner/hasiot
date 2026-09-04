@@ -9,6 +9,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import { generatedImages } from "@/assets/images/generated";
 import Animated, {
   FadeInDown,
   FadeInUp,
@@ -46,15 +48,21 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       {/* Background Image */}
       <Image
-        source={{
-          uri: "https://pub-d7fc967a0d9e4e42bba0d712e4f9b96e.r2.dev/lodging/desert-camp-a2dc07bf.jpg",
-        }}
+        source={generatedImages.posterArch}
         style={styles.backgroundImage}
         contentFit="cover"
       />
 
-      {/* Gradient Overlay */}
-      <View style={styles.overlay} />
+      {/* Darkens only the lower part, where the copy and buttons sit. The
+          wordmark lives in the upper half and must stay untouched — a flat
+          wash over the whole poster would bury it. The poster's own floor is
+          already dark, so the fade reads as part of the artwork. */}
+      <LinearGradient
+        colors={["rgba(0, 0, 0, 0)", "rgba(0, 0, 0, 0.45)", "rgba(0, 0, 0, 0.88)"]}
+        locations={[0.38, 0.68, 1]}
+        style={styles.scrim}
+        pointerEvents="none"
+      />
 
       <SafeAreaView style={styles.safeArea}>
         {/* The layout is bottom-anchored with fixed vertical margins, which
@@ -174,14 +182,13 @@ function LanguageButton({ label, selected, onPress }: LanguageButtonProps) {
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#14100C",
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
   },
-  overlay: {
+  scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.55)",
   },
   safeArea: {
     flex: 1,
