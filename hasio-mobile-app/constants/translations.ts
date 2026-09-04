@@ -588,6 +588,13 @@ export const translations = {
     emailSignInOnlyNote:
       "Email sign-in is for existing accounts. New accounts are created with a phone number.",
 
+    // Tab bar labels — short, one word, under the icon
+    tabStay: "Stay",
+    tabHome: "Home",
+    tabPlan: "Plan",
+    tabFavorites: "Favorites",
+    tabProfile: "Profile",
+
     // Currency
     usd: "USD",
     currency: "Currency",
@@ -1261,6 +1268,13 @@ export const translations = {
     backToPhone: "استخدام رقم الجوال",
     emailSignInOnlyNote:
       "الدخول بالبريد للحسابات الحالية فقط. الحسابات الجديدة تُنشأ برقم الجوال.",
+
+    // Tab bar labels — short, one word, under the icon
+    tabStay: "الإقامة",
+    tabHome: "الرئيسية",
+    tabPlan: "خطط",
+    tabFavorites: "المفضلة",
+    tabProfile: "حسابي",
 
     // Currency
     usd: "دولار",
