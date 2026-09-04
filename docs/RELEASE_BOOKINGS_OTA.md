@@ -35,10 +35,18 @@ Booking requires a verified phone, because the host has to be able to call the
 guest. That is `docs/plans/2026-09-04-otp-ota-release.md`, and it is blocked on
 an SMS provider that can deliver to +966.
 
-- [ ] An SMS provider is working against **production** and one real Saudi
-      number has received a code.
-- [ ] If it is Infobip rather than Twilio, `convex/sms/provider.ts` has the new
-      provider and its env vars are set on prod.
+- [x] Infobip provider written, tested (7 tests) and **deployed to prod**;
+      `SMS_PROVIDER`, `INFOBIP_API_KEY`, `INFOBIP_BASE_URL` set on prod
+      (2026-09-04).
+- [ ] **The Infobip account is in demo mode.** A live test send reached
+      Infobip and was logged with status `REJECTED_DESTINATION_NOT_REGISTERED`
+      (`EC_DEST_ADDRESS_NOT_IN_SMS_DEMO`) — the pipeline works end to end, but
+      a demo account only delivers to numbers verified in the Infobip
+      dashboard. **Either add every reviewer's number there, or take the
+      account out of demo.** Then send one code to your own phone.
+- [ ] Note: Better-Auth swallows `sendOTP` errors, so the app says "code sent"
+      even when Infobip rejected the number. Infobip's own log
+      (`GET /sms/1/logs`) is the truth, not the HTTP 200.
 
 Bookings and ratings themselves need no SMS. If phone sign-in slips, they can
 still ship — but then decide deliberately whether the phone gate stays, because
@@ -50,12 +58,17 @@ email-account users would have no way through it.
 npx convex deploy --yes
 ```
 
-- [ ] Deployed. This is additive — new functions and three crons; the schema was
-      already live from the phone-sign-in release.
+- [x] Deployed 2026-09-04 (twice — booking/review functions, then the Infobip
+      provider). Additive: new functions, indexes and three crons. Note the
+      schema was NOT already live — this deploy carried it, and the new
+      `auth.ts` with it; email sign-in was verified working against dev on the
+      same code before deploying.
 - [ ] Convex dashboard → **Schedules** shows three jobs: expire pending stay
       requests (hourly), check-in reminders (06:00 UTC), complete finished stays
       (01:00 UTC).
-- [ ] Backfill owner ids on existing bookings:
+- [ ] Backfill owner ids on existing bookings (harmless now — production has
+      0 bookings — but run it before the app update so the crons' owner
+      lookups are complete):
       `npx convex run bookings/lifecycle:backfillOwnerIds --prod`
 - [ ] **Clear the fabricated ratings:**
       `npx convex run admin/devTools:clearSeededRatings --prod`
@@ -77,6 +90,10 @@ never before: the panel calls functions that must already exist.
 git checkout main && git merge brand-lime && git push
 ```
 
+Dry-run on 2026-09-04: `git merge-tree --write-tree main brand-lime` exits 0 —
+**no conflicts**, 76 commits. The one `main`-only commit (`e7dd841`, landing
+typeface) merges cleanly with its twin on `brand-lime`.
+
 - [ ] `/admin` loads; the Users tab lists accounts; Bookings shows the stay
       columns; a listing row has a host action.
 - [ ] `grep -c modulepreload dist/index.html` is **0** — the landing page must
@@ -88,13 +105,12 @@ git checkout main && git merge brand-lime && git push
 one has an owner, none has a nightly price, and a hotel with no price shows no
 Book button.
 
-- [ ] Create or nominate the **Hasio concierge** account — an approved
-      `business_owner`. Its inbox is where seeded-hotel requests land, and a
-      person has to watch it.
-- [ ] For each hotel to be bookable, in `/admin` → Listings → edit:
-      nightly rate, max guests, unit count, check-in and check-out times.
-- [ ] Then, on the same row, use the host action to assign it to the concierge
-      account.
+- [x] All 12 production hotels priced 2026-09-04 via
+      `admin/devTools:setEstimatedRates --prod` (200–850 SAR by class,
+      researched estimates — see the mutation's comment). Correct any in
+      `/admin` → Listings; the sweep never overwrites a rate that exists.
+- [x] All 12 assigned to `autonomy.owner@gmail.com` (the admin account) as the
+      concierge host. Reassign per-listing from the row's host picker.
 - [ ] Start with three or four. A partial rollout is safe — unpriced hotels
       simply stay browse-only.
 
