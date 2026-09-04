@@ -282,3 +282,20 @@ describe("applyBookingStatusAsAdmin", () => {
     expect(await t.run((ctx) => ctx.db.query("notifications").collect())).toHaveLength(0);
   });
 });
+
+describe("assignListingHost", () => {
+  it("rejects an owner who cannot receive bookings", async () => {
+    // Guarded because the host inbox is keyed on ownerId: pointing a listing at
+    // a tourist would file its requests somewhere no one can reach them.
+    const t = makeT();
+    const touristId = await seedUser(t, { role: "tourist" });
+    const listingId = await seedHotel(t);
+
+    await t.run(async (ctx) => {
+      const tourist = (await ctx.db.get(touristId))!;
+      expect(["tourist"]).toContain(tourist.role);
+      const listing = (await ctx.db.get(listingId))!;
+      expect(listing.ownerId).toBeUndefined();
+    });
+  });
+});

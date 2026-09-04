@@ -648,6 +648,60 @@ export const bulkApproveBusinesses = mutation({
   },
 });
 
+/**
+ * Point a listing at the account that will answer its booking requests.
+ *
+ * The seeded Al-Ahsa catalogue has no owner, so nothing in it can be managed
+ * from the app — and a stay request against an ownerless listing has no inbox
+ * to arrive in. Assigning a Hasio-run account is what makes the seeded hotels
+ * bookable before any real hotel has signed up.
+ *
+ * `ownerId: null` clears it, which is how a listing is handed back after a real
+ * host claims it.
+ */
+export const assignListingHost = mutation({
+  args: {
+    listingId: v.id("listings"),
+    ownerId: v.union(v.id("users"), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+
+    const listing = await ctx.db.get(args.listingId);
+    if (!listing) {
+      throw new Error("المكان غير موجود. / Listing not found.");
+    }
+
+    let owner = null;
+    if (args.ownerId !== null) {
+      owner = await ctx.db.get(args.ownerId);
+      if (!owner) {
+        throw new Error("الحساب غير موجود. / User not found.");
+      }
+      // The host inbox reads `by_ownerId_and_status`, and only these two roles
+      // can reach it. A tourist would receive requests they cannot answer.
+      if (owner.role !== "business_owner" && owner.role !== "admin") {
+        throw new Error(
+          "يجب أن يكون الحساب مالك نشاط تجاري. / The host must be a business owner account."
+        );
+      }
+    }
+
+    await ctx.db.patch(args.listingId, {
+      ownerId: args.ownerId ?? undefined,
+      updatedAt: Date.now(),
+    });
+
+    await logAdminAction(ctx, admin, {
+      action: owner ? "listing.assign_host" : "listing.clear_host",
+      targetType: "listing",
+      targetId: args.listingId,
+      summary: labelFor(listing),
+      details: owner ? labelFor(owner) : undefined,
+    });
+  },
+});
+
 // Bulk import listings
 export const bulkImportListings = mutation({
   args: {
