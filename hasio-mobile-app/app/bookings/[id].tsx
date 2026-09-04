@@ -10,25 +10,36 @@ import { api } from "@/backend";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { BackButton } from "@/components/ui/BackButton";
 import { BookingStatusChip } from "@/components/booking/BookingStatusChip";
+import { ReviewSheet } from "@/components/review";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { formatDateRange, formatISODate, todayRiyadhISO } from "@/lib/dates";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { SkeletonBookingDetail } from "@/components/ui/SkeletonScreens";
 import { nightsLabel } from "@/lib/bookingDisplay";
 import { haptic } from "@/lib/haptics";
-import { fonts } from "@/constants/colors";
+import { colors, fonts, type AppFonts } from "@/constants/colors";
 
 export default function BookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
+  const promptStyles = useThemedStyles(makePromptStyles);
   const [cancelling, setCancelling] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   const booking = useQuery(
     api.bookings.queries.getBooking,
     id ? { bookingId: id as Id<"bookings"> } : "skip"
   );
   const cancelBooking = useMutation(api.bookings.mutations.cancelBooking);
+
+  // Declared here, above the loading and not-found returns, so the hook order
+  // is the same on every render. Skipped until the booking names a listing.
+  const myReview = useQuery(
+    api.reviews.queries.getMine,
+    booking?.listingId ? { listingId: booking.listingId } : "skip"
+  );
 
   const listing = booking?.listing;
   const isStay = booking?.kind === "stay" && booking.checkIn && booking.checkOut;
@@ -226,6 +237,28 @@ export default function BookingDetailScreen() {
           <Text style={styles.pendingNote}>{t("bookingPendingNote")}</Text>
         ) : null}
 
+        {/* The stay is over and this guest has not rated it yet. `viewerRole`
+            keeps it off a host's or an admin's view of the same booking —
+            neither of them stayed here. */}
+        {booking.status === "completed" && booking.viewerRole === "guest" && !myReview ? (
+          <View style={promptStyles.ratePrompt}>
+            <Text style={[promptStyles.ratePromptTitle, isRTL && styles.textRTL]}>
+              {t("rateYourStay")}
+            </Text>
+            <Text style={[promptStyles.ratePromptBody, isRTL && styles.textRTL]}>
+              {t("rateYourStayBody")}
+            </Text>
+            <Pressable
+              style={[promptStyles.ratePromptButton, isRTL && promptStyles.alignEnd]}
+              onPress={() => setReviewOpen(true)}
+              accessibilityRole="button"
+              accessibilityLabel={t("rateThisPlace")}
+            >
+              <Text style={promptStyles.ratePromptButtonText}>{t("rateThisPlace")}</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {canCancel ? (
           <Pressable
             onPress={handleCancel}
@@ -239,6 +272,16 @@ export default function BookingDetailScreen() {
           </Pressable>
         ) : null}
       </ScrollView>
+
+      {/* Carries the booking id, which is the whole point: the server checks
+          the stay really was this guest's and only then marks the review
+          verified. Nothing here claims it. */}
+      <ReviewSheet
+        visible={reviewOpen}
+        listingId={booking.listingId}
+        bookingId={booking._id}
+        onClose={() => setReviewOpen(false)}
+      />
     </View>
   );
 }
@@ -413,3 +456,46 @@ const styles = StyleSheet.create({
     color: "#B91C1C",
   },
 });
+
+/**
+ * The rating prompt's own styles, built per language.
+ *
+ * Separate from the sheet above because that one is module scope, which pins
+ * every `fontFamily` to the Latin map at import time. This block's display
+ * title has to become Cairo in Arabic — Outfit has no Arabic glyphs — so it
+ * goes through `useThemedStyles` instead. The rest of this screen predates
+ * that hook and is left as it is.
+ */
+const makePromptStyles = (fonts: AppFonts) =>
+  StyleSheet.create({
+    ratePrompt: {
+      backgroundColor: colors.mint,
+      borderRadius: 18,
+      padding: 18,
+      gap: 6,
+      marginBottom: 16,
+    },
+    ratePromptTitle: { fontFamily: fonts.serif, fontSize: 20, color: colors.ink },
+    ratePromptBody: {
+      fontFamily: fonts.regular,
+      fontSize: 13,
+      lineHeight: 19,
+      color: colors.onSurface.variant,
+    },
+    ratePromptButton: {
+      alignSelf: "flex-start",
+      marginTop: 8,
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      borderRadius: 999,
+      backgroundColor: colors.ink,
+    },
+    alignEnd: { alignSelf: "flex-end" },
+    // Lime on ink, not ink on lime: this button sits on a mint card, where a
+    // lime fill would all but disappear.
+    ratePromptButtonText: {
+      fontFamily: fonts.semibold,
+      fontSize: 14,
+      color: colors.primary.DEFAULT,
+    },
+  });
