@@ -65,3 +65,6 @@ ChatGPT Image *.png
 
 # Voice sample recordings — personal audio, not repo content
 /marzoug voice/
+
+# Wrangler local state
+.wrangler/

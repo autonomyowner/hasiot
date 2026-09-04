@@ -1,0 +1,35 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "hasio",
+  "compatibility_date": "2026-09-01",
+
+  // Static-assets-only Worker: no `main`, so Cloudflare serves ./dist directly and
+  // nothing runs per request. This mirrors the Vercel deployment rather than
+  // replacing it — hasio.xyz stays on Vercel, untouched.
+  "assets": {
+    "directory": "./dist",
+
+    // The Vercel side rewrites every non-/api path to "/" so React Router can take
+    // it. This is the Cloudflare equivalent. Real files still win, so the four
+    // static pages in public/ are matched as assets before the fallback applies.
+    "not_found_handling": "single-page-application",
+
+    // Serve paths exactly as requested. The default ("auto-trailing-slash") 307s
+    // /privacy-policy.html to /privacy-policy, and those two paths are frozen: the
+    // shipped mobile binaries open privacy-policy.html and support.html by absolute
+    // URL, and support.html is the live App Store Support URL. Vercel serves them
+    // at 200 with no redirect, so this side must too rather than trust every client
+    // to follow a redirect.
+    "html_handling": "none"
+  },
+
+  // hasio.net only. hasio.xyz stays on Vercel and is not referenced here.
+  "routes": [
+    { "pattern": "hasio.net", "custom_domain": true },
+    { "pattern": "www.hasio.net", "custom_domain": true }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}

@@ -58,6 +58,11 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       "https://www.hasio.xyz",
       "https://hasio.xyz",
       "https://hasio.vercel.app",
+      // hasio.net — the Cloudflare deployment. Added 2026-09-04. Until Convex is
+      // redeployed these two do nothing, and /admin + /sign-in on hasio.net fail
+      // CORS while the marketing page works fine.
+      "https://www.hasio.net",
+      "https://hasio.net",
       "https://limitless-mockingbird-449.eu-west-1.convex.site", // Mobile app auth (dev)
       "https://hearty-ram-74.eu-west-1.convex.site", // Mobile app auth (production)
     ],
