@@ -267,7 +267,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderRadius: 999,
   },
   typeText: {
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
     fontSize: 11,
     fontFamily: fonts.semibold,
   },

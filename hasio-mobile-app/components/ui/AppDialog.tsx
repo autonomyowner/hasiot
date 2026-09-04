@@ -65,7 +65,7 @@ export function AppDialogHost() {
               <Feather
                 name={destructive ? "alert-triangle" : "info"}
                 size={22}
-                color={destructive ? colors.signOut : colors.primary.DEFAULT}
+                color={destructive ? colors.signOut : colors.primary.deep}
               />
             </View>
             <Text style={[styles.title, isRTL && styles.textRTL]}>{title}</Text>

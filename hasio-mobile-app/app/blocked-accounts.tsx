@@ -275,6 +275,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   unblockText: {
     fontFamily: fonts.semibold,
     fontSize: 13,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
 });

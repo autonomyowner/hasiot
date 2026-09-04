@@ -589,7 +589,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   badgeText: {
     fontFamily: fonts.semibold,
     fontSize: 11,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
   ratingRow: {
     flexDirection: "row",

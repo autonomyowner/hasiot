@@ -69,8 +69,10 @@ function usePagerScrollHandler(
 // be animated on the UI thread like any other.
 const AnimatedFeather = Animated.createAnimatedComponent(Feather);
 
-// Active icon sits on the green puck, so it tints to white.
-const ACTIVE_TINT = "#FFFFFF";
+// Active icon sits on the lime puck. Lime is a light colour — white on it is
+// 1.39:1, which is why the active icon vanished into the bar — so the icon
+// tints to ink instead: 12.1:1.
+const ACTIVE_TINT = colors.ink;
 const INACTIVE_TINT = "#A39D8E";
 
 // The floating bar keeps a minimum gap to the screen edge even on devices that

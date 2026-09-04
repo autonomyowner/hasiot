@@ -285,7 +285,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   noteText: {
     fontFamily: fonts.medium,
     fontSize: 14,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
     textAlign: "center",
   },
   sectionTitle: {

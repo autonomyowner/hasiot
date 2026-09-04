@@ -12,6 +12,10 @@ export const colors = {
     hover: "#D1E956",
     light: "#D4EB60",
     dark: "#C6E431",
+    // The lime family's dark tone. The ramp above is light — it can only be a
+    // fill — so anything drawn AS lime on a light surface uses this instead:
+    // 6.68:1 on the cream background where #CCE745 is 1.30:1.
+    deep: "#4F5E10",
   },
 
   // Accent Colors
@@ -35,11 +39,11 @@ export const colors = {
 
   // v5 redesign tokens
   sand: "#E8DFD4", // image / avatar fallback
-  mint: "#E9F2EE", // soft green chip surface
+  mint: "#F0F2E9", // soft lime chip surface — put `primary.deep` or `ink` on it
   ink: "#1F1D17", // near-black headings / hosting header band
   warm: "#C77B3B", // star / warm accent
   favorite: "#E0524D", // active favorite heart
-  hostingAccent: "#7BC4AC", // green accent on dark ink surfaces
+  hostingAccent: "#B8C47B", // lime accent on dark ink surfaces (9.0:1 on ink)
   chip: "#EFEAE0", // segmented-control track
   signOut: "#B0493F", // destructive text
 

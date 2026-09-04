@@ -350,7 +350,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderColor: colors.border,
   },
   statusCardPending: { backgroundColor: "#FDF6EC", borderColor: "#F0DFC4" },
-  statusCardApproved: { backgroundColor: colors.mint, borderColor: "#CFE4DA" },
+  statusCardApproved: { backgroundColor: colors.mint, borderColor: "#E1E4CF" },
   statusTextWrap: { flex: 1 },
   statusTitle: {
     fontFamily: fonts.semibold,
@@ -395,7 +395,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderRadius: 18,
     borderWidth: 1.5,
     borderStyle: "dashed",
-    borderColor: colors.primary.DEFAULT,
+    borderColor: colors.primary.deep,
     backgroundColor: colors.mint,
     alignItems: "center",
     justifyContent: "center",
@@ -406,7 +406,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     paddingHorizontal: 8,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
 
   filePreview: {
