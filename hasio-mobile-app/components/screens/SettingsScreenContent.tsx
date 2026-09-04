@@ -1,6 +1,6 @@
 import { appAlert } from "@/stores/dialogStore";
 import { AppDialogHost } from "@/components/ui/AppDialog";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -33,6 +33,7 @@ import { formatPhoneForDisplay } from "@/lib/phone";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { LIST_CONTAINER_PADDING, TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useAppStore } from "@/stores/appStore";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { useFavorites, useTrips } from "@/hooks/useConvexData";
@@ -56,6 +57,13 @@ export function SettingsScreenContent() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, language, changeLanguage, isRTL } = useLanguage();
+  // Display currency only — hosts still price in riyals, and the peg is fixed,
+  // so this is a two-way switch rather than a picker.
+  const { currency, setCurrency } = useCurrency();
+  const toggleCurrency = useCallback(
+    () => setCurrency(currency === "SAR" ? "USD" : "SAR"),
+    [currency, setCurrency]
+  );
   const setOnboardingComplete = useAppStore((state) => state.setOnboardingComplete);
   const clearUserData = useAppStore((state) => state.clearUserData);
 
@@ -302,6 +310,15 @@ export function SettingsScreenContent() {
               onPress={() => changeLanguage(language === "en" ? "ar" : "en")}
             />
 
+            <SettingRow
+              icon="dollar-sign"
+              label={t("currency")}
+              value={currency === "SAR" ? t("currencySar") : t("currencyUsd")}
+              subtitle={t("currencyHint")}
+              isRTL={isRTL}
+              onPress={toggleCurrency}
+            />
+
           </Animated.View>
 
           {/* Legal Section */}
@@ -545,6 +562,15 @@ export function SettingsScreenContent() {
             value={language === "en" ? "English" : "العربية"}
             isRTL={isRTL}
             onPress={() => changeLanguage(language === "en" ? "ar" : "en")}
+          />
+
+          <SettingRow
+            icon="dollar-sign"
+            label={t("currency")}
+            value={currency === "SAR" ? t("currencySar") : t("currencyUsd")}
+            subtitle={t("currencyHint")}
+            isRTL={isRTL}
+            onPress={toggleCurrency}
           />
         </Animated.View>
 

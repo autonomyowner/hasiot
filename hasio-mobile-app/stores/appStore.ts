@@ -2,11 +2,16 @@ import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { Language, Moment, DayPlan, ChatMessage } from "@/types";
+import type { Currency } from "@/lib/currency";
 
 interface AppState {
   // Language
   language: Language;
   setLanguage: (lang: Language) => void;
+
+  // Display currency. Prices are stored in SAR; this only changes what is shown.
+  currency: Currency;
+  setCurrency: (currency: Currency) => void;
 
   // Onboarding
   hasCompletedOnboarding: boolean;
@@ -52,6 +57,10 @@ export const useAppStore = create<AppState>()(
       // Language - default to English
       language: "en",
       setLanguage: (lang) => set({ language: lang }),
+
+      // Display currency - default to riyals, the currency prices are stored in
+      currency: "SAR",
+      setCurrency: (currency) => set({ currency }),
 
       // Onboarding
       hasCompletedOnboarding: false,
@@ -133,6 +142,7 @@ export const useAppStore = create<AppState>()(
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         language: state.language,
+        currency: state.currency,
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         favorites: state.favorites,
         moments: state.moments,
