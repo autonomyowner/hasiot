@@ -1,6 +1,16 @@
 import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
+import { isPlaceholderEmail } from "../lib/contact";
+import { riyadhMonthKey, todayRiyadhISO } from "../lib/dates";
+import { isBookableStay } from "../listings/pricing";
+import {
+  ACTIVE_STAY_STATUSES,
+  BOOKING_ERRORS,
+  computeStayQuote,
+  overlaps,
+  type BookingStatus,
+} from "./logic";
 
 // Hard ceilings so no query can scan an unbounded number of documents.
 const MAX_LIST = 200;
@@ -52,6 +62,13 @@ export const getUserBookings = query({
                 category_ar: listing.category_ar,
                 address: listing.address,
                 phone: listing.phone,
+                city: listing.city,
+                // One image is all a list row needs; sending the whole array
+                // would put every photo of every booked place on the wire.
+                images: listing.images?.slice(0, 1) ?? [],
+                coordinates: listing.coordinates,
+                checkInTime: listing.checkInTime,
+                checkOutTime: listing.checkOutTime,
               }
             : null,
         };
@@ -72,16 +89,32 @@ export const getBooking = query({
     }
 
     const booking = await ctx.db.get(args.bookingId);
+    if (!booking) return null;
 
-    if (!booking || booking.userId !== user._id) {
+    const listing = await ctx.db.get(booking.listingId);
+
+    // The guest who booked, the host who has to honour it, and support.
+    const isGuest = booking.userId === user._id;
+    const isHost = listing?.ownerId === user._id;
+    if (!isGuest && !isHost && user.role !== "admin") {
       return null;
     }
 
-    const listing = await ctx.db.get(booking.listingId);
+    const other = isGuest ? null : await ctx.db.get(booking.userId);
 
     return {
       ...booking,
       listing,
+      viewerRole: isGuest ? ("guest" as const) : isHost ? ("host" as const) : ("admin" as const),
+      // A host opening a booking needs to be able to reach the guest.
+      guest: other
+        ? {
+            firstName: other.firstName,
+            lastName: other.lastName,
+            phone: other.phone,
+            email: isPlaceholderEmail(other.email) ? null : other.email,
+          }
+        : null,
     };
   },
 });
@@ -155,7 +188,9 @@ export const getUpcomingCount = query({
       return 0;
     }
 
-    const today = new Date().toISOString().split("T")[0];
+    // Riyadh, not UTC — otherwise a booking for today drops off the count
+    // three hours before midnight local time.
+    const today = todayRiyadhISO();
 
     const bookings = await ctx.db
       .query("bookings")
@@ -164,11 +199,22 @@ export const getUpcomingCount = query({
       )
       .take(MAX_LIST);
 
-    return bookings.filter((b) => b.date >= today).length;
+    // A stay counts as upcoming until the guest checks out, not until they
+    // check in.
+    return bookings.filter((b) => (b.checkOut ?? b.date) >= today).length;
   },
 });
 
 // Get business's bookings (for business dashboard)
+/**
+ * A host's booking inbox.
+ *
+ * Reads straight off `by_ownerId_and_status` rather than fanning out over the
+ * host's listings: the fan-out took one query per listing and then filtered by
+ * status *after* slicing to 200, so a busy host filtering for pending requests
+ * could be shown fewer than they actually had. `ownerId` is denormalised onto
+ * the booking for exactly this reason.
+ */
 export const getBusinessBookings = query({
   args: {
     status: v.optional(v.string()),
@@ -179,57 +225,46 @@ export const getBusinessBookings = query({
       return [];
     }
 
-    // Resolve owned listings via the ownerId index. This previously scanned the
-    // whole listings table in JS and matched on email, which both scaled badly
-    // and only ever returned bookings for a single listing.
-    const listings = await ctx.db
-      .query("listings")
-      .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
-      .take(MAX_OWNED_LISTINGS);
-
-    if (listings.length === 0) {
-      return [];
-    }
-
-    const perListing = await Promise.all(
-      listings.map((listing) =>
-        ctx.db
+    const status = args.status;
+    const bookings = status
+      ? await ctx.db
           .query("bookings")
-          .withIndex("by_listingId", (q) => q.eq("listingId", listing._id))
+          .withIndex("by_ownerId_and_status", (q) => q.eq("ownerId", user._id).eq("status", status))
           .order("desc")
           .take(MAX_LIST)
-      )
-    );
-
-    let bookings = perListing
-      .flat()
-      .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, MAX_LIST);
-
-    if (args.status) {
-      bookings = bookings.filter((b) => b.status === args.status);
-    }
-
-    // Bookings can now span several owned listings, so name the listing on each
-    // row rather than leaving the dashboard to guess.
-    const listingsById = new Map(listings.map((l) => [l._id as string, l]));
+      : await ctx.db
+          .query("bookings")
+          .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
+          .order("desc")
+          .take(MAX_LIST);
 
     const enriched = await Promise.all(
       bookings.map(async (booking) => {
-        const tourist = await ctx.db.get(booking.userId);
-        const listing = listingsById.get(booking.listingId as string);
+        const [tourist, listing] = await Promise.all([
+          ctx.db.get(booking.userId),
+          ctx.db.get(booking.listingId),
+        ]);
         return {
           ...booking,
           listing: listing
-            ? { _id: listing._id, name_en: listing.name_en, name_ar: listing.name_ar }
+            ? {
+                _id: listing._id,
+                name_en: listing.name_en,
+                name_ar: listing.name_ar,
+                city: listing.city,
+                images: listing.images?.slice(0, 1) ?? [],
+              }
             : null,
           tourist: tourist
             ? {
                 _id: tourist._id,
                 firstName: tourist.firstName,
                 lastName: tourist.lastName,
-                email: tourist.email,
+                // A phone sign-up's address is synthesised and undeliverable —
+                // showing it to a host would invite them to email a black hole.
+                email: isPlaceholderEmail(tourist.email) ? null : tourist.email,
                 phone: tourist.phone,
+                phoneVerified: tourist.phoneVerified ?? false,
               }
             : null,
         };
@@ -237,6 +272,115 @@ export const getBusinessBookings = query({
     );
 
     return enriched;
+  },
+});
+
+/**
+ * Headline numbers for the host dashboard, which until now showed hardcoded
+ * zeros.
+ */
+export const getOwnerStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user || (user.role !== "business_owner" && user.role !== "service_provider")) {
+      return null;
+    }
+
+    const today = todayRiyadhISO();
+    const month = riyadhMonthKey(Date.now());
+
+    const [pendingRows, confirmedRows, completedRows, listings] = await Promise.all([
+      ctx.db
+        .query("bookings")
+        .withIndex("by_ownerId_and_status", (q) => q.eq("ownerId", user._id).eq("status", "pending"))
+        .take(MAX_LIST),
+      ctx.db
+        .query("bookings")
+        .withIndex("by_ownerId_and_status", (q) =>
+          q.eq("ownerId", user._id).eq("status", "confirmed")
+        )
+        .take(MAX_LIST),
+      ctx.db
+        .query("bookings")
+        .withIndex("by_ownerId_and_status", (q) =>
+          q.eq("ownerId", user._id).eq("status", "completed")
+        )
+        .take(MAX_LIST),
+      ctx.db
+        .query("listings")
+        .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
+        .take(MAX_OWNED_LISTINGS),
+    ]);
+
+    const upcoming = confirmedRows.filter((b) => (b.checkOut ?? b.date) >= today).length;
+
+    // Confirmed and completed both count: the host has the money either way,
+    // and excluding completed would make revenue fall as stays finish.
+    const revenueMonth = [...confirmedRows, ...completedRows]
+      .filter((b) => (b.checkIn ?? b.date).startsWith(month))
+      .reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
+
+    return {
+      pending: pendingRows.length,
+      upcoming,
+      revenueMonth,
+      listings: listings.length,
+      currency: "SAR",
+    };
+  },
+});
+
+/**
+ * Price a stay without committing to it.
+ *
+ * Public and never throws, because the app calls this live as the guest drags
+ * across a calendar — a half-selected range is a normal intermediate state,
+ * not an error. It runs the same computeStayQuote the booking mutation does,
+ * so the number shown is the number charged.
+ */
+export const quoteStay = query({
+  args: {
+    listingId: v.id("listings"),
+    checkIn: v.string(),
+    checkOut: v.string(),
+    guests: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const listing = await ctx.db.get(args.listingId);
+    if (!listing || !isBookableStay(listing)) {
+      return { ok: false as const, error: BOOKING_ERRORS.NOT_BOOKABLE };
+    }
+
+    const quoted = computeStayQuote(listing, args, todayRiyadhISO());
+    if (!quoted.ok) {
+      return { ok: false as const, error: quoted.error };
+    }
+
+    // Same overlap rule as createStayBooking, so the sheet can grey out dates
+    // rather than letting the guest fill in a form that is going to be refused.
+    const existing = await ctx.db
+      .query("bookings")
+      .withIndex("by_listingId", (q) => q.eq("listingId", args.listingId))
+      .order("desc")
+      .take(MAX_LIST);
+
+    const occupied = existing.filter(
+      (b) =>
+        b.kind === "stay" &&
+        ACTIVE_STAY_STATUSES.includes(b.status as BookingStatus) &&
+        b.checkIn &&
+        b.checkOut &&
+        overlaps({ checkIn: b.checkIn, checkOut: b.checkOut }, quoted.quote)
+    ).length;
+
+    return {
+      ok: true as const,
+      quote: quoted.quote,
+      available: listing.unitCount === undefined || occupied < listing.unitCount,
+      checkInTime: listing.checkInTime,
+      checkOutTime: listing.checkOutTime,
+    };
   },
 });
 
