@@ -69,6 +69,37 @@ export const imageScrimGradient = {
   ...GRADIENT_VERTICAL,
 };
 
+/**
+ * The caption scrim on a photo card, where the title, place and price sit
+ * directly on the image with no panel behind them.
+ *
+ * This one is deliberately NOT "felt rather than seen" like `imageScrim`
+ * above: that gradient is decorative depth, this one is doing a legibility
+ * job, and the job has to hold against the worst photograph a host can
+ * upload. The stops put the title's own band at ~0.85, which clears 4.5:1 for
+ * white text even over a pure-white image — the case where a subtle scrim
+ * would leave the title invisible.
+ *
+ * The ramp is short and steep rather than long and gentle, and that is the
+ * whole design. A gentle gradient tall enough to reach 0.85 by the title has
+ * to start halfway up the card, which veils the photograph everywhere; this
+ * one is still near-nothing at 58% and does all its work in the ~30px above
+ * the caption. The bottom 42% of the image stays clean.
+ */
+export const cardCaptionGradient = {
+  colors: [
+    "rgba(31, 29, 23, 0)",
+    "rgba(31, 29, 23, 0.3)",
+    "rgba(31, 29, 23, 0.86)",
+    "rgba(31, 29, 23, 0.94)",
+  ] as const,
+  locations: [0, 0.18, 0.4, 1] as const,
+  ...GRADIENT_VERTICAL,
+};
+
+/** How far up the card the caption scrim reaches. */
+export const CARD_CAPTION_SCRIM_HEIGHT = "58%";
+
 /** Height of the fade that sits above a fixed bottom bar. */
 export const BOTTOM_FADE_HEIGHT = 64;
 

@@ -4,6 +4,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import {
   BOTTOM_FADE_HEIGHT,
   bottomFadeGradient,
+  CARD_CAPTION_SCRIM_HEIGHT,
+  cardCaptionGradient,
   imageScrimGradient,
   screenGradient,
   surfaceGradient,
@@ -75,6 +77,26 @@ export function ImageScrim({ style }: FillProps) {
 }
 
 /**
+ * The weighted bottom of a photo card, under a caption that sits on the image
+ * itself. Render after `ImageScrim` and before the caption.
+ *
+ * Separate from `ImageScrim` rather than folded into it: that scrim goes on
+ * every photograph in the app, most of which carry no text, and the weight
+ * this one needs would be far too heavy there.
+ */
+export function CaptionScrim({ style }: FillProps) {
+  return (
+    <LinearGradient
+      {...cardCaptionGradient}
+      colors={[...cardCaptionGradient.colors]}
+      locations={[...cardCaptionGradient.locations]}
+      style={[styles.captionScrim, style]}
+      pointerEvents="none"
+    />
+  );
+}
+
+/**
  * The dissolve above a fixed bottom bar.
  *
  * `bottom` is the gap between the screen edge and the bar — pass the same
@@ -106,5 +128,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
+  },
+  captionScrim: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: CARD_CAPTION_SCRIM_HEIGHT,
   },
 });

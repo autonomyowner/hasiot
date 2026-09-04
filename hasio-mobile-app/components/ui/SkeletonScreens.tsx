@@ -60,27 +60,27 @@ export function SkeletonListingCard({
         style={[styles.listingImage, { height: IMAGE_HEIGHT[variant] }]}
       />
 
-      {/* The floating white info pill the real cards render over the image. */}
-      <View style={styles.listingPill}>
-        <View style={[styles.listingPillRow, isRTL && styles.rowReverse]}>
-          <SkeletonLine
-            width="52%"
-            box={20}
-            isRTL={isRTL}
-            phase={sweepPhase(seed + 1)}
-          />
-          <Skeleton
-            radius={999}
-            phase={sweepPhase(seed + 2)}
-            style={styles.listingPillChip}
-          />
-        </View>
+      {/* The caption the real cards lay on the photograph: type chip, title,
+          then the place-and-price line. */}
+      <View style={[styles.listingCaption, isRTL && styles.listingCaptionRTL]}>
+        <Skeleton
+          radius={999}
+          phase={sweepPhase(seed + 1)}
+          style={styles.listingCaptionChip}
+        />
         <SkeletonLine
-          width="68%"
+          width="62%"
+          box={28}
+          isRTL={isRTL}
+          phase={sweepPhase(seed + 2)}
+          style={[styles.captionLine, styles.gapTop8]}
+        />
+        <SkeletonLine
+          width="45%"
           box={17}
           isRTL={isRTL}
           phase={sweepPhase(seed + 3)}
-          style={styles.gapTop4}
+          style={[styles.captionLine, styles.gapTop6]}
         />
       </View>
     </View>
@@ -291,29 +291,33 @@ const styles = StyleSheet.create({
   listingImage: {
     width: "100%",
   },
-  // Mirrors the real cards' floating info pill (inset 10, radius 18).
-  listingPill: {
+  // Mirrors the real cards' caption block (inset 16, chip then title then
+  // meta). No panel: the placeholder sits on the image the same way the text
+  // does, so the cross-fade between them does not shift anything.
+  listingCaption: {
     position: "absolute",
-    left: 10,
-    right: 10,
-    bottom: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.96)",
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    left: 16,
+    right: 16,
+    bottom: 16,
+    alignItems: "flex-start",
   },
-  listingPillRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
+  listingCaptionRTL: {
+    alignItems: "flex-end",
   },
-  listingPillChip: {
+  listingCaptionChip: {
     width: 64,
     height: 22,
   },
-  gapTop4: {
-    marginTop: 4,
+  // The chip sizes to itself, so the two lines under it have to be stretched
+  // back to full width or their percentage widths resolve against nothing.
+  captionLine: {
+    alignSelf: "stretch",
+  },
+  gapTop8: {
+    marginTop: 8,
+  },
+  gapTop6: {
+    marginTop: 6,
   },
   // Used by the owner-list skeleton, whose card layout is unchanged.
   gap4: {
