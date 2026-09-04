@@ -28,6 +28,7 @@ export default function BusinessLayout() {
       <Stack.Screen name="post-lodging" />
       <Stack.Screen name="post-destination" />
       <Stack.Screen name="my-listings" />
+      <Stack.Screen name="bookings" />
     </Stack>
   );
 }
