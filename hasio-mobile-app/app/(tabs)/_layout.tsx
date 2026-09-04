@@ -23,7 +23,7 @@ import {
   HomeScreenContent,
   LodgingScreenContent,
   PlannerScreenContent,
-  MomentsScreenContent,
+  FavoritesScreenContent,
   SettingsScreenContent,
 } from "@/components/screens";
 
@@ -90,7 +90,7 @@ export type TabKey =
   | "lodging"
   | "home"
   | "planner"
-  | "moments"
+  | "favorites"
   | "settings";
 
 interface TabItem {
@@ -109,7 +109,7 @@ const tabs: TabItem[] = [
   { key: "lodging", icon: "map-pin", label: "Stay" },
   { key: "planner", icon: "message-circle", label: "Plan" },
   { key: "home", icon: "home", label: "Home" },
-  { key: "moments", icon: "camera", label: "Moments" },
+  { key: "favorites", icon: "heart", label: "Favorites" },
   { key: "settings", icon: "user", label: "Profile" },
 ];
 
@@ -171,8 +171,8 @@ export default function TabLayout() {
         return <LodgingScreenContent />;
       case "planner":
         return <PlannerScreenContent onNavigateToTab={navigateToTab} />;
-      case "moments":
-        return <MomentsScreenContent />;
+      case "favorites":
+        return <FavoritesScreenContent />;
       case "settings":
         return <SettingsScreenContent />;
       default:
