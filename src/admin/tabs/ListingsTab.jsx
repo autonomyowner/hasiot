@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+﻿import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
@@ -9,7 +9,16 @@ import FilterSelect from '../components/FilterSelect'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
-import { CITIES, CITY_LABELS, LISTING_TYPES, TYPE_LABELS, cityLabel } from '../constants'
+import {
+  CITIES,
+  CITY_LABELS,
+  LISTING_STATUS_COLORS,
+  LISTING_STATUS_LABELS,
+  LISTING_TYPES,
+  TYPE_LABELS,
+  cityLabel,
+  formatMoney,
+} from '../constants'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../ui/table'
@@ -28,11 +37,13 @@ function useDebounced(value, delay = 300) {
 const triState = (value) => (value === '' ? undefined : value === 'yes')
 
 function ReviewBadge({ status }) {
-  if (status === 'approved') return <span className="admin-badge green">معتمد</span>
-  if (status === 'pending') return <span className="admin-badge yellow">قيد المراجعة</span>
-  if (status === 'rejected') return <span className="admin-badge red">مرفوض</span>
   // Seed listings carry no status at all and are treated as approved everywhere.
-  return <span className="admin-badge gray">أصلي</span>
+  const key = status || 'seed'
+  return (
+    <span className={`admin-badge ${LISTING_STATUS_COLORS[key] || 'gray'}`}>
+      {LISTING_STATUS_LABELS[key] || key}
+    </span>
+  )
 }
 
 export default function ListingsTab({ initialFilters }) {
@@ -60,6 +71,8 @@ export default function ListingsTab({ initialFilters }) {
   const updateListing = useMutation(api.admin.mutations.updateListing)
   const deleteListing = useMutation(api.admin.mutations.deleteListing)
   const setListingActive = useMutation(api.admin.mutations.setListingActive)
+  const suspendListing = useMutation(api.admin.mutations.suspendListing)
+  const reinstateListing = useMutation(api.admin.mutations.reinstateListing)
 
   const isSearching = searchQuery.length > 0
   const filters = {
@@ -158,6 +171,50 @@ export default function ListingsTab({ initialFilters }) {
     }
   }
 
+  /**
+   * Take a live listing down without destroying it.
+   *
+   * Distinct from rejecting, which is a verdict on a submission that was never
+   * public, and from deleting, which is irreversible. A suspended listing keeps
+   * its photos, hours and bookings and can be put straight back.
+   */
+  const handleSuspend = async (listing) => {
+    const result = await confirm({
+      title: 'إيقاف هذا المكان؟',
+      message: `سيختفي "${listing.name_ar || listing.name_en}" من التطبيق ولن يقبل حجوزات جديدة. الحجوزات القائمة لا تتأثر.`,
+      confirmLabel: 'إيقاف',
+      destructive: true,
+      reason: {
+        label: 'سبب الإيقاف',
+        placeholder: 'مثال: انتهاء الترخيص',
+        required: true,
+      },
+    })
+    if (!result) return
+
+    setBusyId(listing._id)
+    try {
+      await suspendListing({ id: listing._id, reason: result.reason })
+      toast.success('تم إيقاف المكان')
+    } catch (error) {
+      toast.error(error)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleReinstate = async (listing) => {
+    setBusyId(listing._id)
+    try {
+      await reinstateListing({ id: listing._id })
+      toast.success('تمت إعادة المكان')
+    } catch (error) {
+      toast.error(error)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const resetFilters = () => {
     setSearchInput(''); setType(''); setCity(''); setStatus(''); setPhotos(''); setHours('')
   }
@@ -212,6 +269,7 @@ export default function ListingsTab({ initialFilters }) {
             { value: 'pending', label: 'قيد المراجعة' },
             { value: 'approved', label: 'معتمد' },
             { value: 'rejected', label: 'مرفوض' },
+            { value: 'suspended', label: 'موقوف' },
             { value: 'seed', label: 'أصلي (بيانات أولية)' },
           ]}
         />
@@ -297,6 +355,13 @@ export default function ListingsTab({ initialFilters }) {
                     <TableCell data-label="الاسم">
                       <div className="admin-table-name">{listing.name_ar}</div>
                       <div className="admin-table-sub" dir="ltr">{listing.name_en}</div>
+                      {/* The nightly rate, when set — this is what decides
+                          whether a hotel can be booked at all. */}
+                      {listing.pricePerNight != null && (
+                        <div className="admin-table-sub">
+                          {formatMoney(listing.pricePerNight)} / ليلة
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell data-label="النوع">{TYPE_LABELS[listing.type] || listing.type}</TableCell>
                     <TableCell data-label="المدينة">{cityLabel(listing.city)}</TableCell>
@@ -339,6 +404,26 @@ export default function ListingsTab({ initialFilters }) {
                         >
                           الأوقات
                         </button>
+                        {/* Suspension, not deletion: the listing, its photos
+                            and its bookings all stay put, so reinstating puts
+                            back exactly what was there. */}
+                        {listing.status === 'suspended' ? (
+                          <button
+                            onClick={() => handleReinstate(listing)}
+                            className="admin-action-btn edit"
+                            disabled={busyId === listing._id}
+                          >
+                            إعادة
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleSuspend(listing)}
+                            className="admin-action-btn delete"
+                            disabled={busyId === listing._id}
+                          >
+                            إيقاف
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDelete(listing)}
                           className="admin-action-btn delete"
