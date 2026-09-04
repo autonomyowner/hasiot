@@ -101,10 +101,14 @@ interface TabItem {
 
 // Discovery on the left of home, the guest's own things on the right.
 // Icon-only in the floating bar; labels feed accessibilityLabel.
+// Home sits in the middle slot: it is the tab the app opens on and the one
+// the thumb rests over, so it takes the centre of the bar. Everything below
+// derives from this order — HOME_INDEX, the pager's pages, the puck — so
+// reordering here is the whole change.
 const tabs: TabItem[] = [
   { key: "lodging", icon: "map-pin", label: "Stay" },
-  { key: "home", icon: "home", label: "Home" },
   { key: "planner", icon: "message-circle", label: "Plan" },
+  { key: "home", icon: "home", label: "Home" },
   { key: "moments", icon: "camera", label: "Moments" },
   { key: "settings", icon: "user", label: "Profile" },
 ];
