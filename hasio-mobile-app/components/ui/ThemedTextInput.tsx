@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { TextInput, StyleSheet, type TextInputProps } from "react-native";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 interface ThemedTextInputProps extends TextInputProps {
   isRTL?: boolean;
@@ -12,6 +14,10 @@ interface ThemedTextInputProps extends TextInputProps {
 }
 
 export function ThemedTextInput({ isRTL, style, ref, ...props }: ThemedTextInputProps) {
+  // Themed, not module-scope: the field's typeface follows the language, so
+  // Arabic typed into it is Cairo like the label above it rather than the
+  // phone's fallback font. Callers' `style` still overrides any of this.
+  const styles = useThemedStyles(makeStyles);
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -37,27 +43,34 @@ export function ThemedTextInput({ isRTL, style, ref, ...props }: ThemedTextInput
         setIsFocused(false);
         props.onBlur?.(e);
       }}
-      placeholderTextColor={props.placeholderTextColor || "#A3A3A3"}
+      placeholderTextColor={props.placeholderTextColor || colors.onSurface.muted}
     />
   );
 }
 
-const styles = StyleSheet.create({
-  input: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: "#1A1A1A",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
-  inputRTL: {
-    textAlign: "right",
-  },
-  inputFocused: {
-    borderColor: "#4F5E10",
-    borderWidth: 1.5,
-  },
-});
+// The defaults every form in the app inherits. These were the last hardcoded
+// greys of the pre-redesign theme, and because this component is shared they
+// leaked that theme into any screen that did not override them.
+const makeStyles = (fonts: AppFonts) =>
+  StyleSheet.create({
+    input: {
+      backgroundColor: colors.surface.DEFAULT,
+      borderRadius: 12,
+      paddingVertical: 14,
+      paddingHorizontal: 16,
+      fontSize: 16,
+      fontFamily: fonts.regular,
+      color: colors.ink,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    inputRTL: {
+      textAlign: "right",
+    },
+    // The dark lime, not the fill: the fill is 1.4:1 against the white field
+    // and a focus ring nobody can see is no focus ring.
+    inputFocused: {
+      borderColor: colors.primary.deep,
+      borderWidth: 1.5,
+    },
+  });
