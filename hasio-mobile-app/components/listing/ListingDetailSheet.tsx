@@ -20,7 +20,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useConvexAuth } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
+import { api } from "@/backend";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -28,6 +29,7 @@ import { useConvexUser } from "@/hooks/useConvexUser";
 import { ReportSheet } from "@/components/ReportSheet";
 import { BookingSheet } from "@/components/booking/BookingSheet";
 import { VerifyPhoneSheet } from "@/components/auth/VerifyPhoneSheet";
+import { RatingSummary, ReviewCard, ReviewSheet } from "@/components/review";
 import { amenityIcon } from "./amenityIcon";
 import type { ListingDetails } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -87,10 +89,28 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   const [reportOpen, setReportOpen] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const galleryRef = React.useRef<ScrollView>(null);
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
   const { user } = useConvexUser();
+
+  // Three reads, all skipped until there is a listing to read them for. The
+  // summary and the first few reviews are public; `getMine` returns null for a
+  // visitor, which is what makes the button say "rate" rather than "edit".
+  const listingId = item ? (item.id as Id<"listings">) : null;
+  const summary = useQuery(
+    api.reviews.queries.getSummary,
+    listingId ? { listingId } : "skip"
+  );
+  const reviews = useQuery(
+    api.reviews.queries.listForListing,
+    listingId ? { listingId, limit: 3 } : "skip"
+  );
+  const myReview = useQuery(
+    api.reviews.queries.getMine,
+    listingId ? { listingId } : "skip"
+  );
 
   // Three gates, in order of what the guest can do about them. A visitor is
   // sent to sign in; a signed-in guest with no verified number is asked for
@@ -412,6 +432,44 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                   </Section>
                 )}
 
+                {/* Reviews. The summary renders its own "no reviews yet" when
+                    nobody has rated — there is deliberately no zero to fall
+                    back on, so an unrated place shows no star at all. */}
+                <Section title={t("reviewsTitle")} isRTL={isRTL}>
+                  {summary && <RatingSummary value={summary} />}
+
+                  <Pressable
+                    style={styles.rateButton}
+                    onPress={() => setReviewOpen(true)}
+                    accessibilityRole="button"
+                  >
+                    <Feather name="star" size={15} color={colors.ink} />
+                    <Text style={styles.rateButtonText}>
+                      {myReview ? t("editYourReview") : t("rateThisPlace")}
+                    </Text>
+                  </Pressable>
+
+                  {reviews?.map((review) => (
+                    <ReviewCard key={review._id} review={review} />
+                  ))}
+
+                  {!!summary && summary.count > 3 && (
+                    <Pressable
+                      onPress={() => {
+                        // Close first: this sheet is a native modal, and a
+                        // pushed route underneath it would be hidden by it.
+                        onClose();
+                        router.push(`/reviews/${item.id}`);
+                      }}
+                      accessibilityRole="button"
+                    >
+                      <Text style={[styles.seeAll, isRTL && styles.textRTL]}>
+                        {t("reviewsSeeAll")}
+                      </Text>
+                    </Pressable>
+                  )}
+                </Section>
+
                 {/* Report */}
                 <Pressable
                   onPress={() => setReportOpen(true)}
@@ -495,6 +553,17 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
         visible={bookingOpen}
         item={item}
         onClose={() => setBookingOpen(false)}
+      />
+    )}
+
+    {/* Same reason again: a sibling, so the rating sheet is not clipped to the
+        iOS pageSheet's frame. */}
+    {item && (
+      <ReviewSheet
+        visible={reviewOpen}
+        listingId={item.id}
+        existing={myReview}
+        onClose={() => setReviewOpen(false)}
       />
     )}
 
@@ -860,6 +929,28 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   infoLink: {
     color: colors.primary.deep,
+  },
+  rateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingVertical: 12,
+    marginTop: 14,
+    borderRadius: 12,
+    backgroundColor: colors.primary.DEFAULT,
+  },
+  // Lime is a fill, so its label is ink: white on it is 1.4:1.
+  rateButtonText: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  seeAll: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    color: colors.primary.deep,
+    paddingVertical: 14,
   },
   reportRow: {
     flexDirection: "row",
