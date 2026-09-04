@@ -119,6 +119,9 @@ export function useDestinations(featured?: boolean) {
         nameAr: l.name_ar,
         subtitle: l.category,
         subtitleAr: l.category_ar || l.category,
+        // Carried so the home filter can narrow destinations by place; the
+        // subtitle above is the category, not a location.
+        city: l.city,
         image: l.images?.[0] || "",
         featured: (l.rating || 0) >= 4.5,
         // Carried so a tapped destination can open the same detail sheet as a
@@ -156,6 +159,17 @@ export function useHomeData() {
     destinations,
     isLoading: lodgingsLoading || destinationsLoading,
   };
+}
+
+/**
+ * The cities that actually have public listings, with their counts.
+ *
+ * Driven off the data rather than a hardcoded list on purpose: a filter that
+ * offers a city with nothing in it is worse than one that does not offer it.
+ */
+export function useCities() {
+  const cities = useQuery(api.listings.queries.getCities, {});
+  return { cities: cities || [], isLoading: cities === undefined };
 }
 
 /**

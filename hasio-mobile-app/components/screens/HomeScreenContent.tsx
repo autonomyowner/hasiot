@@ -22,10 +22,14 @@ import Animated, {
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
-import { useHomeData } from "@/hooks/useConvexData";
+import { useCities, useHomeData } from "@/hooks/useConvexData";
 import {
   SearchBar,
   CategoryCard,
+  FilterSheet,
+  EMPTY_FILTERS,
+  activeFilterCount,
+  type HomeFilters,
   SkeletonFade,
   SkeletonHomeSections,
 } from "@/components/ui";
@@ -83,40 +87,81 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
   ];
 
   // Get data from Convex with fallback to mock data
-  const { lodgings, destinations, isLoading } = useHomeData();
+  const { lodgings, destinations: allDestinations, isLoading } = useHomeData();
+  const { cities } = useCities();
+
+  const [filters, setFilters] = useState<HomeFilters>(EMPTY_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterCount = activeFilterCount(filters);
+
+  // Filters narrow the whole screen, not just the search results — otherwise
+  // setting one and then clearing the query would silently drop it.
+  const allLodging = useMemo(
+    () =>
+      lodgings.filter(
+        (item) =>
+          (!filters.type || item.type === filters.type) &&
+          (!filters.city || item.city === filters.city) &&
+          (!filters.price || item.priceRange === filters.price)
+      ),
+    [lodgings, filters]
+  );
+
+  // A destination has no type or price of its own, so those two filters
+  // exclude destinations entirely rather than matching everything: asking for
+  // "$$ hotels" and being shown a set of parks is not a filter working.
+  const destinations = useMemo(
+    () =>
+      filters.type || filters.price
+        ? []
+        : allDestinations.filter((item) => !filters.city || item.city === filters.city),
+    [allDestinations, filters]
+  );
+
+  // Only the lodging types actually present, so the sheet never offers a
+  // filter that can only ever return nothing.
+  const lodgingTypes = useMemo(
+    () => Array.from(new Set(lodgings.map((l) => l.type))).sort(),
+    [lodgings]
+  );
 
   const featuredItems = destinations.filter((d) => d.featured);
   const moreDestinations = destinations.filter((d) => !d.featured);
 
-  // Use Convex data (with mock fallback)
-  const allLodging = lodgings;
-
-  // Search functionality
+  // One results view for a query, for a set of filters, or for both. The
+  // lists arriving here are already filtered, so this only applies the text
+  // match — and when there is no query it applies nothing, which is what makes
+  // filters alone able to drive the results view.
   const searchResults = useMemo(() => {
-    if (!debouncedQuery.trim()) return null;
+    const query = debouncedQuery.trim().toLowerCase();
+    if (!query && filterCount === 0) return null;
 
-    const query = debouncedQuery.toLowerCase();
+    const lodgingResults = query
+      ? allLodging.filter(
+          (item) =>
+            item.name.toLowerCase().includes(query) ||
+            item.nameAr.includes(query) ||
+            item.city.toLowerCase().includes(query) ||
+            item.cityAr.includes(query)
+        )
+      : allLodging;
 
-    const lodgingResults = allLodging.filter((item) =>
-      item.name.toLowerCase().includes(query) ||
-      item.nameAr.includes(query) ||
-      item.city.toLowerCase().includes(query) ||
-      item.cityAr.includes(query)
-    );
-
-    const destinationResults = destinations.filter((item) =>
-      item.name.toLowerCase().includes(query) ||
-      item.nameAr.includes(query) ||
-      item.subtitle.toLowerCase().includes(query) ||
-      item.subtitleAr.includes(query)
-    );
+    const destinationResults = query
+      ? destinations.filter(
+          (item) =>
+            item.name.toLowerCase().includes(query) ||
+            item.nameAr.includes(query) ||
+            item.subtitle.toLowerCase().includes(query) ||
+            item.subtitleAr.includes(query)
+        )
+      : destinations;
 
     return {
       lodging: lodgingResults,
       destinations: destinationResults,
       total: lodgingResults.length + destinationResults.length,
     };
-  }, [debouncedQuery, allLodging, destinations]);
+  }, [debouncedQuery, filterCount, allLodging, destinations]);
 
   const [selected, setSelected] = useState<DetailItem | null>(null);
 
@@ -237,6 +282,8 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
             value={searchQuery}
             onChangeText={setSearchQuery}
             isRTL={isRTL}
+            onFilterPress={() => setFilterOpen(true)}
+            filterCount={filterCount}
           />
         </Animated.View>
 
@@ -258,7 +305,11 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                   transition={200}
                 />
                 <Text style={[styles.noResultsText, isRTL && styles.textRTL]}>
-                  {t("noResults")}
+                  {/* An empty result from filters alone is a different problem
+                      from an empty result for a search term, and needs a
+                      different sentence — otherwise "no results for" hangs
+                      with nothing after it. */}
+                  {debouncedQuery.trim() ? t("noResults") : t("filterNoMatch")}
                 </Text>
               </View>
             ) : (
@@ -426,6 +477,15 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
       </Animated.ScrollView>
 
       <ListingDetailSheet item={selected} onClose={() => setSelected(null)} />
+
+      <FilterSheet
+        visible={filterOpen}
+        value={filters}
+        cities={cities}
+        types={lodgingTypes}
+        onChange={setFilters}
+        onClose={() => setFilterOpen(false)}
+      />
     </View>
   );
 }

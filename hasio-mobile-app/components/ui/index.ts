@@ -28,3 +28,4 @@ export {
   ScreenGradient,
   SurfaceGradient,
 } from "./Gradients";
+export { FilterSheet, EMPTY_FILTERS, activeFilterCount, type HomeFilters } from "./FilterSheet";
