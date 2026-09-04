@@ -121,6 +121,80 @@ export const seedDemoStays = internalMutation({
 });
 
 /**
+ * Opening nightly rates by hotel class, in SAR.
+ *
+ * Estimates, not quotes. Anchored on published Al-Ahsa rates in September 2026:
+ * mid-range runs roughly 300–500 SAR a night, the area average is about US$154
+ * (~580 SAR), budget rooms start near US$33 (~125 SAR), and the InterContinental
+ * sits around US$180–271 with at least one guest reporting ~1000 SAR.
+ *
+ * They exist so the catalogue is bookable on day one. Every one is meant to be
+ * corrected by the host, or by an operator in the admin panel, the moment a real
+ * rate is known — a listing carries the price it was booked at anyway, frozen on
+ * the booking, so changing this later never rewrites history.
+ */
+const RATE_BY_CATEGORY: Record<
+  string,
+  { pricePerNight: number; maxGuests: number; unitCount: number }
+> = {
+  luxury_hotel: { pricePerNight: 850, maxGuests: 4, unitCount: 10 },
+  resort: { pricePerNight: 600, maxGuests: 4, unitCount: 8 },
+  business_hotel: { pricePerNight: 450, maxGuests: 3, unitCount: 10 },
+  boutique_hotel: { pricePerNight: 420, maxGuests: 2, unitCount: 5 },
+  mid_range_hotel: { pricePerNight: 350, maxGuests: 3, unitCount: 8 },
+  budget_hotel: { pricePerNight: 200, maxGuests: 2, unitCount: 6 },
+};
+
+/** Fallback for a hotel whose category is missing or unrecognised. */
+const DEFAULT_RATE = { pricePerNight: 350, maxGuests: 3, unitCount: 6 };
+
+/**
+ * Give every hotel an opening rate, so the catalogue can be booked.
+ *
+ * Prices by class rather than by name, so a hotel added later is covered
+ * without editing this file.
+ *
+ * **Never overwrites a rate that already exists** — once a host or an operator
+ * has set a real price, this must not quietly replace it with an estimate. Pass
+ * `overwrite: true` only to deliberately re-baseline everything.
+ */
+export const setEstimatedRates = internalMutation({
+  args: { overwrite: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const hotels = await ctx.db
+      .query("listings")
+      .withIndex("by_type", (q) => q.eq("type", "hotel"))
+      .take(200);
+
+    const now = Date.now();
+    const priced: { name: string; pricePerNight: number }[] = [];
+    const skipped: string[] = [];
+
+    for (const hotel of hotels) {
+      if (hotel.pricePerNight !== undefined && !args.overwrite) {
+        skipped.push(hotel.name_en);
+        continue;
+      }
+
+      const rate = RATE_BY_CATEGORY[hotel.category ?? ""] ?? DEFAULT_RATE;
+
+      await ctx.db.patch(hotel._id, {
+        ...rate,
+        currency: "SAR",
+        // The Saudi norm, and what `createStayBooking` mirrors onto a stay's
+        // legacy `time` field.
+        checkInTime: "15:00",
+        checkOutTime: "12:00",
+        updatedAt: now,
+      });
+      priced.push({ name: hotel.name_en, pricePerNight: rate.pricePerNight });
+    }
+
+    return { scanned: hotels.length, priced, skipped };
+  },
+});
+
+/**
  * Hand a seeded listing to a real account, so there is a host who can confirm
  * bookings. The seeded Al-Ahsa data has no owner, so nothing in it can be
  * managed from the app until this runs.
