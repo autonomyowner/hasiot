@@ -20,6 +20,7 @@ import Animated, {
   Easing,
   FadeIn,
   interpolate,
+  runOnJS,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -316,6 +317,16 @@ export function SkeletonFade({
     return () => clearTimeout(timer);
   }, [loading]);
 
+  // True only for the length of the incoming fade. The compositing props
+  // below are what stop a card's elevation shadow being drawn at full
+  // strength under a still-transparent card — but they also rasterise the
+  // whole subtree into a texture, which is not something to leave switched on
+  // for a scrolling screen. On for the 260 ms, off the moment it ends.
+  const [fadingIn, setFadingIn] = useState(false);
+  const entering = FadeIn.duration(FADE_DURATION).withCallback((finished) => {
+    if (finished) runOnJS(setFadingIn)(false);
+  });
+
   return (
     <View style={[fill && styles.fill, style]}>
       {/* Two fixed child slots, so React keeps the skeleton's own subtree
@@ -323,15 +334,13 @@ export function SkeletonFade({
       {!loading && (
         <Animated.View
           style={fill ? styles.fill : undefined}
-          entering={FadeIn.duration(FADE_DURATION)}
-          // Composite the incoming subtree as one layer for the fade. Without
-          // this, a card's elevation shadow is drawn at full strength while
-          // the card itself is still transparent — a dark halo under every
-          // photo for the length of the fade. Android needs the hardware
-          // texture, iOS the offscreen alpha pass; both are only in effect
-          // while the entering animation runs.
-          renderToHardwareTextureAndroid
-          needsOffscreenAlphaCompositing
+          entering={entering}
+          onLayout={() => setFadingIn(true)}
+          // Composite the incoming subtree as one layer while it fades, so a
+          // shadow underneath fades with the card instead of ahead of it.
+          // Android needs the hardware texture, iOS the offscreen alpha pass.
+          renderToHardwareTextureAndroid={fadingIn}
+          needsOffscreenAlphaCompositing={fadingIn}
         >
           {children}
         </Animated.View>
