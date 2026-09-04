@@ -16,6 +16,7 @@ import PendingBusinessesTab from './tabs/PendingBusinessesTab'
 import ReportsTab from './tabs/ReportsTab'
 import KnowledgeTab from './tabs/KnowledgeTab'
 import BookingsTab from './tabs/BookingsTab'
+import UsersTab from './tabs/UsersTab'
 import ActivityTab from './tabs/ActivityTab'
 import EmailCapturesTab from './tabs/EmailCapturesTab'
 import './tailwind.css'
@@ -32,6 +33,7 @@ const TABS = [
   { id: 'knowledge', label: 'المعرفة' },
   { id: 'activity', label: 'السجل' },
   { id: 'emails', label: 'البريد' },
+  { id: 'users', label: 'المستخدمون' },
 ]
 
 export default function AdminPage() {
@@ -131,6 +133,7 @@ function TabContent({ tab, params, user, onNavigate }) {
     case 'knowledge': return <KnowledgeTab />
     case 'activity': return <ActivityTab />
     case 'emails': return <EmailCapturesTab />
+    case 'users': return <UsersTab />
     default: return null
   }
 }
