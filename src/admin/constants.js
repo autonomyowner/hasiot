@@ -1,4 +1,4 @@
-// Shared lookups for the admin panel. These used to be duplicated inside
+﻿// Shared lookups for the admin panel. These used to be duplicated inside
 // individual tabs (the city list three times, type labels four times), which is
 // how the pending-accounts tab ended up labelling `businessType` with the
 // listing category list.
@@ -126,10 +126,12 @@ export const REPORT_STATUSES = [
 ]
 
 export const BOOKING_STATUSES = [
-  { value: 'pending', label: 'قيد الانتظار', color: 'yellow' },
+  { value: 'pending', label: 'بانتظار المالك', color: 'yellow' },
   { value: 'confirmed', label: 'مؤكد', color: 'blue' },
   { value: 'completed', label: 'مكتمل', color: 'green' },
   { value: 'cancelled', label: 'ملغى', color: 'red' },
+  { value: 'declined', label: 'مرفوض من المالك', color: 'red' },
+  { value: 'expired', label: 'منتهي الصلاحية', color: 'gray' },
   { value: 'no_show', label: 'لم يحضر', color: 'gray' },
 ]
 
@@ -138,6 +140,23 @@ export const BOOKING_STATUS_LABELS =
 
 export const BOOKING_STATUS_COLORS =
   Object.fromEntries(BOOKING_STATUSES.map(s => [s.value, s.color]))
+
+// A listing's review state. "seed" is not a stored value — it is the absence
+// of one, which is how the original Al-Ahsa data is distinguished from
+// anything a host submitted.
+export const LISTING_STATUSES = [
+  { value: 'pending', label: 'قيد المراجعة', color: 'yellow' },
+  { value: 'approved', label: 'معتمد', color: 'green' },
+  { value: 'rejected', label: 'مرفوض', color: 'red' },
+  { value: 'suspended', label: 'موقوف', color: 'red' },
+  { value: 'seed', label: 'أصلي', color: 'gray' },
+]
+
+export const LISTING_STATUS_LABELS =
+  Object.fromEntries(LISTING_STATUSES.map(s => [s.value, s.label]))
+
+export const LISTING_STATUS_COLORS =
+  Object.fromEntries(LISTING_STATUSES.map(s => [s.value, s.color]))
 
 export const PRICE_RANGES = [
   { value: '$', label: '$ اقتصادي' },
@@ -190,4 +209,28 @@ export function formatRelative(ts) {
   return formatDate(ts)
 }
 
-export const todayISO = () => new Date().toISOString().split('T')[0]
+// Riyadh, not UTC. The panel groups bookings into today / upcoming / past
+// against dates the backend writes in Saudi time, so a plain toISOString here
+// would move a booking into "past" three hours before the day actually ends
+// for the guest standing in the lobby.
+export const todayISO = () =>
+  new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+/** "2026-09-10" → "10 سبتمبر", Latin digits to match the ids and prices around it. */
+export function formatISODate(iso) {
+  if (!iso) return '—'
+  try {
+    return new Date(`${iso}T00:00:00Z`).toLocaleDateString(DATE_LOCALE, {
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'UTC',
+    })
+  } catch {
+    return iso
+  }
+}
+
+export function formatMoney(amount, currency = 'ر.س') {
+  if (amount === undefined || amount === null) return '—'
+  return `${Number(amount).toLocaleString('en-US')} ${currency}`
+}
