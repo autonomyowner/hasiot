@@ -1,4 +1,4 @@
-import { FadeInDown } from "react-native-reanimated";
+import { FadeIn, FadeInDown, FadeOut, ZoomIn } from "react-native-reanimated";
 
 // Shared spring for press feedback — matches the feel used across the app.
 export const pressSpring = { damping: 15, stiffness: 400 } as const;
@@ -11,3 +11,12 @@ export const PRESS_SCALE_ICON = 0.9;
 // lists don't keep staggering forever.
 export const enterFade = (index = 0) =>
   FadeInDown.duration(360).delay(Math.min(index, 6) * 55);
+
+// Content swap when a segmented tab changes (Upcoming ↔ Past). Short on
+// purpose: the list should feel like it changed, not like it animated.
+export const crossFadeIn = FadeIn.duration(180);
+export const crossFadeOut = FadeOut.duration(120);
+
+// The success check on a booking confirmation. A small overshoot reads as
+// "done" in a way a plain fade does not.
+export const popIn = ZoomIn.springify().damping(14).stiffness(180);
