@@ -20,6 +20,7 @@ import type * as config_queries from "../config/queries.js";
 import type * as emailCaptures_mutations from "../emailCaptures/mutations.js";
 import type * as emailCaptures_queries from "../emailCaptures/queries.js";
 import type * as http from "../http.js";
+import type * as lib_contact from "../lib/contact.js";
 import type * as listings_mutations from "../listings/mutations.js";
 import type * as listings_queries from "../listings/queries.js";
 import type * as listings_seedImages from "../listings/seedImages.js";
@@ -30,6 +31,7 @@ import type * as moments_queries from "../moments/queries.js";
 import type * as rateLimit from "../rateLimit.js";
 import type * as services_mutations from "../services/mutations.js";
 import type * as services_queries from "../services/queries.js";
+import type * as sms_provider from "../sms/provider.js";
 import type * as travelPlanner_actions from "../travelPlanner/actions.js";
 import type * as travelPlanner_mutations from "../travelPlanner/mutations.js";
 import type * as travelPlanner_queries from "../travelPlanner/queries.js";
@@ -37,6 +39,8 @@ import type * as trips_mutations from "../trips/mutations.js";
 import type * as trips_queries from "../trips/queries.js";
 import type * as users_mutations from "../users/mutations.js";
 import type * as users_queries from "../users/queries.js";
+import type * as users_search from "../users/search.js";
+import type * as users_sync from "../users/sync.js";
 
 import type {
   ApiFromModules,
@@ -57,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   "emailCaptures/mutations": typeof emailCaptures_mutations;
   "emailCaptures/queries": typeof emailCaptures_queries;
   http: typeof http;
+  "lib/contact": typeof lib_contact;
   "listings/mutations": typeof listings_mutations;
   "listings/queries": typeof listings_queries;
   "listings/seedImages": typeof listings_seedImages;
@@ -67,6 +72,7 @@ declare const fullApi: ApiFromModules<{
   rateLimit: typeof rateLimit;
   "services/mutations": typeof services_mutations;
   "services/queries": typeof services_queries;
+  "sms/provider": typeof sms_provider;
   "travelPlanner/actions": typeof travelPlanner_actions;
   "travelPlanner/mutations": typeof travelPlanner_mutations;
   "travelPlanner/queries": typeof travelPlanner_queries;
@@ -74,6 +80,8 @@ declare const fullApi: ApiFromModules<{
   "trips/queries": typeof trips_queries;
   "users/mutations": typeof users_mutations;
   "users/queries": typeof users_queries;
+  "users/search": typeof users_search;
+  "users/sync": typeof users_sync;
 }>;
 
 /**

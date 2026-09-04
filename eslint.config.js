@@ -5,7 +5,19 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // This config lints the website. Everything else here has its own toolchain
+  // or none, and running these rules over them produced ~2450 errors that
+  // nobody could act on — which made `npm run lint` useless as a signal.
+  //
+  // hasio-mobile-app: Expo project, TypeScript, own eslint entry point.
+  // convex/_generated: machine-written.
+  // hasio v5: a legacy copy, already gitignored.
+  globalIgnores([
+    'dist',
+    'hasio-mobile-app/**',
+    'convex/_generated/**',
+    'hasio v5/**',
+  ]),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
