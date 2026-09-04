@@ -181,7 +181,7 @@ export default function TabLayout() {
       case "favorites":
         return <FavoritesScreenContent />;
       case "settings":
-        return <SettingsScreenContent />;
+        return <SettingsScreenContent onNavigateToTab={navigateToTab} />;
       default:
         return null;
     }

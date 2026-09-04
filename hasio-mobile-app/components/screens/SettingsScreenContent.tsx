@@ -22,7 +22,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import Constants from "expo-constants";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/backend";
@@ -37,6 +37,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { useAppStore } from "@/stores/appStore";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { useFavorites, useTrips } from "@/hooks/useConvexData";
+import type { TabKey } from "@/app/(tabs)/_layout";
 import { signOut as authSignOut } from "@/lib/auth";
 import { refreshAuth } from "@/lib/convex";
 import { UserType } from "@/types";
@@ -52,7 +53,12 @@ const CAN_RATE_APP = Platform.OS !== "ios" || IOS_APP_STORE_ID !== null;
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function SettingsScreenContent() {
+interface SettingsScreenContentProps {
+  /** Jump to a tab in the pager — the Favorites row uses it. */
+  onNavigateToTab?: (key: TabKey) => void;
+}
+
+export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContentProps = {}) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -72,12 +78,14 @@ export function SettingsScreenContent() {
   // device, which is where the app already keeps them.
   const { trips } = useTrips();
   const { favorites } = useFavorites();
-  const moments = useAppStore((state) => state.moments);
 
   const { isSignedIn, isBusinessOwner, isServiceProvider, isAdmin, isApproved, verificationStatus, userType: convexUserType, user } = useConvexUser();
   const userType: UserType = convexUserType === "business_owner" ? "business" : convexUserType === "service_provider" ? "provider" : convexUserType === "admin" ? "admin" : "user";
 
   // Visual-only display values for the profile header (best-effort from the user record).
+  // Bookings replaced Moments in the stats: Moments no longer has a tab, and
+  // a count for a screen nobody can reach is not a stat.
+  const bookings = useQuery(api.bookings.queries.getUserBookings, user ? {} : "skip");
   const realName = [(user as any)?.firstName, (user as any)?.lastName]
     .filter(Boolean)
     .join(" ")
@@ -421,8 +429,8 @@ export function SettingsScreenContent() {
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{moments.length}</Text>
-            <Text style={styles.statLabel}>{t("moments")}</Text>
+            <Text style={styles.statNumber}>{(bookings ?? []).length}</Text>
+            <Text style={styles.statLabel}>{t("myBookings")}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
@@ -554,6 +562,7 @@ export function SettingsScreenContent() {
             icon="heart"
             label={t("favorites")}
             isRTL={isRTL}
+            onPress={() => onNavigateToTab?.("favorites")}
           />
 
           <SettingRow

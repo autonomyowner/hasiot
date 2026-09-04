@@ -33,7 +33,7 @@ import { ChatBubble } from "@/components/planner";
 import { colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-import { TAB_BAR_HEIGHT, TAB_BAR_MARGIN } from "@/constants/layout";
+import { TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { Feather } from "@expo/vector-icons";
 import type { ChatMessage } from "@/types";
 import type { TabKey } from "@/app/(tabs)/_layout";
@@ -74,7 +74,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
   }, []);
   const inputBottomPadding = keyboardVisible
     ? 10
-    : Math.max(insets.bottom, TAB_BAR_MARGIN) + TAB_BAR_HEIGHT + 16;
+    : TAB_BAR_CLEARANCE + insets.bottom;
 
   const scrollToEndSoon = useCallback(() => {
     setTimeout(() => {
