@@ -19,7 +19,7 @@
 export type SmsLocale = "ar" | "en";
 
 export interface SmsProvider {
-  name: "console" | "twilio-verify";
+  name: "console" | "twilio-verify" | "infobip";
   /**
    * Deliver `code` to `phone`.
    *
@@ -105,6 +105,74 @@ function twilioVerifyProvider(
 }
 
 /**
+ * Infobip, plain SMS.
+ *
+ * Deliberately their messaging API rather than their 2FA product. The 2FA API
+ * returns a `pinId` on send that the verify call then needs, which does not fit
+ * an interface keyed on phone number and would mean storing the id between
+ * the two requests. Plain SMS only carries the text: Better Auth generates the
+ * code, Better Auth checks it, and there is no `verifyOtp` here — so its own
+ * expiry and attempt limiting run, exactly as in console mode.
+ *
+ * Numbers go out without the leading plus; that is the form Infobip documents.
+ * `from` is omitted when unset so the account's default sender applies — an
+ * empty string would be sent literally and rejected.
+ */
+function infobipProvider(apiKey: string, baseUrl: string, from?: string): SmsProvider {
+  const url = `https://${baseUrl}/sms/2/text/advanced`;
+
+  return {
+    name: "infobip",
+
+    async sendOtp(phone, code, locale) {
+      const text =
+        locale === "ar"
+          ? `رمز التحقق الخاص بك في Hasio هو ${code}`
+          : `Your Hasio verification code is ${code}`;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `App ${apiKey}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              ...(from ? { from } : {}),
+              destinations: [{ to: phone.replace(/^\+/, "") }],
+              text,
+            },
+          ],
+        }),
+      });
+
+      const raw = await res.text();
+      let json: Record<string, any> = {};
+      try {
+        json = JSON.parse(raw);
+      } catch {
+        // Non-JSON means an infrastructure error; `raw` is the only detail.
+      }
+
+      if (!res.ok) {
+        const detail = json?.requestError?.serviceException?.text ?? raw;
+        throw new Error(`Infobip ${res.status}: ${detail}`);
+      }
+
+      // Infobip answers 200 to a well-formed request and reports each
+      // message's fate in the body. A rejected destination is a failure that
+      // must surface, or the guest is told a code is on its way when it is not.
+      const status = json?.messages?.[0]?.status;
+      if (status?.groupName === "REJECTED") {
+        throw new Error(`Infobip rejected: ${status.name ?? "unknown"} — ${status.description ?? ""}`);
+      }
+    },
+  };
+}
+
+/**
  * Resolve the provider from the environment. `env` is injectable for tests.
  *
  * Throws on a misconfigured twilio-verify rather than silently falling back to
@@ -128,6 +196,15 @@ export function getSmsProvider(
       );
     }
     return twilioVerifyProvider(accountSid, authToken, serviceSid);
+  }
+
+  if (configured === "infobip") {
+    const apiKey = env.INFOBIP_API_KEY;
+    const baseUrl = env.INFOBIP_BASE_URL;
+    if (!apiKey || !baseUrl) {
+      throw new Error("SMS_PROVIDER=infobip requires INFOBIP_API_KEY and INFOBIP_BASE_URL");
+    }
+    return infobipProvider(apiKey, baseUrl, env.INFOBIP_FROM);
   }
 
   throw new Error(`Unknown SMS_PROVIDER: ${configured}`);

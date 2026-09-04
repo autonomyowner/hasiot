@@ -49,6 +49,91 @@ describe("getSmsProvider", () => {
   });
 });
 
+const INFOBIP_ENV = {
+  SMS_PROVIDER: "infobip",
+  INFOBIP_API_KEY: "key-123",
+  INFOBIP_BASE_URL: "abc123.api.infobip.com",
+};
+
+describe("infobip", () => {
+  it("refuses to start without credentials", () => {
+    expect(() => getSmsProvider({ SMS_PROVIDER: "infobip" })).toThrow(/requires INFOBIP_/);
+  });
+
+  it("leaves verification to Better Auth", () => {
+    // Plain SMS, not a verify product: Infobip only carries the text, so the
+    // code is ours and so is the check. No verifyOtp means Better Auth runs
+    // its own expiry and attempt limiting.
+    expect(getSmsProvider(INFOBIP_ENV).verifyOtp).toBeUndefined();
+  });
+
+  it("posts the code as a text message with App auth", async () => {
+    const fetchMock = mockFetch(200, {
+      messages: [{ to: "966501234567", status: { groupName: "PENDING" } }],
+    });
+    await getSmsProvider(INFOBIP_ENV).sendOtp("+966501234567", "482913", "en");
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://abc123.api.infobip.com/sms/2/text/advanced");
+    expect(init.method).toBe("POST");
+    expect((init.headers as Record<string, string>).Authorization).toBe("App key-123");
+
+    const body = JSON.parse(init.body as string);
+    // Infobip wants the number without the leading plus.
+    expect(body.messages[0].destinations[0].to).toBe("966501234567");
+    expect(body.messages[0].text).toContain("482913");
+    // No sender configured, so none is sent — Infobip falls back to the
+    // account default rather than rejecting an empty string.
+    expect(body.messages[0].from).toBeUndefined();
+  });
+
+  it("uses the configured sender when there is one", async () => {
+    const fetchMock = mockFetch(200, {
+      messages: [{ status: { groupName: "PENDING" } }],
+    });
+    await getSmsProvider({ ...INFOBIP_ENV, INFOBIP_FROM: "Hasio" }).sendOtp(
+      "+966501234567",
+      "111111",
+      "ar"
+    );
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string).messages[0].from).toBe("Hasio");
+  });
+
+  it("writes the message in the caller's language", async () => {
+    const fetchMock = mockFetch(200, { messages: [{ status: { groupName: "PENDING" } }] });
+    await getSmsProvider(INFOBIP_ENV).sendOtp("+966501234567", "555555", "ar");
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const text: string = JSON.parse(init.body as string).messages[0].text;
+    expect(text).toContain("555555");
+    expect(text).toMatch(/[؀-ۿ]/); // contains Arabic script
+  });
+
+  it("surfaces an HTTP failure", async () => {
+    mockFetch(401, { requestError: { serviceException: { text: "Invalid login details" } } });
+    await expect(
+      getSmsProvider(INFOBIP_ENV).sendOtp("+966501234567", "123456", "en")
+    ).rejects.toThrow("Infobip 401: Invalid login details");
+  });
+
+  it("treats a per-message rejection as a failure even on HTTP 200", async () => {
+    // Infobip answers 200 to a well-formed request and reports what happened
+    // to each message inside the body. A rejected destination must not be
+    // reported as "code sent" — that is the exact failure the Twilio hook
+    // comment warns about, a guest waiting for a text that never comes.
+    mockFetch(200, {
+      messages: [
+        {
+          status: { groupName: "REJECTED", name: "REJECTED_DESTINATION", description: "Invalid destination" },
+        },
+      ],
+    });
+    await expect(
+      getSmsProvider(INFOBIP_ENV).sendOtp("+1555", "123456", "en")
+    ).rejects.toThrow("Infobip rejected: REJECTED_DESTINATION");
+  });
+});
+
 describe("twilio-verify sendOtp", () => {
   it("posts a form-encoded verification with basic auth", async () => {
     const fetchMock = mockFetch(201, { status: "pending" });
