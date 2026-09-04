@@ -57,3 +57,11 @@ ChatGPT Image *.png
 # Stray Expo stub: the real app config is hasio-mobile-app/app.json
 /app.json
 /section.png
+
+# Environment files — API keys, never commit
+.env
+.env.*
+!.env.example
+
+# Voice sample recordings — personal audio, not repo content
+/marzoug voice/

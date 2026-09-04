@@ -1,0 +1,252 @@
+/*
+ * أبشر — voice agent widget.
+ *
+ * Every selector is `va-` prefixed and nothing here is a bare element rule: the landing
+ * page's spacing is hand-tuned and a stray `button { }` from this file would silently
+ * fight it.
+ */
+
+.va-launch {
+  position: fixed;
+  inset-inline-end: clamp(1rem, 3vw, 2rem);
+  bottom: clamp(1rem, 3vw, 2rem);
+  z-index: 60;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 1.1rem 0.55rem 0.6rem;
+  border: 1px solid rgba(13, 122, 95, 0.22);
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 10px 34px -12px rgba(6, 48, 36, 0.42), 0 2px 8px -3px rgba(6, 48, 36, 0.18);
+
+  font: inherit;
+  font-size: 0.94rem;
+  font-weight: 500;
+  color: #06412f;
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.22s ease;
+}
+
+[dir='rtl'] .va-launch { padding: 0.55rem 0.6rem 0.55rem 1.1rem; }
+
+.va-launch:hover { transform: translateY(-2px); box-shadow: 0 16px 40px -12px rgba(6, 48, 36, 0.5); }
+.va-launch:focus-visible { outline: 2px solid #0d7a5f; outline-offset: 3px; }
+
+.va-launch-orb {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex: none;
+  background: radial-gradient(circle at 32% 28%, #5ce8b0 0%, #0d7a5f 52%, #06412f 100%);
+  box-shadow: 0 0 0 3px rgba(13, 122, 95, 0.12), 0 0 14px -2px rgba(46, 200, 150, 0.75);
+  animation: va-breathe 3.4s ease-in-out infinite;
+}
+
+@keyframes va-breathe {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 3px rgba(13,122,95,0.12), 0 0 12px -2px rgba(46,200,150,0.6); }
+  50%      { transform: scale(1.09); box-shadow: 0 0 0 5px rgba(13,122,95,0.08), 0 0 20px -1px rgba(46,200,150,0.95); }
+}
+
+/* ---------- overlay ---------- */
+
+.va-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+
+  background: radial-gradient(120% 90% at 50% 8%, rgba(6, 48, 36, 0.72) 0%, rgba(4, 20, 16, 0.93) 68%);
+  backdrop-filter: blur(18px) saturate(120%);
+  -webkit-backdrop-filter: blur(18px) saturate(120%);
+  animation: va-fade 0.32s ease both;
+}
+
+@keyframes va-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.va-panel {
+  position: relative;
+  width: min(30rem, 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: clamp(1.75rem, 5vw, 2.75rem) clamp(1.25rem, 4vw, 2.25rem) clamp(1.5rem, 4vw, 2rem);
+
+  border: 1px solid rgba(92, 232, 176, 0.16);
+  border-radius: 26px;
+  background:
+    linear-gradient(180deg, rgba(12, 46, 37, 0.72) 0%, rgba(6, 26, 21, 0.86) 100%);
+  box-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  text-align: center;
+  animation: va-rise 0.42s cubic-bezier(0.2, 0.85, 0.3, 1) both;
+}
+
+@keyframes va-rise {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+.va-close {
+  position: absolute;
+  top: 0.85rem;
+  inset-inline-end: 0.85rem;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(226, 245, 238, 0.72);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.va-close:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.va-close:focus-visible { outline: 2px solid #5ce8b0; outline-offset: 2px; }
+
+/* ---------- orb stage ---------- */
+
+.va-stage {
+  position: relative;
+  width: min(17rem, 62vw);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.va-orb {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* CSS-only stand-in when WebGL is unavailable. */
+.va-orb.is-fallback {
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, #5ce8b0 0%, #0d7a5f 48%, #052e23 100%);
+  box-shadow: 0 0 60px -6px rgba(46, 200, 150, 0.55);
+  animation: va-breathe 3.4s ease-in-out infinite;
+}
+
+.va-stage-glow {
+  position: absolute;
+  inset: -12%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(46, 200, 150, 0.20) 0%, transparent 62%);
+  opacity: 0.5;
+  transition: opacity 0.5s ease;
+}
+.va-stage.is-live .va-stage-glow { opacity: 1; }
+
+/* ---------- text ---------- */
+
+.va-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: #f0fbf6;
+}
+
+.va-subtitle {
+  margin: 0;
+  max-width: 24rem;
+  font-size: 0.93rem;
+  line-height: 1.5;
+  color: rgba(196, 224, 213, 0.78);
+}
+
+.va-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.7rem 0 0;
+  font-size: 0.76rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(160, 196, 184, 0.85);
+}
+
+.va-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(160, 196, 184, 0.5);
+  flex: none;
+}
+.va-state.is-live { color: #7ff0c4; }
+.va-state.is-live .va-dot {
+  background: #5ce8b0;
+  box-shadow: 0 0 8px 1px rgba(92, 232, 176, 0.8);
+  animation: va-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes va-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+.va-error {
+  margin: 0.6rem 0 0;
+  max-width: 24rem;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #ffb4a8;
+}
+
+/* ---------- actions ---------- */
+
+.va-action {
+  margin-top: 1.1rem;
+  padding: 0.78rem 2rem;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #14a67d 0%, #0d7a5f 100%);
+  box-shadow: 0 12px 30px -10px rgba(20, 166, 125, 0.7);
+  font: inherit;
+  font-size: 0.98rem;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, opacity 0.18s ease;
+}
+.va-action:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 16px 36px -10px rgba(20,166,125,0.85); }
+.va-action:disabled { opacity: 0.6; cursor: default; }
+.va-action:focus-visible { outline: 2px solid #7ff0c4; outline-offset: 3px; }
+.va-action.is-stop {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+.va-action.is-stop:hover { background: rgba(255, 255, 255, 0.14); }
+
+.va-hint {
+  margin: 0.9rem 0 0;
+  max-width: 22rem;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: rgba(160, 196, 184, 0.6);
+}
+
+/* ---------- small screens ---------- */
+
+@media (max-width: 560px) {
+  .va-launch-label { display: none; }
+  .va-launch { padding: 0.55rem; }
+  [dir='rtl'] .va-launch { padding: 0.55rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .va-launch-orb,
+  .va-orb.is-fallback,
+  .va-state.is-live .va-dot { animation: none; }
+  .va-overlay, .va-panel { animation-duration: 0.01ms; }
+  .va-launch { transition: none; }
+}

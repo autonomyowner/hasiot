@@ -1,7 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { useLanguage } from './hooks/useLanguage'
 import { useReveal } from './hooks/useReveal'
 import './App.css'
+
+// Lazy so the widget's CSS and the orb's shader stay out of the entry chunk. The
+// ElevenLabs SDK itself is a second, deeper split — it only loads on first launch.
+const VoiceAgent = lazy(() => import('./components/voice/VoiceAgent'))
 
 // The site is a single marketing page for the mobile app. Anything a visitor can
 // actually do lives in the app, so every CTA here ends at a store.
@@ -394,6 +398,10 @@ export default function App() {
           <span>25°23′N&nbsp;&nbsp;49°35′E&nbsp;&nbsp;·&nbsp;&nbsp;AL-AHSA</span>
         </div>
       </footer>
+
+      <Suspense fallback={null}>
+        <VoiceAgent lang={lang} />
+      </Suspense>
 
     </main>
     </div>
