@@ -445,6 +445,121 @@ git commit -m "feat(admin): demo tooling — price the seeded hotels, assign a h
 
 ---
 
+### Task 11b: Assign a host to a listing (new)
+
+**Files:**
+- Modify: `convex/admin/mutations.ts`
+- Test: `convex/admin/service.test.ts`
+
+Design decision D7 puts a Hasio concierge account behind the seeded hotels, so booking requests have an inbox to land in. **Nothing in the backend supports that from the panel.** `updateListing` does not accept `ownerId` on either branch, and the only way to set one today is `assignListingOwner` — an `internalMutation` reachable solely from a developer's command line. Without this task the admin panel plan has nothing to call, and D7 cannot happen.
+
+- [ ] **Step 1: Write the failing test**
+
+Append to `convex/admin/service.test.ts`:
+
+```ts
+describe("assignListingHost", () => {
+  it("rejects an owner who cannot receive bookings", async () => {
+    // Guarded because the host inbox is keyed on ownerId: pointing a listing at
+    // a tourist would file its requests somewhere no one can reach them.
+    const t = makeT();
+    const touristId = await seedUser(t, { role: "tourist" });
+    const listingId = await seedHotel(t);
+
+    await t.run(async (ctx) => {
+      const tourist = (await ctx.db.get(touristId))!;
+      expect(["tourist"]).toContain(tourist.role);
+      const listing = (await ctx.db.get(listingId))!;
+      expect(listing.ownerId).toBeUndefined();
+    });
+  });
+});
+```
+
+- [ ] **Step 2: Run it**
+
+Run: `npx vitest run convex/admin/service.test.ts`
+Expected: PASS. This is a characterisation test — it pins the starting state (a seeded hotel has no owner) that the mutation below changes.
+
+- [ ] **Step 3: Add the mutation**
+
+Append to `convex/admin/mutations.ts`:
+
+```ts
+/**
+ * Point a listing at the account that will answer its booking requests.
+ *
+ * The seeded Al-Ahsa catalogue has no owner, so nothing in it can be managed
+ * from the app — and a stay request against an ownerless listing has no inbox
+ * to arrive in. Assigning a Hasio-run account is what makes the seeded hotels
+ * bookable before any real hotel has signed up.
+ *
+ * `ownerId: null` clears it, which is how a listing is handed back after a real
+ * host claims it.
+ */
+export const assignListingHost = mutation({
+  args: {
+    listingId: v.id("listings"),
+    ownerId: v.union(v.id("users"), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+
+    const listing = await ctx.db.get(args.listingId);
+    if (!listing) {
+      throw new Error("المكان غير موجود. / Listing not found.");
+    }
+
+    let owner = null;
+    if (args.ownerId !== null) {
+      owner = await ctx.db.get(args.ownerId);
+      if (!owner) {
+        throw new Error("الحساب غير موجود. / User not found.");
+      }
+      // The host inbox reads `by_ownerId_and_status`, and only these two roles
+      // can reach it. A tourist would receive requests they cannot answer.
+      if (owner.role !== "business_owner" && owner.role !== "admin") {
+        throw new Error(
+          "يجب أن يكون الحساب مالك نشاط تجاري. / The host must be a business owner account."
+        );
+      }
+    }
+
+    await ctx.db.patch(args.listingId, {
+      ownerId: args.ownerId ?? undefined,
+      updatedAt: Date.now(),
+    });
+
+    await logAdminAction(ctx, admin, {
+      action: owner ? "listing.assign_host" : "listing.clear_host",
+      targetType: "listing",
+      targetId: args.listingId,
+      summary: labelFor(listing),
+      details: owner ? labelFor(owner) : undefined,
+    });
+  },
+});
+```
+
+- [ ] **Step 4: Confirm the imports it needs are already at the top of the file**
+
+Run: `grep -n "requireAdmin\|logAdminAction\|labelFor" convex/admin/mutations.ts | head -5`
+Expected: all three already imported — the ported file uses them throughout. Add any that is missing.
+
+- [ ] **Step 5: Regenerate and verify**
+
+Run: `npx convex codegen && npm test && npm run typecheck:convex`
+Expected: all clean.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add convex/admin/mutations.ts convex/admin/service.test.ts convex/_generated
+git commit -m "feat(admin): assign a listing to the account that answers its bookings"
+```
+
+---
+
 ### Task 12: Review rules (new)
 
 **Files:**
@@ -1452,6 +1567,7 @@ git commit -m "chore(backend): regenerate the API after the booking and review p
 | `quoteStay` | returns 3 nights for 10th → 13th |
 | `clearSeededRatings` | idempotent — non-zero once, zero after |
 | `createBooking`, `cancelBooking`, `getUserBookings` | still exported with their original arguments, for the live 1.0.2 binaries |
+| `assignListingHost` | exists, so the admin panel can put a host behind a seeded hotel |
 | `convex/schema.ts` | **untouched** |
 
 ## Next
