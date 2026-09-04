@@ -53,6 +53,8 @@ const SUGGESTION_CARD_WIDTH = (Dimensions.get("window").width - 32 - 10) / 2;
 // What the input rests on once the keyboard is carrying the safe area itself.
 const INPUT_KEYBOARD_GAP = 10;
 
+const IS_ANDROID = Platform.OS === "android";
+
 type FeatherName = React.ComponentProps<typeof Feather>["name"];
 
 // All four are sent to the planner as a message; none navigates away, so the
@@ -86,17 +88,19 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
 
   // The docked tab bar sits over this screen, so the composer clears it while
   // the keyboard is closed. Once the keyboard is up the tab shell walks the bar
-  // off the bottom edge (see `app/(tabs)/_layout.tsx`) and this clearance
-  // collapses into the space it vacates — reserving the bar's height here as
-  // well is what used to leave the composer stranded under it.
+  // off the bottom edge (see `app/(tabs)/_layout.tsx`) and this clearance gives
+  // that room back — reserving the bar's height here as well is what used to
+  // leave the composer stranded under the keyboard.
   //
-  // The move begins at FOCUS, not at the keyboard event. Android's
-  // `keyboardDidShow` arrives only after the keyboard has finished animating,
-  // so anything waiting for it stands still for the whole animation and then
-  // jumps, which is precisely the lag this screen had. Focus fires first, the
-  // guessed overlap is what the last keyboard cost this window, and the real
-  // measurement agrees with it when it lands.
-  const { visible: keyboardVisible, beginOpen } = useKeyboardTransition();
+  // On Android the composer now follows the keyboard's actual height, frame by
+  // frame, because that platform has no will-show event and everything driven
+  // off `keyboardDidShow` starts only once the keyboard has finished arriving.
+  // Focus still starts the transition as a head start for the fallback path.
+  const {
+    visible: keyboardVisible,
+    beginOpen,
+    height: keyboardHeight,
+  } = useKeyboardTransition();
   const [focused, setFocused] = useState(false);
   const closedClearance = TAB_BAR_CLEARANCE + insets.bottom;
 
@@ -114,15 +118,34 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
     prepare: prepareForKeyboard,
   } = useKeyboardOverlap(scrollToEndSoon);
 
-  // One target, one animation, so the composer travels once rather than lifting
-  // at the keyboard event and then drifting as the clearance collapses.
   const openForKeyboard = focused || keyboardVisible;
-  const inputClearanceStyle = useAnimatedStyle(() => ({
-    paddingBottom: withTiming(
-      openForKeyboard ? INPUT_KEYBOARD_GAP + androidKeyboardHeight : closedClearance,
-      { duration: KEYBOARD_TRAVEL_MS, easing: KEYBOARD_EASING }
-    ),
-  }));
+
+  // `Math.max` rather than a switch, and that shape is the behaviour: the
+  // composer holds its resting place until the keyboard actually reaches it,
+  // then rides up on top of it. Anything else makes it dip before it rises.
+  //
+  // Three sources, whichever is furthest along. On Android the tracked height
+  // moves frame by frame with the keyboard; the measured overlap is the
+  // fallback for a device where tracking reports nothing, and lands late but
+  // lands. iOS uses neither — `KeyboardAvoidingView` lifts the whole screen
+  // there, so all this has to do is give back the departing tab bar's room.
+  const inputClearanceStyle = useAnimatedStyle(() => {
+    if (!IS_ANDROID) {
+      return {
+        paddingBottom: withTiming(
+          openForKeyboard ? INPUT_KEYBOARD_GAP : closedClearance,
+          { duration: KEYBOARD_TRAVEL_MS, easing: KEYBOARD_EASING }
+        ),
+      };
+    }
+    return {
+      paddingBottom: Math.max(
+        closedClearance,
+        keyboardHeight.value + INPUT_KEYBOARD_GAP,
+        androidKeyboardHeight + INPUT_KEYBOARD_GAP
+      ),
+    };
+  });
 
   const handleInputFocus = useCallback(() => {
     setFocused(true);
@@ -373,7 +396,7 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
         <View
           ref={innerRef}
           onLayout={keyboardOnLayout}
-          style={[styles.inputDock, { paddingBottom: androidKeyboardHeight }]}
+          style={styles.inputDock}
         >
         <Animated.View style={[styles.inputContainer, inputClearanceStyle]}>
           <View style={styles.inputPill}>

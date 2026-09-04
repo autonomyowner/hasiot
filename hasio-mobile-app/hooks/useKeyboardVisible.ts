@@ -3,10 +3,23 @@ import { Keyboard, Platform, type KeyboardEvent } from "react-native";
 import {
   Easing,
   makeMutable,
+  useAnimatedKeyboard,
+  useAnimatedReaction,
   useReducedMotion,
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
+
+const IS_ANDROID = Platform.OS === "android";
+
+/**
+ * How far the keyboard rises before the tab bar is considered gone.
+ *
+ * Roughly a bar's own height: by the time the keyboard has come up that far it
+ * is already covering the bar, so there is nothing left for the bar to be in
+ * the way of.
+ */
+const BAR_EXIT_SPAN = 120;
 
 /**
  * Used when the event carries no usable duration: Android's did-events report
@@ -62,6 +75,14 @@ export interface KeyboardTransition {
    * `onFocus`, which happens before the keyboard moves at all.
    */
   beginOpen: () => void;
+  /**
+   * The keyboard's height, in points, tracked frame by frame.
+   *
+   * Only meaningful on Android, and only there does anything read it. iOS gets
+   * its lift from `KeyboardAvoidingView`, which is driven by the will-events
+   * and Apple's own curve — a second source there would only fight it.
+   */
+  height: SharedValue<number>;
 }
 
 /**
@@ -87,6 +108,31 @@ export function useKeyboardTransition(): KeyboardTransition {
   const [visible, setVisible] = useState(false);
   const reducedMotion = useReducedMotion();
 
+  // The only way to follow an Android keyboard while it moves. Android has no
+  // will-show event, so everything driven off `keyboardDidShow` starts once the
+  // keyboard has already arrived.
+  //
+  // Both flags say "this app already draws edge to edge, keep your hands off
+  // the window": with them set, Reanimated leaves the activity's root margins
+  // at zero instead of managing the system bars itself, and reports the full
+  // IME inset rather than subtracting the navigation bar. Without them it would
+  // re-pad every screen in the app, which is why this is worth stating twice.
+  const keyboard = useAnimatedKeyboard({
+    isStatusBarTranslucentAndroid: true,
+    isNavigationBarTranslucentAndroid: true,
+  });
+
+  // On Android the real height drives the transition, so the tab bar leaves in
+  // step with the keyboard rather than after it.
+  useAnimatedReaction(
+    () => keyboard.height.value,
+    (current) => {
+      if (!IS_ANDROID) return;
+      progress.value = current > 0 ? Math.min(1, current / BAR_EXIT_SPAN) : 0;
+    },
+    []
+  );
+
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
@@ -97,6 +143,9 @@ export function useKeyboardTransition(): KeyboardTransition {
         typeof reported === "number" && reported > 0 ? reported : DEFAULT_DURATION;
       // Reduced motion gets the instant switch this hook replaced: the
       // transition is a nicety, the clearance it carries is not optional.
+      // Android's progress is driven by the tracked height instead — this path
+      // would only overwrite it with a coarser guess, one animation too late.
+      if (IS_ANDROID) return;
       progress.value = withTiming(to, {
         duration: reducedMotion ? 0 : duration,
         easing: KEYBOARD_EASING,
@@ -119,12 +168,12 @@ export function useKeyboardTransition(): KeyboardTransition {
   }, [reducedMotion]);
 
   const beginOpen = useCallback(() => {
-    if (progress.value === 1) return;
+    if (IS_ANDROID || progress.value === 1) return;
     progress.value = withTiming(1, {
       duration: reducedMotion ? 0 : KEYBOARD_TRAVEL_MS,
       easing: KEYBOARD_EASING,
     });
   }, [reducedMotion]);
 
-  return { visible, progress, beginOpen };
+  return { visible, progress, beginOpen, height: keyboard.height };
 }
