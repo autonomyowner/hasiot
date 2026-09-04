@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import Modal from '../components/Modal'
 import ImageUploader from '../components/ImageUploader'
 import FilterSelect from '../components/FilterSelect'

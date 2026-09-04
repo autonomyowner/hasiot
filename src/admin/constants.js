@@ -1,4 +1,4 @@
-﻿// Shared lookups for the admin panel. These used to be duplicated inside
+// Shared lookups for the admin panel. These used to be duplicated inside
 // individual tabs (the city list three times, type labels four times), which is
 // how the pending-accounts tab ended up labelling `businessType` with the
 // listing category list.

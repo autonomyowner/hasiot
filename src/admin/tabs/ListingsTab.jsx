@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
