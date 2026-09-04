@@ -564,6 +564,19 @@ export const translations = {
     pleaseTryAgain: "Please try again later",
 
     // Moderation (UGC compliance)
+    // Phone verification — required before booking, so the host can call the guest
+    verifyPhoneTitle: "Verify your phone",
+    verifyPhoneSubtitle: "Booking needs a verified number so your host can reach you.",
+    phonePlaceholder: "50 123 4567",
+    sendCode: "Send code",
+    invalidPhone: "Enter a valid Saudi mobile number (05XXXXXXXX)",
+    enterCodeTitle: "Enter the code",
+    enterCodeSubtitle: "Sent to {phone}",
+    verifyCode: "Verify",
+    resendCode: "Resend code",
+    resendIn: "Resend in {seconds}s",
+    changeNumber: "Change number",
+
     // Reviews and ratings
     reviewsTitle: "Reviews",
     reviewsNone: "No reviews yet",
@@ -1197,6 +1210,19 @@ export const translations = {
     pleaseTryAgain: "يرجى المحاولة لاحقاً",
 
     // Moderation (UGC compliance)
+    // Phone verification — required before booking, so the host can call the guest
+    verifyPhoneTitle: "وثّق رقم جوالك",
+    verifyPhoneSubtitle: "الحجز يتطلب رقمًا موثقًا حتى يتمكن المضيف من التواصل معك.",
+    phonePlaceholder: "50 123 4567",
+    sendCode: "إرسال الرمز",
+    invalidPhone: "أدخل رقم جوال سعودي صحيح (05XXXXXXXX)",
+    enterCodeTitle: "أدخل الرمز",
+    enterCodeSubtitle: "أُرسل إلى {phone}",
+    verifyCode: "تحقق",
+    resendCode: "إعادة إرسال الرمز",
+    resendIn: "إعادة الإرسال خلال {seconds} ث",
+    changeNumber: "تغيير الرقم",
+
     // Reviews and ratings
     reviewsTitle: "التقييمات",
     reviewsNone: "لا توجد تقييمات بعد",

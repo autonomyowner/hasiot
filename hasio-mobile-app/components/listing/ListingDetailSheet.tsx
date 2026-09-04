@@ -27,6 +27,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { ReportSheet } from "@/components/ReportSheet";
 import { BookingSheet } from "@/components/booking/BookingSheet";
+import { VerifyPhoneSheet } from "@/components/auth/VerifyPhoneSheet";
 import { amenityIcon } from "./amenityIcon";
 import type { ListingDetails } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -85,6 +86,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   const [imageIndex, setImageIndex] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [verifyOpen, setVerifyOpen] = useState(false);
   const galleryRef = React.useRef<ScrollView>(null);
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
@@ -100,8 +102,10 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
       return;
     }
     if (!user?.phoneVerified) {
-      onClose();
-      router.push("/auth");
+      // Open the sheet rather than routing: this guest is already signed in,
+      // so sending them to /auth would show a login form they are past, with
+      // no way to reach the thing actually being asked for.
+      setVerifyOpen(true);
       return;
     }
     setBookingOpen(true);
@@ -493,6 +497,17 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
         onClose={() => setBookingOpen(false)}
       />
     )}
+
+    {/* Straight into booking once the number is verified — the guest asked to
+        book, and the verification was only ever in the way. */}
+    <VerifyPhoneSheet
+      visible={verifyOpen}
+      onClose={() => setVerifyOpen(false)}
+      onVerified={() => {
+        setVerifyOpen(false);
+        setBookingOpen(true);
+      }}
+    />
     </>
   );
 }
