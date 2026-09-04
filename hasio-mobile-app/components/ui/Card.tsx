@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Pressable, StyleSheet, type ViewStyle } from "react-native";
 import { colors } from "@/constants/colors";
+import { SurfaceGradient } from "./Gradients";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -56,6 +57,9 @@ export function Card({
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
       >
+        {/* Matches the card radius rather than clipping with overflow:hidden,
+            which would drop the shadow on iOS. */}
+        <SurfaceGradient style={styles.wash} />
         {children}
       </AnimatedPressable>
     );
@@ -70,6 +74,7 @@ export function Card({
         style,
       ]}
     >
+      <SurfaceGradient style={styles.wash} />
       {children}
     </View>
   );
@@ -94,5 +99,8 @@ const styles = StyleSheet.create({
   },
   noPadding: {
     padding: 0,
+  },
+  wash: {
+    borderRadius: 16,
   },
 });

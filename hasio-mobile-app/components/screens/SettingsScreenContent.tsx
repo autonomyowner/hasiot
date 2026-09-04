@@ -27,6 +27,7 @@ import Constants from "expo-constants";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/backend";
 import { colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -225,6 +226,7 @@ export function SettingsScreenContent() {
   if (!isSignedIn) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScreenGradient />
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Header */}
           <Animated.View
@@ -339,6 +341,7 @@ export function SettingsScreenContent() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScreenGradient />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Profile Header */}
         <Animated.View
@@ -394,7 +397,7 @@ export function SettingsScreenContent() {
             >
               <View style={[styles.hostingRow, isRTL && styles.hostingRowRTL]}>
                 <View style={styles.hostingIcon}>
-                  <Feather name="home" size={22} color={colors.surface.DEFAULT} />
+                  <Feather name="home" size={22} color={colors.ink} />
                 </View>
                 <View style={[styles.hostingTextWrap, isRTL && styles.profileHeaderInfoRTL]}>
                   <Text style={[styles.hostingTitle, isRTL && styles.textRTL]}>
@@ -713,7 +716,7 @@ function SettingRow({
     }
   };
 
-  const iconColor = destructive ? colors.signOut : colors.primary.DEFAULT;
+  const iconColor = destructive ? colors.signOut : colors.primary.deep;
 
   return (
     <AnimatedPressable
@@ -928,7 +931,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    backgroundColor: "rgba(31, 29, 23, 0.14)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 14,
@@ -939,12 +942,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   hostingTitle: {
     fontFamily: fonts.serif,
     fontSize: 22,
-    color: colors.surface.DEFAULT,
+    color: colors.ink,
   },
   hostingDesc: {
     fontFamily: fonts.regular,
     fontSize: 13,
-    color: "rgba(255, 255, 255, 0.85)",
+    color: "rgba(31, 29, 23, 0.78)",
     marginTop: 2,
     lineHeight: 18,
   },
@@ -952,8 +955,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row",
     marginTop: 16,
   },
+  // A white pill on lime has almost no edge (1.4:1), so the CTA is inked.
   hostingPill: {
-    backgroundColor: colors.surface.DEFAULT,
+    backgroundColor: colors.ink,
     borderRadius: 999,
     paddingVertical: 10,
     paddingHorizontal: 22,

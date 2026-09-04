@@ -44,7 +44,7 @@ export function SearchBar({
         </Pressable>
       ) : (
         <View style={styles.filterButton}>
-          <Feather name="sliders" size={16} color="#FFFFFF" />
+          <Feather name="sliders" size={16} color={colors.ink} />
         </View>
       )}
     </View>

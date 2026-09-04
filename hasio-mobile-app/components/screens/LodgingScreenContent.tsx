@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
 import { categoryColors, colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { useLodgings } from "@/hooks/useConvexData";
@@ -69,6 +70,7 @@ export function LodgingScreenContent() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScreenGradient />
       {/* Header */}
       <Animated.View
         entering={FadeInDown.delay(100).duration(600)}
@@ -163,7 +165,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   eyebrow: {
     fontSize: 11,
     fontFamily: fonts.semibold,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
     letterSpacing: 2,
     textTransform: "uppercase",
     marginBottom: 4,

@@ -97,7 +97,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   outline: {
     backgroundColor: "transparent",
     borderWidth: 1.5,
-    borderColor: colors.primary.DEFAULT,
+    borderColor: colors.primary.deep,
   },
   ghost: {
     backgroundColor: "transparent",
@@ -125,16 +125,16 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     letterSpacing: 0.3,
   },
   primaryText: {
-    color: colors.surface.DEFAULT,
+    color: colors.ink,
   },
   secondaryText: {
     color: colors.ink,
   },
   outlineText: {
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
   ghostText: {
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
   smText: {
     fontSize: 14,

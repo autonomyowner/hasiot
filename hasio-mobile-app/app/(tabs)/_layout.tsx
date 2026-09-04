@@ -16,6 +16,7 @@ import PagerView from "@/components/PagerViewWrapper";
 import type { PagerViewProps } from "react-native-pager-view";
 import { colors } from "@/constants/colors";
 import { TAB_BAR_HEIGHT, TAB_BAR_MARGIN } from "@/constants/layout";
+import { BottomBarFade } from "@/components/ui/Gradients";
 
 // Import screen content components
 import {
@@ -209,6 +210,12 @@ export default function TabLayout() {
           {renderScreen(tabs[currentPage].key)}
         </View>
       )}
+
+      {/* Content scrolls under the floating bar, so it dissolves into the page
+          just above it rather than being cut off by the bar's edge. */}
+      <BottomBarFade
+        bottom={Math.max(insets.bottom, MIN_BAR_BOTTOM_OFFSET) + TAB_BAR_HEIGHT}
+      />
 
       {/* Floating tab bar: detached from the screen edges, hovering over the
           content. Screens reserve TAB_BAR_CLEARANCE bottom padding for it. */}

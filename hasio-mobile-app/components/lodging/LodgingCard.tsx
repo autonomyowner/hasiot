@@ -6,6 +6,7 @@ import type { Lodging, Language } from "@/types";
 import { Feather } from "@expo/vector-icons";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
 import { colors, type AppFonts } from "@/constants/colors";
+import { ImageScrim } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useAppStore } from "@/stores/appStore";
 import { useToggleFavorite, useFavorites } from "@/hooks/useConvexData";
@@ -73,6 +74,9 @@ export function LodgingCard({
           contentFit="cover"
           transition={300}
         />
+        {/* Sheen + legibility scrim. Sits above the photo and below every
+            badge, so the overlays keep their own contrast. */}
+        <ImageScrim />
 
         {/* Rating Badge */}
         <View style={[styles.ratingBadge, isRTL && styles.ratingBadgeRTL]}>
@@ -286,7 +290,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   price: {
     fontSize: 14,
     fontFamily: fonts.bold,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
   priceUnit: {
     fontSize: 11,

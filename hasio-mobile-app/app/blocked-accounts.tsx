@@ -16,6 +16,7 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/backend";
 import { colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
@@ -61,6 +62,7 @@ export default function BlockedAccountsScreen() {
 
   return (
     <View style={styles.container}>
+      <ScreenGradient />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
@@ -92,7 +94,7 @@ export default function BlockedAccountsScreen() {
 
         {blocked === undefined ? (
           <View style={styles.loading}>
-            <ActivityIndicator color={colors.primary.DEFAULT} />
+            <ActivityIndicator color={colors.primary.deep} />
           </View>
         ) : blocked.length === 0 ? (
           <Animated.View
@@ -151,7 +153,7 @@ export default function BlockedAccountsScreen() {
                     {isBusy ? (
                       <ActivityIndicator
                         size="small"
-                        color={colors.primary.DEFAULT}
+                        color={colors.primary.deep}
                       />
                     ) : (
                       <Text style={styles.unblockText}>{t("unblock")}</Text>

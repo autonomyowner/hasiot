@@ -18,6 +18,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { VerificationBanner } from "@/components/VerificationBanner";
 import { colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -34,6 +35,7 @@ export default function ProviderDashboardContent() {
 
   return (
     <View style={styles.container}>
+      <ScreenGradient />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Ink hosting header band */}
         <Animated.View

@@ -31,6 +31,7 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { useAppStore } from "@/stores/appStore";
 import { ChatBubble } from "@/components/planner";
 import { colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { TAB_BAR_HEIGHT, TAB_BAR_MARGIN } from "@/constants/layout";
 import { Feather } from "@expo/vector-icons";
@@ -265,6 +266,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={0}
     >
+      <ScreenGradient />
       <View
         ref={innerRef}
         onLayout={keyboardOnLayout}
@@ -375,10 +377,10 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
             disabled={!inputText.trim() || isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={colors.ink} />
             ) : (
               // arrow-up is symmetric, so no RTL mirroring is needed.
-              <Feather name="arrow-up" size={22} color="#FFFFFF" />
+              <Feather name="arrow-up" size={22} color={colors.ink} />
             )}
           </Pressable>
         </View>
@@ -520,12 +522,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   subtitleIcon: {
     fontSize: 12,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
   subtitle: {
     fontSize: 12.5,
     fontFamily: fonts.medium,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
   textRTL: {
     textAlign: "right",
@@ -561,7 +563,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   welcomeTitle: {
     fontSize: 18,
     fontFamily: fonts.semibold,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
     marginBottom: 4,
   },
   welcomeText: {
@@ -627,7 +629,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.primary.DEFAULT,
+    backgroundColor: colors.primary.deep,
   },
   inputContainer: {
     flexDirection: "row",

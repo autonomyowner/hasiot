@@ -20,6 +20,7 @@ import * as DocumentPicker from "expo-document-picker";
 import { useMutation } from "convex/react";
 import { api } from "@/backend";
 import { colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
@@ -123,13 +124,14 @@ export default function VerificationScreenContent() {
   if (isUserLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator color={colors.primary.DEFAULT} />
+        <ActivityIndicator color={colors.primary.deep} />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <ScreenGradient />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
@@ -208,7 +210,7 @@ export default function VerificationScreenContent() {
                   <Image source={{ uri: docUri }} style={styles.preview} />
                 ) : (
                   <View style={styles.filePreview}>
-                    <Feather name="file-text" size={28} color={colors.primary.DEFAULT} />
+                    <Feather name="file-text" size={28} color={colors.primary.deep} />
                     <Text style={styles.filePreviewName} numberOfLines={2}>
                       {docName ?? t("verificationDocLabel")}
                     </Text>
@@ -235,7 +237,7 @@ export default function VerificationScreenContent() {
                   accessibilityRole="button"
                   accessibilityLabel={t("verificationChoosePhoto")}
                 >
-                  <Feather name="image" size={22} color={colors.primary.DEFAULT} />
+                  <Feather name="image" size={22} color={colors.primary.deep} />
                   <Text style={styles.pickerText}>{t("verificationChoosePhoto")}</Text>
                 </Pressable>
                 <Pressable
@@ -245,7 +247,7 @@ export default function VerificationScreenContent() {
                   accessibilityRole="button"
                   accessibilityLabel={t("verificationChooseFile")}
                 >
-                  <Feather name="file-text" size={22} color={colors.primary.DEFAULT} />
+                  <Feather name="file-text" size={22} color={colors.primary.deep} />
                   <Text style={styles.pickerText}>{t("verificationChooseFile")}</Text>
                 </Pressable>
               </View>
@@ -440,7 +442,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   replaceButtonText: {
     fontFamily: fonts.semibold,
     fontSize: 14,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
 
   privacyRow: {
@@ -471,7 +473,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   submitButtonText: {
     fontFamily: fonts.semibold,
     fontSize: 16,
-    color: "#FFFFFF",
+    color: colors.ink,
   },
 
   whyCard: {

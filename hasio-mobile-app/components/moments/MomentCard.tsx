@@ -9,6 +9,7 @@ import Animated, {
 import { Feather } from "@expo/vector-icons";
 import type { Moment } from "@/types";
 import { colors, type AppFonts } from "@/constants/colors";
+import { ImageScrim } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { MOMENT_CARD_WIDTH } from "@/constants/layout";
 
@@ -60,6 +61,7 @@ export function MomentCard({ moment, isRTL, onPress, onDelete }: MomentCardProps
         contentFit="cover"
         transition={300}
       />
+      <ImageScrim />
 
       {/* Date Overlay */}
       <View style={[styles.dateOverlay, isRTL && styles.dateOverlayRTL]}>

@@ -30,6 +30,7 @@ import {
   SkeletonHomeSections,
 } from "@/components/ui";
 import { categoryColors, colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import {
   HOME_CARD_GAP,
@@ -179,6 +180,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScreenGradient />
       <Animated.ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -188,7 +190,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary.DEFAULT}
+            tintColor={colors.primary.deep}
           />
         }
       >
@@ -757,7 +759,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   resultsCount: {
     fontSize: 16,
     fontFamily: fonts.semibold,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
     marginBottom: 20,
   },
   noResultsContainer: {

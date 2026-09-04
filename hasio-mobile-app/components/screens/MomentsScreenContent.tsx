@@ -28,6 +28,7 @@ import { useMoments } from "@/hooks/useMoments";
 import { MomentCard } from "@/components/moments/MomentCard";
 import { Button, SkeletonFade, SkeletonMomentsGrid } from "@/components/ui";
 import { colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { generatedImages } from "@/assets/images/generated";
@@ -163,6 +164,7 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScreenGradient />
       {/* Header */}
       <Animated.View
         entering={FadeInDown.delay(100).duration(600)}
@@ -429,7 +431,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   addButtonText: {
     fontFamily: fonts.regular,
-    color: "#FFFFFF",
+    color: colors.ink,
     fontSize: 24,
     lineHeight: 28,
   },

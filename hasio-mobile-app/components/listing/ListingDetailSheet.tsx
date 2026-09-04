@@ -447,7 +447,7 @@ function ActionButton({
       <Feather
         name={icon}
         size={16}
-        color={primary ? "#FFFFFF" : colors.primary.DEFAULT}
+        color={primary ? colors.ink : colors.primary.deep}
       />
       <Text
         style={[styles.actionLabel, primary && styles.actionLabelPrimary]}
@@ -567,7 +567,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderColor: "transparent",
   },
   thumbActive: {
-    borderColor: colors.primary.DEFAULT,
+    borderColor: colors.primary.deep,
   },
   titleRow: {
     flexDirection: "row",
@@ -616,7 +616,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   price: {
     fontFamily: fonts.semibold,
     fontSize: 16,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
     marginTop: 8,
   },
   textRTL: {
@@ -649,10 +649,10 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   actionLabel: {
     fontFamily: fonts.medium,
     fontSize: 13,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
   actionLabelPrimary: {
-    color: "#FFFFFF",
+    color: colors.ink,
   },
   section: {
     marginTop: 28,
@@ -718,7 +718,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: colors.ink,
   },
   infoLink: {
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
   reportRow: {
     flexDirection: "row",

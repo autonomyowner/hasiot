@@ -22,3 +22,9 @@ export {
   SkeletonMomentsGrid,
   SkeletonOwnerList,
 } from "./SkeletonScreens";
+export {
+  BottomBarFade,
+  ImageScrim,
+  ScreenGradient,
+  SurfaceGradient,
+} from "./Gradients";

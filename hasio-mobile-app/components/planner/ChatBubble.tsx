@@ -145,7 +145,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     alignItems: "center",
   },
   avatarText: {
-    color: "#FFFFFF",
+    color: colors.ink,
     fontSize: 12,
     fontFamily: fonts.bold,
   },

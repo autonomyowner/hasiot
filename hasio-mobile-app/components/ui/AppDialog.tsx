@@ -94,6 +94,7 @@ export function AppDialogHost() {
                       <Text
                         style={[
                           styles.buttonText,
+                          isDestructive && styles.buttonTextDestructive,
                           isCancel && styles.buttonTextCancel,
                         ]}
                       >
@@ -182,6 +183,10 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   buttonText: {
     fontFamily: fonts.semibold,
     fontSize: 15,
+    color: colors.ink,
+  },
+  // The destructive button keeps a dark red fill, so its label stays white.
+  buttonTextDestructive: {
     color: "#FFFFFF",
   },
   buttonTextCancel: {
