@@ -588,6 +588,11 @@ export const translations = {
     emailSignInOnlyNote:
       "Email sign-in is for existing accounts. New accounts are created with a phone number.",
 
+    // Badges for the non-lodging listing types a favourite can be
+    cat_attraction: "Attraction",
+    cat_event: "Event",
+    cat_tour: "Tour",
+
     // Tab bar labels — short, one word, under the icon
     tabStay: "Stay",
     tabHome: "Home",
@@ -1268,6 +1273,11 @@ export const translations = {
     backToPhone: "استخدام رقم الجوال",
     emailSignInOnlyNote:
       "الدخول بالبريد للحسابات الحالية فقط. الحسابات الجديدة تُنشأ برقم الجوال.",
+
+    // Badges for the non-lodging listing types a favourite can be
+    cat_attraction: "معلم",
+    cat_event: "فعالية",
+    cat_tour: "جولة",
 
     // Tab bar labels — short, one word, under the icon
     tabStay: "الإقامة",

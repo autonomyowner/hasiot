@@ -20,6 +20,14 @@ interface LodgingCardProps {
   isRTL: boolean;
   onPress?: () => void;
   perNightText: string;
+  /**
+   * Overrides the type chip. The card is shaped for stays, but Favorites
+   * hands it restaurants and attractions too; without this they would wear
+   * a "Hotel" badge because the mapper has to coerce them into a stay type.
+   */
+  badge?: string;
+  /** Off for anything that is not booked by the night. Defaults to on. */
+  showPrice?: boolean;
 }
 
 export function LodgingCard({
@@ -28,6 +36,8 @@ export function LodgingCard({
   isRTL,
   onPress,
   perNightText,
+  badge,
+  showPrice = true,
 }: LodgingCardProps) {
   const styles = useThemedStyles(makeStyles);
   const [reportOpen, setReportOpen] = useState(false);
@@ -58,7 +68,7 @@ export function LodgingCard({
   const city = getLocalizedText(lodging.city, lodging.cityAr, language);
   // Localised like every other string on the card. Capitalising the raw value
   // left a Latin "Hotel" chip pinned to an otherwise Arabic card.
-  const typeLabel = t(`cat_${lodging.type}` as const);
+  const typeLabel = badge ?? t(`cat_${lodging.type}` as const);
   // The real nightly rate wins over the "$$$" band a host typed: it is the
   // number the quote is built from, and it is the only one worth converting.
   // `priceRange` is free-text display copy, so it is shown as-is or not at all.
@@ -73,7 +83,11 @@ export function LodgingCard({
         style={styles.card}
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={`${name}, ${typeLabel}, ${city}, ${priceText} ${perNightText}`}
+        accessibilityLabel={
+          showPrice
+            ? `${name}, ${typeLabel}, ${city}, ${priceText} ${perNightText}`
+            : `${name}, ${typeLabel}, ${city}`
+        }
       >
         <Image
           source={lodging.images?.[0] ? { uri: lodging.images[0] } : undefined}
@@ -144,10 +158,12 @@ export function LodgingCard({
                 {city}
               </Text>
             </View>
-            <Text style={styles.price}>
-              {priceText}{" "}
-              <Text style={styles.priceUnit}>{perNightText}</Text>
-            </Text>
+            {showPrice && (
+              <Text style={styles.price}>
+                {priceText}{" "}
+                <Text style={styles.priceUnit}>{perNightText}</Text>
+              </Text>
+            )}
           </View>
         </View>
       </PressableScale>

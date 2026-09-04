@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import type { TranslationKey } from "@/constants/translations";
 import { View, Text, StyleSheet, FlatList } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -36,8 +37,14 @@ function toDetails(l: FavoriteListing): ListingDetails {
   };
 }
 
-function toLodging(l: FavoriteListing): Lodging {
+// The raw listing type rides along: the card is stay-shaped and the mapper
+// has to coerce every listing into a stay type, so this is the only way to
+// know afterwards that a favourite is really a restaurant or an attraction.
+type FavoriteItem = Lodging & { listingType: string };
+
+function toLodging(l: FavoriteListing): FavoriteItem {
   return {
+    listingType: l.type,
     id: l._id,
     name: l.name_en,
     nameAr: l.name_ar,
@@ -146,6 +153,14 @@ export function FavoritesScreenContent() {
               language={language}
               isRTL={isRTL}
               perNightText={t("perNight")}
+              // Only a stay is priced by the night. A favourited restaurant or
+              // attraction keeps its own badge and shows no nightly price.
+              badge={
+                item.listingType === "hotel"
+                  ? undefined
+                  : t(`cat_${item.listingType}` as TranslationKey)
+              }
+              showPrice={item.listingType === "hotel"}
               onPress={() => setSelected(toDetailItem(item))}
             />
           )}

@@ -17,6 +17,7 @@ import Animated, {
 import { useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { VerificationBanner } from "@/components/VerificationBanner";
 import { colors, type AppFonts } from "@/constants/colors";
@@ -30,6 +31,7 @@ export default function BusinessDashboardContent() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, isRTL } = useLanguage();
+  const { format } = useCurrency();
   const { verificationStatus, isApproved, isSignedIn } = useConvexUser();
 
   const quickActions = [
@@ -95,7 +97,7 @@ export default function BusinessDashboardContent() {
               isRTL={isRTL}
             />
             <StatCard
-              value={stats ? `${t("sar")} ${stats.revenueMonth.toLocaleString("en-US")}` : "—"}
+              value={stats ? format(stats.revenueMonth) : "—"}
               label={t("statRevenue")}
               delta={t("thisMonth")}
               isRTL={isRTL}
