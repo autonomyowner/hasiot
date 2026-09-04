@@ -11,7 +11,7 @@ const MAX_SCAN = 1000;
 const MAX_LIST = 200;
 
 // Helper: check if listing is publicly visible (approved or no status = seed data)
-function isPublicListing(listing: { isActive?: boolean; status?: string }) {
+export function isPublicListing(listing: { isActive?: boolean; status?: string }) {
   if (listing.isActive === false) return false;
   if (listing.status && listing.status !== "approved") return false;
   return true;

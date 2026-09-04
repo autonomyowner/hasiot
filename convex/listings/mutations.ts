@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getAuthenticatedAppUser, requireAdmin } from "../auth";
 import { enforceRateLimit } from "../rateLimit";
 import { logAdminAction, labelFor } from "../admin/activity";
+import { PRICING_ARGS, validatePricing, withPricingDefaults } from "./pricing";
 
 // Create a new listing
 export const createListing = mutation({
@@ -25,6 +26,7 @@ export const createListing = mutation({
     email: v.optional(v.string()),
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
+    ...PRICING_ARGS,
     amenities: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
     workingHours: v.optional(
@@ -41,9 +43,10 @@ export const createListing = mutation({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    validatePricing(args);
 
     const listingId = await ctx.db.insert("listings", {
-      ...args,
+      ...withPricingDefaults(args),
       rating: 0,
       reviewCount: 0,
       isVerified: false,
@@ -79,6 +82,7 @@ export const updateListing = mutation({
     email: v.optional(v.string()),
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
+    ...PRICING_ARGS,
     amenities: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
     workingHours: v.optional(
@@ -96,8 +100,9 @@ export const updateListing = mutation({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    validatePricing(args);
 
-    const { listingId, ...updates } = args;
+    const { listingId, ...updates } = withPricingDefaults(args);
 
     const listing = await ctx.db.get(listingId);
     if (!listing) {
@@ -361,6 +366,7 @@ export const submitListing = mutation({
     email: v.optional(v.string()),
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
+    ...PRICING_ARGS,
     amenities: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
     workingHours: v.optional(
@@ -394,6 +400,8 @@ export const submitListing = mutation({
       throw new Error("Service providers can post: tour");
     }
 
+    validatePricing(args);
+
     await enforceRateLimit(
       ctx,
       `listing:${user._id}`,
@@ -403,7 +411,7 @@ export const submitListing = mutation({
 
     const now = Date.now();
     const listingId = await ctx.db.insert("listings", {
-      ...args,
+      ...withPricingDefaults(args),
       ownerId: user._id,
       status: "pending",
       rating: 0,
@@ -442,6 +450,7 @@ export const updateMyListing = mutation({
     email: v.optional(v.string()),
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
+    ...PRICING_ARGS,
     amenities: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
     workingHours: v.optional(
@@ -463,11 +472,15 @@ export const updateMyListing = mutation({
     if (!listing) throw new Error("Listing not found");
     if (listing.ownerId !== user._id) throw new Error("Not your listing");
 
-    const { listingId, ...updates } = args;
+    validatePricing(args);
+
+    const { listingId, ...updates } = withPricingDefaults(args);
     const filteredUpdates: Record<string, unknown> = {
       updatedAt: Date.now(),
       status: "pending", // Reset status on edit
       rejectionReason: undefined,
+      // An edit re-enters review, so any prior suspension note is stale.
+      suspendedReason: undefined,
     };
     for (const [key, value] of Object.entries(updates)) {
       if (value !== undefined) {
