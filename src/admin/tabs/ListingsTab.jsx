@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
@@ -9,6 +9,7 @@ import FilterSelect from '../components/FilterSelect'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
+import { useDebounced } from '../hooks/useDebounced'
 import {
   CITIES,
   CITY_LABELS,
@@ -24,15 +25,6 @@ import {
 } from '../ui/table'
 
 const PAGE_SIZE = 25
-
-function useDebounced(value, delay = 300) {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const id = setTimeout(() => setDebounced(value), delay)
-    return () => clearTimeout(id)
-  }, [value, delay])
-  return debounced
-}
 
 const triState = (value) => (value === '' ? undefined : value === 'yes')
 
