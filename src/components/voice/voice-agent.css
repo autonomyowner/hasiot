@@ -1,158 +1,160 @@
 /*
- * أبشر — voice agent widget.
+ * أبشر — the voice agent section.
  *
- * Every selector is `va-` prefixed and nothing here is a bare element rule: the landing
+ * Every selector is prefixed and nothing here is a bare element rule: the landing
  * page's spacing is hand-tuned and a stray `button { }` from this file would fight it.
  *
- * The panel is deliberately single-theme — a dark instrument panel, the way a voice
- * assistant reads on any device. It paints its own ground so it holds on either host.
+ * The band is deliberately dark against the page's paper — the blob is a light
+ * source, and it needs a night to be a light source in.
  */
 
-.va-launch {
-  position: fixed;
-  inset-inline-end: clamp(1rem, 3vw, 2rem);
-  bottom: clamp(1rem, 3vw, 2rem);
-  z-index: 60;
-
-  display: inline-flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.5rem 1.05rem 0.5rem 0.55rem;
-  border: 1px solid rgba(13, 122, 95, 0.2);
-  border-radius: 999px;
-
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 10px 34px -12px rgba(6, 40, 46, 0.45), 0 2px 8px -3px rgba(6, 40, 46, 0.2);
-
-  font: inherit;
-  font-size: 0.92rem;
-  font-weight: 500;
-  color: #08313a;
-  cursor: pointer;
-  transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.22s ease;
-}
-
-[dir='rtl'] .va-launch { padding: 0.5rem 0.55rem 0.5rem 1.05rem; }
-
-.va-launch:hover { transform: translateY(-2px); box-shadow: 0 16px 40px -12px rgba(6, 40, 46, 0.55); }
-.va-launch:focus-visible { outline: 2px solid #22c6c0; outline-offset: 3px; }
-
-.va-launch-orb {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  flex: none;
-  background:
-    radial-gradient(circle at 34% 28%, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0) 34%),
-    radial-gradient(circle at 62% 70%, #7b6bf0 0%, #1fb6bd 44%, #04212e 100%);
-  box-shadow: 0 0 0 3px rgba(34, 198, 192, 0.12), 0 0 14px -1px rgba(80, 220, 220, 0.7);
-  animation: va-breathe 3.6s ease-in-out infinite;
-}
-
-@keyframes va-breathe {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.08); }
-}
-
-/* ---------- overlay ---------- */
-
-.va-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: grid;
-  place-items: center;
-  padding: 1.25rem;
-  background: rgba(2, 6, 12, 0.72);
-  backdrop-filter: blur(16px) saturate(115%);
-  -webkit-backdrop-filter: blur(16px) saturate(115%);
-  animation: va-fade 0.3s ease both;
-}
-
-@keyframes va-fade { from { opacity: 0; } to { opacity: 1; } }
-
-/* The overlay is the orb and nothing else — no card, no copy, no controls. */
-
-.va-close {
-  position: fixed;
-  top: clamp(1rem, 3vw, 1.75rem);
-  inset-inline-end: clamp(1rem, 3vw, 1.75rem);
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(220, 238, 245, 0.6);
-  cursor: pointer;
-  transition: background 0.2s ease, color 0.2s ease;
-}
-.va-close:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
-.va-close:focus-visible { outline: 2px solid #4fd6d6; outline-offset: 3px; }
-
-/* The orb is the control. No chrome of its own — the sphere is the affordance. */
-.va-stage {
+.voice-section {
   position: relative;
-  width: min(30rem, 74vw, 74vh);
+  padding: clamp(4.5rem, 11vw, 8rem) 1.5rem clamp(4rem, 9vw, 6.5rem);
+  background:
+    radial-gradient(75% 55% at 50% 34%, rgba(13, 122, 95, 0.28) 0%, rgba(4, 14, 12, 0) 70%),
+    linear-gradient(180deg, #06120f 0%, #030a09 100%);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.voice-inner {
+  max-width: 46rem;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.voice-eyebrow {
+  margin: 0 0 1rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(126, 214, 180, 0.72);
+}
+
+.voice-title {
+  margin: 0;
+  font-size: clamp(2.1rem, 6vw, 3.4rem);
+  line-height: 1.08;
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  color: #f2fbf7;
+}
+
+/* The name keeps a little more weight — it is a name, not a word. */
+.voice-name {
+  color: #7fe9c2;
+  font-weight: 500;
+}
+
+.voice-body {
+  margin: 1.1rem 0 0;
+  max-width: 34rem;
+  font-size: 1.02rem;
+  line-height: 1.65;
+  color: rgba(194, 219, 209, 0.8);
+}
+
+/* ---------- the blob ---------- */
+
+.voice-stage {
+  position: relative;
+  width: min(30rem, 82vw);
   aspect-ratio: 1;
-  padding: 0;
-  border: 0;
-  background: none;
+  margin: clamp(0.5rem, 2vw, 1.25rem) 0 0;
   display: grid;
   place-items: center;
-  cursor: pointer;
-  animation: va-rise 0.5s cubic-bezier(0.2, 0.85, 0.3, 1) both;
-  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
-}
-.va-stage:hover:not(:disabled) { transform: scale(1.02); }
-.va-stage:disabled { cursor: default; }
-.va-stage:focus-visible { outline: 2px solid rgba(120, 220, 230, 0.8); outline-offset: 12px; border-radius: 50%; }
-
-@keyframes va-rise {
-  from { opacity: 0; transform: scale(0.9); }
-  to   { opacity: 1; transform: none; }
 }
 
-.va-orb { width: 100%; height: 100%; display: block; }
+.va-blob {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
 
-/* CSS stand-in when WebGL is unavailable. */
-.va-orb.is-fallback {
+/* Stand-in when WebGL2 is unavailable — still a glowing body, just not a live one. */
+.va-blob.is-fallback {
   border-radius: 50%;
   background:
-    radial-gradient(circle at 34% 26%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 30%),
-    radial-gradient(circle at 64% 72%, #7b6bf0 0%, #1fb6bd 46%, #04182a 100%);
-  box-shadow: 0 0 90px -10px rgba(70, 210, 215, 0.5);
-  animation: va-breathe 3.6s ease-in-out infinite;
+    radial-gradient(circle at 36% 30%, rgba(215, 255, 240, 0.55) 0%, rgba(215, 255, 240, 0) 34%),
+    radial-gradient(circle at 62% 68%, #23c79a 0%, #0d7a5f 44%, #041a15 100%);
+  box-shadow: 0 0 100px -14px rgba(45, 200, 155, 0.55);
+  animation: voice-breathe 5s ease-in-out infinite;
 }
 
-/* Errors are the one thing allowed to speak — silence on failure is worse. */
-.va-error {
-  position: fixed;
-  bottom: clamp(2rem, 8vh, 4rem);
-  left: 50%;
-  transform: translateX(-50%);
-  margin: 0;
-  max-width: min(30ch, 86vw);
-  text-align: center;
-  font-size: 0.9rem;
+@keyframes voice-breathe {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.045); }
+}
+
+/* ---------- controls ---------- */
+
+.voice-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  margin-top: clamp(0.5rem, 2vw, 1rem);
+}
+
+.voice-cta {
+  padding: 0.9rem 2.3rem;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #17b184 0%, #0d7a5f 100%);
+  box-shadow: 0 16px 40px -14px rgba(23, 177, 132, 0.8);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 500;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+}
+.voice-cta:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 48px -14px rgba(23, 177, 132, 0.95);
+}
+.voice-cta:disabled { opacity: 0.62; cursor: default; }
+.voice-cta:focus-visible { outline: 2px solid #7fe9c2; outline-offset: 4px; }
+
+.voice-cta.is-live {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+  color: #e6f6ef;
+}
+.voice-cta.is-live:hover { background: rgba(255, 255, 255, 0.13); transform: none; }
+
+/* Fixed min-height so the line existing or not never shifts what is under it. */
+.voice-state {
+  min-height: 1.4rem;
+  margin: 0.9rem 0 0;
+  font-size: 0.82rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgba(126, 214, 180, 0.9);
+}
+
+.voice-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: rgba(150, 180, 170, 0.55);
+}
+
+.voice-error {
+  margin: 0.35rem 0 0;
+  max-width: 32ch;
+  font-size: 0.86rem;
   line-height: 1.5;
   color: #ffb1a6;
 }
 
-/* ---------- small screens ---------- */
-
-@media (max-width: 560px) {
-  .va-launch-label { display: none; }
-  .va-launch, [dir='rtl'] .va-launch { padding: 0.5rem; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .va-launch-orb,
-  .va-orb.is-fallback { animation: none; }
-  .va-overlay, .va-stage { animation-duration: 0.01ms; }
-  .va-launch, .va-stage { transition: none; }
+  .va-blob.is-fallback { animation: none; }
+  .voice-cta { transition: none; }
 }

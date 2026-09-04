@@ -1,69 +1,75 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import VoiceOrb from './VoiceOrb'
+import VoiceBlob from './VoiceBlob'
 import './voice-agent.css'
 
 /**
- * أبشر — the Hasio voice agent.
+ * The "talk to أبشر" section.
  *
- * The ElevenLabs SDK is imported dynamically on first launch, never at module scope.
- * The landing page ships ~75 kB gzip and that is deliberate (see CLAUDE.md); a visitor
- * who never opens the agent must not pay for the voice stack.
- *
- * Auth is the public agent id alone. The API key is server-side only, lives in
- * .env.local for scripts/elevenlabs-agent.mjs, and must never appear in src/.
+ * The ElevenLabs SDK is imported dynamically on first press, never at module scope,
+ * so a visitor who scrolls past this section without speaking to it never downloads
+ * the voice stack. Auth is the public agent id alone; the API key is server-side
+ * only and must never appear in src/.
  */
 
 const AGENT_ID = import.meta.env.VITE_ELEVENLABS_AGENT_ID
 
 const copy = {
   en: {
-    launch: 'Talk to أبشر',
-    greeting: 'أبشر · Hasio',
+    eyebrow: 'ASK ABSHER',
+    titleA: 'Talk to',
+    titleB: 'أبشر',
+    body:
+      'Our voice agent knows Al-Ahsa, the app, and where Hasio is going. Ask it anything, ' +
+      'in Arabic or English — it answers the way a person would, and you can interrupt.',
+    start: 'Start talking',
     permission: 'Allow the microphone…',
     connecting: 'Connecting…',
-    listening: 'Listening…',
-    speaking: 'Speaking…',
-    prompt: 'Ask anything',
-    close: 'Close',
+    listening: 'Listening — go ahead',
+    speaking: 'Absher is speaking',
+    stop: 'End conversation',
     micDenied: 'Microphone blocked. Allow it from your browser’s address bar, then try again.',
     failed: 'Could not connect right now. Please try again in a moment.',
     unconfigured: 'The voice agent is not configured yet.',
+    note: 'Speaks Arabic and English. Nothing is saved to your device.',
   },
   ar: {
-    launch: 'كلّم أبشر',
-    greeting: 'أبشر · Hasio',
+    eyebrow: 'اسأل أبشر',
+    titleA: 'كلّم',
+    titleB: 'أبشر',
+    body:
+      'وكيلنا الصوتي يعرف الأحساء والتطبيق وإلى أين تتجه Hasio. اسأله عن أي شيء، بالعربية ' +
+      'أو الإنجليزية — يرد عليك مثل أي شخص، وتقدر تقاطعه في أي وقت.',
+    start: 'ابدأ المحادثة',
     permission: 'اسمح باستخدام الميكروفون…',
     connecting: 'جاري الاتصال…',
-    listening: 'أسمعك…',
-    speaking: 'يتحدث…',
-    prompt: 'اسأل عن أي شيء',
-    close: 'إغلاق',
+    listening: 'أسمعك — تفضل',
+    speaking: 'أبشر يتحدث',
+    stop: 'إنهاء المحادثة',
     micDenied: 'الميكروفون محظور. اسمح به من شريط العنوان ثم حاول مرة أخرى.',
     failed: 'تعذّر الاتصال الآن. حاول بعد قليل.',
     unconfigured: 'الوكيل الصوتي غير مهيأ بعد.',
+    note: 'يتحدث العربية والإنجليزية. لا يُحفظ شيء على جهازك.',
   },
 }
 
-export default function VoiceAgent({ lang = 'en' }) {
+export default function VoiceSection({ lang = 'en' }) {
   const t = copy[lang] ?? copy.en
-  const isRtl = lang === 'ar'
 
-  const [open, setOpen] = useState(false)
-  const [status, setStatus] = useState('idle') // idle | connecting | connected | error
+  const [status, setStatus] = useState('idle') // idle | permission | connecting | connected | error
   const [speaking, setSpeaking] = useState(false)
   const [error, setError] = useState(null)
 
   const convoRef = useRef(null)
-  const levelRef = useRef(0)
+  const freqRef = useRef(0)
 
-  /** Polled once per frame by the orb and the meter. */
-  const getLevel = useCallback(() => levelRef.current, [])
+  /** Polled once per frame by the blob. Never state — see VoiceBlob's header. */
+  const getFrequency = useCallback(() => freqRef.current, [])
 
-  // Sample the SDK's analyser outside the draw loop, so the orb keeps animating even
-  // if one of these calls throws mid-session.
+  // Sample the SDK's analyser outside the draw loop, so the blob keeps animating
+  // even if one of these calls throws mid-session.
   useEffect(() => {
     if (status !== 'connected') {
-      levelRef.current = 0
+      freqRef.current = 0
       return
     }
     let raf = 0
@@ -77,13 +83,13 @@ export default function VoiceAgent({ lang = 'en' }) {
             const n = Math.min(data.length, 48)
             let sum = 0
             for (let i = 0; i < n; i++) sum += data[i]
-            levelRef.current = Math.min(1, sum / n / 140)
+            freqRef.current = Math.min(1, sum / n / 130)
           } else {
             const v = speaking ? c.getOutputVolume?.() : c.getInputVolume?.()
-            levelRef.current = typeof v === 'number' ? Math.min(1, v * 1.6) : 0
+            freqRef.current = typeof v === 'number' ? Math.min(1, v * 1.6) : 0
           }
         } catch {
-          levelRef.current = 0
+          freqRef.current = 0
         }
       }
       raf = requestAnimationFrame(tick)
@@ -99,9 +105,9 @@ export default function VoiceAgent({ lang = 'en' }) {
       return
     }
     setError(null)
-    // Two distinct waits, and the user needs to know which one they are in: the
-    // permission prompt can sit open indefinitely, and a bare "Connecting…" gives
-    // no hint that the browser is waiting on them.
+    // Two distinct waits, and the visitor needs to know which one they are in: the
+    // permission prompt can sit open indefinitely, and a bare "Connecting…" gives no
+    // hint that the browser is waiting on them.
     setStatus('permission')
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true })
@@ -113,7 +119,7 @@ export default function VoiceAgent({ lang = 'en' }) {
     }
     try {
       const { Conversation } = await import('@elevenlabs/client')
-      const convo = await Conversation.startSession({
+      convoRef.current = await Conversation.startSession({
         agentId: AGENT_ID,
         // websocket, not webrtc: the webrtc path wants a conversation token this
         // public agent never issues, and fails before onError can say why.
@@ -129,15 +135,14 @@ export default function VoiceAgent({ lang = 'en' }) {
         },
         onModeChange: ({ mode }) => setSpeaking(mode === 'speaking'),
         onError: (err) => {
-          console.error('[VoiceAgent] session error:', err)
+          console.error('[VoiceSection] session error:', err)
           setError(t.failed)
           setStatus('error')
         },
       })
-      convoRef.current = convo
     } catch (err) {
       // Keep the on-screen copy friendly, but never swallow the real reason.
-      console.error('[VoiceAgent] startSession failed:', err?.message || err, err)
+      console.error('[VoiceSection] startSession failed:', err?.message || err, err)
       setError(t.failed)
       setStatus('error')
     }
@@ -149,80 +154,54 @@ export default function VoiceAgent({ lang = 'en' }) {
     setSpeaking(false)
     setStatus('idle')
     if (c) {
-      try {
-        await c.endSession()
-      } catch {
-        /* already gone */
-      }
+      try { await c.endSession() } catch { /* already gone */ }
     }
   }, [])
-
-  const close = useCallback(() => {
-    stop()
-    setOpen(false)
-  }, [stop])
-
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e) => { if (e.key === 'Escape') close() }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [open, close])
 
   // Leaving the page must not leave a call running.
   useEffect(() => () => { convoRef.current?.endSession?.().catch(() => {}) }, [])
 
   const live = status === 'connected'
-  const busy = status === 'connecting' || status === 'permission'
-  const pillLabel =
+  const busy = status === 'permission' || status === 'connecting'
+
+  const state =
     status === 'permission' ? t.permission
     : status === 'connecting' ? t.connecting
     : live && speaking ? t.speaking
     : live ? t.listening
-    : t.prompt
+    : null
 
   return (
-    <>
-      <button type="button" className="va-launch" onClick={() => setOpen(true)} aria-haspopup="dialog">
-        <span className="va-launch-orb" aria-hidden="true" />
-        <span className="va-launch-label">{t.launch}</span>
-      </button>
+    <section className="voice-section" id="voice">
+      <div className="voice-inner">
+        <p className="voice-eyebrow">{t.eyebrow}</p>
+        <h2 className="voice-title">
+          {t.titleA} <span className="voice-name">{t.titleB}</span>
+        </h2>
+        <p className="voice-body">{t.body}</p>
 
-      {open && (
-        <div
-          className="va-overlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t.greeting}
-          dir={isRtl ? 'rtl' : 'ltr'}
-          onClick={(e) => { if (e.target === e.currentTarget) close() }}
-        >
-          <button type="button" className="va-close" onClick={close} aria-label={t.close}>
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-              <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor"
-                    strokeWidth="2" strokeLinecap="round" />
-            </svg>
-          </button>
+        <div className={`voice-stage ${live ? 'is-live' : ''}`}>
+          <VoiceBlob getFrequency={getFrequency} />
+        </div>
 
-          {/*
-            The orb is the entire interface: tap to start, tap to end. The status
-            never becomes visible text — it rides the aria-label for screen readers
-            and the orb's own motion for everyone else.
-          */}
+        <div className="voice-controls">
           <button
             type="button"
-            className={`va-stage ${live ? 'is-live' : ''} ${busy ? 'is-busy' : ''}`}
+            className={`voice-cta ${live ? 'is-live' : ''}`}
             onClick={live ? stop : start}
             disabled={busy}
-            aria-label={pillLabel}
           >
-            <VoiceOrb getLevel={getLevel} open />
+            {live ? t.stop : busy ? (status === 'permission' ? t.permission : t.connecting) : t.start}
           </button>
 
-          {/* Only ever rendered when something actually went wrong. */}
-          {error && <p className="va-error" role="alert">{error}</p>}
+          {/* Reserves its line whether or not it has text, so nothing below shifts. */}
+          <p className="voice-state" aria-live="polite">{state ?? ' '}</p>
+
+          {error
+            ? <p className="voice-error" role="alert">{error}</p>
+            : <p className="voice-note">{t.note}</p>}
         </div>
-      )}
-    </>
+      </div>
+    </section>
   )
 }
