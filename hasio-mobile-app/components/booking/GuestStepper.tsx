@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 interface GuestStepperProps {
@@ -55,7 +55,11 @@ export function GuestStepper({
           accessibilityState={{ disabled: !canDecrease }}
           hitSlop={8}
         >
-          <Feather name="minus" size={18} color={canDecrease ? "#0D7A5F" : "#C4C0BA"} />
+          <Feather
+            name="minus"
+            size={18}
+            color={canDecrease ? colors.primary.deep : colors.onSurface.muted}
+          />
         </Pressable>
 
         <Text style={styles.value} accessibilityLiveRegion="polite">
@@ -71,7 +75,11 @@ export function GuestStepper({
           accessibilityState={{ disabled: !canIncrease }}
           hitSlop={8}
         >
-          <Feather name="plus" size={18} color={canIncrease ? "#0D7A5F" : "#C4C0BA"} />
+          <Feather
+            name="plus"
+            size={18}
+            color={canIncrease ? colors.primary.deep : colors.onSurface.muted}
+          />
         </Pressable>
       </View>
     </View>
@@ -90,11 +98,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   label: {
     fontSize: 15,
     fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    color: colors.ink,
   },
   unit: {
     fontSize: 13,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     marginTop: 2,
   },
   controls: {
@@ -102,25 +111,24 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
+  // Flat and solid, like every other control in the app — the soft lime chip
+  // surface, never a white box outlined on the cream page.
   button: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.mint,
     alignItems: "center",
     justifyContent: "center",
   },
   buttonDisabled: {
-    backgroundColor: "#F5F3F0",
-    borderColor: "#EDEAE5",
+    backgroundColor: colors.chip,
   },
   value: {
     minWidth: 32,
     textAlign: "center",
     fontSize: 17,
-    fontFamily: fonts.bold,
-    color: "#1A1A1A",
+    fontFamily: fonts.semibold,
+    color: colors.ink,
   },
 });

@@ -28,11 +28,11 @@ import Animated from "react-native-reanimated";
 import { enterFade, popIn } from "@/constants/motion";
 import { applyCalendarLocale } from "@/lib/calendarLocale";
 import { getBookingErrorKey } from "@/lib/bookingError";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
+import { ScreenGradient, SurfaceGradient } from "@/components/ui/Gradients";
 import type { DetailItem } from "@/components/listing/ListingDetailSheet";
 
-const GREEN = "#0D7A5F";
 // A year out. Past that a host's pricing is guesswork anyway.
 const MAX_HORIZON_DAYS = 365;
 
@@ -43,11 +43,21 @@ const MAX_HORIZON_DAYS = 365;
 // calendar picks up Cairo in Arabic instead of a Latin face with no glyphs.
 const makeCalendarTheme = (fonts: AppFonts) =>
   ({
-    todayTextColor: GREEN,
-    arrowColor: GREEN,
+    // Transparent, not white: the calendar is content on the page like every
+    // other block on it, not a panel floating on the cream.
+    calendarBackground: "transparent",
+    // Lime is a fill and cannot be read as text, so everything drawn AS the
+    // brand colour here - today, the arrows - takes the dark tone instead.
+    todayTextColor: colors.primary.deep,
+    arrowColor: colors.primary.deep,
+    monthTextColor: colors.ink,
+    dayTextColor: colors.ink,
+    textSectionTitleColor: colors.onSurface.muted,
+    textDisabledColor: colors.onSurface.muted,
     textDayFontFamily: fonts.regular,
-    textMonthFontFamily: fonts.semibold,
+    textMonthFontFamily: fonts.serif,
     textDayHeaderFontFamily: fonts.medium,
+    textMonthFontSize: 20,
   }) as const;
 
 interface BookingSheetProps {
@@ -117,7 +127,12 @@ export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
 
     if (!checkOut) {
       return {
-        [checkIn]: { startingDay: true, endingDay: true, color: GREEN, textColor: "#FFFFFF" },
+        [checkIn]: {
+          startingDay: true,
+          endingDay: true,
+          color: colors.primary.DEFAULT,
+          textColor: colors.ink,
+        },
       };
     }
 
@@ -125,13 +140,20 @@ export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
     // datesBetween is the nights slept; the check-out day is drawn separately
     // as the closing cap because nobody sleeps there.
     for (const date of datesBetween(checkIn, checkOut)) {
+      // Endpoints are the lime fill with ink on it; the nights between are the
+      // soft lime surface with the dark lime tone. White on lime is 1.4:1 and
+      // would erase the dates the guest just picked.
       marks[date] = {
-        color: date === checkIn ? GREEN : "#DCEFE9",
-        textColor: date === checkIn ? "#FFFFFF" : "#0D7A5F",
+        color: date === checkIn ? colors.primary.DEFAULT : colors.mint,
+        textColor: date === checkIn ? colors.ink : colors.primary.deep,
         ...(date === checkIn ? { startingDay: true } : {}),
       };
     }
-    marks[checkOut] = { endingDay: true, color: GREEN, textColor: "#FFFFFF" };
+    marks[checkOut] = {
+      endingDay: true,
+      color: colors.primary.DEFAULT,
+      textColor: colors.ink,
+    };
     return marks;
   }, [checkIn, checkOut]);
 
@@ -194,6 +216,7 @@ export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
       onRequestClose={handleClose}
     >
       <View style={styles.container}>
+        <ScreenGradient />
         <View style={[styles.header, isRTL && styles.headerRTL]}>
           <View style={styles.headerText}>
             <Text style={[styles.title, isRTL && styles.textRTL]} numberOfLines={1}>
@@ -212,14 +235,14 @@ export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
             accessibilityLabel={t("close")}
             hitSlop={8}
           >
-            <Feather name="x" size={22} color="#1A1A1A" />
+            <Feather name="x" size={22} color={colors.ink} />
           </Pressable>
         </View>
 
         {confirmation ? (
           <View style={styles.successBody}>
             <Animated.View entering={popIn} style={styles.successIcon}>
-              <Feather name="check" size={28} color="#FFFFFF" />
+              <Feather name="check" size={28} color={colors.ink} />
             </Animated.View>
             <Animated.View entering={enterFade(1)} style={styles.successText}>
               <Text style={styles.successLabel}>{t("confirmationCode")}</Text>
@@ -277,13 +300,14 @@ export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
                   <Feather
                     name={(direction === "left") !== isRTL ? "chevron-left" : "chevron-right"}
                     size={20}
-                    color={GREEN}
+                    color={colors.primary.deep}
                   />
                 )}
               />
 
               {checkIn && checkOut && (
                 <View style={styles.rangeCard}>
+                  <SurfaceGradient />
                   <View style={[styles.rangeRow, isRTL && styles.rangeRowRTL]}>
                     <View style={styles.rangeCell}>
                       <Text style={[styles.rangeLabel, isRTL && styles.textRTL]}>{t("checkIn")}</Text>
@@ -347,7 +371,7 @@ export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF7F2",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -365,13 +389,14 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 20,
-    fontFamily: fonts.bold,
-    color: "#1A1A1A",
+    fontSize: 26,
+    fontFamily: fonts.serif,
+    color: colors.ink,
   },
   subtitle: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     marginTop: 2,
   },
   textRTL: {
@@ -381,7 +406,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.chip,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -392,24 +417,28 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   sectionLabel: {
     fontSize: 15,
     fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    color: colors.ink,
     marginTop: 8,
   },
   sectionHint: {
     fontSize: 13,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     marginTop: 4,
     marginBottom: 8,
   },
+  // No fill: the theme above draws the calendar straight onto the page.
   calendar: {
-    borderRadius: 16,
+    backgroundColor: "transparent",
     paddingBottom: 8,
-    backgroundColor: "#FFFFFF",
   },
+  // The one raised surface on this screen, so it takes the card treatment -
+  // radius, clip, and the lit-from-above wash instead of a white fill.
   rangeCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingVertical: 12,
+    borderRadius: 24,
+    overflow: "hidden",
+    backgroundColor: colors.surface.DEFAULT,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     marginTop: 12,
     gap: 8,
@@ -437,43 +466,47 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   rangeLabel: {
     fontSize: 12,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
   },
   rangeValue: {
     fontSize: 15,
     fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    color: colors.ink,
     marginTop: 2,
   },
   rangeHint: {
     fontSize: 12,
-    color: "#A3A3A3",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
   },
   nightsPill: {
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "#EEF7F4",
+    backgroundColor: colors.mint,
   },
   nightsPillText: {
     fontSize: 12,
     fontFamily: fonts.semibold,
-    color: GREEN,
+    color: colors.primary.deep,
   },
   divider: {
     height: 1,
-    backgroundColor: "#E9E5DE",
+    backgroundColor: colors.divider,
     marginVertical: 20,
   },
   pendingNote: {
     fontSize: 12,
     lineHeight: 18,
-    color: "#8A8178",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
   },
   primaryButton: {
+    minHeight: 50,
     height: 52,
-    backgroundColor: GREEN,
-    borderRadius: 12,
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -482,8 +515,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   primaryButtonText: {
     fontSize: 16,
-    fontFamily: fonts.bold,
-    color: "#FFFFFF",
+    fontFamily: fonts.semibold,
+    color: colors.ink,
   },
   secondaryButton: {
     height: 48,
@@ -492,8 +525,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   secondaryButtonText: {
     fontSize: 15,
-    fontFamily: fonts.semibold,
-    color: "#737373",
+    fontFamily: fonts.medium,
+    color: colors.onSurface.variant,
   },
   successBody: {
     flex: 1,
@@ -501,11 +534,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     paddingTop: 24,
     alignItems: "center",
   },
+  // Lime circle, ink check. A white check on lime is 1.4:1 - an empty disc.
   successIcon: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: GREEN,
+    backgroundColor: colors.primary.DEFAULT,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 20,
@@ -518,12 +552,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   successLabel: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
   },
   successCode: {
-    fontSize: 32,
-    fontFamily: fonts.bold,
-    color: "#1A1A1A",
+    fontSize: 36,
+    fontFamily: fonts.serif,
+    color: colors.ink,
     letterSpacing: 2,
     marginTop: 6,
   },

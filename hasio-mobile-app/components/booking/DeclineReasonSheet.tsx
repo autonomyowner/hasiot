@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 interface DeclineReasonSheetProps {
@@ -86,7 +86,7 @@ export function DeclineReasonSheet({ visible, onClose, onSubmit }: DeclineReason
               value={reason}
               onChangeText={setReason}
               placeholder={t("declineReasonPlaceholder")}
-              placeholderTextColor="#A3A3A3"
+              placeholderTextColor={colors.onSurface.muted}
               multiline
               numberOfLines={3}
               maxLength={500}
@@ -103,7 +103,7 @@ export function DeclineReasonSheet({ visible, onClose, onSubmit }: DeclineReason
               accessibilityState={{ disabled: submitting, busy: submitting }}
             >
               {submitting ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color={colors.surface.DEFAULT} />
               ) : (
                 <Text style={styles.declineButtonText}>{t("declineBooking")}</Text>
               )}
@@ -122,7 +122,7 @@ export function DeclineReasonSheet({ visible, onClose, onSubmit }: DeclineReason
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(31, 29, 23, 0.35)",
   },
   avoider: {
     position: "absolute",
@@ -130,16 +130,18 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     right: 0,
     bottom: 0,
   },
+  // A sheet is one surface, so the flat fill is right here — with the same
+  // 28px top radius every other sheet in the app uses.
   sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: colors.surface.DEFAULT,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     maxHeight: "85%",
   },
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: "#D1D5DB",
+    backgroundColor: colors.border,
     borderRadius: 2,
     alignSelf: "center",
     marginTop: 10,
@@ -151,35 +153,41 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     gap: 12,
   },
   title: {
-    fontSize: 20,
-    fontFamily: fonts.bold,
-    color: "#1A1A1A",
+    fontSize: 24,
+    fontFamily: fonts.serif,
+    color: colors.ink,
   },
   label: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
   },
   textRTL: {
     textAlign: "right",
   },
   input: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    backgroundColor: colors.surface.variant,
+    borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
-    color: "#1A1A1A",
+    fontFamily: fonts.regular,
+    color: colors.ink,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: colors.border,
   },
   textArea: {
     minHeight: 88,
     textAlignVertical: "top",
   },
+  // The one place a filled destructive button is right: it is the sheet's
+  // whole purpose. The destructive token is dark enough to carry the white
+  // label at 7:1 — unlike lime, which never can.
   declineButton: {
+    minHeight: 50,
     height: 52,
-    borderRadius: 12,
-    backgroundColor: "#B91C1C",
+    borderRadius: 14,
+    backgroundColor: colors.signOut,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 4,
@@ -189,8 +197,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   declineButtonText: {
     fontSize: 16,
-    fontFamily: fonts.bold,
-    color: "#FFFFFF",
+    fontFamily: fonts.semibold,
+    color: colors.surface.DEFAULT,
   },
   cancelButton: {
     height: 48,
@@ -199,7 +207,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   cancelButtonText: {
     fontSize: 15,
-    fontFamily: fonts.semibold,
-    color: "#737373",
+    fontFamily: fonts.medium,
+    color: colors.onSurface.variant,
   },
 });

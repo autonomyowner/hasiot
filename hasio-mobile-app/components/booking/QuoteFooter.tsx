@@ -5,10 +5,9 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import type { QuoteFooterState } from "@/lib/bookingDisplay";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
-const GREEN = "#0D7A5F";
 // Tall enough for the two-line total row; every other state is laid out
 // inside the same box so the button below never moves.
 const SLOT_HEIGHT = 30;
@@ -81,7 +80,7 @@ export function QuoteFooter({ state, submitting, onSubmit }: QuoteFooterProps) {
         accessibilityState={{ disabled: !canSubmit, busy: submitting }}
       >
         {submitting ? (
-          <ActivityIndicator color="#FFFFFF" />
+          <ActivityIndicator color={colors.ink} />
         ) : (
           <Text style={styles.primaryButtonText}>{t("requestBooking")}</Text>
         )}
@@ -91,12 +90,14 @@ export function QuoteFooter({ state, submitting, onSubmit }: QuoteFooterProps) {
 }
 
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
+  // The same pinned bar as the listing sheet's price-and-Book row: one
+  // surface, a hairline above it, nothing else drawing a box.
   footer: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface.DEFAULT,
     borderTopWidth: 1,
-    borderTopColor: "#E9E5DE",
+    borderTopColor: colors.divider,
     gap: 10,
   },
   slot: {
@@ -105,7 +106,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   hint: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
   },
   totalRow: {
     flexDirection: "row",
@@ -120,12 +122,14 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   totalBreakdown: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
   },
+  // The number the whole screen is about, so it is set in the display face.
   totalAmount: {
-    fontSize: 20,
-    fontFamily: fonts.bold,
-    color: "#1A1A1A",
+    fontSize: 24,
+    fontFamily: fonts.serif,
+    color: colors.ink,
     fontVariant: ["tabular-nums"],
   },
   // Same box the SAR total will occupy, so loading → total is a swap in place.
@@ -136,16 +140,20 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   pendingNote: {
     fontSize: 12,
     lineHeight: 18,
-    color: "#8A8178",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
   },
   errorText: {
     fontSize: 14,
-    color: "#B91C1C",
+    fontFamily: fonts.medium,
+    color: colors.signOut,
   },
+  // Lime is a fill; its label is ink. White on it is 1.4:1.
   primaryButton: {
+    minHeight: 50,
     height: 52,
-    backgroundColor: GREEN,
-    borderRadius: 12,
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -154,7 +162,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   primaryButtonText: {
     fontSize: 16,
-    fontFamily: fonts.bold,
-    color: "#FFFFFF",
+    fontFamily: fonts.semibold,
+    color: colors.ink,
   },
 });

@@ -7,8 +7,9 @@ import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
 import { formatPhoneForDisplay } from "@/lib/phone";
 import { hostActionsFor, nightsLabel } from "@/lib/bookingDisplay";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
+import { SurfaceGradient } from "@/components/ui/Gradients";
 import type { Language } from "@/types";
 
 export interface HostBookingData {
@@ -72,6 +73,9 @@ function HostBookingCardInner({
 
   return (
     <View style={styles.card}>
+      {/* A genuinely raised surface, so it gets the lit-from-above wash rather
+          than a flat white fill. The card clips it with its own radius. */}
+      <SurfaceGradient />
       <View style={[styles.cardTop, isRTL && styles.rowRTL]}>
         {listing?.images?.[0] ? (
           <Image
@@ -127,7 +131,7 @@ function HostBookingCardInner({
             accessibilityRole="button"
             accessibilityLabel={labels.callGuest}
           >
-            <Feather name="phone" size={16} color="#0D7A5F" />
+            <Feather name="phone" size={16} color={colors.primary.deep} />
           </Pressable>
         ) : null}
       </View>
@@ -212,7 +216,7 @@ function ActionButton({
       accessibilityState={{ disabled, busy }}
     >
       {busy ? (
-        <ActivityIndicator color={primary ? "#FFFFFF" : "#B91C1C"} />
+        <ActivityIndicator color={primary ? colors.ink : colors.signOut} />
       ) : (
         <Text style={primary ? styles.buttonPrimaryText : styles.buttonSecondaryText}>{label}</Text>
       )}
@@ -224,9 +228,10 @@ export const HostBookingCard = memo(HostBookingCardInner);
 
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 24,
+    overflow: "hidden",
+    backgroundColor: colors.surface.DEFAULT,
+    padding: 16,
     gap: 12,
   },
   cardTop: {
@@ -239,8 +244,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   thumb: {
     width: 72,
     height: 72,
-    borderRadius: 12,
-    backgroundColor: "#E8DFD4",
+    borderRadius: 14,
+    backgroundColor: colors.sand,
   },
   cardBody: {
     flex: 1,
@@ -248,11 +253,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   listingName: {
     fontSize: 16,
     fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    color: colors.ink,
   },
   meta: {
     fontSize: 13,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     marginTop: 2,
   },
   textRTL: {
@@ -266,8 +272,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   amount: {
     fontSize: 15,
-    fontFamily: fonts.bold,
-    color: "#1A1A1A",
+    fontFamily: fonts.semibold,
+    color: colors.ink,
     fontVariant: ["tabular-nums"],
   },
   guestRow: {
@@ -275,29 +281,30 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderTopWidth: 1,
-    borderTopColor: "#F0EDE8",
+    borderTopColor: colors.divider,
     paddingTop: 12,
   },
   guestName: {
     fontSize: 15,
     fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    color: colors.ink,
   },
   callButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#EEF7F4",
+    backgroundColor: colors.mint,
     alignItems: "center",
     justifyContent: "center",
   },
   notes: {
     fontSize: 14,
     lineHeight: 20,
-    color: "#4B4B4B",
-    backgroundColor: "#FAF7F2",
-    borderRadius: 10,
-    padding: 10,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
+    backgroundColor: colors.surface.variant,
+    borderRadius: 14,
+    padding: 12,
   },
   actions: {
     flexDirection: "row",
@@ -305,28 +312,31 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   button: {
     flex: 1,
-    height: 46,
-    borderRadius: 12,
+    minHeight: 50,
+    height: 50,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
+  // Flat and solid. Lime is a fill, so the label on it is ink.
   buttonPrimary: {
-    backgroundColor: "#0D7A5F",
+    backgroundColor: colors.primary.DEFAULT,
   },
+  // The refusing half stays quiet: a hairline and the destructive label, so
+  // the affirmative action is the only filled thing in the row.
   buttonSecondary: {
     borderWidth: 1,
-    borderColor: "#FCA5A5",
-    backgroundColor: "#FEF2F2",
+    borderColor: colors.border,
   },
   buttonPrimaryText: {
     fontSize: 15,
-    fontFamily: fonts.bold,
-    color: "#FFFFFF",
+    fontFamily: fonts.semibold,
+    color: colors.ink,
   },
   buttonSecondaryText: {
     fontSize: 15,
-    fontFamily: fonts.semibold,
-    color: "#B91C1C",
+    fontFamily: fonts.medium,
+    color: colors.signOut,
   },
   buttonDisabled: {
     opacity: 0.55,

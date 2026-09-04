@@ -1,7 +1,7 @@
 import React, { forwardRef, useImperativeHandle, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 export interface BookingNotesFieldHandle {
@@ -43,7 +43,7 @@ export const BookingNotesField = forwardRef<BookingNotesFieldHandle, BookingNote
           value={notes}
           onChangeText={setNotes}
           placeholder={placeholder}
-          placeholderTextColor="#A3A3A3"
+          placeholderTextColor={colors.onSurface.muted}
           multiline
           numberOfLines={3}
           maxLength={500}
@@ -58,21 +58,24 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   sectionLabel: {
     fontSize: 15,
     fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    color: colors.ink,
     marginTop: 8,
   },
   textRTL: {
     textAlign: "right",
   },
+  // A field, not a panel: the warm variant surface with a hairline, so it
+  // reads as a place to type rather than as a white box on the cream page.
   input: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    backgroundColor: colors.surface.variant,
+    borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
-    color: "#1A1A1A",
+    fontFamily: fonts.regular,
+    color: colors.ink,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: colors.border,
     marginTop: 8,
   },
   textArea: {

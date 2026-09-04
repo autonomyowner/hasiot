@@ -6,7 +6,7 @@ import { BookingStatusChip } from "./BookingStatusChip";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
 import { nightsLabel } from "@/lib/bookingDisplay";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { Language } from "@/types";
 
@@ -99,12 +99,14 @@ function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingR
 export const BookingRow = memo(BookingRowInner);
 
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
+  // Content on the page, divided by a hairline — not a white card. The list
+  // this sits in supplies the horizontal padding.
   card: {
     flexDirection: "row",
     gap: 12,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 12,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
   },
   cardRTL: {
     flexDirection: "row-reverse",
@@ -112,8 +114,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   thumb: {
     width: 84,
     height: 84,
-    borderRadius: 12,
-    backgroundColor: "#E8DFD4",
+    borderRadius: 14,
+    backgroundColor: colors.sand,
   },
   cardBody: {
     flex: 1,
@@ -122,11 +124,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   name: {
     fontSize: 16,
     fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    color: colors.ink,
   },
   meta: {
     fontSize: 13,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     marginTop: 2,
   },
   textRTL: {
@@ -140,8 +143,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   amount: {
     fontSize: 15,
-    fontFamily: fonts.bold,
-    color: "#1A1A1A",
+    fontFamily: fonts.semibold,
+    color: colors.ink,
     fontVariant: ["tabular-nums"],
   },
 });
