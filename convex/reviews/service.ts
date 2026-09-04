@@ -1,7 +1,13 @@
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { enforceRateLimit } from "../rateLimit";
-import { REVIEW_ERRORS, REVIEWS_PER_DAY, summariseRatings, validateReviewInput } from "./logic";
+import {
+  MAX_RATED_REVIEWS,
+  REVIEW_ERRORS,
+  REVIEWS_PER_DAY,
+  summariseRatings,
+  validateReviewInput,
+} from "./logic";
 
 /**
  * Review writes, over an already-resolved user.
@@ -22,10 +28,13 @@ export async function recomputeListingRating(
   ctx: MutationCtx,
   listingId: Id<"listings">
 ): Promise<void> {
+  // Bounded and ordered identically to `getSummary`, so the star on a card and
+  // the average above the reviews are always the same number.
   const reviews = await ctx.db
     .query("reviews")
     .withIndex("by_listingId", (q) => q.eq("listingId", listingId))
-    .collect();
+    .order("desc")
+    .take(MAX_RATED_REVIEWS);
 
   const summary = summariseRatings(reviews.map((r) => r.rating));
 

@@ -13,6 +13,23 @@ export const MAX_REVIEW_TEXT = 500;
 /** Per user per day. Generous for a real guest, tight enough to blunt a bot. */
 export const REVIEWS_PER_DAY = 10;
 
+/**
+ * How many reviews a rating is computed from.
+ *
+ * Every reader of a listing's score must use this same bound. `getSummary`
+ * originally capped at 200 while `recomputeListingRating` collected all of
+ * them, which meant that past 200 reviews the average shown above the reviews
+ * and the star on the listing card were computed from different sets and
+ * visibly disagreed on the same screen.
+ *
+ * A bound is needed at all because Convex fails a function past roughly 16k
+ * document reads, so an unbounded `.collect()` would eventually break the
+ * write path outright. Capping is the honest trade: beyond this many reviews a
+ * listing's score stops moving, which is stable and explainable, where
+ * disagreeing numbers are neither.
+ */
+export const MAX_RATED_REVIEWS = 500;
+
 /** House style: Arabic then English, one string, as `convex/rateLimit.ts:47`. */
 export const REVIEW_ERRORS = {
   RATING_RANGE: "التقييم يجب أن يكون من 1 إلى 5 نجوم. / Rating must be a whole number of stars, 1 to 5.",

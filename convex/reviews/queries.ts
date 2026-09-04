@@ -2,9 +2,10 @@ import { query } from "../_generated/server";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 import { getBlockedIds } from "../listings/queries";
-import { summariseRatings } from "./logic";
+import { MAX_RATED_REVIEWS, summariseRatings } from "./logic";
 
-/** Hard ceiling, as everywhere else in this backend: Convex fails a query past ~16k reads. */
+/** Ceiling for a single page of review text. The score's own bound is
+ *  `MAX_RATED_REVIEWS`, which every reader of a listing's rating shares. */
 const MAX_REVIEWS = 200;
 
 /**
@@ -57,10 +58,14 @@ export const listForListing = query({
 export const getSummary = query({
   args: { listingId: v.id("listings") },
   handler: async (ctx, args) => {
+    // Newest first, and bounded by the same constant the write path uses:
+    // a listing that ever exceeds the cap should reflect its recent stays,
+    // not the oldest ones, and must never disagree with its own card.
     const reviews = await ctx.db
       .query("reviews")
       .withIndex("by_listingId", (q) => q.eq("listingId", args.listingId))
-      .take(MAX_REVIEWS);
+      .order("desc")
+      .take(MAX_RATED_REVIEWS);
 
     return summariseRatings(reviews.map((r) => r.rating));
   },
