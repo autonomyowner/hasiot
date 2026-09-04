@@ -50,6 +50,8 @@ export const translations = {
     addToFavorites: "Add to Favorites",
     removeFromFavorites: "Remove from Favorites",
     perNight: "per night",
+    detailBook: "Book",
+    detailBookSoon: "Booking coming soon",
 
     // Food
     restaurants: "Restaurants",
@@ -546,6 +548,8 @@ export const translations = {
     addToFavorites: "إضافة للمفضلة",
     removeFromFavorites: "إزالة من المفضلة",
     perNight: "في الليلة",
+    detailBook: "احجز",
+    detailBookSoon: "الحجز قريبًا",
 
     // Food
     restaurants: "المطاعم",

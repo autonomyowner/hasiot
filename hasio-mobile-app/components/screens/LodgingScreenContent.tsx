@@ -61,6 +61,7 @@ export function LodgingScreenContent() {
     badgeColor: categoryColors[item.type],
     rating: item.rating,
     priceLine: item.priceRange ? `${item.priceRange} ${t("perNight")}` : undefined,
+    bookable: true,
     images: item.images,
     description: getLocalizedText(item.description, item.descriptionAr, language),
     amenities: language === "ar" ? item.amenitiesAr : item.amenities,

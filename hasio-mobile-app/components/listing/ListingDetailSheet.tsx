@@ -23,6 +23,7 @@ import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import { ReportSheet } from "@/components/ReportSheet";
+import { amenityIcon } from "./amenityIcon";
 import type { ListingDetails } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -49,6 +50,12 @@ export interface DetailItem {
   amenities?: string[];
   details?: ListingDetails;
   ownerId?: string | null;
+  /**
+   * Shows the price + Book bar pinned to the bottom of the sheet. Set by the
+   * lodging mappers only — a restaurant or an event has a priceLine too, but
+   * neither is something you book a night in.
+   */
+  bookable?: boolean;
 }
 
 interface ListingDetailSheetProps {
@@ -57,6 +64,10 @@ interface ListingDetailSheetProps {
 }
 
 const IMAGE_HEIGHT = 380;
+// Roughly the bar's own height: 14 top padding + the two-line price block +
+// 16 minimum bottom padding. Used to pad the scroll so the last row of content
+// can still be read from under it.
+const BOOK_BAR_HEIGHT = 84;
 // The body sheet pulls up over the hero by this much.
 const SHEET_OVERLAP = 28;
 
@@ -136,6 +147,10 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     setImageIndex((current) => (current === next ? current : next));
   };
 
+  // The bar needs something to say on both halves; a price with no CTA, or a
+  // CTA with no price, is not worth pinning to the bottom of the screen.
+  const showBookBar = !!(item?.bookable && item.priceLine);
+
   const hasContact = !!(
     detail?.phone ||
     detail?.website ||
@@ -159,7 +174,10 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
           <>
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+              contentContainerStyle={{
+                paddingBottom:
+                  insets.bottom + 32 + (showBookBar ? BOOK_BAR_HEIGHT : 0),
+              }}
             >
               {/* Gallery */}
               <View style={styles.gallery}>
@@ -309,7 +327,15 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                   <Section title={t("detailAmenities")} isRTL={isRTL}>
                     <View style={[styles.chips, isRTL && styles.rowRTL]}>
                       {item.amenities.map((amenity) => (
-                        <View key={amenity} style={styles.chip}>
+                        <View
+                          key={amenity}
+                          style={[styles.chip, isRTL && styles.rowRTL]}
+                        >
+                          <Feather
+                            name={amenityIcon(amenity)}
+                            size={13}
+                            color={colors.onSurface.variant}
+                          />
                           <Text style={styles.chipText}>{amenity}</Text>
                         </View>
                       ))}
@@ -367,6 +393,39 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                 </Pressable>
               </View>
             </ScrollView>
+
+            {/* Price + Book, pinned. Sits above the scroll so the rate stays
+                on screen while the guest reads down the page — the one number
+                they are deciding on should never be scrolled away. */}
+            {showBookBar && (
+              <View
+                style={[
+                  styles.bookBar,
+                  { paddingBottom: insets.bottom || 16 },
+                  isRTL && styles.rowRTL,
+                ]}
+              >
+                <View style={isRTL ? styles.alignEnd : undefined}>
+                  <Text style={styles.bookBarPrice} numberOfLines={1}>
+                    {item.priceLine}
+                  </Text>
+                  <Text style={styles.bookBarNote} numberOfLines={1}>
+                    {t("detailBookSoon")}
+                  </Text>
+                </View>
+                {/* Deliberately inert until the stay-booking flow exists.
+                    `disabled` also drops it out of the tab order, so it is not
+                    a focusable control that does nothing. */}
+                <View
+                  style={styles.bookButtonDisabled}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: true }}
+                  accessibilityLabel={`${t("detailBook")} — ${t("detailBookSoon")}`}
+                >
+                  <Text style={styles.bookButtonText}>{t("detailBook")}</Text>
+                </View>
+              </View>
+            )}
 
             {/* Close. Floated over the gallery rather than sitting in a header
                 band, so the images run to the top edge of the sheet. */}
@@ -677,6 +736,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     gap: 8,
   },
   chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
@@ -685,6 +747,48 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   chipText: {
     fontFamily: fonts.medium,
     fontSize: 13,
+    color: colors.ink,
+  },
+  alignEnd: {
+    alignItems: "flex-end",
+  },
+  bookBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    backgroundColor: colors.surface.DEFAULT,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+  bookBarPrice: {
+    fontFamily: fonts.semibold,
+    fontSize: 18,
+    color: colors.ink,
+  },
+  bookBarNote: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    color: colors.onSurface.muted,
+    marginTop: 2,
+  },
+  // Dimmed rather than greyed: the lime still reads as the primary action, so
+  // the bar looks finished while the flow behind it is not.
+  bookButtonDisabled: {
+    paddingHorizontal: 28,
+    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: colors.primary.DEFAULT,
+    opacity: 0.45,
+  },
+  bookButtonText: {
+    fontFamily: fonts.semibold,
+    fontSize: 16,
     color: colors.ink,
   },
   hoursRow: {
