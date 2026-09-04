@@ -28,8 +28,6 @@ export const translations = {
     // Home
     searchPlaceholder: "Search places in Al-Ahsa Oasis...",
     discoverLodging: "Discover Al-Ahsa Hospitality",
-    exploreFoodDrinks: "Taste Al-Ahsa Authentic Cuisine",
-    findEvents: "Experience Al-Ahsa Culture",
     morningGreeting: "Good Morning",
     afternoonGreeting: "Good Afternoon",
     eveningGreeting: "Good Evening",
@@ -108,8 +106,6 @@ export const translations = {
     plannerWelcome: "Marhaba!",
     plannerGreeting: "I'm here to help you plan the perfect day in Al-Ahsa Oasis. What would you like to explore today?",
     suggestLodging: "Find a place to stay",
-    suggestFood: "Discover local cuisine",
-    suggestEvents: "Explore events & activities",
     suggestItinerary: "Plan a full day itinerary",
     chatPlaceholder: "Ask me anything about your trip...",
     sendMessage: "Send",
@@ -255,8 +251,6 @@ export const translations = {
     // Business Dashboard
     businessDashboard: "Business Dashboard",
     postLodging: "Post Lodging",
-    postFood: "Post Restaurant",
-    postEvent: "Post Event",
     postDestination: "Post Destination",
     myListings: "My Listings",
     pendingApproval: "Pending Approval",
@@ -530,8 +524,6 @@ export const translations = {
     // Home
     searchPlaceholder: "البحث عن أماكن في واحة الأحساء...",
     discoverLodging: "ضيافة الأحساء",
-    exploreFoodDrinks: "تذوق مأكولات الأحساء الأصيلة",
-    findEvents: "اختبر ثقافة الأحساء",
     morningGreeting: "صباح الخير",
     afternoonGreeting: "مساء الخير",
     eveningGreeting: "مساء الخير",
@@ -608,8 +600,6 @@ export const translations = {
     plannerWelcome: "مرحباً!",
     plannerGreeting: "أنا هنا لمساعدتك في التخطيط ليوم مثالي في الأحساء. ماذا تريد أن تستكشف اليوم؟",
     suggestLodging: "ابحث عن مكان للإقامة",
-    suggestFood: "اكتشف المأكولات المحلية",
-    suggestEvents: "استكشف الفعاليات والأنشطة",
     suggestItinerary: "خطط ليوم كامل",
     chatPlaceholder: "اسألني أي شيء عن رحلتك...",
     sendMessage: "إرسال",
@@ -754,8 +744,6 @@ export const translations = {
     // Business Dashboard
     businessDashboard: "لوحة تحكم الأعمال",
     postLodging: "إضافة إقامة",
-    postFood: "إضافة مطعم",
-    postEvent: "إضافة فعالية",
     postDestination: "إضافة وجهة",
     myListings: "إعلاناتي",
     pendingApproval: "في انتظار الموافقة",

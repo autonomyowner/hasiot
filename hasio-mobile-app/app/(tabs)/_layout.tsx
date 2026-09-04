@@ -21,8 +21,6 @@ import { TAB_BAR_HEIGHT, TAB_BAR_MARGIN } from "@/constants/layout";
 import {
   HomeScreenContent,
   LodgingScreenContent,
-  FoodScreenContent,
-  EventsScreenContent,
   PlannerScreenContent,
   MomentsScreenContent,
   SettingsScreenContent,
@@ -82,29 +80,39 @@ const MIN_BAR_BOTTOM_OFFSET = TAB_BAR_MARGIN;
 const PUCK_SIZE = 44;
 const BAR_H_PADDING = 6;
 
+// The tab bar's order is this array's order, and every cross-screen jump is
+// addressed by key (see navigateToTab) rather than by position — an index-based
+// API meant that adding or removing a tab silently re-pointed every caller.
+export type TabKey =
+  | "lodging"
+  | "home"
+  | "planner"
+  | "moments"
+  | "settings";
+
 interface TabItem {
-  key: string;
+  key: TabKey;
   icon: keyof typeof Feather.glyphMap;
   label: string;
 }
 
-// 7 tabs, home centered. Icon-only in the floating bar (7 slots are too
-// narrow for labels on a 360dp screen); labels feed accessibilityLabel.
+// Discovery on the left of home, the guest's own things on the right.
+// Icon-only in the floating bar; labels feed accessibilityLabel.
 const tabs: TabItem[] = [
   { key: "lodging", icon: "map-pin", label: "Stay" },
-  { key: "food", icon: "coffee", label: "Eat" },
-  { key: "events", icon: "calendar", label: "Events" },
   { key: "home", icon: "home", label: "Home" },
   { key: "planner", icon: "message-circle", label: "Plan" },
   { key: "moments", icon: "camera", label: "Moments" },
   { key: "settings", icon: "user", label: "Profile" },
 ];
 
+const HOME_INDEX = tabs.findIndex((tab) => tab.key === "home");
+
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const pagerRef = useRef<any>(null);
-  const [currentPage, setCurrentPage] = React.useState(3); // Start at home (center)
-  const scrollPosition = useSharedValue(3);
+  const [currentPage, setCurrentPage] = React.useState(HOME_INDEX); // Start at home
+  const scrollPosition = useSharedValue(HOME_INDEX);
   const isWeb = Platform.OS === "web";
 
   // Runs on the UI thread — see usePagerScrollHandler.
@@ -134,40 +142,28 @@ export default function TabLayout() {
     }
   }, [isWeb]);
 
-  // Map old tab indices to new for navigation
-  const handleNavigateToTabIndex = useCallback((oldIndex: number) => {
-    // Old order: home(0), lodging(1), food(2), events(3), planner(4), moments(5), settings(6)
-    // New order: lodging(0), food(1), events(2), home(3), planner(4), moments(5), settings(6)
-    const indexMap: Record<number, number> = {
-      0: 3, // home -> index 3
-      1: 0, // lodging -> index 0
-      2: 1, // food -> index 1
-      3: 2, // events -> index 2
-      4: 4, // planner -> index 4
-      5: 5, // moments -> index 5
-      6: 6, // settings -> index 6
-    };
-    const newIndex = indexMap[oldIndex] ?? oldIndex;
+  // Jump to a tab by key, for the cross-screen shortcuts (the home category
+  // cards, the planner's suggestion chips).
+  const navigateToTab = useCallback((key: TabKey) => {
+    const index = tabs.findIndex((tab) => tab.key === key);
+    if (index < 0) return;
     if (isWeb) {
-      setCurrentPage(newIndex);
-      scrollPosition.value = withTiming(newIndex, { duration: 220 });
+      setCurrentPage(index);
+      // Web has no pager to emit scroll events — animate the position by hand.
+      scrollPosition.value = withTiming(index, { duration: 220 });
     } else {
-      pagerRef.current?.setPage(newIndex);
+      pagerRef.current?.setPage(index);
     }
   }, [isWeb]);
 
-  const renderScreen = (key: string) => {
+  const renderScreen = (key: TabKey) => {
     switch (key) {
       case "home":
-        return <HomeScreenContent onNavigateToTab={handleNavigateToTabIndex} />;
+        return <HomeScreenContent onNavigateToTab={navigateToTab} />;
       case "lodging":
         return <LodgingScreenContent />;
-      case "food":
-        return <FoodScreenContent />;
-      case "events":
-        return <EventsScreenContent />;
       case "planner":
-        return <PlannerScreenContent onNavigateToTab={handleNavigateToTabIndex} />;
+        return <PlannerScreenContent onNavigateToTab={navigateToTab} />;
       case "moments":
         return <MomentsScreenContent />;
       case "settings":
@@ -188,7 +184,7 @@ export default function TabLayout() {
         <AnimatedPagerView
           ref={pagerRef}
           style={styles.pagerView}
-          initialPage={3}
+          initialPage={HOME_INDEX}
           // react-native-pager-view types onPageScroll as a JS
           // DirectEventHandler; Reanimated's useEvent returns its own processed
           // handler that the native side understands but the prop type does

@@ -34,11 +34,12 @@ import { colors, fonts } from "@/constants/colors";
 import { TAB_BAR_HEIGHT, TAB_BAR_MARGIN } from "@/constants/layout";
 import { Feather } from "@expo/vector-icons";
 import type { ChatMessage } from "@/types";
+import type { TabKey } from "@/app/(tabs)/_layout";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface PlannerScreenContentProps {
-  onNavigateToTab?: (index: number) => void;
+  onNavigateToTab?: (key: TabKey) => void;
 }
 
 export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentProps) {
@@ -178,15 +179,13 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
   };
 
   const suggestionButtons = [
-    { key: "lodging", label: t("suggestLodging"), tabIndex: 1 },
-    { key: "food", label: t("suggestFood"), tabIndex: 2 },
-    { key: "events", label: t("suggestEvents"), tabIndex: 3 },
-    { key: "itinerary", label: t("suggestItinerary"), tabIndex: null },
+    { key: "lodging", label: t("suggestLodging"), tabKey: "lodging" as const },
+    { key: "itinerary", label: t("suggestItinerary"), tabKey: null },
   ];
 
-  const handleSuggestion = async (tabIndex: number | null, label: string) => {
-    if (tabIndex !== null) {
-      onNavigateToTab?.(tabIndex);
+  const handleSuggestion = async (tabKey: TabKey | null, label: string) => {
+    if (tabKey !== null) {
+      onNavigateToTab?.(tabKey);
     } else {
       // Send as a message to AI
       const userMessage: ChatMessage = {
@@ -314,7 +313,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
                   <SuggestionButton
                     key={btn.key}
                     label={btn.label}
-                    onPress={() => handleSuggestion(btn.tabIndex, btn.label)}
+                    onPress={() => handleSuggestion(btn.tabKey, btn.label)}
                     delay={index * 100}
                   />
                 ))}

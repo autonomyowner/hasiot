@@ -29,8 +29,6 @@ export default function BusinessDashboardContent() {
 
   const quickActions = [
     { key: "postLodging", route: "/business/post-lodging" },
-    { key: "postFood", route: "/business/post-food" },
-    { key: "postEvent", route: "/business/post-event" },
     { key: "postDestination", route: "/business/post-destination" },
   ];
 

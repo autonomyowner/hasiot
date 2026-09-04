@@ -14,5 +14,10 @@
     ".expo/types/**/*.ts",
     "expo-env.d.ts",
     "nativewind-env.d.ts"
-  ]
+  ],
+  // "hasio v5" is a gitignored legacy copy of this app that imports from the
+  // same "@/" paths. Typechecking it means every refactor of a shared module
+  // reports errors in code nobody ships, which makes `tsc --noEmit` useless as
+  // a release gate. eslint.config.js ignores it for the same reason.
+  "exclude": ["hasio v5", "node_modules"]
 }

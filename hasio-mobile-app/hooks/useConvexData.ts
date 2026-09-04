@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/backend";
 import { useConvexAuth } from "convex/react";
-import type { Lodging, Food, Event, ListingDetails } from "@/types";
+import type { Lodging, ListingDetails } from "@/types";
 
 // Type for Convex listing documents
 type ConvexListing = {
@@ -85,67 +85,6 @@ function toLodging(l: ConvexListing): Lodging {
   };
 }
 
-function toFood(l: ConvexListing): Food {
-  return {
-    id: l._id,
-    name: l.name_en,
-    nameAr: l.name_ar,
-    category: (l.category === "traditional_food" || l.category === "fine_dining" || l.category === "seafood"
-      ? "restaurant"
-      : l.category === "home_kitchen"
-        ? "home_kitchen"
-        : l.category === "fast_food" || l.category === "street_food"
-          ? "fastfood"
-          : l.category === "cafe" || l.category === "drinks"
-            ? "drinks"
-            : "restaurant") as Food["category"],
-    cuisine: l.category_ar || l.category,
-    cuisineAr: l.category_ar || l.category,
-    avgPrice: l.priceRange || "",
-    hours: l.workingHours
-      ? `${l.workingHours[0]?.open || ""} - ${l.workingHours[0]?.close || ""}`
-      : "",
-    images: l.images || [],
-    description: l.description_en || "",
-    descriptionAr: l.description_ar || "",
-    rating: l.rating || 0,
-    owner_id: l.ownerId || null,
-    status: l.status as Food["status"],
-    details: toDetails(l),
-  };
-}
-
-function toEvent(l: ConvexListing): Event {
-  return {
-    id: l._id,
-    title: l.name_en,
-    titleAr: l.name_ar,
-    category: (l.category === "festival"
-      ? "festival"
-      : l.category === "conference"
-        ? "conference"
-        : l.category === "outdoor_activity" || l.category === "adventure"
-          ? "outdoor"
-          : l.category === "exhibition" || l.category === "museum"
-            ? "indoor"
-            : l.category === "seasonal"
-              ? "seasonal"
-              : "outdoor") as Event["category"],
-    date: "",
-    time: l.workingHours
-      ? `${l.workingHours[0]?.open || ""} - ${l.workingHours[0]?.close || ""}`
-      : "",
-    location: l.address,
-    locationAr: l.address,
-    images: l.images || [],
-    description: l.description_en || "",
-    descriptionAr: l.description_ar || "",
-    owner_id: l.ownerId || null,
-    status: l.status as Event["status"],
-    details: toDetails(l),
-  };
-}
-
 /**
  * Hook to get lodgings from Convex
  */
@@ -160,44 +99,6 @@ export function useLodgings(type?: Lodging["type"]) {
 
   return {
     lodgings,
-    isLoading: listings === undefined,
-    isUsingMockData: false,
-  };
-}
-
-/**
- * Hook to get foods from Convex
- */
-export function useFoods(category?: Food["category"]) {
-  const listings = useQuery(api.listings.queries.listListings, {
-    type: "restaurant",
-  });
-
-  const foods = listings
-    ? listings.map(toFood).filter((f) => !category || f.category === category)
-    : [];
-
-  return {
-    foods,
-    isLoading: listings === undefined,
-    isUsingMockData: false,
-  };
-}
-
-/**
- * Hook to get events from Convex
- */
-export function useEvents(category?: Event["category"]) {
-  const listings = useQuery(api.listings.queries.listListings, {
-    type: "event",
-  });
-
-  const events = listings
-    ? listings.map(toEvent).filter((e) => !category || e.category === category)
-    : [];
-
-  return {
-    events,
     isLoading: listings === undefined,
     isUsingMockData: false,
   };
@@ -248,16 +149,12 @@ export function useDestinations(featured?: boolean) {
  */
 export function useHomeData() {
   const { lodgings, isLoading: lodgingsLoading } = useLodgings();
-  const { foods, isLoading: foodsLoading } = useFoods();
-  const { events, isLoading: eventsLoading } = useEvents();
   const { destinations, isLoading: destinationsLoading } = useDestinations();
 
   return {
     lodgings,
-    foods,
-    events,
     destinations,
-    isLoading: lodgingsLoading || foodsLoading || eventsLoading || destinationsLoading,
+    isLoading: lodgingsLoading || destinationsLoading,
   };
 }
 

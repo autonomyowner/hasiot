@@ -41,7 +41,8 @@ import {
   ListingDetailSheet,
   type DetailItem,
 } from "@/components/listing/ListingDetailSheet";
-import type { Food, Lodging, Event } from "@/types";
+import type { Lodging } from "@/types";
+import type { TabKey } from "@/app/(tabs)/_layout";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 // Shared with the skeleton that stands in for this screen while it loads.
@@ -50,7 +51,7 @@ const CONTAINER_PADDING = HOME_CONTAINER_PADDING;
 const CARD_WIDTH = HOME_CARD_WIDTH;
 
 interface HomeScreenContentProps {
-  onNavigateToTab?: (index: number) => void;
+  onNavigateToTab?: (key: TabKey) => void;
 }
 
 export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
@@ -74,34 +75,18 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
       title: t("discoverLodging"),
       subtitle: t("lodging"),
       image: generatedImages.catLodging,
-      tabIndex: 1,
-    },
-    {
-      id: "food",
-      title: t("exploreFoodDrinks"),
-      subtitle: t("food"),
-      image: generatedImages.catFood,
-      tabIndex: 2,
-    },
-    {
-      id: "events",
-      title: t("findEvents"),
-      subtitle: t("events"),
-      image: generatedImages.catEvents,
-      tabIndex: 3,
+      tabKey: "lodging" as const,
     },
   ];
 
   // Get data from Convex with fallback to mock data
-  const { lodgings, foods, events, destinations, isLoading } = useHomeData();
+  const { lodgings, destinations, isLoading } = useHomeData();
 
   const featuredItems = destinations.filter((d) => d.featured);
   const moreDestinations = destinations.filter((d) => !d.featured);
 
   // Use Convex data (with mock fallback)
   const allLodging = lodgings;
-  const allFood = foods;
-  const allEvents = events;
 
   // Search functionality
   const searchResults = useMemo(() => {
@@ -116,20 +101,6 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
       item.cityAr.includes(query)
     );
 
-    const foodResults = allFood.filter((item) =>
-      item.name.toLowerCase().includes(query) ||
-      item.nameAr.includes(query) ||
-      item.cuisine.toLowerCase().includes(query) ||
-      item.cuisineAr.includes(query)
-    );
-
-    const eventResults = allEvents.filter((item) =>
-      item.title.toLowerCase().includes(query) ||
-      item.titleAr.includes(query) ||
-      item.location.toLowerCase().includes(query) ||
-      item.locationAr.includes(query)
-    );
-
     const destinationResults = destinations.filter((item) =>
       item.name.toLowerCase().includes(query) ||
       item.nameAr.includes(query) ||
@@ -139,18 +110,16 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
 
     return {
       lodging: lodgingResults,
-      food: foodResults,
-      events: eventResults,
       destinations: destinationResults,
-      total: lodgingResults.length + foodResults.length + eventResults.length + destinationResults.length,
+      total: lodgingResults.length + destinationResults.length,
     };
-  }, [debouncedQuery, allLodging, allFood, allEvents, destinations]);
+  }, [debouncedQuery, allLodging, destinations]);
 
   const [selected, setSelected] = useState<DetailItem | null>(null);
 
-  // Home shows all four kinds of listing side by side, so each gets its own
-  // mapping into the shared sheet's shape. Same normalising the three list
-  // screens do — done here so the sheet never has to know what it is showing.
+  // Home shows stays and destinations side by side, so each gets its own
+  // mapping into the shared sheet's shape. Same normalising the list screens
+  // do — done here so the sheet never has to know what it is showing.
   const lodgingDetail = (item: Lodging): DetailItem => ({
     id: item.id,
     title: getLocalizedText(item.name, item.nameAr, language),
@@ -162,33 +131,6 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
     images: item.images,
     description: getLocalizedText(item.description, item.descriptionAr, language),
     amenities: language === "ar" ? item.amenitiesAr : item.amenities,
-    details: item.details,
-    ownerId: item.owner_id,
-  });
-
-  const foodDetail = (item: Food): DetailItem => ({
-    id: item.id,
-    title: getLocalizedText(item.name, item.nameAr, language),
-    subtitle: getLocalizedText(item.cuisine, item.cuisineAr, language),
-    badge: t(`cat_${item.category}` as const),
-    badgeColor: categoryColors[item.category],
-    rating: item.rating,
-    priceLine: item.avgPrice ? `${item.avgPrice} ${t("averagePrice")}` : undefined,
-    images: item.images,
-    description: getLocalizedText(item.description, item.descriptionAr, language),
-    details: item.details,
-    ownerId: item.owner_id,
-  });
-
-  const eventDetail = (item: Event): DetailItem => ({
-    id: item.id,
-    title: getLocalizedText(item.title, item.titleAr, language),
-    subtitle: getLocalizedText(item.location, item.locationAr, language),
-    badge: t(`cat_${item.category}` as const),
-    badgeColor: categoryColors[item.category],
-    priceLine: [item.date, item.time].filter(Boolean).join(" • ") || undefined,
-    images: item.images,
-    description: getLocalizedText(item.description, item.descriptionAr, language),
     details: item.details,
     ownerId: item.owner_id,
   });
@@ -339,44 +281,6 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                   </View>
                 )}
 
-                {searchResults.food.length > 0 && (
-                  <View style={styles.resultSection}>
-                    <Text style={[styles.resultSectionTitle, isRTL && styles.textRTL]}>
-                      {t("food")} ({searchResults.food.length})
-                    </Text>
-                    {searchResults.food.map((item, index) => (
-                      <SearchResultItem
-                        key={item.id}
-                        name={getLocalizedText(item.name, item.nameAr, language)}
-                        subtitle={getLocalizedText(item.cuisine, item.cuisineAr, language)}
-                        image={item.images?.[0]}
-                        isRTL={isRTL}
-                        index={index}
-                        onPress={() => setSelected(foodDetail(item))}
-                      />
-                    ))}
-                  </View>
-                )}
-
-                {searchResults.events.length > 0 && (
-                  <View style={styles.resultSection}>
-                    <Text style={[styles.resultSectionTitle, isRTL && styles.textRTL]}>
-                      {t("events")} ({searchResults.events.length})
-                    </Text>
-                    {searchResults.events.map((item, index) => (
-                      <SearchResultItem
-                        key={item.id}
-                        name={getLocalizedText(item.title, item.titleAr, language)}
-                        subtitle={`${getLocalizedText(item.location, item.locationAr, language)} • ${item.date}`}
-                        image={item.images?.[0]}
-                        isRTL={isRTL}
-                        index={index}
-                        onPress={() => setSelected(eventDetail(item))}
-                      />
-                    ))}
-                  </View>
-                )}
-
                 {searchResults.destinations.length > 0 && (
                   <View style={styles.resultSection}>
                     <Text style={[styles.resultSectionTitle, isRTL && styles.textRTL]}>
@@ -419,7 +323,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                   title={card.title}
                   subtitle={card.subtitle}
                   imageUrl={card.image}
-                  onPress={() => onNavigateToTab?.(card.tabIndex)}
+                  onPress={() => onNavigateToTab?.(card.tabKey)}
                   isRTL={isRTL}
                 />
               )

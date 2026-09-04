@@ -28,13 +28,14 @@ import { Skeleton, SkeletonLine, sweepPhase } from "./Skeleton";
  * slide across the card as the two cross-fade.
  */
 
-type ListingVariant = "lodging" | "food" | "event";
+// Kept as a union rather than inlined: the height has to match the real card
+// this stands in for, so a new listing screen adds a variant here instead of
+// guessing.
+type ListingVariant = "lodging";
 
-// LodgingCard / FoodCard / EventCard image (the image *is* the card now).
+// LodgingCard image (the image *is* the card now).
 const IMAGE_HEIGHT: Record<ListingVariant, number> = {
   lodging: 240,
-  food: 220,
-  event: 240,
 };
 
 interface SkeletonListingCardProps {
@@ -92,7 +93,7 @@ interface SkeletonListProps {
   count?: number;
 }
 
-/** Stands in for the FlatList on the lodging, food and events screens. */
+/** Stands in for the FlatList on the lodging screen. */
 export function SkeletonList({
   variant,
   isRTL = false,
@@ -278,8 +279,8 @@ export function SkeletonMomentsGrid({
 }
 
 const styles = StyleSheet.create({
-  // --- Listing screens (LodgingCard / FoodCard / EventCard) ---
-  // Matches `listContent` on the lodging, food and events screens.
+  // --- Listing screens (LodgingCard) ---
+  // Matches `listContent` on the lodging screen.
   listContent: {
     paddingHorizontal: LIST_CONTAINER_PADDING,
     paddingTop: 8,
