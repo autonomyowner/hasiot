@@ -28,6 +28,8 @@ import { Feather } from "@expo/vector-icons";
 import { api } from "@/backend";
 import { colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient } from "@/components/ui/Gradients";
+import { EditNameSheet } from "@/components/settings/EditNameSheet";
+import { formatPhoneForDisplay } from "@/lib/phone";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { LIST_CONTAINER_PADDING, TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -68,9 +70,18 @@ export function SettingsScreenContent() {
   const userType: UserType = convexUserType === "business_owner" ? "business" : convexUserType === "service_provider" ? "provider" : convexUserType === "admin" ? "admin" : "user";
 
   // Visual-only display values for the profile header (best-effort from the user record).
-  const profileName = (user as any)?.name || (user as any)?.fullName || (user as any)?.email || t("appName");
+  const realName = [(user as any)?.firstName, (user as any)?.lastName]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  const rawEmail: string | undefined = (user as any)?.email;
+  // The address a phone sign-up is given is a placeholder that accepts no
+  // mail; showing it would present the person with a string they never chose.
+  const realEmail = rawEmail && !rawEmail.endsWith("@phone.hasio.xyz") ? rawEmail : "";
+  const phoneLabel = (user as any)?.phone ? formatPhoneForDisplay((user as any).phone) : "";
+  const profileName = realName || phoneLabel || realEmail || t("appName");
   const profileSubtitle =
-    (user as any)?.email ||
+    (realName ? phoneLabel || realEmail : "") ||
     (userType === "business"
       ? t("userTypeBusiness")
       : userType === "provider"
@@ -82,6 +93,7 @@ export function SettingsScreenContent() {
   const profileInitial = (profileName?.trim?.()?.[0] || "H").toUpperCase();
 
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [nameOpen, setNameOpen] = useState(false);
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -500,6 +512,14 @@ export function SettingsScreenContent() {
               it is the one someone opens on purpose, while the inbox is
               usually reached by following a notification. */}
           <SettingRow
+            icon="user"
+            label={t("editName")}
+            value={realName || undefined}
+            isRTL={isRTL}
+            onPress={() => setNameOpen(true)}
+          />
+
+          <SettingRow
             icon="calendar"
             label={t("myBookings")}
             isRTL={isRTL}
@@ -684,6 +704,12 @@ export function SettingsScreenContent() {
         {/* Alerts fired while this modal is open render above it. */}
         <AppDialogHost />
       </Modal>
+
+      <EditNameSheet
+        visible={nameOpen}
+        initialName={realName}
+        onClose={() => setNameOpen(false)}
+      />
 
       {/* Delete Account Modal */}
       <Modal

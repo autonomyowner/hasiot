@@ -134,6 +134,29 @@ describe("infobip", () => {
   });
 });
 
+describe("demo", () => {
+  it("owns verification, so Better Auth's stored code is bypassed", () => {
+    expect(getSmsProvider({ SMS_PROVIDER: "demo" }).verifyOtp).toBeDefined();
+  });
+
+  it("accepts any six-digit code and nothing else", async () => {
+    const p = getSmsProvider({ SMS_PROVIDER: "demo" });
+    await expect(p.verifyOtp!("+966500000000", "482913")).resolves.toBe(true);
+    await expect(p.verifyOtp!("+966500000000", "000000")).resolves.toBe(true);
+    await expect(p.verifyOtp!("+966500000000", "12345")).resolves.toBe(false);
+    await expect(p.verifyOtp!("+966500000000", "abcdef")).resolves.toBe(false);
+  });
+
+  it("sends nothing and does not throw", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(
+      getSmsProvider({ SMS_PROVIDER: "demo" }).sendOtp("+966500000000", "111111", "ar")
+    ).resolves.toBeUndefined();
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+});
+
 describe("twilio-verify sendOtp", () => {
   it("posts a form-encoded verification with basic auth", async () => {
     const fetchMock = mockFetch(201, { status: "pending" });

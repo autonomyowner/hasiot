@@ -588,6 +588,11 @@ export const translations = {
     emailSignInOnlyNote:
       "Email sign-in is for existing accounts. New accounts are created with a phone number.",
 
+    // Profile
+    editName: "Your name",
+    editNameHint: "Shown to hosts on your bookings",
+    nameSaved: "Name saved",
+
     // Reviews and ratings
     reviewsTitle: "Reviews",
     reviewsNone: "No reviews yet",
@@ -1244,6 +1249,11 @@ export const translations = {
     backToPhone: "استخدام رقم الجوال",
     emailSignInOnlyNote:
       "الدخول بالبريد للحسابات الحالية فقط. الحسابات الجديدة تُنشأ برقم الجوال.",
+
+    // Profile
+    editName: "اسمك",
+    editNameHint: "يظهر للمضيف في حجوزاتك",
+    nameSaved: "تم حفظ الاسم",
 
     // Reviews and ratings
     reviewsTitle: "التقييمات",

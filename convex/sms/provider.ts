@@ -19,7 +19,7 @@
 export type SmsLocale = "ar" | "en";
 
 export interface SmsProvider {
-  name: "console" | "twilio-verify" | "infobip";
+  name: "console" | "twilio-verify" | "infobip" | "demo";
   /**
    * Deliver `code` to `phone`.
    *
@@ -173,6 +173,30 @@ function infobipProvider(apiKey: string, baseUrl: string, from?: string): SmsPro
 }
 
 /**
+ * DEMO MODE — every code verifies. Nothing is sent.
+ *
+ * Exists for one reason: a stage demo where the audience signs in on their own
+ * phones and no SMS route to their country is open yet. The app, when the
+ * backend reports demo mode, fills the code field itself after a beat, so the
+ * flow looks like a phone auto-filling a real SMS.
+ *
+ * This is a complete authentication bypass: anyone can sign in as any number.
+ * It must never be the provider on a deployment real users reach — switch
+ * `SMS_PROVIDER` away from "demo" the moment a real route works. The console
+ * line on every send is deliberate noise in the logs so it cannot be forgotten.
+ */
+const demoProvider: SmsProvider = {
+  name: "demo",
+  async sendOtp(phone) {
+    console.warn(`[sms:DEMO] no SMS sent to ${phone}; any 6-digit code will verify`);
+  },
+  // Owning verification is what makes Better Auth skip its own stored code.
+  async verifyOtp(_phone, code) {
+    return /^\d{6}$/.test(code);
+  },
+};
+
+/**
  * Resolve the provider from the environment. `env` is injectable for tests.
  *
  * Throws on a misconfigured twilio-verify rather than silently falling back to
@@ -185,6 +209,7 @@ export function getSmsProvider(
   const configured = env.SMS_PROVIDER ?? "console";
 
   if (configured === "console") return consoleProvider;
+  if (configured === "demo") return demoProvider;
 
   if (configured === "twilio-verify") {
     const accountSid = env.TWILIO_ACCOUNT_SID;

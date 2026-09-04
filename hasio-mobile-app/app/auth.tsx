@@ -66,6 +66,10 @@ export default function AuthScreen() {
   const [step, setStep] = useState<"phone" | "code" | "email">("phone");
   const [phone, setPhone] = useState("");
   const [code, setCode] = useState("");
+  // Demo-mode autofill timer. Held in a ref so an unmount mid-wait clears it
+  // rather than firing setState on a screen that is gone.
+  const demoFill = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (demoFill.current) clearTimeout(demoFill.current); }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -103,6 +107,20 @@ export default function AuthScreen() {
       setCode("");
       setStep("code");
       setResendIn(RESEND_SECONDS);
+
+      // Demo mode: the backend verifies any code, so fill one in ourselves
+      // after a beat. The pause is what sells it — an instant fill reads as a
+      // glitch, a short one reads as the phone picking the code out of an
+      // incoming SMS. Asked once here rather than held as a subscription; this
+      // screen has no other reason to watch config.
+      const config = await convex.query(api.config.queries.getPublicConfig);
+      if (config?.demoAuth) {
+        const fake = String(Math.floor(100000 + Math.random() * 900000));
+        demoFill.current = setTimeout(() => {
+          setCode(fake);
+          handleVerify(fake);
+        }, 900);
+      }
     } catch (error) {
       fail(error);
     } finally {
