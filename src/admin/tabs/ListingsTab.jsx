@@ -4,6 +4,7 @@ import { useMutation, usePaginatedQuery, useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import ListingForm from './ListingForm'
 import WorkingHoursModal from '../components/WorkingHoursModal'
+import HostPickerModal from '../components/HostPickerModal'
 import Switch from '../components/Switch'
 import FilterSelect from '../components/FilterSelect'
 import { useConfirm } from '../components/ConfirmDialog'
@@ -56,6 +57,7 @@ export default function ListingsTab({ initialFilters }) {
   const [formListing, setFormListing] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [hoursListing, setHoursListing] = useState(null)
+  const [hostFor, setHostFor] = useState(null)
   const [busyId, setBusyId] = useState(null)
   const [togglingId, setTogglingId] = useState(null)
 
@@ -396,6 +398,13 @@ export default function ListingsTab({ initialFilters }) {
                         >
                           الأوقات
                         </button>
+                        <button
+                          type="button"
+                          className="admin-action-btn"
+                          onClick={() => setHostFor(listing)}
+                        >
+                          المضيف
+                        </button>
                         {/* Suspension, not deletion: the listing, its photos
                             and its bookings all stay put, so reinstating puts
                             back exactly what was there. */}
@@ -464,6 +473,10 @@ export default function ListingsTab({ initialFilters }) {
           />
         )}
       </AnimatePresence>
+
+      {hostFor && (
+        <HostPickerModal listing={hostFor} onClose={() => setHostFor(null)} />
+      )}
 
       {confirmDialog}
     </motion.div>
