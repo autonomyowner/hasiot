@@ -79,6 +79,14 @@ export interface Lodging {
   neighborhood: string;
   neighborhoodAr: string;
   priceRange: string;
+  /**
+   * SAR per night. Absent on any listing a host has not priced — and a listing
+   * with no nightly rate cannot be booked, only browsed, because `priceRange`
+   * is free-text display copy ("$$$") that cannot be multiplied by nights.
+   */
+  pricePerNight?: number;
+  currency?: string;
+  maxGuests?: number;
   rating: number;
   images: string[];
   amenities: string[];

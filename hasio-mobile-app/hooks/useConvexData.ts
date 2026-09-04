@@ -22,6 +22,11 @@ type ConvexListing = {
   email?: string;
   website?: string;
   priceRange?: string;
+  // Stay pricing. A hotel is only bookable once `pricePerNight` is set — the
+  // backend's `isBookableStay` gates on exactly this.
+  pricePerNight?: number;
+  currency?: string;
+  maxGuests?: number;
   amenities?: string[];
   images?: string[];
   ownerId?: string;
@@ -73,6 +78,11 @@ function toLodging(l: ConvexListing): Lodging {
     neighborhood: l.region || l.city,
     neighborhoodAr: l.region || l.city,
     priceRange: l.priceRange || "",
+    // Carried through undefined rather than defaulted: the Book button keys off
+    // its absence, so a 0 here would offer a free night.
+    pricePerNight: l.pricePerNight,
+    currency: l.currency,
+    maxGuests: l.maxGuests,
     rating: l.rating || 0,
     images: l.images || [],
     amenities: l.amenities || [],
