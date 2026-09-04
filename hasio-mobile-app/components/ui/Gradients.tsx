@@ -5,6 +5,7 @@ import {
   BOTTOM_FADE_HEIGHT,
   bottomFadeGradient,
   CARD_CAPTION_SCRIM_HEIGHT,
+  CARD_CAPTION_SCRIM_HEIGHT_TALL,
   cardCaptionGradient,
   imageScrimGradient,
   screenGradient,
@@ -83,14 +84,17 @@ export function ImageScrim({ style }: FillProps) {
  * Separate from `ImageScrim` rather than folded into it: that scrim goes on
  * every photograph in the app, most of which carry no text, and the weight
  * this one needs would be far too heavy there.
+ *
+ * `tall` reaches further up, for a short card or a caption whose title can
+ * wrap to a second line — see the note on the constant.
  */
-export function CaptionScrim({ style }: FillProps) {
+export function CaptionScrim({ tall, style }: FillProps & { tall?: boolean }) {
   return (
     <LinearGradient
       {...cardCaptionGradient}
       colors={[...cardCaptionGradient.colors]}
       locations={[...cardCaptionGradient.locations]}
-      style={[styles.captionScrim, style]}
+      style={[styles.captionScrim, tall && styles.captionScrimTall, style]}
       pointerEvents="none"
     />
   );
@@ -135,5 +139,8 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     height: CARD_CAPTION_SCRIM_HEIGHT,
+  },
+  captionScrimTall: {
+    height: CARD_CAPTION_SCRIM_HEIGHT_TALL,
   },
 });

@@ -100,6 +100,15 @@ export const cardCaptionGradient = {
 /** How far up the card the caption scrim reaches. */
 export const CARD_CAPTION_SCRIM_HEIGHT = "58%";
 
+/**
+ * The same scrim on a shorter card, or under a caption that can run to two
+ * lines. Both cases push the title further up in proportional terms, and a
+ * percentage that is right on a 240px card leaves the first line of a wrapped
+ * title sitting in the ramp's weak half. 72% puts it back at ~0.89 on the
+ * 180px category card and the 210px grid card alike.
+ */
+export const CARD_CAPTION_SCRIM_HEIGHT_TALL = "72%";
+
 /** Height of the fade that sits above a fixed bottom bar. */
 export const BOTTOM_FADE_HEIGHT = 64;
 

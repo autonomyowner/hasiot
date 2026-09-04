@@ -34,7 +34,7 @@ import {
   SkeletonHomeSections,
 } from "@/components/ui";
 import { categoryColors, colors, type AppFonts } from "@/constants/colors";
-import { ScreenGradient } from "@/components/ui/Gradients";
+import { CaptionScrim, ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import {
   HOME_CARD_GAP,
@@ -600,33 +600,30 @@ function DestinationGridCard({
           contentFit="cover"
           transition={300}
         />
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.06)", "rgba(0,0,0,0.28)"]}
-          style={styles.gridCardGradient}
-        />
-        {/* Floating white info pill over the image bottom. */}
-        <View style={styles.gridCardPill}>
-          <View style={[styles.gridCardPillTopRow, isRTL && styles.rowRTL]}>
-            <Text
-              style={[styles.gridCardName, isRTL && styles.textRTL]}
-              numberOfLines={1}
-            >
-              {name}
+        {/* `tall`: the name can wrap to a second line here, which pushes it
+            up out of the standard scrim's strong half. */}
+        <CaptionScrim tall />
+
+        {/* Rating reads top-left, the same place and the same pill the lodging
+            cards use, so the two card families scan alike. */}
+        {rating != null && (
+          <View style={[styles.gridCardRating, isRTL && styles.gridCardRatingRTL]}>
+            <Feather name="star" size={11} color={colors.warm} />
+            <Text style={styles.gridCardRatingText}>{rating.toFixed(1)}</Text>
+          </View>
+        )}
+
+        <View style={[styles.gridCaption, isRTL && styles.gridCaptionRTL]}>
+          <View style={styles.gridCardChip}>
+            <Text style={styles.gridCardChipText} numberOfLines={1}>
+              {subtitle}
             </Text>
-            {rating != null && (
-              <View style={[styles.gridCardRating, isRTL && styles.rowRTL]}>
-                <Feather name="star" size={11} color={colors.warm} />
-                <Text style={styles.gridCardRatingText}>
-                  {rating.toFixed(1)}
-                </Text>
-              </View>
-            )}
           </View>
           <Text
-            style={[styles.gridCardSubtitle, isRTL && styles.textRTL]}
-            numberOfLines={1}
+            style={[styles.gridCardName, isRTL && styles.textRTL]}
+            numberOfLines={2}
           >
-            {subtitle}
+            {name}
           </Text>
         </View>
       </AnimatedPressable>
@@ -768,47 +765,64 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     height: "100%",
     position: "absolute",
   },
-  gridCardGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  gridCardPill: {
-    position: "absolute",
-    left: 8,
-    right: 8,
-    bottom: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.96)",
-    borderRadius: 16,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-  },
-  gridCardPillTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 6,
-  },
-  gridCardName: {
-    flex: 1,
-    fontSize: 13.5,
-    fontFamily: fonts.semibold,
-    color: colors.ink,
-    letterSpacing: -0.2,
-  },
   gridCardRating: {
+    position: "absolute",
+    top: 10,
+    left: 10,
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
+    gap: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  gridCardRatingRTL: {
+    left: undefined,
+    right: 10,
+    flexDirection: "row-reverse",
   },
   gridCardRatingText: {
     fontSize: 11.5,
     fontFamily: fonts.semibold,
     color: colors.ink,
   },
-  gridCardSubtitle: {
-    fontSize: 11.5,
-    fontFamily: fonts.regular,
-    color: colors.onSurface.muted,
-    marginTop: 1,
+  // Same block as the lodging card, sized for a column half the width: the
+  // inset drops 16 -> 12 and the title 20 -> 17, and the title takes two lines
+  // because at this width one truncates most Al-Ahsa place names.
+  gridCaption: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    bottom: 14,
+    alignItems: "flex-start",
+  },
+  gridCaptionRTL: {
+    alignItems: "flex-end",
+  },
+  gridCardChip: {
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  gridCardChipText: {
+    fontSize: 10.5,
+    lineHeight: 13,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
+  },
+  gridCardName: {
+    alignSelf: "stretch",
+    marginTop: 7,
+    fontSize: 17,
+    lineHeight: 23,
+    fontFamily: fonts.serif,
+    color: "#FFFFFF",
+    letterSpacing: -0.2,
+    textShadowColor: "rgba(0, 0, 0, 0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
   },
   bottomSpacing: {
     height: TAB_BAR_CLEARANCE,
