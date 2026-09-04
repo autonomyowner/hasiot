@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { enforceRateLimit } from "../rateLimit";
@@ -81,14 +82,14 @@ export async function addReviewForUser(
   const { content } = validateReviewInput(args);
 
   const listing = await ctx.db.get(args.listingId);
-  if (!listing) throw new Error(REVIEW_ERRORS.LISTING_NOT_FOUND);
+  if (!listing) throw new ConvexError(REVIEW_ERRORS.LISTING_NOT_FOUND);
 
   const existing = await ctx.db
     .query("reviews")
     .withIndex("by_listingId", (q) => q.eq("listingId", args.listingId))
     .filter((q) => q.eq(q.field("userId"), user._id))
     .first();
-  if (existing) throw new Error(REVIEW_ERRORS.DUPLICATE);
+  if (existing) throw new ConvexError(REVIEW_ERRORS.DUPLICATE);
 
   await enforceRateLimit(ctx, `review:${user._id}`, REVIEWS_PER_DAY);
 
@@ -122,8 +123,8 @@ export async function updateReviewForUser(
   const { content } = validateReviewInput(args);
 
   const review = await ctx.db.get(args.reviewId);
-  if (!review) throw new Error(REVIEW_ERRORS.NOT_FOUND);
-  if (review.userId !== user._id) throw new Error(REVIEW_ERRORS.NOT_YOURS);
+  if (!review) throw new ConvexError(REVIEW_ERRORS.NOT_FOUND);
+  if (review.userId !== user._id) throw new ConvexError(REVIEW_ERRORS.NOT_YOURS);
 
   await ctx.db.patch(args.reviewId, {
     rating: args.rating,
@@ -141,8 +142,8 @@ export async function deleteReviewForUser(
   reviewId: Id<"reviews">
 ): Promise<void> {
   const review = await ctx.db.get(reviewId);
-  if (!review) throw new Error(REVIEW_ERRORS.NOT_FOUND);
-  if (review.userId !== user._id) throw new Error(REVIEW_ERRORS.NOT_YOURS);
+  if (!review) throw new ConvexError(REVIEW_ERRORS.NOT_FOUND);
+  if (review.userId !== user._id) throw new ConvexError(REVIEW_ERRORS.NOT_YOURS);
 
   const listingId = review.listingId;
   await ctx.db.delete(reviewId);

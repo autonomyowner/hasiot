@@ -1,5 +1,5 @@
 import { mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 import { addReviewForUser, deleteReviewForUser, updateReviewForUser } from "./service";
 
@@ -21,7 +21,7 @@ export const addReview = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user) throw new Error(NOT_AUTHENTICATED);
+    if (!user) throw new ConvexError(NOT_AUTHENTICATED);
     return await addReviewForUser(ctx, user, args);
   },
 });
@@ -35,7 +35,7 @@ export const updateMyReview = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user) throw new Error(NOT_AUTHENTICATED);
+    if (!user) throw new ConvexError(NOT_AUTHENTICATED);
     await updateReviewForUser(ctx, user, args);
   },
 });
@@ -44,7 +44,7 @@ export const deleteMyReview = mutation({
   args: { reviewId: v.id("reviews") },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user) throw new Error(NOT_AUTHENTICATED);
+    if (!user) throw new ConvexError(NOT_AUTHENTICATED);
     await deleteReviewForUser(ctx, user, args.reviewId);
   },
 });

@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 /**
  * Review rules, as pure functions.
  *
@@ -81,12 +82,12 @@ export function validateReviewInput(args: {
   content?: string;
 }): { content: string | undefined } {
   if (!Number.isInteger(args.rating) || args.rating < 1 || args.rating > 5) {
-    throw new Error(REVIEW_ERRORS.RATING_RANGE);
+    throw new ConvexError(REVIEW_ERRORS.RATING_RANGE);
   }
 
   const trimmed = args.content?.trim();
   if (trimmed && trimmed.length > MAX_REVIEW_TEXT) {
-    throw new Error(REVIEW_ERRORS.TEXT_TOO_LONG);
+    throw new ConvexError(REVIEW_ERRORS.TEXT_TOO_LONG);
   }
 
   return { content: trimmed ? trimmed : undefined };

@@ -5,6 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { useMutation } from "convex/react";
 import { api } from "@/backend";
 import { appAlert } from "@/stores/dialogStore";
+import { getReviewErrorKey } from "@/lib/reviewError";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -92,9 +93,10 @@ export function ReviewSheet({
       onDone?.();
       onClose();
     } catch (error) {
-      // Backend errors are bilingual "Arabic / English" strings, already
-      // readable in either language, so they surface as-is.
-      appAlert(error instanceof Error ? error.message : String(error));
+      // Not the server's string: half of it is in the wrong language, and a
+      // production deployment redacts anything that is not a ConvexError, so
+      // showing it verbatim printed "Server Error" to the guest.
+      appAlert(t("error"), t(getReviewErrorKey(error)));
     } finally {
       setSaving(false);
     }
@@ -109,7 +111,7 @@ export function ReviewSheet({
       onDone?.();
       onClose();
     } catch (error) {
-      appAlert(error instanceof Error ? error.message : String(error));
+      appAlert(t("error"), t(getReviewErrorKey(error)));
     } finally {
       setSaving(false);
     }

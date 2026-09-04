@@ -131,6 +131,15 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     setBookingOpen(true);
   };
 
+  const handleRate = () => {
+    if (!isAuthenticated) {
+      onClose();
+      router.push("/auth");
+      return;
+    }
+    setReviewOpen(true);
+  };
+
   const scrollGalleryTo = (index: number) => {
     galleryRef.current?.scrollTo({ x: index * width, animated: true });
     setImageIndex(index);
@@ -443,9 +452,12 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                 <Section title={t("reviewsTitle")} isRTL={isRTL}>
                   {summary && <RatingSummary value={summary} />}
 
+                  {/* Signed out, this used to open the sheet and fail on the
+                      server — the guest wrote a review, pressed save and was
+                      told "Server Error". Same gate as Book. */}
                   <Pressable
                     style={styles.rateButton}
-                    onPress={() => setReviewOpen(true)}
+                    onPress={handleRate}
                     accessibilityRole="button"
                   >
                     <Feather name="star" size={15} color={colors.ink} />
