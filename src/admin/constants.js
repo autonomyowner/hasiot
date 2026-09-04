@@ -3,32 +3,66 @@
 // how the pending-accounts tab ended up labelling `businessType` with the
 // listing category list.
 
-// Al-Ahsa governorate only — Hasio is not a nationwide guide.
+// The thirteen governorates and cities Hasio covers, in the Eastern Province.
+// Keep in step with `hasio-mobile-app/constants/cities.ts` — the app stores
+// these exact strings and looks them up there to draw an Arabic or English
+// label, so a name that exists in only one of the two files loses its label on
+// the other side.
 export const CITIES = [
-  'Hofuf', 'Mubarraz', 'Al Oyoun', 'Al Omran', 'Al Jafer',
-  'Al Battaliyah', 'Al Taraf', 'Al Shuqaiq', 'Al Qarah', 'Al Kilabiyah',
-  'Al Jishshah', 'Al Fudhool', 'Al Marah', 'Al Hulaila', 'Al Salhiyah',
+  'Dammam', 'Al Khobar', 'Al Ahsa', 'Qatif', 'Jubail', 'Hafar Al Batin',
+  'Khafji', 'Ras Tanura', 'Abqaiq', 'Nairyah', 'Qaryat Al Ulya', 'Al Udayd',
+  'Al Bayda',
 ]
 
 export const CITY_LABELS = {
-  'Hofuf': 'الهفوف',
-  'Mubarraz': 'المبرز',
-  'Al Oyoun': 'العيون',
-  'Al Omran': 'العمران',
-  'Al Jafer': 'الجفر',
-  'Al Battaliyah': 'البطالية',
-  'Al Taraf': 'الطرف',
-  'Al Shuqaiq': 'الشقيق',
-  'Al Qarah': 'القارة',
-  'Al Kilabiyah': 'الكلابية',
-  'Al Jishshah': 'الجشة',
-  'Al Fudhool': 'الفضول',
-  'Al Marah': 'المراح',
-  'Al Hulaila': 'الحليلة',
-  'Al Salhiyah': 'الصالحية',
+  'Dammam': 'الدمام',
+  'Al Khobar': 'الخبر',
+  'Al Ahsa': 'الأحساء',
+  'Qatif': 'القطيف',
+  'Jubail': 'الجبيل',
+  'Hafar Al Batin': 'حفر الباطن',
+  'Khafji': 'الخفجي',
+  'Ras Tanura': 'رأس تنورة',
+  'Abqaiq': 'بقيق',
+  'Nairyah': 'النعيرية',
+  'Qaryat Al Ulya': 'قرية العليا',
+  'Al Udayd': 'العديد',
+  'Al Bayda': 'البيضاء',
 }
 
-export const cityLabel = (city) => CITY_LABELS[city] || city || '—'
+// Sub-areas that stored listings already use, folded into the city above them.
+// Al-Ahsa used to be fifteen separate "cities" in this panel, so production
+// carries Hofuf, Mubarraz and Al Oyoun. Folding them here means every table and
+// filter reads correctly today without rewriting a single row.
+export const CITY_ALIASES = {
+  'Hofuf': 'Al Ahsa',
+  'Al Hofuf': 'Al Ahsa',
+  'Mubarraz': 'Al Ahsa',
+  'Al Mubarraz': 'Al Ahsa',
+  'Al Oyoun': 'Al Ahsa',
+  'Al Omran': 'Al Ahsa',
+  'Al Jafer': 'Al Ahsa',
+  'Al Battaliyah': 'Al Ahsa',
+  'Al Taraf': 'Al Ahsa',
+  'Al Shuqaiq': 'Al Ahsa',
+  'Al Qarah': 'Al Ahsa',
+  'Al Kilabiyah': 'Al Ahsa',
+  'Al Jishshah': 'Al Ahsa',
+  'Al Fudhool': 'Al Ahsa',
+  'Al Marah': 'Al Ahsa',
+  'Al Hulaila': 'Al Ahsa',
+  'Al Salhiyah': 'Al Ahsa',
+  'Dhahran': 'Al Khobar',
+  'Saihat': 'Qatif',
+  'Safwa': 'Qatif',
+  'Darin': 'Qatif',
+  'Tarout': 'Qatif',
+}
+
+export const canonicalCity = (city) => CITY_ALIASES[city] || city
+
+export const cityLabel = (city) =>
+  CITY_LABELS[canonicalCity(city)] || city || '—'
 
 export const LISTING_TYPES = [
   { value: 'hotel', label: 'فندق' },

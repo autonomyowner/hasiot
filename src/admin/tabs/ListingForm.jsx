@@ -4,7 +4,7 @@ import ImageUploader from '../components/ImageUploader'
 import FilterSelect from '../components/FilterSelect'
 import {
   AMENITIES, CATEGORIES, CATEGORIES_BY_TYPE, CATEGORY_LABELS,
-  CITIES, CITY_LABELS, LISTING_TYPES, PRICE_RANGES,
+  CITIES, CITY_LABELS, LISTING_TYPES, PRICE_RANGES, canonicalCity,
 } from '../constants'
 
 // Al-Ahsa oasis, so a new listing starts on the map where the app is centred
@@ -28,7 +28,10 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
     description_en: initialData?.description_en || '',
     description_ar: initialData?.description_ar || '',
     address: initialData?.address || '',
-    city: initialData?.city || 'Hofuf',
+    // Folded to the city above it: listings predating the Eastern Province list
+    // carry an Al-Ahsa village, which is no longer one of the options. Saving
+    // then writes the canonical name, which is the migration.
+    city: canonicalCity(initialData?.city) || 'Al Ahsa',
     region: initialData?.region || 'Eastern Province',
     lat: initialData?.coordinates?.lat ?? DEFAULT_COORDS.lat,
     lng: initialData?.coordinates?.lng ?? DEFAULT_COORDS.lng,
