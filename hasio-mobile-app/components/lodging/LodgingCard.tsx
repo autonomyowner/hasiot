@@ -5,6 +5,7 @@ import { useConvexAuth } from "convex/react";
 import type { Lodging, Language } from "@/types";
 import { Feather } from "@expo/vector-icons";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
+import { useCurrency } from "@/hooks/useCurrency";
 import { colors, type AppFonts } from "@/constants/colors";
 import { CaptionScrim, ImageScrim } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
@@ -31,6 +32,7 @@ export function LodgingCard({
   const styles = useThemedStyles(makeStyles);
   const [reportOpen, setReportOpen] = useState(false);
   const { t } = useLanguage();
+  const { format } = useCurrency();
   const { isAuthenticated } = useConvexAuth();
   const convexToggleFavorite = useToggleFavorite();
   const { favorites } = useFavorites();
@@ -57,6 +59,11 @@ export function LodgingCard({
   // Localised like every other string on the card. Capitalising the raw value
   // left a Latin "Hotel" chip pinned to an otherwise Arabic card.
   const typeLabel = t(`cat_${lodging.type}` as const);
+  // The real nightly rate wins over the "$$$" band a host typed: it is the
+  // number the quote is built from, and it is the only one worth converting.
+  // `priceRange` is free-text display copy, so it is shown as-is or not at all.
+  const priceText =
+    lodging.pricePerNight != null ? format(lodging.pricePerNight) : lodging.priceRange;
 
   return (
     // Shadow lives on a wrapper that doesn't clip; iOS drops the shadow if the
@@ -66,7 +73,7 @@ export function LodgingCard({
         style={styles.card}
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={`${name}, ${typeLabel}, ${city}, ${lodging.priceRange} ${perNightText}`}
+        accessibilityLabel={`${name}, ${typeLabel}, ${city}, ${priceText} ${perNightText}`}
       >
         <Image
           source={lodging.images?.[0] ? { uri: lodging.images[0] } : undefined}
@@ -138,7 +145,7 @@ export function LodgingCard({
               </Text>
             </View>
             <Text style={styles.price}>
-              {lodging.priceRange}{" "}
+              {priceText}{" "}
               <Text style={styles.priceUnit}>{perNightText}</Text>
             </Text>
           </View>

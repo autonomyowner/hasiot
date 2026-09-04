@@ -9,6 +9,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
+import { useCurrency } from "@/hooks/useCurrency";
 import { categoryColors, colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
@@ -34,6 +35,7 @@ export function LodgingScreenContent() {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, language, isRTL } = useLanguage();
+  const { format } = useCurrency();
   const [activeFilter, setActiveFilter] = useState<LodgingFilter>("all");
 
   // Get lodgings from Convex with fallback to mock data
@@ -63,7 +65,7 @@ export function LodgingScreenContent() {
     // A real nightly rate wins over the "$$$" band: it is the number the quote
     // is built from, and the Book bar only renders when there is a priceLine.
     priceLine: item.pricePerNight
-      ? `${t("sar")} ${item.pricePerNight} ${t("perNight")}`
+      ? `${format(item.pricePerNight)} ${t("perNight")}`
       : item.priceRange
         ? `${item.priceRange} ${t("perNight")}`
         : undefined,

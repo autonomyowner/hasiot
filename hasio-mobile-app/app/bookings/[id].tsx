@@ -12,6 +12,7 @@ import { BackButton } from "@/components/ui/BackButton";
 import { BookingStatusChip } from "@/components/booking/BookingStatusChip";
 import { ReviewSheet } from "@/components/review";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { formatDateRange, formatISODate, todayRiyadhISO } from "@/lib/dates";
 import { getBookingErrorKey } from "@/lib/bookingError";
@@ -25,6 +26,7 @@ export default function BookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
+  const { format } = useCurrency();
   // Above the loading and not-found returns below, so the hook order holds.
   const styles = useThemedStyles(makeStyles);
   const promptStyles = useThemedStyles(makePromptStyles);
@@ -217,7 +219,7 @@ export default function BookingDetailScreen() {
           {booking.totalAmount != null ? (
             <Row
               label={t("total")}
-              value={`${t("sar")} ${booking.totalAmount.toLocaleString("en-US")}`}
+              value={format(booking.totalAmount)}
               isRTL={isRTL}
               emphasis
             />

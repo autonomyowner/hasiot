@@ -17,6 +17,7 @@ import {
   type HostBookingData,
 } from "@/components/booking/HostBookingCard";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useCurrency } from "@/hooks/useCurrency";
 import { todayRiyadhISO } from "@/lib/dates";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { haptic } from "@/lib/haptics";
@@ -46,6 +47,7 @@ export default function OwnerBookingsScreen() {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
+  const { format } = useCurrency();
   const [tab, setTab] = useState<Tab>("requests");
   const [decliningId, setDecliningId] = useState<Id<"bookings"> | null>(null);
   const [busy, setBusy] = useState<{ id: string; action: HostAction } | null>(null);
@@ -121,14 +123,14 @@ export default function OwnerBookingsScreen() {
       nights: t("nights"),
       guests: t("guests"),
       guest: t("guest"),
-      sar: t("sar"),
+      formatPrice: format,
       callGuest: t("callGuest"),
       confirm: t("confirmBooking"),
       decline: t("declineBooking"),
       noShow: t("markNoShow"),
       complete: t("markCompleted"),
     }),
-    [t]
+    [t, format]
   );
 
   const renderItem = useCallback(

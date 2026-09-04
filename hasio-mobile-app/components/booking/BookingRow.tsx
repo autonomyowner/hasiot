@@ -34,7 +34,13 @@ interface BookingRowProps {
   language: Language;
   isRTL: boolean;
   /** Already-translated words the row needs; passed in so memo can compare them. */
-  labels: { night: string; nights: string; guests: string; sar: string };
+  labels: {
+    night: string;
+    nights: string;
+    guests: string;
+    /** Formats a stored SAR amount in the viewer's display currency. */
+    formatPrice: (amountSar: number) => string;
+  };
   onPress: (id: string) => void;
 }
 
@@ -81,7 +87,7 @@ function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingR
             <BookingStatusChip status={booking.status} />
             {booking.totalAmount != null && (
               <Text style={styles.amount}>
-                {`${labels.sar} ${booking.totalAmount.toLocaleString("en-US")}`}
+                {labels.formatPrice(booking.totalAmount)}
               </Text>
             )}
           </View>

@@ -42,7 +42,8 @@ interface HostBookingCardProps {
     nights: string;
     guests: string;
     guest: string;
-    sar: string;
+    /** Formats a stored SAR amount in the viewer's display currency. */
+    formatPrice: (amountSar: number) => string;
     callGuest: string;
     confirm: string;
     decline: string;
@@ -106,7 +107,7 @@ function HostBookingCardInner({
             <BookingStatusChip status={booking.status} />
             {booking.totalAmount != null ? (
               <Text style={styles.amount}>
-                {`${labels.sar} ${booking.totalAmount.toLocaleString("en-US")}`}
+                {labels.formatPrice(booking.totalAmount)}
               </Text>
             ) : null}
           </View>

@@ -22,6 +22,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useCities, useHomeData } from "@/hooks/useConvexData";
 import {
   SearchBar,
@@ -64,6 +65,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, language, isRTL } = useLanguage();
+  const { format } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedQuery = useDebounce(searchQuery, 300);
   const [refreshing, setRefreshing] = useState(false);
@@ -177,7 +179,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
     rating: item.rating,
     // A real nightly rate wins over the "$$$" band — see LodgingScreenContent.
     priceLine: item.pricePerNight
-      ? `${t("sar")} ${item.pricePerNight} ${t("perNight")}`
+      ? `${format(item.pricePerNight)} ${t("perNight")}`
       : item.priceRange
         ? `${item.priceRange} ${t("perNight")}`
         : undefined,
@@ -335,7 +337,11 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                       <SearchResultItem
                         key={item.id}
                         name={getLocalizedText(item.name, item.nameAr, language)}
-                        subtitle={`${getLocalizedText(item.city, item.cityAr, language)} • ${item.priceRange}`}
+                        subtitle={`${getLocalizedText(item.city, item.cityAr, language)} • ${
+                          item.pricePerNight != null
+                            ? format(item.pricePerNight)
+                            : item.priceRange
+                        }`}
                         image={item.images?.[0]}
                         isRTL={isRTL}
                         index={index}

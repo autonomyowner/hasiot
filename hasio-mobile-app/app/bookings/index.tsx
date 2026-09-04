@@ -11,6 +11,7 @@ import { FilterChip } from "@/components/ui/FilterChip";
 import { SkeletonBookingList } from "@/components/ui/SkeletonScreens";
 import { BookingRow, type BookingRowData } from "@/components/booking/BookingRow";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useCurrency } from "@/hooks/useCurrency";
 import { todayRiyadhISO } from "@/lib/dates";
 import { haptic } from "@/lib/haptics";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
@@ -32,6 +33,7 @@ export default function MyBookingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
+  const { format } = useCurrency();
   const [tab, setTab] = useState<Tab>("upcoming");
 
   const bookings = useQuery(api.bookings.queries.getUserBookings, {});
@@ -57,8 +59,8 @@ export default function MyBookingsScreen() {
   // a new labels object on every render of this screen. `t` is a useCallback
   // keyed on language, so these recompute once per language switch.
   const labels = useMemo(
-    () => ({ night: t("night"), nights: t("nights"), guests: t("guests"), sar: t("sar") }),
-    [t]
+    () => ({ night: t("night"), nights: t("nights"), guests: t("guests"), formatPrice: format }),
+    [t, format]
   );
   const openBooking = useCallback((id: string) => router.push(`/bookings/${id}`), [router]);
   const renderItem = useCallback(

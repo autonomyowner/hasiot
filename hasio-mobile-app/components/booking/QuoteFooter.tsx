@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useCurrency } from "@/hooks/useCurrency";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import type { QuoteFooterState } from "@/lib/bookingDisplay";
 import { colors, type AppFonts } from "@/constants/colors";
@@ -29,6 +30,7 @@ interface QuoteFooterProps {
 export function QuoteFooter({ state, submitting, onSubmit }: QuoteFooterProps) {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
+  const { format } = useCurrency();
   const insets = useSafeAreaInsets();
 
   const canSubmit = state.kind === "total" && !state.stale && !submitting;
@@ -60,10 +62,10 @@ export function QuoteFooter({ state, submitting, onSubmit }: QuoteFooterProps) {
             <Text style={styles.totalBreakdown}>
               {state.stale
                 ? t("updatingTotal")
-                : `${state.nights} × ${t("sar")} ${state.pricePerNight}`}
+                : `${state.nights} × ${format(state.pricePerNight)}`}
             </Text>
             <Text style={styles.totalAmount}>
-              {`${t("sar")} ${state.totalAmount.toLocaleString("en-US")}`}
+              {format(state.totalAmount)}
             </Text>
           </View>
         )}
