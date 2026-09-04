@@ -496,6 +496,23 @@ export function SettingsScreenContent() {
             {t("preferences")}
           </Text>
 
+          {/* The two screens a guest reaches only from here. Bookings first:
+              it is the one someone opens on purpose, while the inbox is
+              usually reached by following a notification. */}
+          <SettingRow
+            icon="calendar"
+            label={t("myBookings")}
+            isRTL={isRTL}
+            onPress={() => router.push("/bookings")}
+          />
+
+          <SettingRow
+            icon="bell"
+            label={t("notifications")}
+            isRTL={isRTL}
+            onPress={() => router.push("/notifications")}
+          />
+
           <SettingRow
             icon="heart"
             label={t("favorites")}
