@@ -324,6 +324,14 @@ export function SkeletonFade({
         <Animated.View
           style={fill ? styles.fill : undefined}
           entering={FadeIn.duration(FADE_DURATION)}
+          // Composite the incoming subtree as one layer for the fade. Without
+          // this, a card's elevation shadow is drawn at full strength while
+          // the card itself is still transparent — a dark halo under every
+          // photo for the length of the fade. Android needs the hardware
+          // texture, iOS the offscreen alpha pass; both are only in effect
+          // while the entering animation runs.
+          renderToHardwareTextureAndroid
+          needsOffscreenAlphaCompositing
         >
           {children}
         </Animated.View>

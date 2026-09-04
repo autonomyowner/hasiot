@@ -139,12 +139,9 @@ function SkeletonDestinationGrid({
   return (
     <View style={[styles.grid, isRTL && styles.rowReverse]}>
       {heights.map((height, index) => (
-        <Skeleton
-          key={index}
-          radius={24}
-          phase={sweepPhase(seed + index)}
-          style={[styles.gridCard, { height }]}
-        />
+        <View key={index} style={[styles.gridCard, { height }]}>
+          <Skeleton radius={24} phase={sweepPhase(seed + index)} style={styles.gridCardFill} />
+        </View>
       ))}
     </View>
   );
@@ -354,13 +351,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: HOME_CONTAINER_PADDING,
     gap: HOME_CARD_GAP,
   },
+  // Mirrors the real card's wrapper: shadow on a non-clipping view, the
+  // rounded skeleton inside it. Same weight as the content, so the shadow
+  // neither appears nor changes when the two cross-fade.
   gridCard: {
     width: HOME_CARD_WIDTH,
+    borderRadius: 24,
     shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  gridCardFill: {
+    width: "100%",
+    height: "100%",
   },
   // The home screen flips these three rows in Arabic rather than relying on
   // I18nManager, which the app deliberately leaves off.

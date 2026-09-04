@@ -753,20 +753,27 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   gridContainerRTL: {
     flexDirection: "row-reverse",
   },
+  // The shadow lives here, on a wrapper that does not clip. Putting it on the
+  // same view as `overflow: "hidden"` drops it entirely on iOS, and on Android
+  // the elevation shadow ignores the card's animated opacity — so while a card
+  // faded in from the skeleton, a full-strength shadow sat under a
+  // half-transparent card and read as a dark halo on the photo. The radius is
+  // repeated so Android shapes the shadow to the rounded card.
   gridCardWrapper: {
     width: CARD_WIDTH,
     marginBottom: 0,
+    borderRadius: 24,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
   gridCard: {
     flex: 1,
     borderRadius: 24,
     overflow: "hidden",
     backgroundColor: colors.sand,
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 6,
   },
   gridCardImage: {
     width: "100%",
