@@ -10,7 +10,7 @@ import {
   LIST_CONTAINER_PADDING,
   MOMENT_CARD_WIDTH,
 } from "@/constants/layout";
-import { Skeleton, SkeletonLine, sweepPhase } from "./Skeleton";
+import { Skeleton, SkeletonLine, SkeletonPill, sweepPhase } from "./Skeleton";
 
 /**
  * Screen-shaped skeletons.
@@ -427,4 +427,107 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 12,
   },
+});
+
+/**
+ * Mirrors the row in app/bookings/index.tsx: 84px thumb, name, two meta
+ * lines, chip + amount on the last line. Same paddings as the real list so
+ * the cross-fade to content is a fade and not a shuffle.
+ */
+export function SkeletonBookingList({
+  isRTL = false,
+  count = 3,
+}: {
+  isRTL?: boolean;
+  count?: number;
+}) {
+  return (
+    <View style={bookingStyles.list}>
+      {Array.from({ length: count }).map((_, index) => {
+        const seed = index * 5;
+        return (
+          <View key={index} style={[bookingStyles.row, isRTL && bookingStyles.rowRTL]}>
+            <Skeleton radius={12} phase={sweepPhase(seed)} style={bookingStyles.thumb} />
+            <View style={bookingStyles.body}>
+              <SkeletonLine width="70%" box={22} isRTL={isRTL} phase={sweepPhase(seed + 1)} />
+              <SkeletonLine width="55%" box={18} isRTL={isRTL} phase={sweepPhase(seed + 2)} />
+              <SkeletonLine width="40%" box={18} isRTL={isRTL} phase={sweepPhase(seed + 3)} />
+              <View style={[bookingStyles.footer, isRTL && bookingStyles.rowRTL]}>
+                <SkeletonPill width={76} height={22} phase={sweepPhase(seed + 4)} />
+                <Skeleton radius={4} phase={sweepPhase(seed + 4)} style={bookingStyles.amount} />
+              </View>
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Mirrors app/bookings/[id].tsx: status card, listing card with hero, facts card. */
+export function SkeletonBookingDetail({ isRTL = false }: { isRTL?: boolean }) {
+  const edge = isRTL ? bookingStyles.selfEnd : undefined;
+  return (
+    <View style={bookingStyles.detail}>
+      <View style={bookingStyles.card}>
+        <SkeletonPill width={88} height={22} phase={sweepPhase(0)} style={edge} />
+        <SkeletonLine width={110} box={18} isRTL={isRTL} phase={sweepPhase(1)} style={bookingStyles.gap8} />
+        <SkeletonLine width={160} box={32} bar={26} isRTL={isRTL} phase={sweepPhase(2)} />
+      </View>
+      <View style={bookingStyles.card}>
+        <Skeleton radius={12} phase={sweepPhase(3)} style={bookingStyles.hero} />
+        <SkeletonLine width="65%" box={23} isRTL={isRTL} phase={sweepPhase(4)} style={bookingStyles.gap8} />
+        <SkeletonLine width="45%" box={19} isRTL={isRTL} phase={sweepPhase(5)} />
+      </View>
+      <View style={bookingStyles.card}>
+        {[0, 1, 2, 3].map((i) => (
+          <View key={i} style={[bookingStyles.factRow, isRTL && bookingStyles.rowRTL]}>
+            <Skeleton radius={4} phase={sweepPhase(6 + i)} style={bookingStyles.factLabel} />
+            <Skeleton radius={4} phase={sweepPhase(6 + i)} style={bookingStyles.factValue} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// Separate sheet from `styles` above: these mirror the booking screens'
+// numbers, and keeping them together makes a drift easy to spot.
+const bookingStyles = StyleSheet.create({
+  list: { paddingHorizontal: 20, gap: 12 },
+  row: {
+    flexDirection: "row",
+    gap: 12,
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 16,
+    padding: 12,
+  },
+  rowRTL: { flexDirection: "row-reverse" },
+  thumb: { width: 84, height: 84 },
+  body: { flex: 1, justifyContent: "space-between" },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  amount: { width: 64, height: 16 },
+  detail: { paddingHorizontal: 20, gap: 12 },
+  card: {
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 16,
+    padding: 16,
+    gap: 8,
+  },
+  selfEnd: { alignSelf: "flex-end" },
+  gap8: { marginTop: 8 },
+  hero: { width: "100%", height: 140 },
+  factRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+  },
+  factLabel: { width: 70, height: 13 },
+  factValue: { width: 90, height: 15 },
 });
