@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from "react";
 import type { TranslationKey } from "@/constants/translations";
+import { useCurrency } from "@/hooks/useCurrency";
 import { View, Text, StyleSheet, FlatList } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -85,6 +86,7 @@ export function FavoritesScreenContent() {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, language, isRTL } = useLanguage();
+  const { format } = useCurrency();
 
   // Signed-out guests get an empty array from the hook (the Convex query is
   // skipped), so they fall straight through to the empty state below.
@@ -110,7 +112,7 @@ export function FavoritesScreenContent() {
     badgeColor: categoryColors[item.type],
     rating: item.rating,
     priceLine: item.pricePerNight
-      ? `${t("sar")} ${item.pricePerNight} ${t("perNight")}`
+      ? `${format(item.pricePerNight)} ${t("perNight")}`
       : item.priceRange
         ? `${item.priceRange} ${t("perNight")}`
         : undefined,

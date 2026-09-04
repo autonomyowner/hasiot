@@ -30,7 +30,7 @@ import {
 import { formatPhoneForDisplay, normalizeKsaPhone } from "@/lib/phone";
 import { convex, refreshAuth } from "@/lib/convex";
 import { useAppStore } from "@/stores/appStore";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 // Served from the website's public/ — the same pair Settings links to.
@@ -311,7 +311,7 @@ export default function AuthScreen() {
                   accessibilityState={{ disabled: loading || !normalizedPhone, busy: loading }}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color={colors.ink} />
                   ) : (
                     <Text style={styles.submitButtonText}>{t("sendCode")}</Text>
                   )}
@@ -370,7 +370,7 @@ export default function AuthScreen() {
                   accessibilityState={{ disabled: loading, busy: loading }}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color={colors.ink} />
                   ) : (
                     <Text style={styles.submitButtonText}>{t("verifyCode")}</Text>
                   )}
@@ -464,7 +464,7 @@ export default function AuthScreen() {
                             : "Show password"
                       }
                     >
-                      <Feather name={showPassword ? "eye-off" : "eye"} size={20} color="#737373" />
+                      <Feather name={showPassword ? "eye-off" : "eye"} size={20} color={colors.onSurface.muted} />
                     </Pressable>
                   </View>
                 </View>
@@ -482,7 +482,7 @@ export default function AuthScreen() {
                   accessibilityState={{ disabled: loading, busy: loading }}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color={colors.ink} />
                   ) : (
                     <Text style={styles.submitButtonText}>{t("signIn")}</Text>
                   )}
@@ -522,7 +522,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface.DEFAULT,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
@@ -547,7 +547,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   subtitle: {
     fontSize: 16,
-    color: "#737373",
+    color: colors.onSurface.muted,
     lineHeight: 24,
   },
   textRTL: {
@@ -566,7 +566,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   input: {
     height: 52,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface.DEFAULT,
     borderRadius: 12,
     paddingHorizontal: 16,
     fontSize: 16,
@@ -629,22 +629,22 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontFamily: fonts.regular,
     fontSize: 12,
     lineHeight: 18,
-    color: "#737373",
+    color: colors.onSurface.muted,
     marginTop: 4,
   },
   consentLink: {
     fontFamily: fonts.medium,
-    color: "#0D7A5F",
+    color: colors.primary.deep,
     textDecorationLine: "underline",
   },
   submitButton: {
     height: 52,
-    backgroundColor: "#0D7A5F",
+    backgroundColor: colors.primary.DEFAULT,
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
     marginTop: 8,
-    shadowColor: "#0D7A5F",
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -656,7 +656,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontFamily: fonts.bold,
-    color: "#FFFFFF",
+    color: colors.ink,
   },
   toggleMode: {
     alignSelf: "center",
@@ -664,10 +664,10 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   toggleText: {
     fontSize: 15,
-    color: "#737373",
+    color: colors.onSurface.muted,
   },
   toggleLink: {
-    color: "#0D7A5F",
+    color: colors.primary.deep,
     fontFamily: fonts.semibold,
   },
 });
