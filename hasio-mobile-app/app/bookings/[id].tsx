@@ -18,12 +18,14 @@ import { getBookingErrorKey } from "@/lib/bookingError";
 import { SkeletonBookingDetail } from "@/components/ui/SkeletonScreens";
 import { nightsLabel } from "@/lib/bookingDisplay";
 import { haptic } from "@/lib/haptics";
-import { colors, fonts, type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 
 export default function BookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
+  // Above the loading and not-found returns below, so the hook order holds.
+  const styles = useThemedStyles(makeStyles);
   const promptStyles = useThemedStyles(makePromptStyles);
   const [cancelling, setCancelling] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -297,6 +299,8 @@ function Row({
   isRTL: boolean;
   emphasis?: boolean;
 }) {
+  // Same factory as the screen above, so this shares its cached stylesheet.
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.row, isRTL && styles.rowRTL]}>
       <Text style={styles.rowLabel}>{label}</Text>
@@ -305,7 +309,7 @@ function Row({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",
@@ -460,11 +464,10 @@ const styles = StyleSheet.create({
 /**
  * The rating prompt's own styles, built per language.
  *
- * Separate from the sheet above because that one is module scope, which pins
- * every `fontFamily` to the Latin map at import time. This block's display
- * title has to become Cairo in Arabic — Outfit has no Arabic glyphs — so it
- * goes through `useThemedStyles` instead. The rest of this screen predates
- * that hook and is left as it is.
+ * Kept as its own factory only because the prompt is a self-contained block
+ * with its own palette; like `makeStyles` above it goes through
+ * `useThemedStyles`, so every `fontFamily` follows the active language rather
+ * than being pinned to the Latin map at import time.
  */
 const makePromptStyles = (fonts: AppFonts) =>
   StyleSheet.create({

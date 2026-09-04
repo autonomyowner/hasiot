@@ -11,7 +11,8 @@ import { useConvexUser } from "@/hooks/useConvexUser";
 import { useLanguage } from "@/hooks/useLanguage";
 import { relativeTime } from "@/lib/dates";
 import { routeForNotificationData } from "@/lib/bookingDisplay";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 /**
  * The in-app notification inbox.
@@ -22,6 +23,7 @@ import { fonts } from "@/constants/colors";
  * open. Everything else is a way of getting someone to open it.
  */
 export default function NotificationsScreen() {
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
@@ -95,7 +97,7 @@ export default function NotificationsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",

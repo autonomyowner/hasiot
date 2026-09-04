@@ -14,7 +14,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { todayRiyadhISO } from "@/lib/dates";
 import { haptic } from "@/lib/haptics";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 type Tab = "upcoming" | "past";
 
@@ -26,6 +27,7 @@ type Tab = "upcoming" | "past";
  * a request-and-confirm flow that has no payment step to close it.
  */
 export default function MyBookingsScreen() {
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
@@ -115,7 +117,7 @@ export default function MyBookingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",

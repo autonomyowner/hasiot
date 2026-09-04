@@ -21,7 +21,8 @@ import { todayRiyadhISO } from "@/lib/dates";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { haptic } from "@/lib/haptics";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { TranslationKey } from "@/constants/translations";
 
 type Tab = "requests" | "upcoming" | "past";
@@ -41,6 +42,7 @@ const TOAST_MS = 1800;
  * Decline keeps its sheet, because a reason is worth asking for.
  */
 export default function OwnerBookingsScreen() {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
   const [tab, setTab] = useState<Tab>("requests");
@@ -239,7 +241,7 @@ export default function OwnerBookingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",
