@@ -33,6 +33,7 @@ import { TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAppStore } from "@/stores/appStore";
 import { useConvexUser } from "@/hooks/useConvexUser";
+import { useFavorites, useTrips } from "@/hooks/useConvexData";
 import { signOut as authSignOut } from "@/lib/auth";
 import { refreshAuth } from "@/lib/convex";
 import { UserType } from "@/types";
@@ -55,6 +56,13 @@ export function SettingsScreenContent() {
   const { t, language, changeLanguage, isRTL } = useLanguage();
   const setOnboardingComplete = useAppStore((state) => state.setOnboardingComplete);
   const clearUserData = useAppStore((state) => state.clearUserData);
+
+  // The stats band used to render three hardcoded zeros. Trips and favourites
+  // come from Convex (both skip while signed out); moments are local to the
+  // device, which is where the app already keeps them.
+  const { trips } = useTrips();
+  const { favorites } = useFavorites();
+  const moments = useAppStore((state) => state.moments);
 
   const { isSignedIn, isBusinessOwner, isServiceProvider, isAdmin, isApproved, verificationStatus, userType: convexUserType, user } = useConvexUser();
   const userType: UserType = convexUserType === "business_owner" ? "business" : convexUserType === "service_provider" ? "provider" : convexUserType === "admin" ? "admin" : "user";
@@ -371,17 +379,17 @@ export function SettingsScreenContent() {
           style={[styles.statsCard, isRTL && styles.statsCardRTL]}
         >
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>{trips.length}</Text>
             <Text style={styles.statLabel}>{language === "ar" ? "الرحلات" : "Trips"}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>{moments.length}</Text>
             <Text style={styles.statLabel}>{t("moments")}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>{favorites.length}</Text>
             <Text style={styles.statLabel}>{t("favorites")}</Text>
           </View>
         </Animated.View>
@@ -832,7 +840,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: colors.onSurface.muted,
     textTransform: "uppercase",
     letterSpacing: 1,
-    paddingHorizontal: 4,
     paddingTop: 24,
     paddingBottom: 12,
   },
@@ -845,7 +852,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     alignItems: "center",
     paddingTop: 20,
     paddingBottom: 20,
-    paddingHorizontal: 4,
   },
   profileHeaderRTL: {
     flexDirection: "row-reverse",
@@ -1005,8 +1011,10 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    // Aligned to the page gutter, not inset inside a panel.
-    paddingHorizontal: 4,
+    // No inset of its own: scrollContent's 20 is the page's single gutter, and
+    // every heading, row and rule on this screen starts from it. The 4 that
+    // used to be here was compensating for listCard's own padding, and once
+    // the cards went it pushed every label 4px past the stats rules.
     // With no divider under each row, the vertical rhythm is what separates
     // them, so it is a little more generous than the boxed version was.
     paddingVertical: 13,
