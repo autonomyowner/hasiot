@@ -417,11 +417,16 @@ export function SettingsScreenContent() {
           </Animated.View>
         )}
 
-        {/* Settings List */}
-        <Animated.View
-          entering={FadeInDown.delay(300).duration(600)}
-          style={styles.listCard}
-        >
+        {/* Account — only rendered when the user actually has one of these
+            rows, so guests never see an empty heading. */}
+        {(isBusinessOwner || isServiceProvider) && (
+          <Animated.View
+            entering={FadeInDown.delay(280).duration(600)}
+            style={styles.listGroup}
+          >
+            <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
+              {t("account")}
+            </Text>
           {/* Dashboard link for business users */}
           {isBusinessOwner && (
             <SettingRow
@@ -463,6 +468,18 @@ export function SettingsScreenContent() {
             />
           )}
 
+          </Animated.View>
+        )}
+
+        {/* Preferences */}
+        <Animated.View
+          entering={FadeInDown.delay(300).duration(600)}
+          style={styles.listGroup}
+        >
+          <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
+            {t("preferences")}
+          </Text>
+
           <SettingRow
             icon="heart"
             label={t("favorites")}
@@ -476,6 +493,16 @@ export function SettingsScreenContent() {
             isRTL={isRTL}
             onPress={() => changeLanguage(language === "en" ? "ar" : "en")}
           />
+        </Animated.View>
+
+        {/* Support */}
+        <Animated.View
+          entering={FadeInDown.delay(320).duration(600)}
+          style={styles.listGroup}
+        >
+          <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
+            {t("support")}
+          </Text>
 
           {/* The notifications switch lived here. The app ships no push
               notifications, so the toggle only flipped a local Zustand flag —
@@ -517,14 +544,14 @@ export function SettingsScreenContent() {
             label={t("termsOfService")}
             isRTL={isRTL}
             onPress={handleOpenTermsOfService}
-            isLast
           />
         </Animated.View>
 
-        {/* Delete account */}
+        {/* Delete account — kept apart from Support by space alone, so the
+            destructive row is never a mis-tap away from a legal link. */}
         <Animated.View
           entering={FadeInDown.delay(350).duration(600)}
-          style={styles.listCard}
+          style={styles.listGroupSpaced}
         >
           <SettingRow
             icon="trash-2"
@@ -532,7 +559,6 @@ export function SettingsScreenContent() {
             isRTL={isRTL}
             onPress={confirmDeleteAccount}
             destructive
-            isLast
           />
         </Animated.View>
 
@@ -684,7 +710,6 @@ interface SettingRowProps {
   onPress?: () => void;
   destructive?: boolean;
   icon?: React.ComponentProps<typeof Feather>["name"];
-  isLast?: boolean;
 }
 
 function SettingRow({
@@ -695,7 +720,6 @@ function SettingRow({
   onPress,
   destructive,
   icon,
-  isLast,
 }: SettingRowProps) {
   const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
@@ -723,7 +747,6 @@ function SettingRow({
       style={[
         styles.settingRow,
         isRTL && styles.settingRowRTL,
-        isLast && styles.settingRowLast,
         animatedStyle,
       ]}
       onPress={onPress}
@@ -875,15 +898,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   // Stats strip
   statsCard: {
     flexDirection: "row",
-    backgroundColor: colors.surface.DEFAULT,
-    borderRadius: 20,
     paddingVertical: 18,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
+    marginBottom: 4,
+    // Hairlines top and bottom instead of a panel: the numbers still read as
+    // one band, without another white rectangle on the page.
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.divider,
   },
   statsCardRTL: {
     flexDirection: "row-reverse",
@@ -967,31 +988,28 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 14,
     color: colors.primary.DEFAULT,
   },
-  // Settings list card
-  listCard: {
-    backgroundColor: colors.surface.DEFAULT,
-    borderRadius: 20,
-    paddingHorizontal: 4,
-    marginBottom: 16,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
+  // A settings group. Not a card: the page reads as one surface, and the
+  // groups are told apart by their heading and the space around them. The
+  // white panels that used to be here cut the page into boxes and fought the
+  // screen gradient underneath.
+  listGroup: {
+    marginBottom: 4,
+  },
+  // A group with no heading still needs the space a heading would have given
+  // it, or the delete row rides up against the legal links above it.
+  listGroupSpaced: {
+    marginTop: 20,
+    marginBottom: 4,
   },
   settingRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: colors.surface.DEFAULT,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  settingRowLast: {
-    borderBottomWidth: 0,
+    // Aligned to the page gutter, not inset inside a panel.
+    paddingHorizontal: 4,
+    // With no divider under each row, the vertical rhythm is what separates
+    // them, so it is a little more generous than the boxed version was.
+    paddingVertical: 13,
   },
   settingRowRTL: {
     flexDirection: "row-reverse",
@@ -1006,11 +1024,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
+  // Alignment box only. The mint chip that used to fill it measured 1.13:1
+  // against the white row it sat on and 1.00:1 against the bottom of the page
+  // gradient — it drew nothing. The icon reads better on the bare page
+  // (6.7:1) than it did on the chip.
   settingIcon: {
     width: 34,
     height: 34,
-    borderRadius: 12,
-    backgroundColor: colors.mint,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
