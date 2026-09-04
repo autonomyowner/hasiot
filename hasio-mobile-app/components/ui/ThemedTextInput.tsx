@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   inputFocused: {
-    borderColor: "#CCE745",
+    borderColor: "#4F5E10",
     borderWidth: 1.5,
   },
 });

@@ -48,7 +48,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   text: {
     fontSize: 15,
-    color: "#CCE745",
+    color: "#4F5E10",
     fontFamily: fonts.medium,
   },
 });

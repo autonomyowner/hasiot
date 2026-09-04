@@ -50,8 +50,8 @@ export default function MyListingsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#CCE745"
-            colors={["#CCE745"]}
+            tintColor="#4F5E10"
+            colors={["#4F5E10"]}
           />
         }
       >
@@ -198,7 +198,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontFamily: fonts.medium,
   },
   filterTextActive: {
-    color: "#FFFFFF",
+    color: "#1F1D17",
   },
   listingsContainer: {
     paddingHorizontal: 24,

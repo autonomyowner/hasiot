@@ -29,7 +29,7 @@ import { api } from "@/backend";
 import { colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-import { TAB_BAR_CLEARANCE } from "@/constants/layout";
+import { LIST_CONTAINER_PADDING, TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAppStore } from "@/stores/appStore";
 import { useConvexUser } from "@/hooks/useConvexUser";
@@ -235,7 +235,10 @@ export function SettingsScreenContent() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <ScreenGradient />
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
           {/* Header */}
           <Animated.View
             entering={FadeInDown.delay(100).duration(600)}
@@ -252,7 +255,7 @@ export function SettingsScreenContent() {
             style={styles.guestCard}
           >
             <View style={styles.guestIconContainer}>
-              <Feather name="user" size={40} color="#CCE745" />
+              <Feather name="user" size={40} color={colors.primary.deep} />
             </View>
             <Text style={[styles.guestTitle, isRTL && styles.textRTL]}>
               {t("guestProfileTitle")}
@@ -266,7 +269,7 @@ export function SettingsScreenContent() {
               accessibilityRole="button"
               accessibilityLabel={t("guestSignInButton")}
             >
-              <Feather name="log-in" size={18} color="#FFFFFF" style={{ marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0 }} />
+              <Feather name="log-in" size={18} color={colors.ink} style={{ marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0 }} />
               <Text style={styles.guestSignInButtonText}>
                 {t("guestSignInButton")}
               </Text>
@@ -280,6 +283,7 @@ export function SettingsScreenContent() {
             </Text>
 
             <SettingRow
+              icon="globe"
               label={t("language")}
               value={language === "en" ? "English" : "العربية"}
               isRTL={isRTL}
@@ -295,6 +299,7 @@ export function SettingsScreenContent() {
             </Text>
 
             <SettingRow
+              icon="shield"
               label={t("privacyPolicy")}
               subtitle={t("privacyPolicySubtitle")}
               isRTL={isRTL}
@@ -302,6 +307,7 @@ export function SettingsScreenContent() {
             />
 
             <SettingRow
+              icon="file-text"
               label={t("termsOfService")}
               subtitle={t("termsOfServiceSubtitle")}
               isRTL={isRTL}
@@ -310,6 +316,7 @@ export function SettingsScreenContent() {
 
             {CAN_RATE_APP && (
               <SettingRow
+                icon="star"
                 label={t("rateApp")}
                 subtitle={t("shareFeedback")}
                 isRTL={isRTL}
@@ -318,6 +325,7 @@ export function SettingsScreenContent() {
             )}
 
             <SettingRow
+              icon="info"
               label={t("about")}
               subtitle={t("appVersionInfo")}
               isRTL={isRTL}
@@ -813,11 +821,16 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  // The single gutter for this screen, in BOTH the signed-in and signed-out
+  // states. The signed-out ScrollView had none at all: its header and guest
+  // card hardcoded their own 24 while the rows leaned on settingRow's 16 plus
+  // a white background. With the background gone, those rows sat at x=0 while
+  // everything above them sat at 24. LIST_CONTAINER_PADDING is what the other
+  // list screens use and what this screen was already hardcoding.
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: LIST_CONTAINER_PADDING,
   },
   header: {
-    paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 8,
   },
@@ -1082,7 +1095,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   appInfo: {
     alignItems: "center",
     paddingVertical: 24,
-    paddingHorizontal: 40,
   },
   appName: {
     fontFamily: fonts.serif,
@@ -1109,7 +1121,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   // Guest Card Styles
   guestCard: {
-    marginHorizontal: 24,
     marginTop: 16,
     marginBottom: 8,
     backgroundColor: "#FFFFFF",
@@ -1126,7 +1137,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "rgba(13, 122, 95, 0.1)",
+    backgroundColor: "rgba(79, 94, 16, 0.10)",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
@@ -1164,7 +1175,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   guestSignInButtonText: {
     fontFamily: fonts.semibold,
     fontSize: 16,
-    color: colors.surface.DEFAULT,
+    color: colors.ink,
   },
   // Modal Styles
   modalOverlay: {

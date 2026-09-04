@@ -36,7 +36,7 @@ export default function Index() {
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color="#CCE745" />
+      <ActivityIndicator size="large" color="#4F5E10" />
     </View>
   );
 }

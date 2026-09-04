@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   buttonText: {
-    color: "#FFFFFF",
+    color: "#1F1D17",
     fontSize: 16,
     fontWeight: "600",
   },

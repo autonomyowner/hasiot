@@ -420,7 +420,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   consentLink: {
     fontFamily: fonts.medium,
-    color: "#CCE745",
+    color: "#4F5E10",
     textDecorationLine: "underline",
   },
   submitButton: {
@@ -442,7 +442,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   submitButtonText: {
     fontSize: 16,
     fontFamily: fonts.bold,
-    color: "#FFFFFF",
+    color: "#1F1D17",
   },
   toggleMode: {
     alignSelf: "center",
@@ -453,7 +453,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: "#737373",
   },
   toggleLink: {
-    color: "#CCE745",
+    color: "#4F5E10",
     fontFamily: fonts.semibold,
   },
 });
