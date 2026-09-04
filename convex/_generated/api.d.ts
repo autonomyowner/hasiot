@@ -26,6 +26,7 @@ import type * as crons from "../crons.js";
 import type * as emailCaptures_mutations from "../emailCaptures/mutations.js";
 import type * as emailCaptures_queries from "../emailCaptures/queries.js";
 import type * as http from "../http.js";
+import type * as lib_cities from "../lib/cities.js";
 import type * as lib_contact from "../lib/contact.js";
 import type * as lib_dates from "../lib/dates.js";
 import type * as listings_mutations from "../listings/mutations.js";
@@ -84,6 +85,7 @@ declare const fullApi: ApiFromModules<{
   "emailCaptures/mutations": typeof emailCaptures_mutations;
   "emailCaptures/queries": typeof emailCaptures_queries;
   http: typeof http;
+  "lib/cities": typeof lib_cities;
   "lib/contact": typeof lib_contact;
   "lib/dates": typeof lib_dates;
   "listings/mutations": typeof listings_mutations;
