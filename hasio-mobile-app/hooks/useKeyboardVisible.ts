@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Keyboard, Platform, type KeyboardEvent } from "react-native";
 import {
   Easing,
+  makeMutable,
   useReducedMotion,
-  useSharedValue,
   withTiming,
   type SharedValue,
 } from "react-native-reanimated";
@@ -19,7 +19,24 @@ const DEFAULT_DURATION = Platform.OS === "ios" ? 250 : 180;
  * settling. A linear ramp against that reads as the bar chasing the keyboard
  * rather than travelling with it, which is the whole thing we are fixing.
  */
-const KEYBOARD_EASING = Easing.bezier(0.17, 0.59, 0.4, 0.77);
+export const KEYBOARD_EASING = Easing.bezier(0.17, 0.59, 0.4, 0.77);
+
+/**
+ * How long a keyboard takes to arrive, for the callers that start moving before
+ * it does. Roughly what both platforms use; being a little out is invisible,
+ * being late by the whole animation is not.
+ */
+export const KEYBOARD_TRAVEL_MS = 250;
+
+/**
+ * One timeline, shared by every caller, because there is one keyboard.
+ *
+ * The tab bar and the screen's own bottom bar have to leave together, and two
+ * hook instances each animating their own copy is exactly how they end up a
+ * frame apart. Module scope also lets a screen start the transition on focus
+ * and have the tab bar follow, without either knowing about the other.
+ */
+const progress = makeMutable(0);
 
 export interface KeyboardTransition {
   /**
@@ -36,6 +53,15 @@ export interface KeyboardTransition {
    * exactly where it must not.
    */
   progress: SharedValue<number>;
+  /**
+   * Start the transition now, ahead of the keyboard event.
+   *
+   * Android has no will-show event — `keyboardDidShow` lands only once the
+   * keyboard has finished animating — so anything waiting for it sits still
+   * through the animation and then jumps. Call this from a `TextInput`'s
+   * `onFocus`, which happens before the keyboard moves at all.
+   */
+  beginOpen: () => void;
 }
 
 /**
@@ -59,7 +85,6 @@ export interface KeyboardTransition {
  */
 export function useKeyboardTransition(): KeyboardTransition {
   const [visible, setVisible] = useState(false);
-  const progress = useSharedValue(0);
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
@@ -91,7 +116,15 @@ export function useKeyboardTransition(): KeyboardTransition {
       show.remove();
       hide.remove();
     };
-  }, [progress, reducedMotion]);
+  }, [reducedMotion]);
 
-  return { visible, progress };
+  const beginOpen = useCallback(() => {
+    if (progress.value === 1) return;
+    progress.value = withTiming(1, {
+      duration: reducedMotion ? 0 : KEYBOARD_TRAVEL_MS,
+      easing: KEYBOARD_EASING,
+    });
+  }, [reducedMotion]);
+
+  return { visible, progress, beginOpen };
 }

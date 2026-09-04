@@ -33,6 +33,15 @@ import { Keyboard, Platform, View } from "react-native";
  *
  * Returns a no-op ({ overlap: 0 }) on iOS — use KeyboardAvoidingView there.
  */
+/**
+ * The last overlap any screen measured, shared deliberately.
+ *
+ * Whether the window resizes for the keyboard is a property of the window, not
+ * of the screen asking, so what one screen learned is true for the next one —
+ * which means only the very first keyboard of a session has to be slow.
+ */
+let lastKnownOverlap = 0;
+
 export function useKeyboardOverlap(onKeyboardShow?: () => void) {
   const ref = useRef<View>(null);
   const [overlap, setOverlap] = useState(0);
@@ -52,8 +61,28 @@ export function useKeyboardOverlap(onKeyboardShow?: () => void) {
 
     ref.current?.measureInWindow((_x, y, _width, height) => {
       const covered = y + height - keyboardTop;
-      setOverlap(covered > 0 ? covered : 0);
+      const next = covered > 0 ? covered : 0;
+      lastKnownOverlap = next;
+      setOverlap(next);
     });
+  }, []);
+
+  /**
+   * Move now, on the strength of what the keyboard did last time.
+   *
+   * Android has no will-show event: `keyboardDidShow` arrives only once the
+   * keyboard has finished animating in, so a view that waits for it sits still
+   * through the whole animation and then jumps. Focus, though, happens before
+   * any of that — and by then we already know what the last keyboard cost this
+   * window, because it is the same keyboard. Call this from `onFocus` and the
+   * real measurement, when it lands, agrees with the guess and nothing moves.
+   *
+   * Zero is a perfectly good answer: it is what a window that resizes for the
+   * keyboard reports, and there the system moves the view for us.
+   */
+  const prepare = useCallback(() => {
+    if (Platform.OS !== "android") return;
+    if (lastKnownOverlap > 0) setOverlap(lastKnownOverlap);
   }, []);
 
   useEffect(() => {
@@ -79,5 +108,5 @@ export function useKeyboardOverlap(onKeyboardShow?: () => void) {
   // Safe to feed straight into onLayout: padding is applied inside the measured
   // view's own box, so it never changes the frame measureInWindow reports and
   // cannot drive a feedback loop.
-  return { ref, overlap, onLayout: recompute };
+  return { ref, overlap, onLayout: recompute, prepare };
 }
