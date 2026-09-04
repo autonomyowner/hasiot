@@ -2,7 +2,8 @@ import React from "react";
 import { Text, View, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useLanguage } from "@/hooks/useLanguage";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { TranslationKey } from "@/constants/translations";
 
 type Style = {
@@ -30,6 +31,7 @@ const STATUS_STYLES: Record<string, Style> = {
 };
 
 export function BookingStatusChip({ status }: { status: string }) {
+  const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
   const style = STATUS_STYLES[status] ?? STATUS_STYLES.pending;
 
@@ -44,7 +46,7 @@ export function BookingStatusChip({ status }: { status: string }) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   chip: {
     alignSelf: "flex-start",
     flexDirection: "row",

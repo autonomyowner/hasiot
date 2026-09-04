@@ -1,7 +1,8 @@
 import React, { forwardRef, useImperativeHandle, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 export interface BookingNotesFieldHandle {
   /** The trimmed draft, or undefined when empty. Read at submit time. */
@@ -25,6 +26,7 @@ interface BookingNotesFieldProps {
  */
 export const BookingNotesField = forwardRef<BookingNotesFieldHandle, BookingNotesFieldProps>(
   function BookingNotesField({ label, placeholder, isRTL }, ref) {
+    const styles = useThemedStyles(makeStyles);
     const [notes, setNotes] = useState("");
 
     useImperativeHandle(ref, () => ({
@@ -52,7 +54,7 @@ export const BookingNotesField = forwardRef<BookingNotesFieldHandle, BookingNote
   }
 );
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   sectionLabel: {
     fontSize: 15,
     fontFamily: fonts.semibold,

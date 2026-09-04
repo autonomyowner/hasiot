@@ -7,7 +7,8 @@ import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
 import { formatPhoneForDisplay } from "@/lib/phone";
 import { hostActionsFor, nightsLabel } from "@/lib/bookingDisplay";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { Language } from "@/types";
 
 export interface HostBookingData {
@@ -59,6 +60,7 @@ function HostBookingCardInner({
   labels,
   onAction,
 }: HostBookingCardProps) {
+  const styles = useThemedStyles(makeStyles);
   const listing = booking.listing;
   const guest = booking.tourist;
   const guestName =
@@ -193,6 +195,8 @@ function ActionButton({
   disabled: boolean;
   onPress: () => void;
 }) {
+  // Same factory as the card above, so this shares its cached stylesheet.
+  const styles = useThemedStyles(makeStyles);
   const primary = tone === "primary";
   return (
     <Pressable
@@ -218,7 +222,7 @@ function ActionButton({
 
 export const HostBookingCard = memo(HostBookingCardInner);
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,

@@ -28,7 +28,8 @@ import Animated from "react-native-reanimated";
 import { enterFade, popIn } from "@/constants/motion";
 import { applyCalendarLocale } from "@/lib/calendarLocale";
 import { getBookingErrorKey } from "@/lib/bookingError";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { DetailItem } from "@/components/listing/ListingDetailSheet";
 
 const GREEN = "#0D7A5F";
@@ -37,14 +38,17 @@ const MAX_HORIZON_DAYS = 365;
 
 // Module scope on purpose: an inline object here is a new reference every
 // render, and react-native-calendars re-renders every day cell when it sees
-// one. Fonts are static, so the theme can be too.
-const CALENDAR_THEME = {
-  todayTextColor: GREEN,
-  arrowColor: GREEN,
-  textDayFontFamily: fonts.regular,
-  textMonthFontFamily: fonts.semibold,
-  textDayHeaderFontFamily: fonts.medium,
-} as const;
+// one. Read through useThemedStyles like the stylesheet below — it caches on
+// (factory, language), so the reference is still stable per language, but the
+// calendar picks up Cairo in Arabic instead of a Latin face with no glyphs.
+const makeCalendarTheme = (fonts: AppFonts) =>
+  ({
+    todayTextColor: GREEN,
+    arrowColor: GREEN,
+    textDayFontFamily: fonts.regular,
+    textMonthFontFamily: fonts.semibold,
+    textDayHeaderFontFamily: fonts.medium,
+  }) as const;
 
 interface BookingSheetProps {
   visible: boolean;
@@ -60,6 +64,8 @@ interface BookingSheetProps {
  * that will charge it. The sheet never invents a price.
  */
 export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
+  const styles = useThemedStyles(makeStyles);
+  const calendarTheme = useThemedStyles(makeCalendarTheme);
   const { t, isRTL, language } = useLanguage();
   const router = useRouter();
 
@@ -262,7 +268,7 @@ export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
                 minDate={today}
                 maxDate={addDays(today, MAX_HORIZON_DAYS)}
                 firstDay={0}
-                theme={CALENDAR_THEME}
+                theme={calendarTheme}
                 style={styles.calendar}
                 // The library names its arrows by position, not by meaning, and
                 // does not flip them for RTL: in Arabic the previous-month
@@ -338,7 +344,7 @@ export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",

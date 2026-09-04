@@ -13,7 +13,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 interface DeclineReasonSheetProps {
   visible: boolean;
@@ -28,6 +29,7 @@ interface DeclineReasonSheetProps {
  * invites a phone call. "Fully booked those dates" lets them move on.
  */
 export function DeclineReasonSheet({ visible, onClose, onSubmit }: DeclineReasonSheetProps) {
+  const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
   const {
@@ -117,7 +119,7 @@ export function DeclineReasonSheet({ visible, onClose, onSubmit }: DeclineReason
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",

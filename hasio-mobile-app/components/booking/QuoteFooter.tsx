@@ -5,7 +5,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import type { QuoteFooterState } from "@/lib/bookingDisplay";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const GREEN = "#0D7A5F";
 // Tall enough for the two-line total row; every other state is laid out
@@ -27,6 +28,7 @@ interface QuoteFooterProps {
  * number* while they bump the guest count, and it should change in place.
  */
 export function QuoteFooter({ state, submitting, onSubmit }: QuoteFooterProps) {
+  const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
 
@@ -88,7 +90,7 @@ export function QuoteFooter({ state, submitting, onSubmit }: QuoteFooterProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   footer: {
     paddingHorizontal: 20,
     paddingTop: 16,

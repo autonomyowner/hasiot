@@ -6,7 +6,8 @@ import { BookingStatusChip } from "./BookingStatusChip";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
 import { nightsLabel } from "@/lib/bookingDisplay";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { Language } from "@/types";
 
 /**
@@ -38,6 +39,7 @@ interface BookingRowProps {
 }
 
 function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingRowProps) {
+  const styles = useThemedStyles(makeStyles);
   const listing = booking.listing;
   const image = listing?.images?.[0];
   const isStay = booking.kind === "stay" && !!booking.checkIn && !!booking.checkOut;
@@ -96,7 +98,7 @@ function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingR
  */
 export const BookingRow = memo(BookingRowInner);
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   card: {
     flexDirection: "row",
     gap: 12,

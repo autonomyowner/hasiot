@@ -1,7 +1,8 @@
 import React from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 interface GuestStepperProps {
   value: number;
@@ -29,6 +30,7 @@ export function GuestStepper({
   unit,
   isRTL,
 }: GuestStepperProps) {
+  const styles = useThemedStyles(makeStyles);
   const canDecrease = value > min;
   const canIncrease = value < max;
 
@@ -76,7 +78,7 @@ export function GuestStepper({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
