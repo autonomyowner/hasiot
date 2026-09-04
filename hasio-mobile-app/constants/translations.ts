@@ -588,6 +588,18 @@ export const translations = {
     emailSignInOnlyNote:
       "Email sign-in is for existing accounts. New accounts are created with a phone number.",
 
+    // Currency
+    usd: "USD",
+    currency: "Currency",
+    currencyHint: "Prices are set in riyals. Dollars are shown at the fixed 3.75 peg.",
+    currencySar: "Saudi riyal (SAR)",
+    currencyUsd: "US dollar (USD)",
+
+    // Favorites
+    myFavorites: "My favorites",
+    noFavorites: "No favorites yet",
+    noFavoritesHint: "Tap the heart on any place to keep it here.",
+
     // Profile
     editName: "Your name",
     editNameHint: "Shown to hosts on your bookings",
@@ -1249,6 +1261,18 @@ export const translations = {
     backToPhone: "استخدام رقم الجوال",
     emailSignInOnlyNote:
       "الدخول بالبريد للحسابات الحالية فقط. الحسابات الجديدة تُنشأ برقم الجوال.",
+
+    // Currency
+    usd: "دولار",
+    currency: "العملة",
+    currencyHint: "الأسعار محددة بالريال. يُعرض الدولار بسعر الصرف الثابت 3.75.",
+    currencySar: "ريال سعودي (SAR)",
+    currencyUsd: "دولار أمريكي (USD)",
+
+    // Favorites
+    myFavorites: "مفضلاتي",
+    noFavorites: "لا توجد مفضلات بعد",
+    noFavoritesHint: "اضغط على القلب في أي مكان لحفظه هنا.",
 
     // Profile
     editName: "اسمك",
