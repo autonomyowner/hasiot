@@ -1,5 +1,5 @@
 import { appAlert } from "@/stores/dialogStore";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -15,10 +15,10 @@ import {
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { getSubmitErrorKey } from "@/lib/submitError";
@@ -26,9 +26,10 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { BackButton, Button } from "@/components/ui";
 import { LodgingType } from "@/types";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { Feather } from "@expo/vector-icons";
 import { AMENITIES, type AmenityKey } from "@/constants/amenities";
-import { CITIES } from "@/constants/cities";
+import { CITIES, canonicalCity } from "@/constants/cities";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
@@ -49,6 +50,21 @@ export default function PostLodgingScreen() {
     onLayout: keyboardOnLayout,
   } = useKeyboardOverlap();
   const submitListing = useMutation(api.listings.mutations.submitListing);
+  const updateMyListing = useMutation(api.listings.mutations.updateMyListing);
+
+  // An `id` in the route turns this screen into an editor for a listing the
+  // owner already posted. Read from `getMyListings` rather than a lookup of its
+  // own: that query is already subscribed on the screen the guest came from,
+  // and it is the one that enforces "yours".
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const myListings = useQuery(
+    api.listings.queries.getMyListings,
+    id ? {} : "skip"
+  );
+  const existing = id
+    ? (myListings ?? []).find((listing: any) => listing._id === id)
+    : undefined;
+  const isEditing = Boolean(id);
 
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
@@ -78,6 +94,30 @@ export default function PostLodgingScreen() {
         : [...current, key]
     );
   const [images, setImages] = useState<string[]>([]);
+
+  // Fill the form the first time the listing lands, and only then: re-running
+  // this on every render of a live query would overwrite whatever is being
+  // typed each time anything else on the account changes.
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (!existing || prefilled.current) return;
+    prefilled.current = true;
+    setName(existing.name_en ?? "");
+    setNameAr(existing.name_ar ?? "");
+    setType((existing.category as LodgingType) ?? "hotel");
+    setCity(canonicalCity(existing.city ?? ""));
+    setNeighborhood(existing.region ?? "");
+    setPriceRange(existing.priceRange ?? "");
+    setPricePerNight(existing.pricePerNight != null ? String(existing.pricePerNight) : "");
+    setMaxGuests(existing.maxGuests != null ? String(existing.maxGuests) : "2");
+    setUnitCount(existing.unitCount != null ? String(existing.unitCount) : "1");
+    setCheckInTime(existing.checkInTime ?? "15:00");
+    setCheckOutTime(existing.checkOutTime ?? "12:00");
+    setDescription(existing.description_en ?? "");
+    setDescriptionAr(existing.description_ar ?? "");
+    setSelectedAmenities((existing.amenities ?? []) as AmenityKey[]);
+    setImages(existing.images ?? []);
+  }, [existing]);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -148,11 +188,16 @@ export default function PostLodgingScreen() {
     setIsLoading(true);
 
     try {
-      const uploadedImages = images.length > 0
-        ? await uploadMultipleToConvex(images)
-        : [];
+      // Anything already stored is an https URL and must not be re-uploaded;
+      // only what the picker just handed us is a local file.
+      const alreadyStored = images.filter((uri) => /^https?:/.test(uri));
+      const freshPicks = images.filter((uri) => !/^https?:/.test(uri));
+      const uploadedImages = [
+        ...alreadyStored,
+        ...(freshPicks.length > 0 ? await uploadMultipleToConvex(freshPicks) : []),
+      ];
 
-      await submitListing({
+      const payload = {
         type: "hotel",
         name_en: name.trim(),
         name_ar: nameAr.trim(),
@@ -172,11 +217,19 @@ export default function PostLodgingScreen() {
         checkOutTime: checkOutTime.trim(),
         amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
-      });
+      } as const;
+
+      if (isEditing && id) {
+        // The server resets the listing to pending on any edit, which is why
+        // the confirmation says "sent for review" rather than "saved".
+        await updateMyListing({ listingId: id as Id<"listings">, ...payload });
+      } else {
+        await submitListing(payload);
+      }
 
       appAlert(
         t("success"),
-        t("listingSubmittedForReview"),
+        isEditing ? t("listingUpdated") : t("listingSubmittedForReview"),
         [{ text: t("done"), onPress: () => router.back() }]
       );
     } catch (error) {
@@ -209,8 +262,13 @@ export default function PostLodgingScreen() {
         >
           <BackButton />
           <Text style={[styles.title, isRTL && styles.textRTL]}>
-            {t("postLodging")}
+            {isEditing ? t("editListing") : t("postLodging")}
           </Text>
+          {isEditing && (
+            <Text style={[styles.editNotice, isRTL && styles.textRTL]}>
+              {t("editReviewNotice")}
+            </Text>
+          )}
         </Animated.View>
 
         {/* Form */}
@@ -495,7 +553,7 @@ export default function PostLodgingScreen() {
 
           {/* Submit Button */}
           <Button
-            title={isLoading ? "" : t("submitForReview")}
+            title={isLoading ? "" : isEditing ? t("saveChanges") : t("submitForReview")}
             onPress={handleSubmit}
             fullWidth
             disabled={isLoading}
@@ -662,6 +720,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   loadingIndicator: {
     marginTop: 16,
+  },
+  editNotice: {
+    fontSize: 12.5,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
+    marginTop: 6,
+    lineHeight: 18,
   },
   bottomSpacing: {
     height: 32,

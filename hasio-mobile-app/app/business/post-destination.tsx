@@ -1,5 +1,5 @@
 import { appAlert } from "@/stores/dialogStore";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -15,10 +15,10 @@ import {
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { getSubmitErrorKey } from "@/lib/submitError";
@@ -26,7 +26,9 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { BackButton, Button } from "@/components/ui";
 import { DestinationCategory } from "@/types";
-import { type AppFonts } from "@/constants/colors";
+import { CITIES, canonicalCity } from "@/constants/cities";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const DESTINATION_CATEGORIES: { value: DestinationCategory; labelKey: string }[] = [
@@ -40,25 +42,53 @@ const DESTINATION_CATEGORIES: { value: DestinationCategory; labelKey: string }[]
 export default function PostDestinationScreen() {
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
   const {
     ref: keyboardRef,
     overlap: keyboardOverlap,
     onLayout: keyboardOnLayout,
   } = useKeyboardOverlap();
   const submitListing = useMutation(api.listings.mutations.submitListing);
+  const updateMyListing = useMutation(api.listings.mutations.updateMyListing);
+
+  // An `id` in the route turns this screen into an editor for a listing the
+  // owner already posted — see the same block in `post-lodging.tsx`.
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const myListings = useQuery(
+    api.listings.queries.getMyListings,
+    id ? {} : "skip"
+  );
+  const existing = id
+    ? (myListings ?? []).find((listing: any) => listing._id === id)
+    : undefined;
+  const isEditing = Boolean(id);
 
   const [isLoading, setIsLoading] = useState(false);
   const [name, setName] = useState("");
   const [nameAr, setNameAr] = useState("");
   const [category, setCategory] = useState<DestinationCategory>("historical");
   const [city, setCity] = useState("");
-  const [cityAr, setCityAr] = useState("");
   const [address, setAddress] = useState("");
   const [addressAr, setAddressAr] = useState("");
   const [description, setDescription] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
   const [images, setImages] = useState<string[]>([]);
+
+  // Once, when the listing lands: re-running on every tick of a live query
+  // would overwrite whatever is being typed.
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (!existing || prefilled.current) return;
+    prefilled.current = true;
+    setName(existing.name_en ?? "");
+    setNameAr(existing.name_ar ?? "");
+    setCategory((existing.category as DestinationCategory) ?? "historical");
+    setCity(canonicalCity(existing.city ?? ""));
+    setAddress(existing.address ?? "");
+    setDescription(existing.description_en ?? "");
+    setDescriptionAr(existing.description_ar ?? "");
+    setImages(existing.images ?? []);
+  }, [existing]);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -101,11 +131,16 @@ export default function PostDestinationScreen() {
     setIsLoading(true);
 
     try {
-      const uploadedImages = images.length > 0
-        ? await uploadMultipleToConvex(images)
-        : [];
+      // Anything already stored is an https URL and must not be re-uploaded;
+      // only what the picker just handed us is a local file.
+      const alreadyStored = images.filter((uri) => /^https?:/.test(uri));
+      const freshPicks = images.filter((uri) => !/^https?:/.test(uri));
+      const uploadedImages = [
+        ...alreadyStored,
+        ...(freshPicks.length > 0 ? await uploadMultipleToConvex(freshPicks) : []),
+      ];
 
-      await submitListing({
+      const payload = {
         type: "attraction",
         name_en: name.trim(),
         name_ar: nameAr.trim(),
@@ -113,14 +148,22 @@ export default function PostDestinationScreen() {
         description_en: description.trim() || undefined,
         description_ar: descriptionAr.trim() || undefined,
         address: address.trim() || name.trim(),
-        city: city.trim() || "Al-Ahsa",
+        // A canonical key, never free text: the filter groups on this exact
+        // string. The old fallback wrote "Al-Ahsa", which is not one of them.
+        city: city.trim() || "Al Ahsa",
         coordinates: { lat: 25.3854, lng: 49.5683 },
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
-      });
+      } as const;
+
+      if (isEditing && id) {
+        await updateMyListing({ listingId: id as Id<"listings">, ...payload });
+      } else {
+        await submitListing(payload);
+      }
 
       appAlert(
         t("success"),
-        t("listingSubmittedForReview"),
+        isEditing ? t("listingUpdated") : t("listingSubmittedForReview"),
         [{ text: t("done"), onPress: () => router.back() }]
       );
     } catch (error) {
@@ -153,8 +196,13 @@ export default function PostDestinationScreen() {
         >
           <BackButton />
           <Text style={[styles.title, isRTL && styles.textRTL]}>
-            {t("postDestination")}
+            {isEditing ? t("editListing") : t("postDestination")}
           </Text>
+          {isEditing && (
+            <Text style={[styles.editNotice, isRTL && styles.textRTL]}>
+              {t("editReviewNotice")}
+            </Text>
+          )}
         </Animated.View>
 
         {/* Form */}
@@ -214,28 +262,31 @@ export default function PostDestinationScreen() {
             textAlign="right"
           />
 
-          {/* City */}
+          {/* City. Picked, not typed — a typed city is a new city as far as the
+              filter is concerned. The Arabic box beside it was never sent
+              anywhere; the label now comes from the key. */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("city")} *
           </Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={isRTL}
-            value={city}
-            onChangeText={setCity}
-            placeholder={t("placeholderCityEn")}
-            placeholderTextColor="#A3A3A3"
-          />
-
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={true}
-            value={cityAr}
-            onChangeText={setCityAr}
-            placeholder={t("placeholderCityAr")}
-            placeholderTextColor="#A3A3A3"
-            textAlign="right"
-          />
+          <View style={[styles.optionGrid, isRTL && styles.optionGridRTL]}>
+            {CITIES.map((option) => {
+              const on = city === option.key;
+              return (
+                <Pressable
+                  key={option.key}
+                  onPress={() => setCity(option.key)}
+                  style={[styles.optionChip, on && styles.optionChipOn]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={language === "ar" ? option.ar : option.en}
+                >
+                  <Text style={[styles.optionLabel, on && styles.optionLabelOn]}>
+                    {language === "ar" ? option.ar : option.en}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
           {/* Address */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
@@ -315,7 +366,7 @@ export default function PostDestinationScreen() {
 
           {/* Submit Button */}
           <Button
-            title={isLoading ? "" : t("submitForReview")}
+            title={isLoading ? "" : isEditing ? t("saveChanges") : t("submitForReview")}
             onPress={handleSubmit}
             fullWidth
             disabled={isLoading}
@@ -467,7 +518,44 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   loadingIndicator: {
     marginTop: 16,
   },
+  editNotice: {
+    fontSize: 12.5,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
+    marginTop: 6,
+    lineHeight: 18,
+  },
   bottomSpacing: {
     height: 32,
+  },
+  optionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  optionGridRTL: {
+    flexDirection: "row-reverse",
+  },
+  // Off is a white pill; on is lime, and lime is a fill, so its label is ink.
+  optionChip: {
+    paddingVertical: 9,
+    paddingHorizontal: 13,
+    borderRadius: 999,
+    backgroundColor: colors.surface.DEFAULT,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  optionChipOn: {
+    backgroundColor: colors.primary.DEFAULT,
+    borderColor: colors.primary.DEFAULT,
+  },
+  optionLabel: {
+    fontSize: 13,
+    fontFamily: fonts.medium,
+    color: colors.onSurface.variant,
+  },
+  optionLabelOn: {
+    color: colors.ink,
+    fontFamily: fonts.semibold,
   },
 });
