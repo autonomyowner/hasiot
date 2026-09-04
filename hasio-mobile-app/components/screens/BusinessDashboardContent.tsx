@@ -14,31 +14,37 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { useQuery } from "convex/react";
+import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { VerificationBanner } from "@/components/VerificationBanner";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function BusinessDashboardContent() {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, isRTL } = useLanguage();
-  const { verificationStatus, isApproved } = useConvexUser();
+  const { verificationStatus, isApproved, isSignedIn } = useConvexUser();
 
   const quickActions = [
     { key: "postLodging", route: "/business/post-lodging" },
-    { key: "postFood", route: "/business/post-food" },
-    { key: "postEvent", route: "/business/post-event" },
     { key: "postDestination", route: "/business/post-destination" },
   ];
 
-  // NOTE: views / bookings / listings figures in the stat cards below are
-  // static placeholders — no backend metrics are bound in this screen yet.
+  // "Views" is gone rather than made real: nothing counts listing impressions,
+  // and a permanent zero next to two live figures reads as a broken product.
+  // Revenue is the number a host actually cares about anyway.
+  const stats = useQuery(api.bookings.queries.getOwnerStats, isSignedIn ? {} : "skip");
 
   return (
     <View style={styles.container}>
+      <ScreenGradient />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Ink hosting header band */}
         <Animated.View
@@ -71,21 +77,27 @@ export default function BusinessDashboardContent() {
           {/* Stat cards over the ink band */}
           <View style={styles.statsRow}>
             <StatCard
-              value="—"
-              label={isRTL ? "القوائم" : "Listings"}
-              delta={isRTL ? "ابدأ بإضافة قائمة" : "Add your first listing"}
+              value={stats ? String(stats.listings) : "—"}
+              label={t("statListings")}
+              delta={
+                stats && stats.listings === 0
+                  ? isRTL
+                    ? "ابدأ بإضافة قائمة"
+                    : "Add your first listing"
+                  : ""
+              }
               isRTL={isRTL}
             />
             <StatCard
-              value="0"
-              label={isRTL ? "المشاهدات" : "Views"}
-              delta={isRTL ? "تجريبي" : "demo"}
+              value={stats ? String(stats.pending) : "—"}
+              label={t("statRequests")}
+              delta={stats && stats.pending > 0 ? t("statAwaitingYou") : ""}
               isRTL={isRTL}
             />
             <StatCard
-              value="0"
-              label={isRTL ? "الحجوزات" : "Bookings"}
-              delta={isRTL ? "تجريبي" : "demo"}
+              value={stats ? `${t("sar")} ${stats.revenueMonth.toLocaleString("en-US")}` : "—"}
+              label={t("statRevenue")}
+              delta={t("thisMonth")}
               isRTL={isRTL}
             />
           </View>
@@ -128,6 +140,28 @@ export default function BusinessDashboardContent() {
           </View>
         </Animated.View>
 
+        {/* Booking requests. Not gated on approval like the posting actions
+            are: a host whose account is still pending can still have bookings
+            on a listing an admin already approved, and leaving a guest waiting
+            because of an unrelated queue would be the wrong failure. */}
+        <Animated.View entering={FadeInDown.delay(320).duration(600)}>
+          <Pressable
+            style={[styles.secondaryAction, isRTL && styles.secondaryActionRTL]}
+            onPress={() => router.push("/business/bookings")}
+            accessibilityRole="button"
+            accessibilityLabel={t("bookingRequests")}
+          >
+            <Text style={[styles.secondaryActionText, isRTL && styles.textRTL]}>
+              {t("bookingRequests")}
+            </Text>
+            {stats && stats.pending > 0 ? (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{stats.pending}</Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </Animated.View>
+
         {/* Always reachable — owners need to see the status of what they posted,
             including while the account itself is still pending. */}
         <Animated.View entering={FadeInDown.delay(350).duration(600)}>
@@ -160,6 +194,7 @@ function StatCard({
   delta: string;
   isRTL: boolean;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.statCard, isRTL && styles.alignEnd]}>
       <Text style={styles.statValue}>{value}</Text>
@@ -182,6 +217,7 @@ function ActionCard({
   locked?: boolean;
   lockedLabel?: string;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
@@ -206,7 +242,7 @@ function ActionCard({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
   headerBand: {
@@ -283,7 +319,7 @@ const styles = StyleSheet.create({
   noteText: {
     fontFamily: fonts.medium,
     fontSize: 14,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
     textAlign: "center",
   },
   sectionTitle: {
@@ -319,9 +355,31 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface.DEFAULT,
     borderRadius: 18,
     padding: 16,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  secondaryActionRTL: {
+    flexDirection: "row-reverse",
+  },
+  badge: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    backgroundColor: colors.primary.DEFAULT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // Ink on lime, not white: this ramp is light (see constants/colors), and
+  // white on #CCE745 is 1.39:1 — the count would be invisible.
+  badgeText: {
+    fontSize: 12,
+    fontFamily: fonts.bold,
+    color: colors.ink,
   },
   secondaryActionText: {
     fontFamily: fonts.semibold,

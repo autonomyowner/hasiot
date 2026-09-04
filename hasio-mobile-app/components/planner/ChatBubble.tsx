@@ -1,7 +1,8 @@
 import { appAlert } from "@/stores/dialogStore";
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { ChatMessage } from "@/types";
 
 interface ChatBubbleProps {
@@ -12,6 +13,7 @@ interface ChatBubbleProps {
 }
 
 export function ChatBubble({ message, isRTL, t, onReport }: ChatBubbleProps) {
+  const styles = useThemedStyles(makeStyles);
   const isUser = message.isUser;
   const [showReportButton, setShowReportButton] = useState(false);
 
@@ -110,7 +112,7 @@ export function ChatBubble({ message, isRTL, t, onReport }: ChatBubbleProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     marginBottom: 10,
     maxWidth: "85%",
@@ -143,7 +145,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatarText: {
-    color: "#FFFFFF",
+    color: colors.ink,
     fontSize: 12,
     fontFamily: fonts.bold,
   },

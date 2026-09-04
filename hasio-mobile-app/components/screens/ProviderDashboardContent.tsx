@@ -17,11 +17,14 @@ import Animated, {
 import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { VerificationBanner } from "@/components/VerificationBanner";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function ProviderDashboardContent() {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, isRTL } = useLanguage();
@@ -32,6 +35,7 @@ export default function ProviderDashboardContent() {
 
   return (
     <View style={styles.container}>
+      <ScreenGradient />
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Ink hosting header band */}
         <Animated.View
@@ -134,6 +138,7 @@ function StatCard({
   label: string;
   delta: string;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.statCard}>
       <Text style={styles.statValue}>{value}</Text>
@@ -158,6 +163,7 @@ function ActionButton({
   locked?: boolean;
   lockedLabel?: string;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   return (
@@ -184,7 +190,7 @@ function ActionButton({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
   headerBand: {
@@ -261,7 +267,7 @@ const styles = StyleSheet.create({
   noteText: {
     fontFamily: fonts.medium,
     fontSize: 14,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
     textAlign: "center",
   },
   sectionTitle: {

@@ -6,23 +6,41 @@ import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
 import FilterSelect from '../components/FilterSelect'
-import { BOOKING_STATUSES, BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, todayISO } from '../constants'
+import {
+  BOOKING_STATUSES,
+  BOOKING_STATUS_COLORS,
+  BOOKING_STATUS_LABELS,
+  formatISODate,
+  formatMoney,
+  todayISO,
+} from '../constants'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../ui/table'
 
+// Statuses that no longer offer an action: the booking is closed. Support can
+// still force a change through the status filter and the log records it.
+const TERMINAL = ['cancelled', 'completed', 'declined', 'expired', 'no_show']
+
+/** One line describing when a booking is, whichever shape it has. */
+function bookingWhen(booking) {
+  return booking.kind === 'stay'
+    ? `${booking.checkIn} → ${booking.checkOut}`
+    : `${booking.date} ${booking.time}`
+}
+
 /**
- * Booking management, on behalf of the businesses.
+ * Booking oversight.
  *
- * The booking backend has always been complete, but the only UI for it lived in
- * the web business dashboard, which was removed in Aug 2026 — and the mobile app
- * never had an owner-side screen. Until it does, this is the only place a
- * booking can be confirmed, so it is built to be worked from top to bottom:
- * today first, then upcoming, then history.
+ * This was the only place a booking could be confirmed until hosts got their
+ * own inbox in the app. It stays as the support view: everything, both stays
+ * and slot reservations, with the ability to force a transition the normal
+ * flow cannot reach.
  *
  * Every transition goes through admin/mutations:updateBookingStatus rather than
- * the owner-facing confirmBooking/completeBooking, so all of them are validated,
- * admin-guarded and written to the action log the same way.
+ * the owner-facing confirmBooking/declineBooking, so all of them are validated,
+ * admin-guarded and written to the action log the same way — and reopening a
+ * closed booking is logged as booking.force rather than looking routine.
  */
 export default function BookingsTab() {
   const [status, setStatus] = useState('')
@@ -42,12 +60,21 @@ export default function BookingsTab() {
     if (!bookings) return empty
 
     return bookings.reduce((acc, booking) => {
-      if (booking.date === today) acc.today.push(booking)
-      else if (booking.date > today) acc.upcoming.push(booking)
+      // A stay spans days, so it belongs to "today" for its whole run — a
+      // guest who is mid-stay is very much today's problem.
+      const start = booking.checkIn ?? booking.date
+      const end = booking.checkOut ?? booking.date
+
+      if (start <= today && end >= today) acc.today.push(booking)
+      else if (start > today) acc.upcoming.push(booking)
       else acc.past.push(booking)
       return acc
     }, empty)
   }, [bookings])
+
+  const awaitingOwner = (bookings ?? []).filter(
+    (b) => b.kind === 'stay' && b.status === 'pending'
+  ).length
 
   const runTransition = async (booking, nextStatus, options = {}) => {
     if (options.confirmation) {
@@ -82,7 +109,7 @@ export default function BookingsTab() {
       successMessage: 'تم إلغاء الحجز',
       confirmation: {
         title: 'إلغاء هذا الحجز؟',
-        message: `${booking.listingName_ar} — ${booking.date} ${booking.time} — ${booking.userName}`,
+        message: `${booking.listingName_ar} — ${bookingWhen(booking)} — ${booking.userName}`,
         confirmLabel: 'تأكيد الإلغاء',
         destructive: true,
         reason: { label: 'سبب الإلغاء (اختياري)', placeholder: 'مثال: المكان مغلق في هذا التاريخ' },
@@ -94,12 +121,29 @@ export default function BookingsTab() {
       successMessage: 'تم تسجيل عدم الحضور',
       confirmation: {
         title: 'تسجيل عدم حضور؟',
-        message: `${booking.userName} — ${booking.date} ${booking.time}`,
+        message: `${booking.userName} — ${bookingWhen(booking)}`,
         confirmLabel: 'تسجيل',
       },
     })
 
-  if (bookings === undefined) return <TableSkeleton rows={5} cols={6} />
+  // Declining on the host's behalf. Distinct from cancelling: the guest is
+  // told the place could not take them, not that their booking was undone.
+  const declineBooking = (booking) =>
+    runTransition(booking, 'declined', {
+      successMessage: 'تم رفض الطلب',
+      confirmation: {
+        title: 'رفض هذا الطلب نيابة عن المالك؟',
+        message: `${booking.listingName_ar} — ${bookingWhen(booking)} — ${booking.userName}`,
+        confirmLabel: 'رفض الطلب',
+        destructive: true,
+        reason: {
+          label: 'سبب الرفض (يظهر للضيف)',
+          placeholder: 'مثال: لا توجد غرف متاحة في هذه التواريخ',
+        },
+      },
+    })
+
+  if (bookings === undefined) return <TableSkeleton rows={5} cols={7} />
 
   const sections = [
     { key: 'today', title: 'اليوم', rows: groups.today },
@@ -113,7 +157,8 @@ export default function BookingsTab() {
         <div>
           <h2 className="admin-page-title" style={{ margin: 0 }}>الحجوزات</h2>
           <p className="admin-page-subtitle">
-            {groups.today.length} اليوم · {groups.upcoming.length} قادمة · {bookings.length} معروضة
+            {groups.today.length} اليوم · {groups.upcoming.length} قادمة
+            {awaitingOwner > 0 ? ` · ${awaitingOwner} بانتظار المالك` : ''} · {bookings.length} معروضة
           </p>
         </div>
       </div>
@@ -149,7 +194,8 @@ export default function BookingsTab() {
                     <TableHead>السائح</TableHead>
                     <TableHead>المكان</TableHead>
                     <TableHead>الموعد</TableHead>
-                    <TableHead>التفاصيل</TableHead>
+                    <TableHead>المبلغ</TableHead>
+                    <TableHead>المالك</TableHead>
                     <TableHead>الحالة</TableHead>
                     <TableHead style={{ textAlign: 'left' }}>الإجراءات</TableHead>
                   </TableRow>
@@ -177,16 +223,57 @@ export default function BookingsTab() {
                         )}
                       </TableCell>
                       <TableCell data-label="الموعد">
-                        <div className="admin-table-name" dir="ltr">{booking.date}</div>
-                        <div className="admin-table-sub" dir="ltr">{booking.time}</div>
-                      </TableCell>
-                      <TableCell data-label="التفاصيل">
-                        {booking.partySize ? <div>{booking.partySize} أشخاص</div> : null}
+                        {booking.kind === 'stay' ? (
+                          <>
+                            <span className="admin-badge blue">إقامة</span>
+                            <div className="admin-table-name" dir="ltr">
+                              {formatISODate(booking.checkIn)} ← {formatISODate(booking.checkOut)}
+                            </div>
+                            <div className="admin-table-sub">
+                              {booking.nights} ليالٍ
+                              {booking.guests ? ` · ${booking.guests} ضيوف` : ''}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="admin-table-name" dir="ltr">{booking.date}</div>
+                            <div className="admin-table-sub" dir="ltr">{booking.time}</div>
+                            {booking.partySize ? (
+                              <div className="admin-table-sub">{booking.partySize} أشخاص</div>
+                            ) : null}
+                          </>
+                        )}
                         {booking.notes && <div className="admin-table-sub">{booking.notes}</div>}
+                        {booking.declineReason && (
+                          <div className="admin-table-sub">سبب الرفض: {booking.declineReason}</div>
+                        )}
                         {booking.cancellationReason && (
                           <div className="admin-table-sub">سبب الإلغاء: {booking.cancellationReason}</div>
                         )}
-                        {!booking.partySize && !booking.notes && !booking.cancellationReason && '—'}
+                      </TableCell>
+                      <TableCell data-label="المبلغ">
+                        {booking.totalAmount != null ? (
+                          <div className="admin-table-name">{formatMoney(booking.totalAmount)}</div>
+                        ) : (
+                          <span className="admin-table-sub">—</span>
+                        )}
+                        {booking.confirmationCode && (
+                          <div className="admin-table-sub" dir="ltr">
+                            <code>{booking.confirmationCode}</code>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell data-label="المالك">
+                        {booking.ownerName ? (
+                          <>
+                            <div className="admin-table-name">{booking.ownerName}</div>
+                            {booking.ownerPhone && (
+                              <div className="admin-table-sub" dir="ltr">{booking.ownerPhone}</div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="admin-table-sub" title="مكان بلا مالك مرتبط">—</span>
+                        )}
                       </TableCell>
                       <TableCell data-label="الحالة">
                         <span className={`admin-badge ${BOOKING_STATUS_COLORS[booking.status] || 'gray'}`}>
@@ -196,13 +283,22 @@ export default function BookingsTab() {
                       <TableCell>
                         <div className="admin-actions">
                           {booking.status === 'pending' && (
-                            <button
-                              className="admin-action-btn edit"
-                              onClick={() => confirmBooking(booking)}
-                              disabled={busyId === booking._id}
-                            >
-                              {busyId === booking._id ? 'جاري...' : 'تأكيد'}
-                            </button>
+                            <>
+                              <button
+                                className="admin-action-btn edit"
+                                onClick={() => confirmBooking(booking)}
+                                disabled={busyId === booking._id}
+                              >
+                                {busyId === booking._id ? 'جاري...' : 'تأكيد'}
+                              </button>
+                              <button
+                                className="admin-action-btn delete"
+                                onClick={() => declineBooking(booking)}
+                                disabled={busyId === booking._id}
+                              >
+                                رفض
+                              </button>
+                            </>
                           )}
                           {(booking.status === 'pending' || booking.status === 'confirmed') && (
                             <button
@@ -222,7 +318,7 @@ export default function BookingsTab() {
                               لم يحضر
                             </button>
                           )}
-                          {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                          {!TERMINAL.includes(booking.status) && (
                             <button
                               className="admin-action-btn delete"
                               onClick={() => cancelBooking(booking)}
@@ -231,7 +327,7 @@ export default function BookingsTab() {
                               إلغاء
                             </button>
                           )}
-                          {(booking.status === 'cancelled' || booking.status === 'completed') && (
+                          {TERMINAL.includes(booking.status) && (
                             <span className="admin-table-sub">—</span>
                           )}
                         </div>

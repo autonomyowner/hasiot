@@ -1,13 +1,18 @@
 import React from "react";
-import { View, TextInput, Pressable, StyleSheet } from "react-native";
+import { View, TextInput, Pressable, StyleSheet, Text } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 interface SearchBarProps {
   placeholder: string;
   value: string;
   onChangeText: (text: string) => void;
   isRTL?: boolean;
+  /** Omit to hide the filter button entirely — it was a dead View before. */
+  onFilterPress?: () => void;
+  /** How many filters are set; shown as a count on the button. */
+  filterCount?: number;
 }
 
 export function SearchBar({
@@ -15,7 +20,10 @@ export function SearchBar({
   value,
   onChangeText,
   isRTL = false,
+  onFilterPress,
+  filterCount = 0,
 }: SearchBarProps) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.container, isRTL && styles.containerRTL]}>
       <Feather
@@ -40,16 +48,32 @@ export function SearchBar({
         >
           <Feather name="x-circle" size={18} color={colors.onSurface.muted} />
         </Pressable>
-      ) : (
-        <View style={styles.filterButton}>
-          <Feather name="sliders" size={16} color="#FFFFFF" />
-        </View>
-      )}
+      ) : onFilterPress ? (
+        <Pressable
+          onPress={onFilterPress}
+          style={styles.filterButton}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Filters"
+          accessibilityState={{ expanded: filterCount > 0 }}
+        >
+          {filterCount > 0 ? (
+            <Text style={styles.filterCount}>{filterCount}</Text>
+          ) : (
+            <Feather name="sliders" size={16} color={colors.ink} />
+          )}
+        </Pressable>
+      ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
+  filterCount: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    color: colors.ink,
+  },
   container: {
     flexDirection: "row",
     alignItems: "center",

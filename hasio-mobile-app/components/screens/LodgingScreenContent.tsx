@@ -9,7 +9,9 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
-import { categoryColors, colors, fonts } from "@/constants/colors";
+import { categoryColors, colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { useLodgings } from "@/hooks/useConvexData";
 import { FilterChip, SkeletonFade, SkeletonList } from "@/components/ui";
@@ -29,6 +31,7 @@ const filters: { key: LodgingFilter; labelKey: "all" | "hotels" | "apartments" |
 ];
 
 export function LodgingScreenContent() {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, language, isRTL } = useLanguage();
   const [activeFilter, setActiveFilter] = useState<LodgingFilter>("all");
@@ -57,7 +60,18 @@ export function LodgingScreenContent() {
     badge: t(`cat_${item.type}` as const),
     badgeColor: categoryColors[item.type],
     rating: item.rating,
-    priceLine: item.priceRange ? `${item.priceRange} ${t("perNight")}` : undefined,
+    // A real nightly rate wins over the "$$$" band: it is the number the quote
+    // is built from, and the Book bar only renders when there is a priceLine.
+    priceLine: item.pricePerNight
+      ? `${t("sar")} ${item.pricePerNight} ${t("perNight")}`
+      : item.priceRange
+        ? `${item.priceRange} ${t("perNight")}`
+        : undefined,
+    // Only a listing the host has actually priced can be booked: the sheet
+    // quotes from `pricePerNight`, and `priceRange` is free-text display copy
+    // ("$$$") that cannot be multiplied by nights.
+    bookable: item.pricePerNight != null,
+    maxGuests: item.maxGuests,
     images: item.images,
     description: getLocalizedText(item.description, item.descriptionAr, language),
     amenities: language === "ar" ? item.amenitiesAr : item.amenities,
@@ -67,6 +81,7 @@ export function LodgingScreenContent() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScreenGradient />
       {/* Header */}
       <Animated.View
         entering={FadeInDown.delay(100).duration(600)}
@@ -145,7 +160,7 @@ export function LodgingScreenContent() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -161,7 +176,7 @@ const styles = StyleSheet.create({
   eyebrow: {
     fontSize: 11,
     fontFamily: fonts.semibold,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
     letterSpacing: 2,
     textTransform: "uppercase",
     marginBottom: 4,

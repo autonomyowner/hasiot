@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getAuthenticatedAppUser, requireAdmin } from "../auth";
 import { enforceRateLimit } from "../rateLimit";
 import { logAdminAction, labelFor } from "../admin/activity";
+import { PRICING_ARGS, validatePricing, withPricingDefaults } from "./pricing";
 
 // Create a new listing
 export const createListing = mutation({
@@ -25,6 +26,7 @@ export const createListing = mutation({
     email: v.optional(v.string()),
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
+    ...PRICING_ARGS,
     amenities: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
     workingHours: v.optional(
@@ -41,9 +43,10 @@ export const createListing = mutation({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    validatePricing(args);
 
     const listingId = await ctx.db.insert("listings", {
-      ...args,
+      ...withPricingDefaults(args),
       rating: 0,
       reviewCount: 0,
       isVerified: false,
@@ -79,6 +82,7 @@ export const updateListing = mutation({
     email: v.optional(v.string()),
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
+    ...PRICING_ARGS,
     amenities: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
     workingHours: v.optional(
@@ -96,8 +100,9 @@ export const updateListing = mutation({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
+    validatePricing(args);
 
-    const { listingId, ...updates } = args;
+    const { listingId, ...updates } = withPricingDefaults(args);
 
     const listing = await ctx.db.get(listingId);
     if (!listing) {
@@ -116,87 +121,6 @@ export const updateListing = mutation({
     return { success: true };
   },
 });
-
-// Add a review for a listing
-export const addReview = mutation({
-  args: {
-    listingId: v.id("listings"),
-    bookingId: v.optional(v.id("bookings")),
-    rating: v.number(),
-    content: v.optional(v.string()),
-    isAnonymous: v.optional(v.boolean()),
-  },
-  handler: async (ctx, args) => {
-    const user = await getAuthenticatedAppUser(ctx);
-    if (!user) {
-      throw new Error("Not authenticated");
-    }
-
-    const listing = await ctx.db.get(args.listingId);
-    if (!listing) {
-      throw new Error("Listing not found");
-    }
-
-    if (args.rating < 1 || args.rating > 5) {
-      throw new Error("Rating must be between 1 and 5");
-    }
-
-    // Prevent duplicate reviews
-    const existingReview = await ctx.db
-      .query("reviews")
-      .withIndex("by_listingId", (q: any) => q.eq("listingId", args.listingId))
-      .filter((q: any) => q.eq(q.field("userId"), user._id))
-      .first();
-    if (existingReview) {
-      throw new Error("You have already reviewed this listing");
-    }
-
-    let isVerified = false;
-    if (args.bookingId) {
-      const booking = await ctx.db.get(args.bookingId);
-      if (booking && booking.userId === user._id && booking.status === "completed") {
-        isVerified = true;
-      }
-    }
-
-    const reviewId = await ctx.db.insert("reviews", {
-      userId: user._id,
-      listingId: args.listingId,
-      bookingId: args.bookingId,
-      rating: args.rating,
-      content: args.content,
-      isAnonymous: args.isAnonymous || false,
-      isVerified,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    await updateListingRating(ctx, args.listingId);
-
-    return reviewId;
-  },
-});
-
-// Internal function to update listing's average rating
-async function updateListingRating(ctx: { db: any }, listingId: string) {
-  const reviews = await ctx.db
-    .query("reviews")
-    .withIndex("by_listingId", (q: any) => q.eq("listingId", listingId))
-    .collect();
-
-  if (reviews.length === 0) {
-    return;
-  }
-
-  const totalRating = reviews.reduce((sum: number, r: { rating: number }) => sum + r.rating, 0);
-  const avgRating = totalRating / reviews.length;
-
-  await ctx.db.patch(listingId, {
-    rating: Math.round(avgRating * 10) / 10,
-    reviewCount: reviews.length,
-    updatedAt: Date.now(),
-  });
-}
 
 // Save listing's working hours
 export const saveWorkingHours = mutation({
@@ -361,6 +285,7 @@ export const submitListing = mutation({
     email: v.optional(v.string()),
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
+    ...PRICING_ARGS,
     amenities: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
     workingHours: v.optional(
@@ -394,6 +319,8 @@ export const submitListing = mutation({
       throw new Error("Service providers can post: tour");
     }
 
+    validatePricing(args);
+
     await enforceRateLimit(
       ctx,
       `listing:${user._id}`,
@@ -403,7 +330,7 @@ export const submitListing = mutation({
 
     const now = Date.now();
     const listingId = await ctx.db.insert("listings", {
-      ...args,
+      ...withPricingDefaults(args),
       ownerId: user._id,
       status: "pending",
       rating: 0,
@@ -442,6 +369,7 @@ export const updateMyListing = mutation({
     email: v.optional(v.string()),
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
+    ...PRICING_ARGS,
     amenities: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
     workingHours: v.optional(
@@ -463,11 +391,15 @@ export const updateMyListing = mutation({
     if (!listing) throw new Error("Listing not found");
     if (listing.ownerId !== user._id) throw new Error("Not your listing");
 
-    const { listingId, ...updates } = args;
+    validatePricing(args);
+
+    const { listingId, ...updates } = withPricingDefaults(args);
     const filteredUpdates: Record<string, unknown> = {
       updatedAt: Date.now(),
       status: "pending", // Reset status on edit
       rejectionReason: undefined,
+      // An edit re-enters review, so any prior suspension note is stale.
+      suspendedReason: undefined,
     };
     for (const [key, value] of Object.entries(updates)) {
       if (value !== undefined) {

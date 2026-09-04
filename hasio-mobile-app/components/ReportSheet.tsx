@@ -21,7 +21,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { TranslationKey } from "@/constants/translations";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 type TargetType = "listing" | "service" | "review";
 
@@ -48,6 +49,7 @@ export function ReportSheet({
   targetId,
   ownerId,
 }: ReportSheetProps) {
+  const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
   const {
@@ -234,7 +236,7 @@ export function ReportSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -289,8 +291,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   reasonRowActive: {
-    borderColor: "#0D7A5F",
-    backgroundColor: "#F0FAF6",
+    borderColor: "#4F5E10",
+    backgroundColor: "#F5F8E9",
   },
   radio: {
     width: 20,
@@ -302,13 +304,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   radioActive: {
-    borderColor: "#0D7A5F",
+    borderColor: "#4F5E10",
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#0D7A5F",
+    backgroundColor: "#4F5E10",
   },
   reasonLabel: {
     fontSize: 15,
@@ -316,7 +318,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   reasonLabelActive: {
-    color: "#0D7A5F",
+    color: "#4F5E10",
     fontFamily: fonts.semibold,
   },
   detailsInput: {
@@ -332,16 +334,16 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     marginTop: 16,
-    backgroundColor: "#0D7A5F",
+    backgroundColor: "#CCE745",
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
   },
   submitBtnDisabled: {
-    backgroundColor: "#A7D4C4",
+    backgroundColor: "#E4EDC0",
   },
   submitText: {
-    color: "#FFFFFF",
+    color: "#1F1D17",
     fontSize: 16,
     fontFamily: fonts.semibold,
   },

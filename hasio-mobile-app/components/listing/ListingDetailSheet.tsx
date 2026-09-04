@@ -19,9 +19,18 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { colors, fonts } from "@/constants/colors";
+import { useRouter } from "expo-router";
+import { useConvexAuth, useQuery } from "convex/react";
+import { api } from "@/backend";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useConvexUser } from "@/hooks/useConvexUser";
 import { ReportSheet } from "@/components/ReportSheet";
+import { BookingSheet } from "@/components/booking/BookingSheet";
+import { VerifyPhoneSheet } from "@/components/auth/VerifyPhoneSheet";
+import { RatingSummary, ReviewCard, ReviewSheet } from "@/components/review";
+import { amenityIcon } from "./amenityIcon";
 import type { ListingDetails } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -48,6 +57,14 @@ export interface DetailItem {
   amenities?: string[];
   details?: ListingDetails;
   ownerId?: string | null;
+  /**
+   * Shows the price + Book bar pinned to the bottom of the sheet. Set by the
+   * lodging mappers only — a restaurant or an event has a priceLine too, but
+   * neither is something you book a night in.
+   */
+  bookable?: boolean;
+  /** Ceiling for the guest stepper in the booking sheet. */
+  maxGuests?: number;
 }
 
 interface ListingDetailSheetProps {
@@ -56,16 +73,63 @@ interface ListingDetailSheetProps {
 }
 
 const IMAGE_HEIGHT = 380;
+// Roughly the bar's own height: 14 top padding + the two-line price block +
+// 16 minimum bottom padding. Used to pad the scroll so the last row of content
+// can still be read from under it.
+const BOOK_BAR_HEIGHT = 84;
 // The body sheet pulls up over the hero by this much.
 const SHEET_OVERLAP = 28;
 
 export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
+  const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [imageIndex, setImageIndex] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [verifyOpen, setVerifyOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const galleryRef = React.useRef<ScrollView>(null);
+  const router = useRouter();
+  const { isAuthenticated } = useConvexAuth();
+  const { user } = useConvexUser();
+
+  // Three reads, all skipped until there is a listing to read them for. The
+  // summary and the first few reviews are public; `getMine` returns null for a
+  // visitor, which is what makes the button say "rate" rather than "edit".
+  const listingId = item ? (item.id as Id<"listings">) : null;
+  const summary = useQuery(
+    api.reviews.queries.getSummary,
+    listingId ? { listingId } : "skip"
+  );
+  const reviews = useQuery(
+    api.reviews.queries.listForListing,
+    listingId ? { listingId, limit: 3 } : "skip"
+  );
+  const myReview = useQuery(
+    api.reviews.queries.getMine,
+    listingId ? { listingId } : "skip"
+  );
+
+  // Three gates, in order of what the guest can do about them. A visitor is
+  // sent to sign in; a signed-in guest with no verified number is asked for
+  // one, because the host has to be able to phone them; everyone else books.
+  const handleBook = () => {
+    if (!isAuthenticated) {
+      onClose();
+      router.push("/auth");
+      return;
+    }
+    if (!user?.phoneVerified) {
+      // Open the sheet rather than routing: this guest is already signed in,
+      // so sending them to /auth would show a login form they are past, with
+      // no way to reach the thing actually being asked for.
+      setVerifyOpen(true);
+      return;
+    }
+    setBookingOpen(true);
+  };
 
   const scrollGalleryTo = (index: number) => {
     galleryRef.current?.scrollTo({ x: index * width, animated: true });
@@ -134,6 +198,10 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     setImageIndex((current) => (current === next ? current : next));
   };
 
+  // The bar needs something to say on both halves; a price with no CTA, or a
+  // CTA with no price, is not worth pinning to the bottom of the screen.
+  const showBookBar = !!(item?.bookable && item.priceLine);
+
   const hasContact = !!(
     detail?.phone ||
     detail?.website ||
@@ -157,7 +225,10 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
           <>
             <ScrollView
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: insets.bottom + 32 }}
+              contentContainerStyle={{
+                paddingBottom:
+                  insets.bottom + 32 + (showBookBar ? BOOK_BAR_HEIGHT : 0),
+              }}
             >
               {/* Gallery */}
               <View style={styles.gallery}>
@@ -307,7 +378,15 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                   <Section title={t("detailAmenities")} isRTL={isRTL}>
                     <View style={[styles.chips, isRTL && styles.rowRTL]}>
                       {item.amenities.map((amenity) => (
-                        <View key={amenity} style={styles.chip}>
+                        <View
+                          key={amenity}
+                          style={[styles.chip, isRTL && styles.rowRTL]}
+                        >
+                          <Feather
+                            name={amenityIcon(amenity)}
+                            size={13}
+                            color={colors.onSurface.variant}
+                          />
                           <Text style={styles.chipText}>{amenity}</Text>
                         </View>
                       ))}
@@ -353,6 +432,44 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                   </Section>
                 )}
 
+                {/* Reviews. The summary renders its own "no reviews yet" when
+                    nobody has rated — there is deliberately no zero to fall
+                    back on, so an unrated place shows no star at all. */}
+                <Section title={t("reviewsTitle")} isRTL={isRTL}>
+                  {summary && <RatingSummary value={summary} />}
+
+                  <Pressable
+                    style={styles.rateButton}
+                    onPress={() => setReviewOpen(true)}
+                    accessibilityRole="button"
+                  >
+                    <Feather name="star" size={15} color={colors.ink} />
+                    <Text style={styles.rateButtonText}>
+                      {myReview ? t("editYourReview") : t("rateThisPlace")}
+                    </Text>
+                  </Pressable>
+
+                  {reviews?.map((review) => (
+                    <ReviewCard key={review._id} review={review} />
+                  ))}
+
+                  {!!summary && summary.count > 3 && (
+                    <Pressable
+                      onPress={() => {
+                        // Close first: this sheet is a native modal, and a
+                        // pushed route underneath it would be hidden by it.
+                        onClose();
+                        router.push(`/reviews/${item.id}`);
+                      }}
+                      accessibilityRole="button"
+                    >
+                      <Text style={[styles.seeAll, isRTL && styles.textRTL]}>
+                        {t("reviewsSeeAll")}
+                      </Text>
+                    </Pressable>
+                  )}
+                </Section>
+
                 {/* Report */}
                 <Pressable
                   onPress={() => setReportOpen(true)}
@@ -365,6 +482,33 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                 </Pressable>
               </View>
             </ScrollView>
+
+            {/* Price + Book, pinned. Sits above the scroll so the rate stays
+                on screen while the guest reads down the page — the one number
+                they are deciding on should never be scrolled away. */}
+            {showBookBar && (
+              <View
+                style={[
+                  styles.bookBar,
+                  { paddingBottom: insets.bottom || 16 },
+                  isRTL && styles.rowRTL,
+                ]}
+              >
+                <View style={isRTL ? styles.alignEnd : undefined}>
+                  <Text style={styles.bookBarPrice} numberOfLines={1}>
+                    {item.priceLine}
+                  </Text>
+                </View>
+                <Pressable
+                  style={styles.bookButton}
+                  onPress={handleBook}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("detailBook")}
+                >
+                  <Text style={styles.bookButtonText}>{t("detailBook")}</Text>
+                </Pressable>
+              </View>
+            )}
 
             {/* Close. Floated over the gallery rather than sitting in a header
                 band, so the images run to the top edge of the sheet. */}
@@ -401,6 +545,38 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
         ownerId={item.ownerId ? (item.ownerId as Id<"users">) : null}
       />
     )}
+
+    {/* Same reason as the report sheet: presented as a sibling so it covers the
+        screen instead of being clipped to the iOS pageSheet's frame. */}
+    {item && (
+      <BookingSheet
+        visible={bookingOpen}
+        item={item}
+        onClose={() => setBookingOpen(false)}
+      />
+    )}
+
+    {/* Same reason again: a sibling, so the rating sheet is not clipped to the
+        iOS pageSheet's frame. */}
+    {item && (
+      <ReviewSheet
+        visible={reviewOpen}
+        listingId={item.id}
+        existing={myReview}
+        onClose={() => setReviewOpen(false)}
+      />
+    )}
+
+    {/* Straight into booking once the number is verified — the guest asked to
+        book, and the verification was only ever in the way. */}
+    <VerifyPhoneSheet
+      visible={verifyOpen}
+      onClose={() => setVerifyOpen(false)}
+      onVerified={() => {
+        setVerifyOpen(false);
+        setBookingOpen(true);
+      }}
+    />
     </>
   );
 }
@@ -414,6 +590,7 @@ function Section({
   isRTL: boolean;
   children: React.ReactNode;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>{title}</Text>
@@ -433,6 +610,7 @@ function ActionButton({
   onPress: () => void;
   primary?: boolean;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
       onPress={onPress}
@@ -443,7 +621,7 @@ function ActionButton({
       <Feather
         name={icon}
         size={16}
-        color={primary ? "#FFFFFF" : colors.primary.DEFAULT}
+        color={primary ? colors.ink : colors.primary.deep}
       />
       <Text
         style={[styles.actionLabel, primary && styles.actionLabelPrimary]}
@@ -466,6 +644,7 @@ function InfoRow({
   isRTL: boolean;
   onPress?: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const content = (
     <View style={[styles.infoRow, isRTL && styles.rowRTL]}>
       <Feather name={icon} size={15} color={colors.onSurface.muted} />
@@ -486,7 +665,7 @@ function InfoRow({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -562,7 +741,7 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   thumbActive: {
-    borderColor: colors.primary.DEFAULT,
+    borderColor: colors.primary.deep,
   },
   titleRow: {
     flexDirection: "row",
@@ -584,7 +763,7 @@ const styles = StyleSheet.create({
   badgeText: {
     fontFamily: fonts.semibold,
     fontSize: 11,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
   ratingRow: {
     flexDirection: "row",
@@ -611,7 +790,7 @@ const styles = StyleSheet.create({
   price: {
     fontFamily: fonts.semibold,
     fontSize: 16,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
     marginTop: 8,
   },
   textRTL: {
@@ -644,10 +823,10 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontFamily: fonts.medium,
     fontSize: 13,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
   actionLabelPrimary: {
-    color: "#FFFFFF",
+    color: colors.ink,
   },
   section: {
     marginTop: 28,
@@ -672,6 +851,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
@@ -680,6 +862,39 @@ const styles = StyleSheet.create({
   chipText: {
     fontFamily: fonts.medium,
     fontSize: 13,
+    color: colors.ink,
+  },
+  alignEnd: {
+    alignItems: "flex-end",
+  },
+  bookBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    backgroundColor: colors.surface.DEFAULT,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+  },
+  bookBarPrice: {
+    fontFamily: fonts.semibold,
+    fontSize: 18,
+    color: colors.ink,
+  },
+  bookButton: {
+    paddingHorizontal: 28,
+    paddingVertical: 13,
+    borderRadius: 14,
+    backgroundColor: colors.primary.DEFAULT,
+  },
+  bookButtonText: {
+    fontFamily: fonts.semibold,
+    fontSize: 16,
     color: colors.ink,
   },
   hoursRow: {
@@ -713,7 +928,29 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   infoLink: {
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
+  },
+  rateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    paddingVertical: 12,
+    marginTop: 14,
+    borderRadius: 12,
+    backgroundColor: colors.primary.DEFAULT,
+  },
+  // Lime is a fill, so its label is ink: white on it is 1.4:1.
+  rateButtonText: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    color: colors.ink,
+  },
+  seeAll: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    color: colors.primary.deep,
+    paddingVertical: 14,
   },
   reportRow: {
     flexDirection: "row",

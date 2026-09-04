@@ -26,7 +26,8 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { BackButton, Button } from "@/components/ui";
 import { ServiceType, PriceUnit } from "@/types";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const SERVICE_TYPES: { value: ServiceType; labelKey: string }[] = [
   { value: "tour_guide", labelKey: "tourGuide" },
@@ -47,6 +48,7 @@ const PRICE_UNITS: { value: PriceUnit; labelKey: string }[] = [
 ];
 
 export default function PostServiceScreen() {
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { t, isRTL } = useLanguage();
   const {
@@ -393,7 +395,7 @@ export default function PostServiceScreen() {
           {isLoading && (
             <ActivityIndicator
               size="small"
-              color="#0D7A5F"
+              color="#4F5E10"
               style={styles.loadingIndicator}
             />
           )}
@@ -407,7 +409,7 @@ export default function PostServiceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",
@@ -475,8 +477,8 @@ const styles = StyleSheet.create({
     borderColor: "#E5E5E5",
   },
   typeButtonSelected: {
-    backgroundColor: "#0D7A5F",
-    borderColor: "#0D7A5F",
+    backgroundColor: "#CCE745",
+    borderColor: "#CCE745",
   },
   typeButtonText: {
     fontSize: 13,
@@ -484,7 +486,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
   },
   typeButtonTextSelected: {
-    color: "#FFFFFF",
+    color: "#1F1D17",
   },
   imagePickerButton: {
     backgroundColor: "#FFFFFF",
@@ -497,7 +499,7 @@ const styles = StyleSheet.create({
   },
   imagePickerText: {
     fontSize: 15,
-    color: "#0D7A5F",
+    color: "#4F5E10",
     fontFamily: fonts.medium,
   },
   imagesContainer: {

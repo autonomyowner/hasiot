@@ -1,10 +1,21 @@
 export const colors = {
-  // Primary Colors (Deep Teal - Oasis Water)
+  // Primary Colors (Lime)
+  //
+  // This ramp is LIGHT — the reverse of the deep teal it replaced. Anything
+  // placed on it must be dark: `ink` (#1F1D17) reads 12.1:1 here, white reads
+  // 1.39:1 and is effectively invisible. Used as a text colour on the cream
+  // background it is 1.30:1. See the note in the brand-lime commit.
+  //
+  // Still green, deliberately left alone: `mint` and `hostingAccent` below.
   primary: {
-    DEFAULT: "#0D7A5F",
-    hover: "#0F8B6E",
-    light: "#10966D",
-    dark: "#0A6650",
+    DEFAULT: "#CCE745",
+    hover: "#D1E956",
+    light: "#D4EB60",
+    dark: "#C6E431",
+    // The lime family's dark tone. The ramp above is light — it can only be a
+    // fill — so anything drawn AS lime on a light surface uses this instead:
+    // 6.68:1 on the cream background where #CCE745 is 1.30:1.
+    deep: "#4F5E10",
   },
 
   // Accent Colors
@@ -28,11 +39,11 @@ export const colors = {
 
   // v5 redesign tokens
   sand: "#E8DFD4", // image / avatar fallback
-  mint: "#E9F2EE", // soft green chip surface
+  mint: "#F0F2E9", // soft lime chip surface — put `primary.deep` or `ink` on it
   ink: "#1F1D17", // near-black headings / hosting header band
   warm: "#C77B3B", // star / warm accent
   favorite: "#E0524D", // active favorite heart
-  hostingAccent: "#7BC4AC", // green accent on dark ink surfaces
+  hostingAccent: "#B8C47B", // lime accent on dark ink surfaces (9.0:1 on ink)
   chip: "#EFEAE0", // segmented-control track
   signOut: "#B0493F", // destructive text
 
@@ -48,7 +59,7 @@ export const colors = {
   divider: "#EDE8DD",
 
   // System Colors
-  success: "#0D7A5F",
+  success: "#CCE745",
   error: "#DC6B5A",
   warning: "#D97706",
   info: "#2563EB",
@@ -77,6 +88,15 @@ export const colors = {
 
 // Typography — v5 redesign (Instrument Serif headings + Outfit body).
 // The font keys match the names registered via useFonts() in app/_layout.tsx.
+//
+// Two maps, one shape. Neither Instrument Serif nor Outfit carries a single
+// Arabic glyph, so Arabic text used to fall through to whatever the OS
+// supplies — SF Arabic on iOS, Noto on Android — which is why the app and the
+// website did not look like the same product. `arabicFonts` is the same six
+// roles in Cairo, the face the website has always used for Arabic.
+//
+// Do not read these directly in a component. Go through useAppFonts() (or
+// useThemedStyles), which picks the map matching the active language.
 export const fonts = {
   serif: "InstrumentSerif_400Regular", // display headings
   light: "Outfit_300Light",
@@ -85,6 +105,19 @@ export const fonts = {
   semibold: "Outfit_600SemiBold",
   bold: "Outfit_700Bold",
 } as const;
+
+// Cairo has no serif cut, so the display role maps to its heaviest weight —
+// the usual substitution when a Latin display serif meets Arabic.
+export const arabicFonts: AppFonts = {
+  serif: "Cairo_700Bold",
+  light: "Cairo_300Light",
+  regular: "Cairo_400Regular",
+  medium: "Cairo_500Medium",
+  semibold: "Cairo_600SemiBold",
+  bold: "Cairo_700Bold",
+};
+
+export type AppFonts = { [K in keyof typeof fonts]: string };
 
 // Category Badge Colors
 export const categoryColors = {

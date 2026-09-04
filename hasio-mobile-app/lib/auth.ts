@@ -52,12 +52,24 @@ function fetchWithTimeout(
   });
 }
 
-async function authFetch(path: string, body: Record<string, unknown>) {
+async function authFetch(
+  path: string,
+  body: Record<string, unknown>,
+  // Both optional so every existing two-argument call site is untouched.
+  // `locale` picks the language of the SMS the server sends; `bearer` is only
+  // needed when attaching a phone number to an account that is already signed
+  // in, where the request has to be authenticated as that user.
+  opts: { locale?: "ar" | "en"; bearer?: string } = {}
+) {
   const res = await fetchWithTimeout(`${CONVEX_SITE_URL}/api/auth${path}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      // Better-Auth checks this against its trustedOrigins list, and a native
+      // app sends no Origin of its own.
       Origin: "https://www.hasio.xyz",
+      ...(opts.locale ? { "Accept-Language": opts.locale } : {}),
+      ...(opts.bearer ? { Authorization: `Bearer ${opts.bearer}` } : {}),
     },
     body: JSON.stringify(body),
   });
@@ -155,6 +167,71 @@ export async function signIn(email: string, password: string) {
     await fetchConvexToken(sessionToken);
   } catch (e) {
 
+  }
+
+  return { token: sessionToken, user: data.user };
+}
+
+/**
+ * Ask the server to text a one-time code.
+ *
+ * The code itself is never returned — it goes to the handset. In development
+ * the console SMS provider prints it to the Convex logs instead, which is how
+ * this is tested without spending real messages.
+ */
+export async function sendPhoneOtp(phone: string, locale: "ar" | "en" = "ar") {
+  await authFetch("/phone-number/send-otp", { phoneNumber: phone }, { locale });
+  return { sent: true };
+}
+
+/**
+ * Check a code, and either sign in or attach the number to the current account.
+ *
+ * `updatePhoneNumber` is the difference between the two. Attaching requires the
+ * caller to already be signed in, so it sends the stored session as a bearer
+ * token and returns the session that was already in play — there is nothing new
+ * to persist. Signing in fresh returns a new session, which is stored.
+ */
+export async function verifyPhoneOtp(
+  phone: string,
+  code: string,
+  opts: { updatePhoneNumber?: boolean; locale?: "ar" | "en" } = {}
+) {
+  const bearer =
+    (opts.updatePhoneNumber ? await getStoredSessionToken() : null) ?? undefined;
+
+  if (opts.updatePhoneNumber && !bearer) {
+    const err: AuthError = new Error("Not signed in");
+    err.status = 401;
+    throw err;
+  }
+
+  const data: AuthResponse = await authFetch(
+    "/phone-number/verify",
+    {
+      phoneNumber: phone,
+      code,
+      ...(opts.updatePhoneNumber ? { updatePhoneNumber: true } : {}),
+    },
+    { bearer, locale: opts.locale }
+  );
+
+  if (opts.updatePhoneNumber) {
+    return { token: data.token ?? null, user: data.user };
+  }
+
+  const sessionToken = data.token || data.session?.token;
+  if (!sessionToken) throw new Error("No token received");
+
+  try {
+    await SecureStore.setItemAsync(SESSION_TOKEN_KEY, sessionToken);
+    if (data.user) {
+      await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(data.user));
+    }
+    await fetchConvexToken(sessionToken);
+  } catch {
+    // A failed write leaves the caller signed in for this session only, which
+    // is better than blocking a verification the server already accepted.
   }
 
   return { token: sessionToken, user: data.user };

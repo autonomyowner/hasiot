@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { getAuthenticatedAppUser, requireAdmin, authComponent, createAuth } from "../auth";
 import { enforceRateLimit } from "../rateLimit";
 import { logAdminAction, labelFor } from "../admin/activity";
+import { buildSearchTextFrom } from "./search";
 
 // Maximum favorites a single user can hold. Bounds both the user document and
 // the Promise.all fan-out in users/queries.ts:getFavorites.
@@ -71,9 +72,26 @@ export const updateProfile = mutation({
 
     if (args.firstName !== undefined) updates.firstName = args.firstName;
     if (args.lastName !== undefined) updates.lastName = args.lastName;
-    if (args.phone !== undefined) updates.phone = args.phone;
     if (args.preferredLanguage !== undefined) updates.preferredLanguage = args.preferredLanguage;
     if (args.city !== undefined) updates.city = args.city;
+
+    // `phone` is accepted for wire compatibility but never written here. The
+    // number is owned by Better Auth now and mirrored onto this row by the
+    // onUpdate trigger, so writing it directly would produce a row whose phone
+    // disagrees with the verified one. Changing a phone goes through the OTP
+    // flow (/phone-number/verify with updatePhoneNumber).
+    if (args.phone !== undefined && args.phone !== user.phone) {
+      throw new Error(
+        "لتغيير رقم الجوال يلزم التحقق برمز. / Changing a phone number requires OTP verification."
+      );
+    }
+
+    updates.searchText = buildSearchTextFrom({
+      email: user.email,
+      phone: user.phone,
+      firstName: (updates.firstName as string | undefined) ?? user.firstName,
+      lastName: (updates.lastName as string | undefined) ?? user.lastName,
+    });
 
     await ctx.db.patch(user._id, updates);
 
@@ -290,6 +308,18 @@ export const deleteMyAccount = mutation({
 });
 
 // Create user record
+/**
+ * Create the app row for a freshly signed-up account.
+ *
+ * Superseded by the Better Auth onCreate trigger in auth.ts, which does this
+ * inside the auth transaction. It stays public and unchanged because the 1.0.2
+ * binaries on both app stores still call it after an email sign-up, and those
+ * installs cannot be updated without a store release. On a current client the
+ * row already exists by the time this runs, so it returns the existing id —
+ * which is the behaviour it always had for repeat calls.
+ *
+ * Do not change the arguments or the return type while 1.0.2 is live.
+ */
 export const createUser = mutation({
   args: {
     email: v.string(),
@@ -328,6 +358,13 @@ export const createUser = mutation({
       "تعذّر إنشاء الحساب حاليًا. يرجى المحاولة لاحقًا. / Sign-ups are temporarily unavailable. Please try again later."
     );
 
+    // Link to the Better Auth identity when the caller is the account holder.
+    // Reaching this line at all means the trigger did not run (an old client,
+    // or an account created before triggers existed), so this is the fallback
+    // that keeps the two identities joined by more than an email string.
+    const authUser = await authComponent.safeGetAuthUser(ctx).catch(() => null);
+    const authId = authUser?.email === args.email ? authUser._id : undefined;
+
     const userId = await ctx.db.insert("users", {
       email: args.email,
       firstName: args.firstName,
@@ -338,10 +375,39 @@ export const createUser = mutation({
       isApproved: safeRole === "tourist" ? undefined : false,
       preferredLanguage: "ar",
       favoriteListingIds: [],
+      authId,
+      searchText: buildSearchTextFrom(args),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
 
     return userId;
+  },
+});
+
+/**
+ * Attach the Better Auth id to an app row that only matched by email.
+ *
+ * Called by the mobile app after an email sign-in. Accounts that predate the
+ * triggers work fine without it — getAuthenticatedAppUser falls back to email —
+ * but that fallback is a second index read on every authenticated call, and it
+ * breaks if the account's email ever changes. Queries cannot write, so the link
+ * has to be made by an explicit mutation like this one.
+ */
+export const ensureAuthLink = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const authUser = await authComponent.safeGetAuthUser(ctx).catch(() => null);
+    if (!authUser?.email) return { linked: false };
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", authUser.email))
+      .first();
+
+    if (!user || user.authId === authUser._id) return { linked: false };
+
+    await ctx.db.patch(user._id, { authId: authUser._id, updatedAt: Date.now() });
+    return { linked: true };
   },
 });

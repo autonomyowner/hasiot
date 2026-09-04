@@ -5,7 +5,9 @@ import { useConvexAuth } from "convex/react";
 import type { Lodging, Language } from "@/types";
 import { Feather } from "@expo/vector-icons";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { CaptionScrim, ImageScrim } from "@/components/ui/Gradients";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useAppStore } from "@/stores/appStore";
 import { useToggleFavorite, useFavorites } from "@/hooks/useConvexData";
 import { ReportSheet } from "@/components/ReportSheet";
@@ -26,6 +28,7 @@ export function LodgingCard({
   onPress,
   perNightText,
 }: LodgingCardProps) {
+  const styles = useThemedStyles(makeStyles);
   const [reportOpen, setReportOpen] = useState(false);
   const { t } = useLanguage();
   const { isAuthenticated } = useConvexAuth();
@@ -71,6 +74,11 @@ export function LodgingCard({
           contentFit="cover"
           transition={300}
         />
+        {/* Sheen, then the weighted bottom the caption reads against. Both
+            sit above the photo and below every badge, so the overlays keep
+            their own contrast. */}
+        <ImageScrim />
+        <CaptionScrim />
 
         {/* Rating Badge */}
         <View style={[styles.ratingBadge, isRTL && styles.ratingBadgeRTL]}>
@@ -107,22 +115,21 @@ export function LodgingCard({
           />
         </Pressable>
 
-        {/* Floating info pill */}
-        <View style={styles.pill}>
-          <View style={[styles.pillTopRow, isRTL && styles.rowRTL]}>
-            <Text
-              style={[styles.name, isRTL && styles.textRTL]}
-              numberOfLines={1}
-            >
-              {name}
-            </Text>
-            <View style={styles.typeChip}>
-              <Text style={styles.typeText}>{typeLabel}</Text>
-            </View>
+        {/* Caption. No panel behind it — it sits on the photograph and the
+            scrim above carries its contrast. */}
+        <View style={[styles.caption, isRTL && styles.captionRTL]}>
+          <View style={styles.typeChip}>
+            <Text style={styles.typeText}>{typeLabel}</Text>
           </View>
-          <View style={[styles.pillBottomRow, isRTL && styles.rowRTL]}>
+          <Text
+            style={[styles.name, isRTL && styles.textRTL]}
+            numberOfLines={1}
+          >
+            {name}
+          </Text>
+          <View style={[styles.metaRow, isRTL && styles.rowRTL]}>
             <View style={[styles.locationGroup, isRTL && styles.rowRTL]}>
-              <Feather name="map-pin" size={12} color={colors.onSurface.muted} />
+              <Feather name="map-pin" size={12} color={CAPTION_MUTED} />
               <Text
                 style={[styles.location, isRTL && styles.textRTL]}
                 numberOfLines={1}
@@ -148,7 +155,14 @@ export function LodgingCard({
   );
 }
 
-const styles = StyleSheet.create({
+// White on the scrim, at the three weights the caption uses. Kept as
+// constants because the map-pin icon needs the same value as the label beside
+// it, and an icon colour cannot come out of a StyleSheet.
+const CAPTION = "#FFFFFF";
+const CAPTION_MUTED = "rgba(255, 255, 255, 0.84)";
+const CAPTION_FAINT = "rgba(255, 255, 255, 0.74)";
+
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   shadowWrap: {
     marginBottom: 20,
     shadowColor: colors.ink,
@@ -207,67 +221,78 @@ const styles = StyleSheet.create({
   moreButton: {
     position: "absolute",
     top: 12,
-    right: 56,
-    backgroundColor: "rgba(0, 0, 0, 0.45)",
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    right: 54,
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
   },
   moreButtonRTL: {
     right: undefined,
-    left: 56,
+    left: 54,
   },
   moreText: {
     fontSize: 18,
-    color: "#FFFFFF",
+    color: colors.ink,
     fontFamily: fonts.bold,
     lineHeight: 18,
   },
-  pill: {
+  // `alignItems` sizes the type chip to its label; everything below it is
+  // stretched back to full width so the meta row can push the price out to the
+  // far edge. Flipping this one property is what mirrors the block in Arabic.
+  caption: {
     position: "absolute",
-    left: 10,
-    right: 10,
-    bottom: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.96)",
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    left: 16,
+    right: 16,
+    bottom: 16,
+    alignItems: "flex-start",
   },
-  pillTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  pillBottomRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    marginTop: 5,
+  captionRTL: {
+    alignItems: "flex-end",
   },
   rowRTL: {
     flexDirection: "row-reverse",
   },
-  name: {
-    flex: 1,
-    fontSize: 15.5,
-    fontFamily: fonts.semibold,
-    color: colors.ink,
-    letterSpacing: -0.2,
-  },
+  // Lime is a fill, never a text colour: ink on it is 12.1:1, white is 1.4:1.
+  // As a solid chip it also sidesteps the photograph underneath entirely,
+  // which is why the type moved up here out of the meta line.
   typeChip: {
-    backgroundColor: colors.mint,
-    paddingHorizontal: 10,
+    backgroundColor: colors.primary.DEFAULT,
+    paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 999,
   },
   typeText: {
-    color: colors.primary.DEFAULT,
+    color: colors.ink,
     fontSize: 11,
+    lineHeight: 14,
     fontFamily: fonts.semibold,
+  },
+  // The serif at 20px is the display face the rest of the app uses for
+  // headings; the pill was too shallow to carry it and ran a 15.5px sans
+  // instead. lineHeight is 28 rather than the ~24 the Latin cut needs —
+  // Cairo's ascenders and diacritics clip below that.
+  name: {
+    alignSelf: "stretch",
+    marginTop: 8,
+    fontSize: 20,
+    lineHeight: 28,
+    fontFamily: fonts.serif,
+    color: CAPTION,
+    letterSpacing: -0.2,
+    textShadowColor: "rgba(0, 0, 0, 0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
+  },
+  metaRow: {
+    alignSelf: "stretch",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginTop: 6,
   },
   locationGroup: {
     flex: 1,
@@ -277,19 +302,21 @@ const styles = StyleSheet.create({
   },
   location: {
     flexShrink: 1,
-    fontSize: 12,
+    fontSize: 12.5,
+    lineHeight: 17,
     fontFamily: fonts.regular,
-    color: colors.onSurface.muted,
+    color: CAPTION_MUTED,
   },
   price: {
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 17,
     fontFamily: fonts.bold,
-    color: colors.primary.DEFAULT,
+    color: CAPTION,
   },
   priceUnit: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontFamily: fonts.regular,
-    color: colors.onSurface.muted,
+    color: CAPTION_FAINT,
   },
   textRTL: {
     textAlign: "right",

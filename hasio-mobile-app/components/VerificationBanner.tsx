@@ -1,7 +1,8 @@
 import React from "react";
 import { View, Text, StyleSheet, Pressable } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { VerificationStatus } from "@/hooks/useConvexUser";
 
@@ -20,6 +21,7 @@ export function VerificationBanner({
   onPress,
   isRTL,
 }: VerificationBannerProps) {
+  const styles = useThemedStyles(makeStyles);
   const { t } = useLanguage();
 
   if (status === "approved") return null;
@@ -68,7 +70,7 @@ export function VerificationBanner({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   card: {
     marginHorizontal: 24,
     marginTop: 20,

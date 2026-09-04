@@ -2,9 +2,23 @@ import { mutation, type MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
-import { enforceRateLimit } from "../rateLimit";
+import { riyadhDateTimeToTimestamp } from "../lib/dates";
+import { BOOKING_ERRORS } from "./logic";
+import {
+  cancelAsTourist,
+  completeAsManager,
+  confirmAsManager,
+  createSlotForUser,
+  createStayForUser,
+  declineAsManager,
+} from "./service";
 
-// Create a booking
+/**
+ * Book a slot: one date, one time. Restaurants, tours, event tickets.
+ *
+ * Unchanged in shape because the 1.0.2 binaries on both stores can call it.
+ * Stays go through createStayBooking below.
+ */
 export const createBooking = mutation({
   args: {
     listingId: v.id("listings"),
@@ -21,57 +35,34 @@ export const createBooking = mutation({
       throw new Error("Not authenticated");
     }
 
-    // Without a cap, one account can enumerate every listing × date × time and
-    // reserve the whole calendar.
-    await enforceRateLimit(
-      ctx,
-      `booking:${user._id}`,
-      30,
-      "لقد وصلت إلى الحد اليومي للحجوزات. يرجى المحاولة غدًا. / You've reached today's booking limit. Please try again tomorrow."
-    );
-
-    const listing = await ctx.db.get(args.listingId);
-    if (!listing || listing.isActive === false) {
-      throw new Error("Listing not found or inactive");
-    }
-
-    const existingBooking = await ctx.db
-      .query("bookings")
-      .withIndex("by_listingId_and_date", (q) =>
-        q.eq("listingId", args.listingId).eq("date", args.date)
-      )
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("time"), args.time),
-          q.neq(q.field("status"), "cancelled")
-        )
-      )
-      .first();
-
-    if (existingBooking) {
-      throw new Error("This time slot is no longer available");
-    }
-
-    const bookingDate = new Date(`${args.date}T${args.time}`);
-    if (bookingDate < new Date()) {
-      throw new Error("Cannot book in the past");
-    }
-
-    const bookingId = await ctx.db.insert("bookings", {
-      userId: user._id,
-      listingId: args.listingId,
-      date: args.date,
-      time: args.time,
-      status: "pending",
-      type: args.type || "reservation",
-      partySize: args.partySize,
-      notes: args.notes,
-      travelPlanId: args.travelPlanId,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
+    const { bookingId } = await createSlotForUser(ctx, user, args);
     return bookingId;
+  },
+});
+
+/**
+ * Request a stay: a date range, a guest count, and a total the server computes.
+ *
+ * Separate from createBooking rather than folded into it because the two have
+ * genuinely different arguments and different rules, and overloading one
+ * mutation with "if checkIn is present, ignore date" would make both harder to
+ * read and neither easier to call.
+ */
+export const createStayBooking = mutation({
+  args: {
+    listingId: v.id("listings"),
+    checkIn: v.string(),
+    checkOut: v.string(),
+    guests: v.number(),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) {
+      throw new Error("Not authenticated");
+    }
+
+    return await createStayForUser(ctx, user, args);
   },
 });
 
@@ -97,19 +88,7 @@ export const cancelBooking = mutation({
       throw new Error("Not authorized to cancel this booking");
     }
 
-    if (booking.status === "cancelled") {
-      throw new Error("Booking is already cancelled");
-    }
-
-    if (booking.status === "completed") {
-      throw new Error("Cannot cancel a completed booking");
-    }
-
-    await ctx.db.patch(args.bookingId, {
-      status: "cancelled",
-      cancellationReason: args.reason,
-      updatedAt: Date.now(),
-    });
+    await cancelAsTourist(ctx, booking, args.reason);
 
     return { success: true };
   },
@@ -138,6 +117,13 @@ export const rescheduleBooking = mutation({
       throw new Error("Not authorized to reschedule this booking");
     }
 
+    // Moving a stay means re-checking availability and re-pricing it against
+    // whatever the host charges for the new dates — that is a new booking, not
+    // an edit. The app cancels and rebooks instead.
+    if (booking.kind === "stay") {
+      throw new Error(BOOKING_ERRORS.STAY_NO_RESCHEDULE);
+    }
+
     if (booking.status === "cancelled" || booking.status === "completed") {
       throw new Error("Cannot reschedule this booking");
     }
@@ -160,8 +146,10 @@ export const rescheduleBooking = mutation({
       throw new Error("This time slot is not available");
     }
 
-    const bookingDate = new Date(`${args.newDate}T${args.newTime}`);
-    if (bookingDate < new Date()) {
+    // Riyadh wall clock, not UTC: `new Date("2026-09-10T19:00")` parses as UTC
+    // on the server, which puts an evening slot three hours further away than
+    // it really is.
+    if (riyadhDateTimeToTimestamp(args.newDate, args.newTime) < Date.now()) {
       throw new Error("Cannot reschedule to a past date");
     }
 
@@ -181,16 +169,27 @@ export const confirmBooking = mutation({
   args: { bookingId: v.id("bookings") },
   handler: async (ctx, args) => {
     const booking = await requireBookingManager(ctx, args.bookingId);
+    await confirmAsManager(ctx, booking);
+    return { success: true };
+  },
+});
 
-    if (booking.status !== "pending") {
-      throw new Error("Can only confirm pending bookings");
-    }
-
-    await ctx.db.patch(args.bookingId, {
-      status: "confirmed",
-      updatedAt: Date.now(),
-    });
-
+/**
+ * Turn a request down, with a reason the guest sees.
+ *
+ * The gap this fills: a host could confirm or complete a booking but had no
+ * way to say no. Their only options were to leave the guest waiting or to ask
+ * an admin to cancel it — so a request the host had already decided against
+ * still held a unit until it expired.
+ */
+export const declineBooking = mutation({
+  args: {
+    bookingId: v.id("bookings"),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const booking = await requireBookingManager(ctx, args.bookingId);
+    await declineAsManager(ctx, booking, args.reason);
     return { success: true };
   },
 });
@@ -203,14 +202,29 @@ export const completeBooking = mutation({
   },
   handler: async (ctx, args) => {
     const booking = await requireBookingManager(ctx, args.bookingId);
+    await completeAsManager(ctx, booking, args.notes);
+    return { success: true };
+  },
+});
 
-    if (booking.status === "cancelled") {
-      throw new Error("Cannot complete a cancelled booking");
+/**
+ * Mark a confirmed guest as a no-show.
+ *
+ * Distinct from cancelling: the host held the room and the guest never
+ * arrived, which is a different fact about the same booking and one the host
+ * will want to see in their history.
+ */
+export const markNoShow = mutation({
+  args: { bookingId: v.id("bookings") },
+  handler: async (ctx, args) => {
+    const booking = await requireBookingManager(ctx, args.bookingId);
+
+    if (booking.status !== "confirmed") {
+      throw new Error(BOOKING_ERRORS.NOT_AUTHORIZED);
     }
 
     await ctx.db.patch(args.bookingId, {
-      status: "completed",
-      notes: args.notes || booking.notes,
+      status: "no_show",
       updatedAt: Date.now(),
     });
 

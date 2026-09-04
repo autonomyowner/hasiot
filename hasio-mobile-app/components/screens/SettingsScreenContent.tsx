@@ -26,11 +26,14 @@ import { useMutation } from "convex/react";
 import Constants from "expo-constants";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/backend";
-import { colors, fonts } from "@/constants/colors";
-import { TAB_BAR_CLEARANCE } from "@/constants/layout";
+import { colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
+import { useThemedStyles } from "@/hooks/useAppFonts";
+import { LIST_CONTAINER_PADDING, TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAppStore } from "@/stores/appStore";
 import { useConvexUser } from "@/hooks/useConvexUser";
+import { useFavorites, useTrips } from "@/hooks/useConvexData";
 import { signOut as authSignOut } from "@/lib/auth";
 import { refreshAuth } from "@/lib/convex";
 import { UserType } from "@/types";
@@ -47,11 +50,19 @@ const CAN_RATE_APP = Platform.OS !== "ios" || IOS_APP_STORE_ID !== null;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function SettingsScreenContent() {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, language, changeLanguage, isRTL } = useLanguage();
   const setOnboardingComplete = useAppStore((state) => state.setOnboardingComplete);
   const clearUserData = useAppStore((state) => state.clearUserData);
+
+  // The stats band used to render three hardcoded zeros. Trips and favourites
+  // come from Convex (both skip while signed out); moments are local to the
+  // device, which is where the app already keeps them.
+  const { trips } = useTrips();
+  const { favorites } = useFavorites();
+  const moments = useAppStore((state) => state.moments);
 
   const { isSignedIn, isBusinessOwner, isServiceProvider, isAdmin, isApproved, verificationStatus, userType: convexUserType, user } = useConvexUser();
   const userType: UserType = convexUserType === "business_owner" ? "business" : convexUserType === "service_provider" ? "provider" : convexUserType === "admin" ? "admin" : "user";
@@ -223,7 +234,11 @@ export function SettingsScreenContent() {
   if (!isSignedIn) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScreenGradient />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
           {/* Header */}
           <Animated.View
             entering={FadeInDown.delay(100).duration(600)}
@@ -240,7 +255,7 @@ export function SettingsScreenContent() {
             style={styles.guestCard}
           >
             <View style={styles.guestIconContainer}>
-              <Feather name="user" size={40} color="#0D7A5F" />
+              <Feather name="user" size={40} color={colors.primary.deep} />
             </View>
             <Text style={[styles.guestTitle, isRTL && styles.textRTL]}>
               {t("guestProfileTitle")}
@@ -254,7 +269,7 @@ export function SettingsScreenContent() {
               accessibilityRole="button"
               accessibilityLabel={t("guestSignInButton")}
             >
-              <Feather name="log-in" size={18} color="#FFFFFF" style={{ marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0 }} />
+              <Feather name="log-in" size={18} color={colors.ink} style={{ marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0 }} />
               <Text style={styles.guestSignInButtonText}>
                 {t("guestSignInButton")}
               </Text>
@@ -268,6 +283,7 @@ export function SettingsScreenContent() {
             </Text>
 
             <SettingRow
+              icon="globe"
               label={t("language")}
               value={language === "en" ? "English" : "العربية"}
               isRTL={isRTL}
@@ -283,6 +299,7 @@ export function SettingsScreenContent() {
             </Text>
 
             <SettingRow
+              icon="shield"
               label={t("privacyPolicy")}
               subtitle={t("privacyPolicySubtitle")}
               isRTL={isRTL}
@@ -290,6 +307,7 @@ export function SettingsScreenContent() {
             />
 
             <SettingRow
+              icon="file-text"
               label={t("termsOfService")}
               subtitle={t("termsOfServiceSubtitle")}
               isRTL={isRTL}
@@ -298,6 +316,7 @@ export function SettingsScreenContent() {
 
             {CAN_RATE_APP && (
               <SettingRow
+                icon="star"
                 label={t("rateApp")}
                 subtitle={t("shareFeedback")}
                 isRTL={isRTL}
@@ -306,6 +325,7 @@ export function SettingsScreenContent() {
             )}
 
             <SettingRow
+              icon="info"
               label={t("about")}
               subtitle={t("appVersionInfo")}
               isRTL={isRTL}
@@ -337,6 +357,7 @@ export function SettingsScreenContent() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScreenGradient />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Profile Header */}
         <Animated.View
@@ -366,17 +387,17 @@ export function SettingsScreenContent() {
           style={[styles.statsCard, isRTL && styles.statsCardRTL]}
         >
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>{trips.length}</Text>
             <Text style={styles.statLabel}>{language === "ar" ? "الرحلات" : "Trips"}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>{moments.length}</Text>
             <Text style={styles.statLabel}>{t("moments")}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>0</Text>
+            <Text style={styles.statNumber}>{favorites.length}</Text>
             <Text style={styles.statLabel}>{t("favorites")}</Text>
           </View>
         </Animated.View>
@@ -392,7 +413,7 @@ export function SettingsScreenContent() {
             >
               <View style={[styles.hostingRow, isRTL && styles.hostingRowRTL]}>
                 <View style={styles.hostingIcon}>
-                  <Feather name="home" size={22} color={colors.surface.DEFAULT} />
+                  <Feather name="home" size={22} color={colors.ink} />
                 </View>
                 <View style={[styles.hostingTextWrap, isRTL && styles.profileHeaderInfoRTL]}>
                   <Text style={[styles.hostingTitle, isRTL && styles.textRTL]}>
@@ -412,11 +433,16 @@ export function SettingsScreenContent() {
           </Animated.View>
         )}
 
-        {/* Settings List */}
-        <Animated.View
-          entering={FadeInDown.delay(300).duration(600)}
-          style={styles.listCard}
-        >
+        {/* Account — only rendered when the user actually has one of these
+            rows, so guests never see an empty heading. */}
+        {(isBusinessOwner || isServiceProvider) && (
+          <Animated.View
+            entering={FadeInDown.delay(280).duration(600)}
+            style={styles.listGroup}
+          >
+            <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
+              {t("account")}
+            </Text>
           {/* Dashboard link for business users */}
           {isBusinessOwner && (
             <SettingRow
@@ -458,6 +484,35 @@ export function SettingsScreenContent() {
             />
           )}
 
+          </Animated.View>
+        )}
+
+        {/* Preferences */}
+        <Animated.View
+          entering={FadeInDown.delay(300).duration(600)}
+          style={styles.listGroup}
+        >
+          <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
+            {t("preferences")}
+          </Text>
+
+          {/* The two screens a guest reaches only from here. Bookings first:
+              it is the one someone opens on purpose, while the inbox is
+              usually reached by following a notification. */}
+          <SettingRow
+            icon="calendar"
+            label={t("myBookings")}
+            isRTL={isRTL}
+            onPress={() => router.push("/bookings")}
+          />
+
+          <SettingRow
+            icon="bell"
+            label={t("notifications")}
+            isRTL={isRTL}
+            onPress={() => router.push("/notifications")}
+          />
+
           <SettingRow
             icon="heart"
             label={t("favorites")}
@@ -471,6 +526,16 @@ export function SettingsScreenContent() {
             isRTL={isRTL}
             onPress={() => changeLanguage(language === "en" ? "ar" : "en")}
           />
+        </Animated.View>
+
+        {/* Support */}
+        <Animated.View
+          entering={FadeInDown.delay(320).duration(600)}
+          style={styles.listGroup}
+        >
+          <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
+            {t("support")}
+          </Text>
 
           {/* The notifications switch lived here. The app ships no push
               notifications, so the toggle only flipped a local Zustand flag —
@@ -512,14 +577,14 @@ export function SettingsScreenContent() {
             label={t("termsOfService")}
             isRTL={isRTL}
             onPress={handleOpenTermsOfService}
-            isLast
           />
         </Animated.View>
 
-        {/* Delete account */}
+        {/* Delete account — kept apart from Support by space alone, so the
+            destructive row is never a mis-tap away from a legal link. */}
         <Animated.View
           entering={FadeInDown.delay(350).duration(600)}
-          style={styles.listCard}
+          style={styles.listGroupSpaced}
         >
           <SettingRow
             icon="trash-2"
@@ -527,7 +592,6 @@ export function SettingsScreenContent() {
             isRTL={isRTL}
             onPress={confirmDeleteAccount}
             destructive
-            isLast
           />
         </Animated.View>
 
@@ -679,7 +743,6 @@ interface SettingRowProps {
   onPress?: () => void;
   destructive?: boolean;
   icon?: React.ComponentProps<typeof Feather>["name"];
-  isLast?: boolean;
 }
 
 function SettingRow({
@@ -690,8 +753,8 @@ function SettingRow({
   onPress,
   destructive,
   icon,
-  isLast,
 }: SettingRowProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -710,14 +773,13 @@ function SettingRow({
     }
   };
 
-  const iconColor = destructive ? colors.signOut : colors.primary.DEFAULT;
+  const iconColor = destructive ? colors.signOut : colors.primary.deep;
 
   return (
     <AnimatedPressable
       style={[
         styles.settingRow,
         isRTL && styles.settingRowRTL,
-        isLast && styles.settingRowLast,
         animatedStyle,
       ]}
       onPress={onPress}
@@ -771,16 +833,21 @@ function SettingRow({
 // SettingRowWithSwitch was removed alongside the notifications toggle — it had
 // no other caller. Recover it from git history when a real switch setting lands.
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
+  // The single gutter for this screen, in BOTH the signed-in and signed-out
+  // states. The signed-out ScrollView had none at all: its header and guest
+  // card hardcoded their own 24 while the rows leaned on settingRow's 16 plus
+  // a white background. With the background gone, those rows sat at x=0 while
+  // everything above them sat at 24. LIST_CONTAINER_PADDING is what the other
+  // list screens use and what this screen was already hardcoding.
   scrollContent: {
-    paddingHorizontal: 20,
+    paddingHorizontal: LIST_CONTAINER_PADDING,
   },
   header: {
-    paddingHorizontal: 24,
     paddingTop: 16,
     paddingBottom: 8,
   },
@@ -803,7 +870,6 @@ const styles = StyleSheet.create({
     color: colors.onSurface.muted,
     textTransform: "uppercase",
     letterSpacing: 1,
-    paddingHorizontal: 4,
     paddingTop: 24,
     paddingBottom: 12,
   },
@@ -816,7 +882,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingTop: 20,
     paddingBottom: 20,
-    paddingHorizontal: 4,
   },
   profileHeaderRTL: {
     flexDirection: "row-reverse",
@@ -869,15 +934,13 @@ const styles = StyleSheet.create({
   // Stats strip
   statsCard: {
     flexDirection: "row",
-    backgroundColor: colors.surface.DEFAULT,
-    borderRadius: 20,
     paddingVertical: 18,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
+    marginBottom: 4,
+    // Hairlines top and bottom instead of a panel: the numbers still read as
+    // one band, without another white rectangle on the page.
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: colors.divider,
   },
   statsCardRTL: {
     flexDirection: "row-reverse",
@@ -925,7 +988,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    backgroundColor: "rgba(31, 29, 23, 0.14)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 14,
@@ -936,12 +999,12 @@ const styles = StyleSheet.create({
   hostingTitle: {
     fontFamily: fonts.serif,
     fontSize: 22,
-    color: colors.surface.DEFAULT,
+    color: colors.ink,
   },
   hostingDesc: {
     fontFamily: fonts.regular,
     fontSize: 13,
-    color: "rgba(255, 255, 255, 0.85)",
+    color: "rgba(31, 29, 23, 0.78)",
     marginTop: 2,
     lineHeight: 18,
   },
@@ -949,8 +1012,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginTop: 16,
   },
+  // A white pill on lime has almost no edge (1.4:1), so the CTA is inked.
   hostingPill: {
-    backgroundColor: colors.surface.DEFAULT,
+    backgroundColor: colors.ink,
     borderRadius: 999,
     paddingVertical: 10,
     paddingHorizontal: 22,
@@ -960,31 +1024,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.primary.DEFAULT,
   },
-  // Settings list card
-  listCard: {
-    backgroundColor: colors.surface.DEFAULT,
-    borderRadius: 20,
-    paddingHorizontal: 4,
-    marginBottom: 16,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 2,
+  // A settings group. Not a card: the page reads as one surface, and the
+  // groups are told apart by their heading and the space around them. The
+  // white panels that used to be here cut the page into boxes and fought the
+  // screen gradient underneath.
+  listGroup: {
+    marginBottom: 4,
+  },
+  // A group with no heading still needs the space a heading would have given
+  // it, or the delete row rides up against the legal links above it.
+  listGroupSpaced: {
+    marginTop: 20,
+    marginBottom: 4,
   },
   settingRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: colors.surface.DEFAULT,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  settingRowLast: {
-    borderBottomWidth: 0,
+    // No inset of its own: scrollContent's 20 is the page's single gutter, and
+    // every heading, row and rule on this screen starts from it. The 4 that
+    // used to be here was compensating for listCard's own padding, and once
+    // the cards went it pushed every label 4px past the stats rules.
+    // With no divider under each row, the vertical rhythm is what separates
+    // them, so it is a little more generous than the boxed version was.
+    paddingVertical: 13,
   },
   settingRowRTL: {
     flexDirection: "row-reverse",
@@ -999,11 +1062,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
+  // Alignment box only. The mint chip that used to fill it measured 1.13:1
+  // against the white row it sat on and 1.00:1 against the bottom of the page
+  // gradient — it drew nothing. The icon reads better on the bare page
+  // (6.7:1) than it did on the chip.
   settingIcon: {
     width: 34,
     height: 34,
-    borderRadius: 12,
-    backgroundColor: colors.mint,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 12,
@@ -1047,7 +1112,6 @@ const styles = StyleSheet.create({
   appInfo: {
     alignItems: "center",
     paddingVertical: 24,
-    paddingHorizontal: 40,
   },
   appName: {
     fontFamily: fonts.serif,
@@ -1074,7 +1138,6 @@ const styles = StyleSheet.create({
   },
   // Guest Card Styles
   guestCard: {
-    marginHorizontal: 24,
     marginTop: 16,
     marginBottom: 8,
     backgroundColor: "#FFFFFF",
@@ -1091,7 +1154,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: "rgba(13, 122, 95, 0.1)",
+    backgroundColor: "rgba(79, 94, 16, 0.10)",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 20,
@@ -1114,13 +1177,13 @@ const styles = StyleSheet.create({
   },
   guestSignInButton: {
     flexDirection: "row",
-    backgroundColor: "#0D7A5F",
+    backgroundColor: "#CCE745",
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 28,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0D7A5F",
+    shadowColor: "#CCE745",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -1129,7 +1192,7 @@ const styles = StyleSheet.create({
   guestSignInButtonText: {
     fontFamily: fonts.semibold,
     fontSize: 16,
-    color: colors.surface.DEFAULT,
+    color: colors.ink,
   },
   // Modal Styles
   modalOverlay: {

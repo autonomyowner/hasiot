@@ -7,7 +7,8 @@ import {
   type ViewStyle,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 
 interface BackButtonProps {
@@ -22,6 +23,7 @@ interface BackButtonProps {
 // `isRTL && styles.headerRTL` (alignItems: "flex-end"), so it must keep
 // inheriting the parent's alignment.
 export function BackButton({ style, onPress }: BackButtonProps) {
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { t } = useLanguage();
 
@@ -38,7 +40,7 @@ export function BackButton({ style, onPress }: BackButtonProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   button: {
     marginTop: -12,
     marginBottom: 8,
@@ -46,7 +48,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 15,
-    color: "#0D7A5F",
+    color: "#4F5E10",
     fontFamily: fonts.medium,
   },
 });

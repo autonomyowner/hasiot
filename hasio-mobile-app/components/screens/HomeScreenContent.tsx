@@ -22,14 +22,20 @@ import Animated, {
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
-import { useHomeData } from "@/hooks/useConvexData";
+import { useCities, useHomeData } from "@/hooks/useConvexData";
 import {
   SearchBar,
   CategoryCard,
+  FilterSheet,
+  EMPTY_FILTERS,
+  activeFilterCount,
+  type HomeFilters,
   SkeletonFade,
   SkeletonHomeSections,
 } from "@/components/ui";
-import { categoryColors, colors, fonts } from "@/constants/colors";
+import { categoryColors, colors, type AppFonts } from "@/constants/colors";
+import { CaptionScrim, ScreenGradient } from "@/components/ui/Gradients";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import {
   HOME_CARD_GAP,
   HOME_CARD_WIDTH,
@@ -41,7 +47,8 @@ import {
   ListingDetailSheet,
   type DetailItem,
 } from "@/components/listing/ListingDetailSheet";
-import type { Food, Lodging, Event } from "@/types";
+import type { Lodging } from "@/types";
+import type { TabKey } from "@/app/(tabs)/_layout";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 // Shared with the skeleton that stands in for this screen while it loads.
@@ -50,10 +57,11 @@ const CONTAINER_PADDING = HOME_CONTAINER_PADDING;
 const CARD_WIDTH = HOME_CARD_WIDTH;
 
 interface HomeScreenContentProps {
-  onNavigateToTab?: (index: number) => void;
+  onNavigateToTab?: (key: TabKey) => void;
 }
 
 export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, language, isRTL } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
@@ -74,83 +82,92 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
       title: t("discoverLodging"),
       subtitle: t("lodging"),
       image: generatedImages.catLodging,
-      tabIndex: 1,
-    },
-    {
-      id: "food",
-      title: t("exploreFoodDrinks"),
-      subtitle: t("food"),
-      image: generatedImages.catFood,
-      tabIndex: 2,
-    },
-    {
-      id: "events",
-      title: t("findEvents"),
-      subtitle: t("events"),
-      image: generatedImages.catEvents,
-      tabIndex: 3,
+      tabKey: "lodging" as const,
     },
   ];
 
   // Get data from Convex with fallback to mock data
-  const { lodgings, foods, events, destinations, isLoading } = useHomeData();
+  const { lodgings, destinations: allDestinations, isLoading } = useHomeData();
+  const { cities } = useCities();
+
+  const [filters, setFilters] = useState<HomeFilters>(EMPTY_FILTERS);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const filterCount = activeFilterCount(filters);
+
+  // Filters narrow the whole screen, not just the search results — otherwise
+  // setting one and then clearing the query would silently drop it.
+  const allLodging = useMemo(
+    () =>
+      lodgings.filter(
+        (item) =>
+          (!filters.type || item.type === filters.type) &&
+          (!filters.city || item.city === filters.city) &&
+          (!filters.price || item.priceRange === filters.price)
+      ),
+    [lodgings, filters]
+  );
+
+  // A destination has no type or price of its own, so those two filters
+  // exclude destinations entirely rather than matching everything: asking for
+  // "$$ hotels" and being shown a set of parks is not a filter working.
+  const destinations = useMemo(
+    () =>
+      filters.type || filters.price
+        ? []
+        : allDestinations.filter((item) => !filters.city || item.city === filters.city),
+    [allDestinations, filters]
+  );
+
+  // Only the lodging types actually present, so the sheet never offers a
+  // filter that can only ever return nothing.
+  const lodgingTypes = useMemo(
+    () => Array.from(new Set(lodgings.map((l) => l.type))).sort(),
+    [lodgings]
+  );
 
   const featuredItems = destinations.filter((d) => d.featured);
   const moreDestinations = destinations.filter((d) => !d.featured);
 
-  // Use Convex data (with mock fallback)
-  const allLodging = lodgings;
-  const allFood = foods;
-  const allEvents = events;
-
-  // Search functionality
+  // One results view for a query, for a set of filters, or for both. The
+  // lists arriving here are already filtered, so this only applies the text
+  // match — and when there is no query it applies nothing, which is what makes
+  // filters alone able to drive the results view.
   const searchResults = useMemo(() => {
-    if (!debouncedQuery.trim()) return null;
+    const query = debouncedQuery.trim().toLowerCase();
+    if (!query && filterCount === 0) return null;
 
-    const query = debouncedQuery.toLowerCase();
+    const lodgingResults = query
+      ? allLodging.filter(
+          (item) =>
+            item.name.toLowerCase().includes(query) ||
+            item.nameAr.includes(query) ||
+            item.city.toLowerCase().includes(query) ||
+            item.cityAr.includes(query)
+        )
+      : allLodging;
 
-    const lodgingResults = allLodging.filter((item) =>
-      item.name.toLowerCase().includes(query) ||
-      item.nameAr.includes(query) ||
-      item.city.toLowerCase().includes(query) ||
-      item.cityAr.includes(query)
-    );
-
-    const foodResults = allFood.filter((item) =>
-      item.name.toLowerCase().includes(query) ||
-      item.nameAr.includes(query) ||
-      item.cuisine.toLowerCase().includes(query) ||
-      item.cuisineAr.includes(query)
-    );
-
-    const eventResults = allEvents.filter((item) =>
-      item.title.toLowerCase().includes(query) ||
-      item.titleAr.includes(query) ||
-      item.location.toLowerCase().includes(query) ||
-      item.locationAr.includes(query)
-    );
-
-    const destinationResults = destinations.filter((item) =>
-      item.name.toLowerCase().includes(query) ||
-      item.nameAr.includes(query) ||
-      item.subtitle.toLowerCase().includes(query) ||
-      item.subtitleAr.includes(query)
-    );
+    const destinationResults = query
+      ? destinations.filter(
+          (item) =>
+            item.name.toLowerCase().includes(query) ||
+            item.nameAr.includes(query) ||
+            item.subtitle.toLowerCase().includes(query) ||
+            item.subtitleAr.includes(query)
+        )
+      : destinations;
 
     return {
       lodging: lodgingResults,
-      food: foodResults,
-      events: eventResults,
       destinations: destinationResults,
-      total: lodgingResults.length + foodResults.length + eventResults.length + destinationResults.length,
+      total: lodgingResults.length + destinationResults.length,
     };
-  }, [debouncedQuery, allLodging, allFood, allEvents, destinations]);
+  }, [debouncedQuery, filterCount, allLodging, destinations]);
 
   const [selected, setSelected] = useState<DetailItem | null>(null);
 
-  // Home shows all four kinds of listing side by side, so each gets its own
-  // mapping into the shared sheet's shape. Same normalising the three list
-  // screens do — done here so the sheet never has to know what it is showing.
+  // Home shows stays and destinations side by side, so each gets its own
+  // mapping into the shared sheet's shape. Same normalising the list screens
+  // do — done here so the sheet never has to know what it is showing.
   const lodgingDetail = (item: Lodging): DetailItem => ({
     id: item.id,
     title: getLocalizedText(item.name, item.nameAr, language),
@@ -158,37 +175,19 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
     badge: t(`cat_${item.type}` as const),
     badgeColor: categoryColors[item.type],
     rating: item.rating,
-    priceLine: item.priceRange ? `${item.priceRange} ${t("perNight")}` : undefined,
+    // A real nightly rate wins over the "$$$" band — see LodgingScreenContent.
+    priceLine: item.pricePerNight
+      ? `${t("sar")} ${item.pricePerNight} ${t("perNight")}`
+      : item.priceRange
+        ? `${item.priceRange} ${t("perNight")}`
+        : undefined,
+    // Only a listing the host has actually priced can be booked — see the same
+    // note in LodgingScreenContent.
+    bookable: item.pricePerNight != null,
+    maxGuests: item.maxGuests,
     images: item.images,
     description: getLocalizedText(item.description, item.descriptionAr, language),
     amenities: language === "ar" ? item.amenitiesAr : item.amenities,
-    details: item.details,
-    ownerId: item.owner_id,
-  });
-
-  const foodDetail = (item: Food): DetailItem => ({
-    id: item.id,
-    title: getLocalizedText(item.name, item.nameAr, language),
-    subtitle: getLocalizedText(item.cuisine, item.cuisineAr, language),
-    badge: t(`cat_${item.category}` as const),
-    badgeColor: categoryColors[item.category],
-    rating: item.rating,
-    priceLine: item.avgPrice ? `${item.avgPrice} ${t("averagePrice")}` : undefined,
-    images: item.images,
-    description: getLocalizedText(item.description, item.descriptionAr, language),
-    details: item.details,
-    ownerId: item.owner_id,
-  });
-
-  const eventDetail = (item: Event): DetailItem => ({
-    id: item.id,
-    title: getLocalizedText(item.title, item.titleAr, language),
-    subtitle: getLocalizedText(item.location, item.locationAr, language),
-    badge: t(`cat_${item.category}` as const),
-    badgeColor: categoryColors[item.category],
-    priceLine: [item.date, item.time].filter(Boolean).join(" • ") || undefined,
-    images: item.images,
-    description: getLocalizedText(item.description, item.descriptionAr, language),
     details: item.details,
     ownerId: item.owner_id,
   });
@@ -235,6 +234,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
+      <ScreenGradient />
       <Animated.ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -244,7 +244,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.primary.DEFAULT}
+            tintColor={colors.primary.deep}
           />
         }
       >
@@ -290,6 +290,8 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
             value={searchQuery}
             onChangeText={setSearchQuery}
             isRTL={isRTL}
+            onFilterPress={() => setFilterOpen(true)}
+            filterCount={filterCount}
           />
         </Animated.View>
 
@@ -311,7 +313,11 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                   transition={200}
                 />
                 <Text style={[styles.noResultsText, isRTL && styles.textRTL]}>
-                  {t("noResults")}
+                  {/* An empty result from filters alone is a different problem
+                      from an empty result for a search term, and needs a
+                      different sentence — otherwise "no results for" hangs
+                      with nothing after it. */}
+                  {debouncedQuery.trim() ? t("noResults") : t("filterNoMatch")}
                 </Text>
               </View>
             ) : (
@@ -334,44 +340,6 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                         isRTL={isRTL}
                         index={index}
                         onPress={() => setSelected(lodgingDetail(item))}
-                      />
-                    ))}
-                  </View>
-                )}
-
-                {searchResults.food.length > 0 && (
-                  <View style={styles.resultSection}>
-                    <Text style={[styles.resultSectionTitle, isRTL && styles.textRTL]}>
-                      {t("food")} ({searchResults.food.length})
-                    </Text>
-                    {searchResults.food.map((item, index) => (
-                      <SearchResultItem
-                        key={item.id}
-                        name={getLocalizedText(item.name, item.nameAr, language)}
-                        subtitle={getLocalizedText(item.cuisine, item.cuisineAr, language)}
-                        image={item.images?.[0]}
-                        isRTL={isRTL}
-                        index={index}
-                        onPress={() => setSelected(foodDetail(item))}
-                      />
-                    ))}
-                  </View>
-                )}
-
-                {searchResults.events.length > 0 && (
-                  <View style={styles.resultSection}>
-                    <Text style={[styles.resultSectionTitle, isRTL && styles.textRTL]}>
-                      {t("events")} ({searchResults.events.length})
-                    </Text>
-                    {searchResults.events.map((item, index) => (
-                      <SearchResultItem
-                        key={item.id}
-                        name={getLocalizedText(item.title, item.titleAr, language)}
-                        subtitle={`${getLocalizedText(item.location, item.locationAr, language)} • ${item.date}`}
-                        image={item.images?.[0]}
-                        isRTL={isRTL}
-                        index={index}
-                        onPress={() => setSelected(eventDetail(item))}
                       />
                     ))}
                   </View>
@@ -419,7 +387,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                   title={card.title}
                   subtitle={card.subtitle}
                   imageUrl={card.image}
-                  onPress={() => onNavigateToTab?.(card.tabIndex)}
+                  onPress={() => onNavigateToTab?.(card.tabKey)}
                   isRTL={isRTL}
                 />
               )
@@ -517,6 +485,15 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
       </Animated.ScrollView>
 
       <ListingDetailSheet item={selected} onClose={() => setSelected(null)} />
+
+      <FilterSheet
+        visible={filterOpen}
+        value={filters}
+        cities={cities}
+        types={lodgingTypes}
+        onChange={setFilters}
+        onClose={() => setFilterOpen(false)}
+      />
     </View>
   );
 }
@@ -531,6 +508,7 @@ interface SearchResultItemProps {
 }
 
 function SearchResultItem({ name, subtitle, image, isRTL, index, onPress }: SearchResultItemProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -596,6 +574,7 @@ function DestinationGridCard({
   isTall = false,
   onPress,
 }: DestinationGridCardProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
   const cardHeight = isTall ? 260 : 210;
 
@@ -629,33 +608,30 @@ function DestinationGridCard({
           contentFit="cover"
           transition={300}
         />
-        <LinearGradient
-          colors={["transparent", "rgba(0,0,0,0.06)", "rgba(0,0,0,0.28)"]}
-          style={styles.gridCardGradient}
-        />
-        {/* Floating white info pill over the image bottom. */}
-        <View style={styles.gridCardPill}>
-          <View style={[styles.gridCardPillTopRow, isRTL && styles.rowRTL]}>
-            <Text
-              style={[styles.gridCardName, isRTL && styles.textRTL]}
-              numberOfLines={1}
-            >
-              {name}
+        {/* `tall`: the name can wrap to a second line here, which pushes it
+            up out of the standard scrim's strong half. */}
+        <CaptionScrim tall />
+
+        {/* Rating reads top-left, the same place and the same pill the lodging
+            cards use, so the two card families scan alike. */}
+        {rating != null && (
+          <View style={[styles.gridCardRating, isRTL && styles.gridCardRatingRTL]}>
+            <Feather name="star" size={11} color={colors.warm} />
+            <Text style={styles.gridCardRatingText}>{rating.toFixed(1)}</Text>
+          </View>
+        )}
+
+        <View style={[styles.gridCaption, isRTL && styles.gridCaptionRTL]}>
+          <View style={styles.gridCardChip}>
+            <Text style={styles.gridCardChipText} numberOfLines={1}>
+              {subtitle}
             </Text>
-            {rating != null && (
-              <View style={[styles.gridCardRating, isRTL && styles.rowRTL]}>
-                <Feather name="star" size={11} color={colors.warm} />
-                <Text style={styles.gridCardRatingText}>
-                  {rating.toFixed(1)}
-                </Text>
-              </View>
-            )}
           </View>
           <Text
-            style={[styles.gridCardSubtitle, isRTL && styles.textRTL]}
-            numberOfLines={1}
+            style={[styles.gridCardName, isRTL && styles.textRTL]}
+            numberOfLines={2}
           >
-            {subtitle}
+            {name}
           </Text>
         </View>
       </AnimatedPressable>
@@ -663,7 +639,7 @@ function DestinationGridCard({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -797,47 +773,64 @@ const styles = StyleSheet.create({
     height: "100%",
     position: "absolute",
   },
-  gridCardGradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  gridCardPill: {
-    position: "absolute",
-    left: 8,
-    right: 8,
-    bottom: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.96)",
-    borderRadius: 16,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-  },
-  gridCardPillTopRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 6,
-  },
-  gridCardName: {
-    flex: 1,
-    fontSize: 13.5,
-    fontFamily: fonts.semibold,
-    color: colors.ink,
-    letterSpacing: -0.2,
-  },
   gridCardRating: {
+    position: "absolute",
+    top: 10,
+    left: 10,
     flexDirection: "row",
     alignItems: "center",
-    gap: 3,
+    gap: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.92)",
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  gridCardRatingRTL: {
+    left: undefined,
+    right: 10,
+    flexDirection: "row-reverse",
   },
   gridCardRatingText: {
     fontSize: 11.5,
     fontFamily: fonts.semibold,
     color: colors.ink,
   },
-  gridCardSubtitle: {
-    fontSize: 11.5,
-    fontFamily: fonts.regular,
-    color: colors.onSurface.muted,
-    marginTop: 1,
+  // Same block as the lodging card, sized for a column half the width: the
+  // inset drops 16 -> 12 and the title 20 -> 17, and the title takes two lines
+  // because at this width one truncates most Al-Ahsa place names.
+  gridCaption: {
+    position: "absolute",
+    left: 12,
+    right: 12,
+    bottom: 14,
+    alignItems: "flex-start",
+  },
+  gridCaptionRTL: {
+    alignItems: "flex-end",
+  },
+  gridCardChip: {
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  gridCardChipText: {
+    fontSize: 10.5,
+    lineHeight: 13,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
+  },
+  gridCardName: {
+    alignSelf: "stretch",
+    marginTop: 7,
+    fontSize: 17,
+    lineHeight: 23,
+    fontFamily: fonts.serif,
+    color: "#FFFFFF",
+    letterSpacing: -0.2,
+    textShadowColor: "rgba(0, 0, 0, 0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
   },
   bottomSpacing: {
     height: TAB_BAR_CLEARANCE,
@@ -849,7 +842,7 @@ const styles = StyleSheet.create({
   resultsCount: {
     fontSize: 16,
     fontFamily: fonts.semibold,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
     marginBottom: 20,
   },
   noResultsContainer: {

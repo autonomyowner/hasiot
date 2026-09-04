@@ -11,6 +11,13 @@ import {
 // rather than at 0,0 in the Gulf of Guinea.
 const DEFAULT_COORDS = { lat: 25.3854, lng: 49.5683 }
 
+/** Empty string means "not set", which is different from zero. */
+function numberOrUndefined(value) {
+  if (value === '' || value === null || value === undefined) return undefined
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : NaN
+}
+
 export default function ListingForm({ initialData, onSubmit, onClose }) {
   const [form, setForm] = useState({
     type: initialData?.type || 'hotel',
@@ -29,6 +36,13 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
     email: initialData?.email || '',
     website: initialData?.website || '',
     priceRange: initialData?.priceRange || '',
+    // Booking fields. Only meaningful on a hotel, and only a nightly price
+    // makes the place bookable at all.
+    pricePerNight: initialData?.pricePerNight ?? '',
+    maxGuests: initialData?.maxGuests ?? '',
+    unitCount: initialData?.unitCount ?? '',
+    checkInTime: initialData?.checkInTime || '15:00',
+    checkOutTime: initialData?.checkOutTime || '12:00',
     isVerified: initialData?.isVerified || false,
     isActive: initialData?.isActive !== false,
   })
@@ -37,6 +51,10 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
   const [error, setError] = useState('')
 
   const set = (patch) => setForm((prev) => ({ ...prev, ...patch }))
+
+  // Only stays take bookings, so the pricing block is hidden for everything
+  // else rather than offering a hotel's fields to a restaurant.
+  const isHotel = form.type === 'hotel'
 
   // Only offer categories that belong to the chosen type, but never hide the
   // category a listing already has — seed data predates this grouping.
@@ -71,6 +89,29 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
       return
     }
 
+    // Catch these here rather than letting the server reject after the form
+    // has been filled in — the same rules as convex/listings/pricing.ts.
+    const price = numberOrUndefined(form.pricePerNight)
+    if (price !== undefined && (!Number.isInteger(price) || price <= 0 || price > 100000)) {
+      setError('سعر الليلة يجب أن يكون رقمًا صحيحًا بين 1 و 100000 ريال.')
+      return
+    }
+    const guests = numberOrUndefined(form.maxGuests)
+    if (guests !== undefined && (!Number.isInteger(guests) || guests < 1 || guests > 20)) {
+      setError('الحد الأقصى للضيوف يجب أن يكون بين 1 و 20.')
+      return
+    }
+    const units = numberOrUndefined(form.unitCount)
+    if (units !== undefined && (!Number.isInteger(units) || units < 1 || units > 500)) {
+      setError('عدد الوحدات يجب أن يكون بين 1 و 500.')
+      return
+    }
+    const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/
+    if (isHotel && (!hhmm.test(form.checkInTime) || !hhmm.test(form.checkOutTime))) {
+      setError('أوقات الوصول والمغادرة يجب أن تكون بصيغة HH:MM.')
+      return
+    }
+
     setError('')
     setSaving(true)
     try {
@@ -90,6 +131,15 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
         email: form.email.trim() || undefined,
         website: form.website.trim() || undefined,
         priceRange: form.priceRange || undefined,
+        // Blank means "leave it unset", which is why these are undefined
+        // rather than 0 — a listing with no nightly price is not bookable,
+        // and 0 would be a free room.
+        pricePerNight: numberOrUndefined(form.pricePerNight),
+        currency: numberOrUndefined(form.pricePerNight) === undefined ? undefined : 'SAR',
+        maxGuests: numberOrUndefined(form.maxGuests),
+        unitCount: numberOrUndefined(form.unitCount),
+        checkInTime: isHotel ? form.checkInTime || undefined : undefined,
+        checkOutTime: isHotel ? form.checkOutTime || undefined : undefined,
         images,
         isVerified: form.isVerified,
         isActive: form.isActive,
@@ -233,6 +283,79 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
                 />
               </div>
             </div>
+
+            {/* Booking & pricing — stays only. Leaving the nightly price blank
+                keeps the listing in the directory without a Book button. */}
+            {isHotel && (
+              <>
+                <div className="admin-form-row-3">
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">سعر الليلة (ر.س)</label>
+                    <input
+                      className="admin-form-input"
+                      type="number"
+                      min="0"
+                      step="1"
+                      dir="ltr"
+                      value={form.pricePerNight}
+                      onChange={(e) => set({ pricePerNight: e.target.value })}
+                      placeholder="450"
+                    />
+                  </div>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">الحد الأقصى للضيوف</label>
+                    <input
+                      className="admin-form-input"
+                      type="number"
+                      min="1"
+                      max="20"
+                      step="1"
+                      dir="ltr"
+                      value={form.maxGuests}
+                      onChange={(e) => set({ maxGuests: e.target.value })}
+                      placeholder="4"
+                    />
+                  </div>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">عدد الوحدات</label>
+                    <input
+                      className="admin-form-input"
+                      type="number"
+                      min="1"
+                      max="500"
+                      step="1"
+                      dir="ltr"
+                      value={form.unitCount}
+                      onChange={(e) => set({ unitCount: e.target.value })}
+                      placeholder="10"
+                    />
+                  </div>
+                </div>
+
+                <div className="admin-form-row">
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">وقت تسجيل الوصول</label>
+                    <input
+                      className="admin-form-input"
+                      type="time"
+                      dir="ltr"
+                      value={form.checkInTime}
+                      onChange={(e) => set({ checkInTime: e.target.value })}
+                    />
+                  </div>
+                  <div className="admin-form-group">
+                    <label className="admin-form-label">وقت تسجيل المغادرة</label>
+                    <input
+                      className="admin-form-input"
+                      type="time"
+                      dir="ltr"
+                      value={form.checkOutTime}
+                      onChange={(e) => set({ checkOutTime: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="admin-form-row-3">
               <div className="admin-form-group">

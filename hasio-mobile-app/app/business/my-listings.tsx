@@ -15,7 +15,8 @@ import { useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { ApprovalStatus } from "@/types";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#D97706",
@@ -24,6 +25,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function MyListingsScreen() {
+  const styles = useThemedStyles(makeStyles);
   const { t, isRTL, language } = useLanguage();
   const [filter, setFilter] = useState<"all" | string>("all");
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -48,8 +50,8 @@ export default function MyListingsScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#0D7A5F"
-            colors={["#0D7A5F"]}
+            tintColor="#4F5E10"
+            colors={["#4F5E10"]}
           />
         }
       >
@@ -146,7 +148,7 @@ export default function MyListingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",
@@ -187,8 +189,8 @@ const styles = StyleSheet.create({
     borderColor: "#E5E5E5",
   },
   filterButtonActive: {
-    backgroundColor: "#0D7A5F",
-    borderColor: "#0D7A5F",
+    backgroundColor: "#CCE745",
+    borderColor: "#CCE745",
   },
   filterText: {
     fontSize: 14,
@@ -196,7 +198,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
   },
   filterTextActive: {
-    color: "#FFFFFF",
+    color: "#1F1D17",
   },
   listingsContainer: {
     paddingHorizontal: 24,

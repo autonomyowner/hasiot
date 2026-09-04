@@ -9,10 +9,10 @@ module.exports = {
     extend: {
       colors: {
         primary: {
-          DEFAULT: "#0D7A5F",
-          hover: "#0F8B6E",
-          light: "#10966D",
-          dark: "#0A6650",
+          DEFAULT: "#CCE745",
+          hover: "#D1E956",
+          light: "#D4EB60",
+          dark: "#C6E431",
         },
         accent: {
           DEFAULT: "#2563EB",
@@ -36,7 +36,7 @@ module.exports = {
         },
         border: "#E8E5E0",
         divider: "#F0EDE8",
-        success: "#0D7A5F",
+        success: "#CCE745",
         error: "#DC6B5A",
         warning: "#D97706",
         info: "#2563EB",

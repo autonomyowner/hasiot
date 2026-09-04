@@ -26,7 +26,8 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { BackButton, Button } from "@/components/ui";
 import { LodgingType } from "@/types";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const LODGING_TYPES: { value: LodgingType; labelKey: string }[] = [
   { value: "hotel", labelKey: "hotels" },
@@ -36,6 +37,7 @@ const LODGING_TYPES: { value: LodgingType; labelKey: string }[] = [
 ];
 
 export default function PostLodgingScreen() {
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { t, isRTL } = useLanguage();
   const {
@@ -54,6 +56,13 @@ export default function PostLodgingScreen() {
   const [neighborhood, setNeighborhood] = useState("");
   const [neighborhoodAr, setNeighborhoodAr] = useState("");
   const [priceRange, setPriceRange] = useState("");
+  // Booking fields. Without a nightly price the listing still appears in the
+  // directory, it just cannot be booked — so these are optional, not required.
+  const [pricePerNight, setPricePerNight] = useState("");
+  const [maxGuests, setMaxGuests] = useState("2");
+  const [unitCount, setUnitCount] = useState("1");
+  const [checkInTime, setCheckInTime] = useState("15:00");
+  const [checkOutTime, setCheckOutTime] = useState("12:00");
   const [description, setDescription] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
   const [amenities, setAmenities] = useState("");
@@ -99,6 +108,33 @@ export default function PostLodgingScreen() {
       return;
     }
 
+    // The booking fields are optional as a group, but each one that is filled
+    // in has to be usable — the server rejects the rest, and finding that out
+    // after an image upload is a poor trade.
+    const nightly = pricePerNight.trim() ? Number(pricePerNight.trim()) : undefined;
+    if (nightly !== undefined && (!Number.isInteger(nightly) || nightly <= 0 || nightly > 100000)) {
+      appAlert(t("error"), t("invalidPrice"));
+      return;
+    }
+
+    const guests = maxGuests.trim() ? Number(maxGuests.trim()) : undefined;
+    if (guests !== undefined && (!Number.isInteger(guests) || guests < 1 || guests > 20)) {
+      appAlert(t("error"), t("invalidGuestCount"));
+      return;
+    }
+
+    const units = unitCount.trim() ? Number(unitCount.trim()) : undefined;
+    if (units !== undefined && (!Number.isInteger(units) || units < 1 || units > 500)) {
+      appAlert(t("error"), t("invalidUnitCount"));
+      return;
+    }
+
+    const isHHMM = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+    if (!isHHMM(checkInTime.trim()) || !isHHMM(checkOutTime.trim())) {
+      appAlert(t("error"), t("invalidTime"));
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -118,6 +154,12 @@ export default function PostLodgingScreen() {
         region: neighborhood.trim() || undefined,
         coordinates: { lat: 25.3854, lng: 49.5683 },
         priceRange: priceRange.trim() || undefined,
+        pricePerNight: nightly,
+        currency: nightly !== undefined ? "SAR" : undefined,
+        maxGuests: guests,
+        unitCount: units,
+        checkInTime: checkInTime.trim(),
+        checkOutTime: checkOutTime.trim(),
         amenities: amenities.trim() ? amenities.split(",").map((a) => a.trim()).filter(Boolean) : undefined,
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
       });
@@ -277,6 +319,73 @@ export default function PostLodgingScreen() {
             placeholderTextColor="#A3A3A3"
           />
 
+          {/* Booking & pricing. Optional as a group: a host who leaves the
+              nightly price blank still gets a listing in the directory, it
+              just does not show a Book button. */}
+          <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>
+            {t("pricingSectionTitle")}
+          </Text>
+          <Text style={[styles.sectionHint, isRTL && styles.textRTL]}>
+            {t("pricingSectionHint")}
+          </Text>
+
+          <Text style={[styles.label, isRTL && styles.textRTL]}>
+            {t("pricePerNightLabel")}
+          </Text>
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
+            value={pricePerNight}
+            onChangeText={setPricePerNight}
+            placeholder={t("placeholderPricePerNight")}
+            placeholderTextColor="#A3A3A3"
+            keyboardType="number-pad"
+          />
+
+          <Text style={[styles.label, isRTL && styles.textRTL]}>{t("maxGuestsLabel")}</Text>
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
+            value={maxGuests}
+            onChangeText={setMaxGuests}
+            keyboardType="number-pad"
+          />
+
+          <Text style={[styles.label, isRTL && styles.textRTL]}>{t("unitCountLabel")}</Text>
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={isRTL}
+            value={unitCount}
+            onChangeText={setUnitCount}
+            keyboardType="number-pad"
+          />
+
+          {/* Times stay left-aligned in both languages: "15:00" is a fixed
+              pattern, and mirroring it puts the minutes before the hour. */}
+          <Text style={[styles.label, isRTL && styles.textRTL]}>{t("checkInTimeLabel")}</Text>
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={false}
+            value={checkInTime}
+            onChangeText={setCheckInTime}
+            placeholder="15:00"
+            placeholderTextColor="#A3A3A3"
+            keyboardType="numbers-and-punctuation"
+            textAlign="left"
+          />
+
+          <Text style={[styles.label, isRTL && styles.textRTL]}>{t("checkOutTimeLabel")}</Text>
+          <ThemedTextInput
+            style={[styles.input]}
+            isRTL={false}
+            value={checkOutTime}
+            onChangeText={setCheckOutTime}
+            placeholder="12:00"
+            placeholderTextColor="#A3A3A3"
+            keyboardType="numbers-and-punctuation"
+            textAlign="left"
+          />
+
           {/* Description */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingDescription")}
@@ -365,7 +474,7 @@ export default function PostLodgingScreen() {
           {isLoading && (
             <ActivityIndicator
               size="small"
-              color="#0D7A5F"
+              color="#4F5E10"
               style={styles.loadingIndicator}
             />
           )}
@@ -379,7 +488,7 @@ export default function PostLodgingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",
@@ -411,6 +520,22 @@ const styles = StyleSheet.create({
     color: "#1A1A1A",
     marginBottom: 8,
     marginTop: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: fonts.bold,
+    color: "#1A1A1A",
+    marginTop: 32,
+    paddingTop: 24,
+    borderTopWidth: 1,
+    borderTopColor: "#E5E5E5",
+  },
+  sectionHint: {
+    fontSize: 13,
+    fontFamily: fonts.regular,
+    color: "#737373",
+    lineHeight: 19,
+    marginTop: 6,
   },
   input: {
     backgroundColor: "#FFFFFF",
@@ -446,8 +571,8 @@ const styles = StyleSheet.create({
     borderColor: "#E5E5E5",
   },
   typeButtonSelected: {
-    backgroundColor: "#0D7A5F",
-    borderColor: "#0D7A5F",
+    backgroundColor: "#CCE745",
+    borderColor: "#CCE745",
   },
   typeButtonText: {
     fontSize: 14,
@@ -455,7 +580,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
   },
   typeButtonTextSelected: {
-    color: "#FFFFFF",
+    color: "#1F1D17",
   },
   imagePickerButton: {
     backgroundColor: "#FFFFFF",
@@ -468,7 +593,7 @@ const styles = StyleSheet.create({
   },
   imagePickerText: {
     fontSize: 15,
-    color: "#0D7A5F",
+    color: "#4F5E10",
     fontFamily: fonts.medium,
   },
   imagesContainer: {

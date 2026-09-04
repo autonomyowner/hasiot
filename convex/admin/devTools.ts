@@ -1,5 +1,6 @@
 import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
+import { buildSearchTextFrom } from "../users/search";
 
 /**
  * Promote an existing user to admin from the command line:
@@ -63,5 +64,253 @@ export const listAdmins = internalMutation({
       .withIndex("by_role", (q) => q.eq("role", "admin"))
       .take(50);
     return admins.map((a) => ({ email: a.email, createdAt: a.createdAt }));
+  },
+});
+
+/**
+ * Demo and development helpers.
+ *
+ * All internalMutations, so no client can reach them — only someone who
+ * already holds deploy credentials, who could edit the rows by hand anyway.
+ * They exist so setting up a demo is one command instead of ten clicks in the
+ * dashboard, where a typo silently produces data that looks right and is not.
+ */
+
+/** Nightly rates for the seeded Al-Ahsa hotels, so they become bookable. */
+const DEMO_RATES: Record<string, { pricePerNight: number; maxGuests: number; unitCount: number }> = {
+  "InterContinental Al Ahsa": { pricePerNight: 650, maxGuests: 4, unitCount: 10 },
+  "Ramada by Wyndham Al Ahsa": { pricePerNight: 420, maxGuests: 3, unitCount: 8 },
+  "Rose Garden Hotel Hofuf": { pricePerNight: 480, maxGuests: 2, unitCount: 4 },
+  "Al Koot Heritage Hotel": { pricePerNight: 380, maxGuests: 2, unitCount: 5 },
+  "Palm Resort Al Ahsa": { pricePerNight: 550, maxGuests: 4, unitCount: 6 },
+};
+
+/**
+ * Price the seeded hotels.
+ *
+ * Deliberately a patch rather than a re-seed: seedListings wipes the listings
+ * table, which would take every booking's target with it.
+ */
+export const seedDemoStays = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const hotels = await ctx.db
+      .query("listings")
+      .withIndex("by_type", (q) => q.eq("type", "hotel"))
+      .take(200);
+
+    const patched: string[] = [];
+    const now = Date.now();
+
+    for (const hotel of hotels) {
+      const rate = DEMO_RATES[hotel.name_en];
+      if (!rate) continue;
+
+      await ctx.db.patch(hotel._id, {
+        ...rate,
+        currency: "SAR",
+        checkInTime: "15:00",
+        checkOutTime: "12:00",
+        updatedAt: now,
+      });
+      patched.push(hotel.name_en);
+    }
+
+    return { patched, unmatched: Object.keys(DEMO_RATES).filter((n) => !patched.includes(n)) };
+  },
+});
+
+/**
+ * Opening nightly rates by hotel class, in SAR.
+ *
+ * Estimates, not quotes. Anchored on published Al-Ahsa rates in September 2026:
+ * mid-range runs roughly 300–500 SAR a night, the area average is about US$154
+ * (~580 SAR), budget rooms start near US$33 (~125 SAR), and the InterContinental
+ * sits around US$180–271 with at least one guest reporting ~1000 SAR.
+ *
+ * They exist so the catalogue is bookable on day one. Every one is meant to be
+ * corrected by the host, or by an operator in the admin panel, the moment a real
+ * rate is known — a listing carries the price it was booked at anyway, frozen on
+ * the booking, so changing this later never rewrites history.
+ */
+const RATE_BY_CATEGORY: Record<
+  string,
+  { pricePerNight: number; maxGuests: number; unitCount: number }
+> = {
+  luxury_hotel: { pricePerNight: 850, maxGuests: 4, unitCount: 10 },
+  resort: { pricePerNight: 600, maxGuests: 4, unitCount: 8 },
+  business_hotel: { pricePerNight: 450, maxGuests: 3, unitCount: 10 },
+  boutique_hotel: { pricePerNight: 420, maxGuests: 2, unitCount: 5 },
+  mid_range_hotel: { pricePerNight: 350, maxGuests: 3, unitCount: 8 },
+  budget_hotel: { pricePerNight: 200, maxGuests: 2, unitCount: 6 },
+};
+
+/** Fallback for a hotel whose category is missing or unrecognised. */
+const DEFAULT_RATE = { pricePerNight: 350, maxGuests: 3, unitCount: 6 };
+
+/**
+ * Give every hotel an opening rate, so the catalogue can be booked.
+ *
+ * Prices by class rather than by name, so a hotel added later is covered
+ * without editing this file.
+ *
+ * **Never overwrites a rate that already exists** — once a host or an operator
+ * has set a real price, this must not quietly replace it with an estimate. Pass
+ * `overwrite: true` only to deliberately re-baseline everything.
+ */
+export const setEstimatedRates = internalMutation({
+  args: { overwrite: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const hotels = await ctx.db
+      .query("listings")
+      .withIndex("by_type", (q) => q.eq("type", "hotel"))
+      .take(200);
+
+    const now = Date.now();
+    const priced: { name: string; pricePerNight: number }[] = [];
+    const skipped: string[] = [];
+
+    for (const hotel of hotels) {
+      if (hotel.pricePerNight !== undefined && !args.overwrite) {
+        skipped.push(hotel.name_en);
+        continue;
+      }
+
+      const rate = RATE_BY_CATEGORY[hotel.category ?? ""] ?? DEFAULT_RATE;
+
+      await ctx.db.patch(hotel._id, {
+        ...rate,
+        currency: "SAR",
+        // The Saudi norm, and what `createStayBooking` mirrors onto a stay's
+        // legacy `time` field.
+        checkInTime: "15:00",
+        checkOutTime: "12:00",
+        updatedAt: now,
+      });
+      priced.push({ name: hotel.name_en, pricePerNight: rate.pricePerNight });
+    }
+
+    return { scanned: hotels.length, priced, skipped };
+  },
+});
+
+/**
+ * Hand a seeded listing to a real account, so there is a host who can confirm
+ * bookings. The seeded Al-Ahsa data has no owner, so nothing in it can be
+ * managed from the app until this runs.
+ */
+export const assignListingOwner = internalMutation({
+  args: { email: v.string(), listingName_en: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    if (!user) throw new Error(`No user with email ${args.email}`);
+
+    const listing = await ctx.db
+      .query("listings")
+      .withSearchIndex("search_listings", (q) => q.search("name_en", args.listingName_en))
+      .first();
+    if (!listing) throw new Error(`No listing matching ${args.listingName_en}`);
+
+    await ctx.db.patch(listing._id, {
+      ownerId: user._id,
+      status: "approved",
+      isActive: true,
+      updatedAt: Date.now(),
+    });
+
+    // A host who is not an approved business owner cannot see their own
+    // dashboard, which makes the assignment useless.
+    await ctx.db.patch(user._id, {
+      role: user.role === "admin" ? "admin" : "business_owner",
+      isApproved: true,
+      updatedAt: Date.now(),
+    });
+
+    return { listingId: listing._id, listingName: listing.name_en, ownerId: user._id };
+  },
+});
+
+/**
+ * Mark a phone verified without sending an SMS.
+ *
+ * Development only. The real path is OTP — this exists so a demo rehearsal
+ * does not need working SMS, and so tests of the booking flow do not burn
+ * Twilio credit.
+ */
+export const grantVerifiedPhone = internalMutation({
+  args: { email: v.string(), phone: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    if (!user) throw new Error(`No user with email ${args.email}`);
+
+    await ctx.db.patch(user._id, {
+      phone: args.phone,
+      phoneVerified: true,
+      updatedAt: Date.now(),
+    });
+
+    return { userId: user._id, phone: args.phone };
+  },
+});
+
+/** Fill in searchText for accounts created before admin user search existed. */
+export const backfillUserSearchText = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").take(1000);
+
+    let patched = 0;
+    for (const user of users) {
+      if (user.searchText) continue;
+      await ctx.db.patch(user._id, {
+        searchText: buildSearchTextFrom(user),
+      });
+      patched += 1;
+    }
+
+    return { patched, scanned: users.length };
+  },
+});
+
+/**
+ * Clear ratings that no review ever produced.
+ *
+ * The seeded Al-Ahsa catalogue shipped with an invented score on almost every
+ * listing (3.7 to 4.9) and `reviewCount` unset — decoration, not data. Left in
+ * place, the first genuine review would turn a fabricated 4.8 into a real 3.0
+ * and look like a bug rather than the truth arriving.
+ *
+ * Safe to run repeatedly: it recomputes from the reviews that exist, so a
+ * listing with real reviews keeps its real average.
+ */
+export const clearSeededRatings = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const listings = await ctx.db.query("listings").collect();
+    let cleared = 0;
+
+    for (const listing of listings) {
+      const reviews = await ctx.db
+        .query("reviews")
+        .withIndex("by_listingId", (q) => q.eq("listingId", listing._id))
+        .take(1);
+
+      if (reviews.length === 0 && listing.rating !== undefined) {
+        await ctx.db.patch(listing._id, {
+          rating: undefined,
+          reviewCount: undefined,
+          updatedAt: Date.now(),
+        });
+        cleared += 1;
+      }
+    }
+
+    return { scanned: listings.length, cleared };
   },
 });

@@ -1358,6 +1358,14 @@
   color: var(--ar-ink);
 }
 
+/* A currency next to a figure is a label, not part of the number — at full
+   size "ر.س" competes with the amount it is qualifying. */
+.ar-figure-unit {
+  font-size: 1.125rem;
+  letter-spacing: 0;
+  color: var(--ar-muted, #6B6257);
+}
+
 .ar-figure-label {
   display: inline-flex;
   align-items: center;
@@ -2010,4 +2018,40 @@
   color: var(--primary);
   line-height: 1.2;
   margin-top: 0.125rem;
+}
+
+/* Host picker results. A row is a button because the whole row is the target —
+   a click anywhere on it assigns that person. */
+.admin-host-results {
+  margin-top: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.admin-host-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--ar-line);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  margin-bottom: 8px;
+  text-align: right;
+}
+
+.admin-host-row:hover:not(:disabled) {
+  border-color: var(--ar-brand);
+}
+
+.admin-host-row:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.admin-host-name {
+  font-weight: 600;
 }

@@ -53,3 +53,7 @@ ChatGPT Image *.png
 # rule. Deliberately this one folder, not design-assets/**: a wider exception
 # also picks up the mockups sitting alongside it, which are disposable.
 !design-assets/place-sources/*.jpg
+
+# Stray Expo stub: the real app config is hasio-mobile-app/app.json
+/app.json
+/section.png

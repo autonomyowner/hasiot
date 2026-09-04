@@ -9,6 +9,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Image } from "expo-image";
+import { LinearGradient } from "expo-linear-gradient";
+import { generatedImages } from "@/assets/images/generated";
 import Animated, {
   FadeInDown,
   FadeInUp,
@@ -19,11 +21,13 @@ import Animated, {
 import { useAppStore } from "@/stores/appStore";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function OnboardingScreen() {
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { t, language, changeLanguage, isRTL } = useLanguage();
   const setOnboardingComplete = useAppStore(
@@ -44,15 +48,21 @@ export default function OnboardingScreen() {
     <View style={styles.container}>
       {/* Background Image */}
       <Image
-        source={{
-          uri: "https://pub-d7fc967a0d9e4e42bba0d712e4f9b96e.r2.dev/lodging/desert-camp-a2dc07bf.jpg",
-        }}
+        source={generatedImages.posterArch}
         style={styles.backgroundImage}
         contentFit="cover"
       />
 
-      {/* Gradient Overlay */}
-      <View style={styles.overlay} />
+      {/* Darkens only the lower part, where the copy and buttons sit. The
+          wordmark lives in the upper half and must stay untouched — a flat
+          wash over the whole poster would bury it. The poster's own floor is
+          already dark, so the fade reads as part of the artwork. */}
+      <LinearGradient
+        colors={["rgba(0, 0, 0, 0)", "rgba(0, 0, 0, 0.45)", "rgba(0, 0, 0, 0.88)"]}
+        locations={[0.38, 0.68, 1]}
+        style={styles.scrim}
+        pointerEvents="none"
+      />
 
       <SafeAreaView style={styles.safeArea}>
         {/* The layout is bottom-anchored with fixed vertical margins, which
@@ -107,7 +117,7 @@ export default function OnboardingScreen() {
             style={styles.authSection}
           >
             <Button
-              title={t("continueWithEmail")}
+              title={t("continueWithPhone")}
               variant="secondary"
               fullWidth
               onPress={() => router.push("/auth")}
@@ -131,6 +141,7 @@ interface LanguageButtonProps {
 }
 
 function LanguageButton({ label, selected, onPress }: LanguageButtonProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -168,17 +179,16 @@ function LanguageButton({ label, selected, onPress }: LanguageButtonProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: "#14100C",
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
   },
-  overlay: {
+  scrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0, 0, 0, 0.55)",
   },
   safeArea: {
     flex: 1,
@@ -239,8 +249,8 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   languageButtonSelected: {
-    backgroundColor: "rgba(13, 122, 95, 0.3)",
-    borderColor: "#0D7A5F",
+    backgroundColor: "rgba(204, 231, 69, 0.35)",
+    borderColor: "#4F5E10",
   },
   languageButtonText: {
     fontSize: 16,

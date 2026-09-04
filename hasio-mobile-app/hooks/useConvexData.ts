@@ -1,7 +1,7 @@
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/backend";
 import { useConvexAuth } from "convex/react";
-import type { Lodging, Food, Event, ListingDetails } from "@/types";
+import type { Lodging, ListingDetails } from "@/types";
 
 // Type for Convex listing documents
 type ConvexListing = {
@@ -22,6 +22,11 @@ type ConvexListing = {
   email?: string;
   website?: string;
   priceRange?: string;
+  // Stay pricing. A hotel is only bookable once `pricePerNight` is set — the
+  // backend's `isBookableStay` gates on exactly this.
+  pricePerNight?: number;
+  currency?: string;
+  maxGuests?: number;
   amenities?: string[];
   images?: string[];
   ownerId?: string;
@@ -73,6 +78,11 @@ function toLodging(l: ConvexListing): Lodging {
     neighborhood: l.region || l.city,
     neighborhoodAr: l.region || l.city,
     priceRange: l.priceRange || "",
+    // Carried through undefined rather than defaulted: the Book button keys off
+    // its absence, so a 0 here would offer a free night.
+    pricePerNight: l.pricePerNight,
+    currency: l.currency,
+    maxGuests: l.maxGuests,
     rating: l.rating || 0,
     images: l.images || [],
     amenities: l.amenities || [],
@@ -81,67 +91,6 @@ function toLodging(l: ConvexListing): Lodging {
     descriptionAr: l.description_ar || "",
     owner_id: l.ownerId || null,
     status: l.status as Lodging["status"],
-    details: toDetails(l),
-  };
-}
-
-function toFood(l: ConvexListing): Food {
-  return {
-    id: l._id,
-    name: l.name_en,
-    nameAr: l.name_ar,
-    category: (l.category === "traditional_food" || l.category === "fine_dining" || l.category === "seafood"
-      ? "restaurant"
-      : l.category === "home_kitchen"
-        ? "home_kitchen"
-        : l.category === "fast_food" || l.category === "street_food"
-          ? "fastfood"
-          : l.category === "cafe" || l.category === "drinks"
-            ? "drinks"
-            : "restaurant") as Food["category"],
-    cuisine: l.category_ar || l.category,
-    cuisineAr: l.category_ar || l.category,
-    avgPrice: l.priceRange || "",
-    hours: l.workingHours
-      ? `${l.workingHours[0]?.open || ""} - ${l.workingHours[0]?.close || ""}`
-      : "",
-    images: l.images || [],
-    description: l.description_en || "",
-    descriptionAr: l.description_ar || "",
-    rating: l.rating || 0,
-    owner_id: l.ownerId || null,
-    status: l.status as Food["status"],
-    details: toDetails(l),
-  };
-}
-
-function toEvent(l: ConvexListing): Event {
-  return {
-    id: l._id,
-    title: l.name_en,
-    titleAr: l.name_ar,
-    category: (l.category === "festival"
-      ? "festival"
-      : l.category === "conference"
-        ? "conference"
-        : l.category === "outdoor_activity" || l.category === "adventure"
-          ? "outdoor"
-          : l.category === "exhibition" || l.category === "museum"
-            ? "indoor"
-            : l.category === "seasonal"
-              ? "seasonal"
-              : "outdoor") as Event["category"],
-    date: "",
-    time: l.workingHours
-      ? `${l.workingHours[0]?.open || ""} - ${l.workingHours[0]?.close || ""}`
-      : "",
-    location: l.address,
-    locationAr: l.address,
-    images: l.images || [],
-    description: l.description_en || "",
-    descriptionAr: l.description_ar || "",
-    owner_id: l.ownerId || null,
-    status: l.status as Event["status"],
     details: toDetails(l),
   };
 }
@@ -166,44 +115,6 @@ export function useLodgings(type?: Lodging["type"]) {
 }
 
 /**
- * Hook to get foods from Convex
- */
-export function useFoods(category?: Food["category"]) {
-  const listings = useQuery(api.listings.queries.listListings, {
-    type: "restaurant",
-  });
-
-  const foods = listings
-    ? listings.map(toFood).filter((f) => !category || f.category === category)
-    : [];
-
-  return {
-    foods,
-    isLoading: listings === undefined,
-    isUsingMockData: false,
-  };
-}
-
-/**
- * Hook to get events from Convex
- */
-export function useEvents(category?: Event["category"]) {
-  const listings = useQuery(api.listings.queries.listListings, {
-    type: "event",
-  });
-
-  const events = listings
-    ? listings.map(toEvent).filter((e) => !category || e.category === category)
-    : [];
-
-  return {
-    events,
-    isLoading: listings === undefined,
-    isUsingMockData: false,
-  };
-}
-
-/**
  * Hook to get destinations (attractions) from Convex
  */
 export function useDestinations(featured?: boolean) {
@@ -218,6 +129,9 @@ export function useDestinations(featured?: boolean) {
         nameAr: l.name_ar,
         subtitle: l.category,
         subtitleAr: l.category_ar || l.category,
+        // Carried so the home filter can narrow destinations by place; the
+        // subtitle above is the category, not a location.
+        city: l.city,
         image: l.images?.[0] || "",
         featured: (l.rating || 0) >= 4.5,
         // Carried so a tapped destination can open the same detail sheet as a
@@ -248,17 +162,24 @@ export function useDestinations(featured?: boolean) {
  */
 export function useHomeData() {
   const { lodgings, isLoading: lodgingsLoading } = useLodgings();
-  const { foods, isLoading: foodsLoading } = useFoods();
-  const { events, isLoading: eventsLoading } = useEvents();
   const { destinations, isLoading: destinationsLoading } = useDestinations();
 
   return {
     lodgings,
-    foods,
-    events,
     destinations,
-    isLoading: lodgingsLoading || foodsLoading || eventsLoading || destinationsLoading,
+    isLoading: lodgingsLoading || destinationsLoading,
   };
+}
+
+/**
+ * The cities that actually have public listings, with their counts.
+ *
+ * Driven off the data rather than a hardcoded list on purpose: a filter that
+ * offers a city with nothing in it is worse than one that does not offer it.
+ */
+export function useCities() {
+  const cities = useQuery(api.listings.queries.getCities, {});
+  return { cities: cities || [], isLoading: cities === undefined };
 }
 
 /**

@@ -10,7 +10,7 @@ import {
   LIST_CONTAINER_PADDING,
   MOMENT_CARD_WIDTH,
 } from "@/constants/layout";
-import { Skeleton, SkeletonLine, sweepPhase } from "./Skeleton";
+import { Skeleton, SkeletonLine, SkeletonPill, sweepPhase } from "./Skeleton";
 
 /**
  * Screen-shaped skeletons.
@@ -28,13 +28,14 @@ import { Skeleton, SkeletonLine, sweepPhase } from "./Skeleton";
  * slide across the card as the two cross-fade.
  */
 
-type ListingVariant = "lodging" | "food" | "event";
+// Kept as a union rather than inlined: the height has to match the real card
+// this stands in for, so a new listing screen adds a variant here instead of
+// guessing.
+type ListingVariant = "lodging";
 
-// LodgingCard / FoodCard / EventCard image (the image *is* the card now).
+// LodgingCard image (the image *is* the card now).
 const IMAGE_HEIGHT: Record<ListingVariant, number> = {
   lodging: 240,
-  food: 220,
-  event: 240,
 };
 
 interface SkeletonListingCardProps {
@@ -59,27 +60,27 @@ export function SkeletonListingCard({
         style={[styles.listingImage, { height: IMAGE_HEIGHT[variant] }]}
       />
 
-      {/* The floating white info pill the real cards render over the image. */}
-      <View style={styles.listingPill}>
-        <View style={[styles.listingPillRow, isRTL && styles.rowReverse]}>
-          <SkeletonLine
-            width="52%"
-            box={20}
-            isRTL={isRTL}
-            phase={sweepPhase(seed + 1)}
-          />
-          <Skeleton
-            radius={999}
-            phase={sweepPhase(seed + 2)}
-            style={styles.listingPillChip}
-          />
-        </View>
+      {/* The caption the real cards lay on the photograph: type chip, title,
+          then the place-and-price line. */}
+      <View style={[styles.listingCaption, isRTL && styles.listingCaptionRTL]}>
+        <Skeleton
+          radius={999}
+          phase={sweepPhase(seed + 1)}
+          style={styles.listingCaptionChip}
+        />
         <SkeletonLine
-          width="68%"
+          width="62%"
+          box={28}
+          isRTL={isRTL}
+          phase={sweepPhase(seed + 2)}
+          style={[styles.captionLine, styles.gapTop8]}
+        />
+        <SkeletonLine
+          width="45%"
           box={17}
           isRTL={isRTL}
           phase={sweepPhase(seed + 3)}
-          style={styles.gapTop4}
+          style={[styles.captionLine, styles.gapTop6]}
         />
       </View>
     </View>
@@ -92,7 +93,7 @@ interface SkeletonListProps {
   count?: number;
 }
 
-/** Stands in for the FlatList on the lodging, food and events screens. */
+/** Stands in for the FlatList on the lodging screen. */
 export function SkeletonList({
   variant,
   isRTL = false,
@@ -278,8 +279,8 @@ export function SkeletonMomentsGrid({
 }
 
 const styles = StyleSheet.create({
-  // --- Listing screens (LodgingCard / FoodCard / EventCard) ---
-  // Matches `listContent` on the lodging, food and events screens.
+  // --- Listing screens (LodgingCard) ---
+  // Matches `listContent` on the lodging screen.
   listContent: {
     paddingHorizontal: LIST_CONTAINER_PADDING,
     paddingTop: 8,
@@ -290,29 +291,33 @@ const styles = StyleSheet.create({
   listingImage: {
     width: "100%",
   },
-  // Mirrors the real cards' floating info pill (inset 10, radius 18).
-  listingPill: {
+  // Mirrors the real cards' caption block (inset 16, chip then title then
+  // meta). No panel: the placeholder sits on the image the same way the text
+  // does, so the cross-fade between them does not shift anything.
+  listingCaption: {
     position: "absolute",
-    left: 10,
-    right: 10,
-    bottom: 10,
-    backgroundColor: "rgba(255, 255, 255, 0.96)",
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    left: 16,
+    right: 16,
+    bottom: 16,
+    alignItems: "flex-start",
   },
-  listingPillRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
+  listingCaptionRTL: {
+    alignItems: "flex-end",
   },
-  listingPillChip: {
+  listingCaptionChip: {
     width: 64,
     height: 22,
   },
-  gapTop4: {
-    marginTop: 4,
+  // The chip sizes to itself, so the two lines under it have to be stretched
+  // back to full width or their percentage widths resolve against nothing.
+  captionLine: {
+    alignSelf: "stretch",
+  },
+  gapTop8: {
+    marginTop: 8,
+  },
+  gapTop6: {
+    marginTop: 6,
   },
   // Used by the owner-list skeleton, whose card layout is unchanged.
   gap4: {
@@ -422,4 +427,107 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingBottom: 12,
   },
+});
+
+/**
+ * Mirrors the row in app/bookings/index.tsx: 84px thumb, name, two meta
+ * lines, chip + amount on the last line. Same paddings as the real list so
+ * the cross-fade to content is a fade and not a shuffle.
+ */
+export function SkeletonBookingList({
+  isRTL = false,
+  count = 3,
+}: {
+  isRTL?: boolean;
+  count?: number;
+}) {
+  return (
+    <View style={bookingStyles.list}>
+      {Array.from({ length: count }).map((_, index) => {
+        const seed = index * 5;
+        return (
+          <View key={index} style={[bookingStyles.row, isRTL && bookingStyles.rowRTL]}>
+            <Skeleton radius={12} phase={sweepPhase(seed)} style={bookingStyles.thumb} />
+            <View style={bookingStyles.body}>
+              <SkeletonLine width="70%" box={22} isRTL={isRTL} phase={sweepPhase(seed + 1)} />
+              <SkeletonLine width="55%" box={18} isRTL={isRTL} phase={sweepPhase(seed + 2)} />
+              <SkeletonLine width="40%" box={18} isRTL={isRTL} phase={sweepPhase(seed + 3)} />
+              <View style={[bookingStyles.footer, isRTL && bookingStyles.rowRTL]}>
+                <SkeletonPill width={76} height={22} phase={sweepPhase(seed + 4)} />
+                <Skeleton radius={4} phase={sweepPhase(seed + 4)} style={bookingStyles.amount} />
+              </View>
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+/** Mirrors app/bookings/[id].tsx: status card, listing card with hero, facts card. */
+export function SkeletonBookingDetail({ isRTL = false }: { isRTL?: boolean }) {
+  const edge = isRTL ? bookingStyles.selfEnd : undefined;
+  return (
+    <View style={bookingStyles.detail}>
+      <View style={bookingStyles.card}>
+        <SkeletonPill width={88} height={22} phase={sweepPhase(0)} style={edge} />
+        <SkeletonLine width={110} box={18} isRTL={isRTL} phase={sweepPhase(1)} style={bookingStyles.gap8} />
+        <SkeletonLine width={160} box={32} bar={26} isRTL={isRTL} phase={sweepPhase(2)} />
+      </View>
+      <View style={bookingStyles.card}>
+        <Skeleton radius={12} phase={sweepPhase(3)} style={bookingStyles.hero} />
+        <SkeletonLine width="65%" box={23} isRTL={isRTL} phase={sweepPhase(4)} style={bookingStyles.gap8} />
+        <SkeletonLine width="45%" box={19} isRTL={isRTL} phase={sweepPhase(5)} />
+      </View>
+      <View style={bookingStyles.card}>
+        {[0, 1, 2, 3].map((i) => (
+          <View key={i} style={[bookingStyles.factRow, isRTL && bookingStyles.rowRTL]}>
+            <Skeleton radius={4} phase={sweepPhase(6 + i)} style={bookingStyles.factLabel} />
+            <Skeleton radius={4} phase={sweepPhase(6 + i)} style={bookingStyles.factValue} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+// Separate sheet from `styles` above: these mirror the booking screens'
+// numbers, and keeping them together makes a drift easy to spot.
+const bookingStyles = StyleSheet.create({
+  list: { paddingHorizontal: 20, gap: 12 },
+  row: {
+    flexDirection: "row",
+    gap: 12,
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 16,
+    padding: 12,
+  },
+  rowRTL: { flexDirection: "row-reverse" },
+  thumb: { width: 84, height: 84 },
+  body: { flex: 1, justifyContent: "space-between" },
+  footer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  amount: { width: 64, height: 16 },
+  detail: { paddingHorizontal: 20, gap: 12 },
+  card: {
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 16,
+    padding: 16,
+    gap: 8,
+  },
+  selfEnd: { alignSelf: "flex-end" },
+  gap8: { marginTop: 8 },
+  hero: { width: "100%", height: 140 },
+  factRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+  },
+  factLabel: { width: 70, height: 13 },
+  factValue: { width: 90, height: 15 },
 });

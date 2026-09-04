@@ -2,7 +2,8 @@ import React, { useEffect, useId } from "react";
 import { View, Text, Modal, Pressable, StyleSheet } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useDialogStore, type AppAlertButton } from "@/stores/dialogStore";
 
@@ -15,6 +16,7 @@ import { useDialogStore, type AppAlertButton } from "@/stores/dialogStore";
  * behind it on iOS).
  */
 export function AppDialogHost() {
+  const styles = useThemedStyles(makeStyles);
   const hostId = useId();
   const { isRTL } = useLanguage();
   const visible = useDialogStore((s) => s.visible);
@@ -63,7 +65,7 @@ export function AppDialogHost() {
               <Feather
                 name={destructive ? "alert-triangle" : "info"}
                 size={22}
-                color={destructive ? colors.signOut : colors.primary.DEFAULT}
+                color={destructive ? colors.signOut : colors.primary.deep}
               />
             </View>
             <Text style={[styles.title, isRTL && styles.textRTL]}>{title}</Text>
@@ -92,6 +94,7 @@ export function AppDialogHost() {
                       <Text
                         style={[
                           styles.buttonText,
+                          isDestructive && styles.buttonTextDestructive,
                           isCancel && styles.buttonTextCancel,
                         ]}
                       >
@@ -108,7 +111,7 @@ export function AppDialogHost() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(31, 29, 23, 0.45)",
@@ -180,6 +183,10 @@ const styles = StyleSheet.create({
   buttonText: {
     fontFamily: fonts.semibold,
     fontSize: 15,
+    color: colors.ink,
+  },
+  // The destructive button keeps a dark red fill, so its label stays white.
+  buttonTextDestructive: {
     color: "#FFFFFF",
   },
   buttonTextCancel: {

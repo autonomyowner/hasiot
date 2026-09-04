@@ -30,18 +30,22 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { useAppStore } from "@/stores/appStore";
 import { ChatBubble } from "@/components/planner";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient } from "@/components/ui/Gradients";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { TAB_BAR_HEIGHT, TAB_BAR_MARGIN } from "@/constants/layout";
 import { Feather } from "@expo/vector-icons";
 import type { ChatMessage } from "@/types";
+import type { TabKey } from "@/app/(tabs)/_layout";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 interface PlannerScreenContentProps {
-  onNavigateToTab?: (index: number) => void;
+  onNavigateToTab?: (key: TabKey) => void;
 }
 
 export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentProps) {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, language, isRTL } = useLanguage();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -178,15 +182,13 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
   };
 
   const suggestionButtons = [
-    { key: "lodging", label: t("suggestLodging"), tabIndex: 1 },
-    { key: "food", label: t("suggestFood"), tabIndex: 2 },
-    { key: "events", label: t("suggestEvents"), tabIndex: 3 },
-    { key: "itinerary", label: t("suggestItinerary"), tabIndex: null },
+    { key: "lodging", label: t("suggestLodging"), tabKey: "lodging" as const },
+    { key: "itinerary", label: t("suggestItinerary"), tabKey: null },
   ];
 
-  const handleSuggestion = async (tabIndex: number | null, label: string) => {
-    if (tabIndex !== null) {
-      onNavigateToTab?.(tabIndex);
+  const handleSuggestion = async (tabKey: TabKey | null, label: string) => {
+    if (tabKey !== null) {
+      onNavigateToTab?.(tabKey);
     } else {
       // Send as a message to AI
       const userMessage: ChatMessage = {
@@ -264,6 +266,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={0}
     >
+      <ScreenGradient />
       <View
         ref={innerRef}
         onLayout={keyboardOnLayout}
@@ -314,7 +317,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
                   <SuggestionButton
                     key={btn.key}
                     label={btn.label}
-                    onPress={() => handleSuggestion(btn.tabIndex, btn.label)}
+                    onPress={() => handleSuggestion(btn.tabKey, btn.label)}
                     delay={index * 100}
                   />
                 ))}
@@ -374,10 +377,10 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
             disabled={!inputText.trim() || isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={colors.ink} />
             ) : (
               // arrow-up is symmetric, so no RTL mirroring is needed.
-              <Feather name="arrow-up" size={22} color="#FFFFFF" />
+              <Feather name="arrow-up" size={22} color={colors.ink} />
             )}
           </Pressable>
         </View>
@@ -389,6 +392,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
 
 // Typing indicator component
 function TypingIndicator() {
+  const styles = useThemedStyles(makeStyles);
   const dot1 = useSharedValue(0);
   const dot2 = useSharedValue(0);
   const dot3 = useSharedValue(0);
@@ -454,6 +458,7 @@ interface SuggestionButtonProps {
 }
 
 function SuggestionButton({ label, onPress, delay = 0 }: SuggestionButtonProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -481,7 +486,7 @@ function SuggestionButton({ label, onPress, delay = 0 }: SuggestionButtonProps) 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
@@ -517,12 +522,12 @@ const styles = StyleSheet.create({
   },
   subtitleIcon: {
     fontSize: 12,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
   subtitle: {
     fontSize: 12.5,
     fontFamily: fonts.medium,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
   },
   textRTL: {
     textAlign: "right",
@@ -558,7 +563,7 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontSize: 18,
     fontFamily: fonts.semibold,
-    color: colors.primary.DEFAULT,
+    color: colors.primary.deep,
     marginBottom: 4,
   },
   welcomeText: {
@@ -624,7 +629,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.primary.DEFAULT,
+    backgroundColor: colors.primary.deep,
   },
   inputContainer: {
     flexDirection: "row",

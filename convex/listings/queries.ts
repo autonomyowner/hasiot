@@ -11,14 +11,14 @@ const MAX_SCAN = 1000;
 const MAX_LIST = 200;
 
 // Helper: check if listing is publicly visible (approved or no status = seed data)
-function isPublicListing(listing: { isActive?: boolean; status?: string }) {
+export function isPublicListing(listing: { isActive?: boolean; status?: string }) {
   if (listing.isActive === false) return false;
   if (listing.status && listing.status !== "approved") return false;
   return true;
 }
 
 // Helper: fetch blocked user IDs for the current user (empty set if anonymous)
-async function getBlockedIds(ctx: QueryCtx): Promise<Set<string>> {
+export async function getBlockedIds(ctx: QueryCtx): Promise<Set<string>> {
   const user = await getAuthenticatedAppUser(ctx);
   if (!user) return new Set();
   const blocks = await ctx.db
@@ -246,49 +246,6 @@ export const getMyListings = query({
     }
 
     return listings;
-  },
-});
-
-// Get listing reviews
-export const getListingReviews = query({
-  args: {
-    listingId: v.id("listings"),
-    limit: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const reviews = await ctx.db
-      .query("reviews")
-      .withIndex("by_listingId", (q) => q.eq("listingId", args.listingId))
-      .order("desc")
-      .take(Math.min(args.limit ?? MAX_LIST, MAX_LIST));
-
-    const blockedIds = await getBlockedIds(ctx);
-    const visible = reviews.filter(
-      (r) => !blockedIds.has(r.userId as string)
-    );
-
-    const reviewsWithUsers = await Promise.all(
-      visible.map(async (review) => {
-        if (review.isAnonymous) {
-          // userId is stripped, not just left unresolved: spreading the row
-          // would ship the author's id to every client, which de-anonymises the
-          // review for anyone who reads the network response. The cost is that
-          // an anonymous review cannot be blocked from the UI — it can still be
-          // reported, and an admin sees the author on the report.
-          const { userId: _userId, ...rest } = review;
-          return { ...rest, user: null };
-        }
-        const user = await ctx.db.get(review.userId);
-        return {
-          ...review,
-          user: user
-            ? { firstName: user.firstName, lastName: user.lastName }
-            : null,
-        };
-      })
-    );
-
-    return reviewsWithUsers;
   },
 });
 

@@ -1,9 +1,9 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { Image, type ImageSource } from "expo-image";
-import { LinearGradient } from "expo-linear-gradient";
-import { Feather } from "@expo/vector-icons";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { CaptionScrim } from "./Gradients";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import {
   CATEGORY_CARD_HEIGHT,
   CATEGORY_CARD_WIDTH,
@@ -26,6 +26,7 @@ export function CategoryCard({
   onPress,
   isRTL = false,
 }: CategoryCardProps) {
+  const styles = useThemedStyles(makeStyles);
   const source =
     typeof imageUrl === "string"
       ? imageUrl
@@ -42,24 +43,20 @@ export function CategoryCard({
       accessibilityLabel={`${title}, ${subtitle}`}
     >
       <Image source={source} style={styles.image} contentFit="cover" transition={300} />
-      <LinearGradient
-        colors={["transparent", "rgba(20, 18, 12, 0.18)", "rgba(20, 18, 12, 0.62)"]}
-        style={styles.gradient}
-      />
+      <CaptionScrim tall />
       <View style={[styles.content, isRTL && styles.contentRTL]}>
+        <View style={styles.chip}>
+          <Text style={styles.chipText}>{subtitle}</Text>
+        </View>
         <Text style={[styles.title, isRTL && styles.textRTL]} numberOfLines={2}>
           {title}
         </Text>
-        <View style={[styles.captionPill, isRTL && styles.captionPillRTL]}>
-          <Feather name="map-pin" size={11} color={colors.ink} />
-          <Text style={styles.subtitle}>{subtitle}</Text>
-        </View>
       </View>
     </PressableScale>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     width: CATEGORY_CARD_WIDTH,
     height: CATEGORY_CARD_HEIGHT,
@@ -74,46 +71,42 @@ const styles = StyleSheet.create({
     position: "absolute",
     backgroundColor: colors.sand,
   },
-  gradient: {
-    ...StyleSheet.absoluteFillObject,
-  },
   content: {
     flex: 1,
     justifyContent: "flex-end",
+    alignItems: "flex-start",
     padding: 16,
   },
   contentRTL: {
     alignItems: "flex-end",
   },
-  title: {
-    fontSize: 22,
-    fontFamily: fonts.serif,
-    color: "#FFFFFF",
-    marginBottom: 8,
-    letterSpacing: -0.2,
-    textShadowColor: "rgba(0, 0, 0, 0.25)",
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  // Floating white pill, echoing the destination-grid cards.
-  captionPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    alignSelf: "flex-start",
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
+  // The subtitle is the category, not a place — it used to carry a map-pin
+  // inside a white pill, which said the wrong thing about it twice over. As a
+  // lime chip it matches the type chip on the lodging and destination cards,
+  // and ink on lime is 12.1:1 whatever the photograph does underneath.
+  chip: {
+    backgroundColor: colors.primary.DEFAULT,
     borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
   },
-  captionPillRTL: {
-    flexDirection: "row-reverse",
-    alignSelf: "flex-end",
-  },
-  subtitle: {
-    fontSize: 11.5,
+  chipText: {
+    fontSize: 11,
+    lineHeight: 14,
     fontFamily: fonts.semibold,
     color: colors.ink,
+  },
+  title: {
+    alignSelf: "stretch",
+    marginTop: 8,
+    fontSize: 22,
+    lineHeight: 30,
+    fontFamily: fonts.serif,
+    color: "#FFFFFF",
+    letterSpacing: -0.2,
+    textShadowColor: "rgba(0, 0, 0, 0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
   },
   textRTL: {
     textAlign: "right",
