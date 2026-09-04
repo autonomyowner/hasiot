@@ -2,6 +2,8 @@ import { query } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { requireAdmin } from "../auth";
+import { isPlaceholderEmail } from "../lib/contact";
+import { riyadhMonthKey } from "../lib/dates";
 
 // Hard ceilings so no admin query can scan an unbounded number of documents.
 // Convex fails a query outright past ~16k reads, and this dashboard used to
@@ -42,7 +44,26 @@ export const getDashboardStats = query({
       completed: bookings.filter(b => b.status === "completed").length,
       cancelled: bookings.filter(b => b.status === "cancelled").length,
       no_show: bookings.filter(b => b.status === "no_show").length,
+      declined: bookings.filter(b => b.status === "declined").length,
+      expired: bookings.filter(b => b.status === "expired").length,
     };
+
+    // The number the operator chases: stay requests a host has not answered.
+    // Distinct from bookingsByStatus.pending, which also counts restaurant
+    // slots nobody is waiting on.
+    const awaitingOwner = bookings.filter(
+      (b) => b.kind === "stay" && b.status === "pending"
+    ).length;
+
+    const thisMonth = riyadhMonthKey(Date.now());
+    const stayRevenueMonth = bookings
+      .filter(
+        (b) =>
+          b.kind === "stay" &&
+          (b.status === "confirmed" || b.status === "completed") &&
+          (b.checkIn ?? b.date).startsWith(thisMonth)
+      )
+      .reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
 
     // Every listing sits in exactly one review state, which makes this a true
     // part-to-whole — the shape the dashboard's segmented bar needs. Seed rows
@@ -51,6 +72,7 @@ export const getDashboardStats = query({
       approved: listings.filter(l => l.status === "approved").length,
       pending: listings.filter(l => l.status === "pending").length,
       rejected: listings.filter(l => l.status === "rejected").length,
+      suspended: listings.filter(l => l.status === "suspended").length,
       seed: listings.filter(l => l.status === undefined).length,
     };
 
@@ -118,6 +140,18 @@ export const getDashboardStats = query({
       pendingBusinesses,
       pendingReports: pendingReports.length,
       pendingBookings: bookingsByStatus.pending,
+      // Waiting on a *host*, not on us — the operator's job here is to chase
+      // the host, not to approve anything.
+      awaitingOwner,
+
+      // Accounts
+      verifiedUsers: users.filter(u => u.phoneVerified === true).length,
+      suspendedUsers: users.filter(u => u.isSuspended === true).length,
+      phoneSignups: users.filter(u => isPlaceholderEmail(u.email)).length,
+
+      // Money, for the month so far
+      stayRevenueMonth,
+      currency: "SAR",
 
       // Content quality: a listing with no photo renders as a blank card in the
       // app, and one with no working hours can never offer a booking slot.
@@ -384,9 +418,17 @@ export const listAllBookings = query({
             ? `${owner.firstName || ""} ${owner.lastName || ""}`.trim() || owner.email
             : null,
           ownerPhone: owner?.phone ?? null,
-          userName: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email : "Unknown",
-          userEmail: user?.email,
+          listingImage: listing?.images?.[0] ?? null,
+          listingType: listing?.type ?? null,
+          userName: user
+            ? `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+              // A phone sign-up has a synthesised address; showing it as a name
+              // would put "966501234567@phone.hasio.xyz" in the table.
+              (isPlaceholderEmail(user.email) ? (user.phone ?? "Unknown") : user.email)
+            : "Unknown",
+          userEmail: user && isPlaceholderEmail(user.email) ? null : user?.email,
           userPhone: user?.phone,
+          userPhoneVerified: user?.phoneVerified ?? false,
         };
       })
     );

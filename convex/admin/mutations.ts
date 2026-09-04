@@ -2,6 +2,13 @@ import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { requireAdmin } from "../auth";
 import { logAdminAction, labelFor } from "./activity";
+import {
+  applyBookingStatusAsAdmin,
+  reinstateListingRecord,
+  suspendListingRecord,
+  suspendUserRecord,
+  unsuspendUserRecord,
+} from "./service";
 import type { Id } from "../_generated/dataModel";
 
 // One bulk call may not touch more documents than this. Convex transactions are
@@ -272,10 +279,9 @@ export const deleteKnowledgeData = mutation({
   },
 });
 
-// The statuses a booking is allowed to hold. The mutation below used to write
-// whatever string it was handed, so a typo in a client could park a booking in
-// a status no query filters on and no UI can display.
-const BOOKING_STATUSES = ["pending", "confirmed", "completed", "cancelled", "no_show"];
+// The list of valid statuses now lives in bookings/logic.ts, so the panel,
+// the guest's app and the host's app cannot drift apart on what a booking may
+// be — they did, and "declined" existed in one place and not another.
 
 // Update booking status (admin)
 export const updateBookingStatus = mutation({
@@ -286,34 +292,54 @@ export const updateBookingStatus = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    if (!BOOKING_STATUSES.includes(args.status)) {
-      throw new Error("Invalid booking status: " + args.status);
-    }
-
-    const existing = await ctx.db.get(args.id);
-    if (!existing) {
-      throw new Error("Booking not found");
-    }
-
-    await ctx.db.patch(args.id, {
+    await applyBookingStatusAsAdmin(ctx, admin, {
+      bookingId: args.id,
       status: args.status,
-      // Only carry a reason onto a cancellation, and never blank an existing one
-      // when the status is being changed for some other purpose.
-      cancellationReason:
-        args.status === "cancelled"
-          ? args.cancellationReason ?? existing.cancellationReason
-          : existing.cancellationReason,
-      updatedAt: Date.now(),
+      reason: args.cancellationReason,
     });
+    return { success: true };
+  },
+});
 
-    const listing = await ctx.db.get(existing.listingId);
-    await logAdminAction(ctx, admin, {
-      action: "booking." + args.status,
-      targetType: "booking",
-      targetId: args.id,
-      summary: `${labelFor(listing) ?? "booking"} - ${existing.date} ${existing.time}`,
-      details: args.status === "cancelled" ? args.cancellationReason : undefined,
-    });
+/** Block an account. It keeps its session but reads as signed out everywhere. */
+export const suspendUser = mutation({
+  args: { userId: v.id("users"), reason: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await suspendUserRecord(ctx, admin, args.userId, args.reason);
+    return { success: true };
+  },
+});
+
+export const unsuspendUser = mutation({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await unsuspendUserRecord(ctx, admin, args.userId);
+    return { success: true };
+  },
+});
+
+/**
+ * Pull a live listing out of the directory.
+ *
+ * Distinct from rejecting it: rejection is a verdict on a submission that was
+ * never public, suspension takes down something guests can currently book.
+ */
+export const suspendListing = mutation({
+  args: { id: v.id("listings"), reason: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await suspendListingRecord(ctx, admin, args.id, args.reason);
+    return { success: true };
+  },
+});
+
+export const reinstateListing = mutation({
+  args: { id: v.id("listings") },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await reinstateListingRecord(ctx, admin, args.id);
     return { success: true };
   },
 });
