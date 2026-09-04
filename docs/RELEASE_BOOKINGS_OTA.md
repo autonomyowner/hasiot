@@ -52,6 +52,24 @@ Bookings and ratings themselves need no SMS. If phone sign-in slips, they can
 still ship — but then decide deliberately whether the phone gate stays, because
 email-account users would have no way through it.
 
+### Demo mode (active on production since 2026-09-04)
+
+Neither provider had opened a Saudi route in time for the 6 Sept hackathon, so
+production runs **`SMS_PROVIDER=demo`**: no SMS is sent and **any six-digit
+code verifies**. The app fills a random code itself ~900 ms after "code sent",
+so on stage it looks like the phone auto-filling a real SMS.
+
+**This is a full authentication bypass — anyone can sign in as any number.**
+It is a deliberate, temporary trade for the demo. Turn it off the moment a real
+route works:
+
+```bash
+npx convex env set SMS_PROVIDER infobip --prod   # or twilio-verify
+```
+
+No deploy needed; the env var is read on every request. The app switches
+back automatically because `getPublicConfig.demoAuth` becomes false.
+
 ## 2. Backend to production
 
 ```bash
