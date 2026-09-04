@@ -10,33 +10,48 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { colors, type AppFonts } from "@/constants/colors";
+import { cityLabel } from "@/constants/cities";
 import { useThemedStyles } from "@/hooks/useAppFonts";
+import { useCurrency } from "@/hooks/useCurrency";
 import { useLanguage } from "@/hooks/useLanguage";
+import { RangeSlider } from "./RangeSlider";
 
 /**
  * What the home screen filters on. `null` in any slot means "no constraint",
  * which is why the values are nullable rather than carrying an "all" member:
  * "all" would have to be special-cased at every comparison.
+ *
+ * The budget is a real nightly rate in SAR, not a "$$" tier. It used to be the
+ * latter because nothing carried a number; every stay now has `pricePerNight`,
+ * so a guest can say what they will actually pay. Both ends are null until a
+ * thumb is moved, so "the whole range" and "no filter" stay the same thing.
  */
 export interface HomeFilters {
   type: string | null;
   city: string | null;
-  price: string | null;
+  priceMin: number | null;
+  priceMax: number | null;
 }
 
-export const EMPTY_FILTERS: HomeFilters = { type: null, city: null, price: null };
+export const EMPTY_FILTERS: HomeFilters = {
+  type: null,
+  city: null,
+  priceMin: null,
+  priceMax: null,
+};
 
 export function activeFilterCount(f: HomeFilters): number {
-  return [f.type, f.city, f.price].filter(Boolean).length;
+  const budget = f.priceMin !== null || f.priceMax !== null ? 1 : 0;
+  return [f.type, f.city].filter(Boolean).length + budget;
 }
 
-/**
- * Price is the listing's `priceRange`, which is a free-text tier a host types.
- * Production only ever holds "$", "$$" and "$$$", so the filter offers those
- * and matches exactly — a numeric budget range is impossible until listings
- * carry a numeric nightly rate, which is a field on the unmerged stays branch.
- */
-export const PRICE_TIERS = ["$", "$$", "$$$", "$$$$"] as const;
+/** Nightly rates snap to this, in SAR. */
+const PRICE_STEP = 50;
+
+export interface PriceBounds {
+  min: number;
+  max: number;
+}
 
 interface FilterSheetProps {
   visible: boolean;
@@ -45,6 +60,12 @@ interface FilterSheetProps {
   cities: { city: string; count: number }[];
   /** Listing types present in the data, so the sheet never offers an empty one. */
   types: string[];
+  /**
+   * The cheapest and dearest nightly rate on offer, already snapped outwards to
+   * `PRICE_STEP`. Omitted when nothing is priced, and then the budget group is
+   * not shown at all — a slider over one value is a decoration.
+   */
+  priceBounds?: PriceBounds;
   onChange: (next: HomeFilters) => void;
   onClose: () => void;
 }
@@ -54,19 +75,22 @@ export function FilterSheet({
   value,
   cities,
   types,
+  priceBounds,
   onChange,
   onClose,
 }: FilterSheetProps) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
+  const { format } = useCurrency();
 
   // Selecting the option already selected clears it, so every chip is its own
   // on/off control and the sheet needs no separate "any" chip per group.
-  const toggle = (key: keyof HomeFilters, option: string) =>
+  const toggle = (key: "type" | "city", option: string) =>
     onChange({ ...value, [key]: value[key] === option ? null : option });
 
   const count = activeFilterCount(value);
+  const hasBudget = priceBounds && priceBounds.max > priceBounds.min;
 
   return (
     <Modal
@@ -109,7 +133,7 @@ export function FilterSheet({
               {cities.map(({ city, count: n }) => (
                 <Chip
                   key={city}
-                  label={`${city} (${n})`}
+                  label={`${cityLabel(city, language)} (${n})`}
                   selected={value.city === city}
                   onPress={() => toggle("city", city)}
                   styles={styles}
@@ -118,17 +142,30 @@ export function FilterSheet({
             </Group>
           )}
 
-          <Group title={t("filterBudget")} isRTL={isRTL} styles={styles}>
-            {PRICE_TIERS.map((tier) => (
-              <Chip
-                key={tier}
-                label={tier}
-                selected={value.price === tier}
-                onPress={() => toggle("price", tier)}
-                styles={styles}
+          {hasBudget && (
+            <View style={styles.group}>
+              <Text style={[styles.groupTitle, isRTL && styles.textRTL]}>
+                {t("filterBudget")}
+              </Text>
+              <Text style={[styles.groupNote, isRTL && styles.textRTL]}>
+                {t("filterBudgetNote")}
+              </Text>
+              <RangeSlider
+                min={priceBounds.min}
+                max={priceBounds.max}
+                step={PRICE_STEP}
+                lower={value.priceMin ?? priceBounds.min}
+                upper={value.priceMax ?? priceBounds.max}
+                onChange={(lower, upper) =>
+                  onChange({ ...value, priceMin: lower, priceMax: upper })
+                }
+                formatValue={format}
+                isRTL={isRTL}
+                minLabel={t("filterBudgetMin")}
+                maxLabel={t("filterBudgetMax")}
               />
-            ))}
-          </Group>
+            </View>
+          )}
         </ScrollView>
 
         <View style={[styles.foot, isRTL && styles.rowRTL]}>
@@ -235,6 +272,13 @@ const makeStyles = (fonts: AppFonts) =>
       textTransform: "uppercase",
       letterSpacing: 1,
       marginBottom: 12,
+    },
+    groupNote: {
+      fontFamily: fonts.regular,
+      fontSize: 12.5,
+      color: colors.onSurface.muted,
+      marginTop: -6,
+      marginBottom: 14,
     },
     chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
     chip: {

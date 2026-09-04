@@ -2,6 +2,7 @@ import { query } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { requireAdmin } from "../auth";
+import { hasAliases, matchesCity } from "../lib/cities";
 import { isPlaceholderEmail } from "../lib/contact";
 import { riyadhMonthKey } from "../lib/dates";
 
@@ -254,7 +255,11 @@ export const adminListListings = query({
       if (args.type) {
         return ctx.db.query("listings").withIndex("by_type", (q) => q.eq("type", args.type!));
       }
-      if (args.city) {
+      // Only when the name means itself. A city that stands for its old
+      // sub-areas as well (Al Ahsa for Hofuf and Mubarraz) cannot use an index
+      // keyed on one exact string — it would answer "none" for the listings it
+      // most certainly has.
+      if (args.city && !hasAliases(args.city)) {
         return ctx.db.query("listings").withIndex("by_city", (q) => q.eq("city", args.city!));
       }
       return ctx.db.query("listings");
@@ -269,7 +274,7 @@ export const adminListListings = query({
       page: result.page.filter(
         (l) =>
           (!args.type || l.type === args.type) &&
-          (!args.city || l.city === args.city) &&
+          (!args.city || matchesCity(l.city, args.city)) &&
           matchesStatus(l, args.status) &&
           matchesFlags(l, args)
       ),
@@ -305,7 +310,8 @@ export const adminSearchListings = query({
         .withSearchIndex("search_listings", (q) => {
           let search = q.search("name_en", term);
           if (args.type) search = search.eq("type", args.type);
-          if (args.city) search = search.eq("city", args.city);
+          // City is filtered after the merge instead: the index can only match
+          // one exact string, and a city stands for its old sub-areas too.
           return search;
         })
         .take(MAX_SEARCH),
@@ -314,7 +320,6 @@ export const adminSearchListings = query({
         .withSearchIndex("search_listings_ar", (q) => {
           let search = q.search("name_ar", term);
           if (args.type) search = search.eq("type", args.type);
-          if (args.city) search = search.eq("city", args.city);
           return search;
         })
         .take(MAX_SEARCH),
@@ -327,6 +332,7 @@ export const adminSearchListings = query({
     for (const listing of [...byEnglish, ...byArabic]) {
       if (seen.has(listing._id)) continue;
       seen.add(listing._id);
+      if (args.city && !matchesCity(listing.city, args.city)) continue;
       if (!matchesStatus(listing, args.status)) continue;
       if (!matchesFlags(listing, args)) continue;
       merged.push(listing);

@@ -13,7 +13,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { categoryColors, colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-import { TAB_BAR_CLEARANCE } from "@/constants/layout";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useLodgings } from "@/hooks/useConvexData";
 import { FilterChip, SkeletonFade, SkeletonList } from "@/components/ui";
 import { LodgingCard } from "@/components/lodging/LodgingCard";
@@ -34,6 +34,7 @@ const filters: { key: LodgingFilter; labelKey: "all" | "hotels" | "apartments" |
 export function LodgingScreenContent() {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
+  const bottomClearance = useTabBarClearance();
   const { t, language, isRTL } = useLanguage();
   const { format } = useCurrency();
   const [activeFilter, setActiveFilter] = useState<LodgingFilter>("all");
@@ -141,7 +142,7 @@ export function LodgingScreenContent() {
           )}
           contentContainerStyle={[
             styles.listContent,
-            { paddingBottom: TAB_BAR_CLEARANCE + insets.bottom },
+            { paddingBottom: bottomClearance },
           ]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

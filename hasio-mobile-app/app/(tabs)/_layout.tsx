@@ -18,7 +18,7 @@ import { colors, type AppFonts } from "@/constants/colors";
 import { TAB_BAR_HEIGHT } from "@/constants/layout";
 import { BottomBarFade } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-import { useKeyboardVisible } from "@/hooks/useKeyboardVisible";
+import { useKeyboardTransition } from "@/hooks/useKeyboardVisible";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { TranslationKey } from "@/constants/translations";
 
@@ -123,13 +123,35 @@ const HOME_INDEX = tabs.findIndex((tab) => tab.key === "home");
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const keyboardVisible = useKeyboardVisible();
+  const { visible: keyboardVisible, progress: keyboardProgress } =
+    useKeyboardTransition();
   const styles = useThemedStyles(makeStyles);
   const { t } = useLanguage();
   const pagerRef = useRef<any>(null);
   const [currentPage, setCurrentPage] = React.useState(HOME_INDEX); // Start at home
   const scrollPosition = useSharedValue(HOME_INDEX);
   const isWeb = Platform.OS === "web";
+
+  // The bar stands down while the keyboard is up. It is absolutely positioned
+  // over the pager, so on the Android versions that still resize the window it
+  // rides up with the bottom edge and lands on top of whatever the screen
+  // itself docks there — which is exactly what was covering the planner's chat
+  // input. Standing down also gives the screen back a bar's worth of room
+  // while typing, which is what every other app does.
+  //
+  // It *leaves* rather than vanishes: the screen underneath is animating its
+  // own bottom clearance on this same shared value, and an unmount in the
+  // middle of that made the whole bottom of the screen snap in two steps.
+  // Translating a full bar height plus the inset puts it past the bottom edge,
+  // so nothing of it is left to show above the keyboard.
+  const barTravel = TAB_BAR_HEIGHT + insets.bottom;
+  const barStyle = useAnimatedStyle(() => ({
+    opacity: 1 - keyboardProgress.value,
+    transform: [{ translateY: keyboardProgress.value * barTravel }],
+  }));
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: 1 - keyboardProgress.value,
+  }));
 
   // Runs on the UI thread — see usePagerScrollHandler.
   const pageScrollHandler = usePagerScrollHandler({
@@ -224,38 +246,42 @@ export default function TabLayout() {
         </View>
       )}
 
-      {/* Both the bar and its fade stand down while the keyboard is up.
-          The bar is absolutely positioned over the pager, so on the Android
-          versions that still resize the window for the keyboard it rides up
-          with the bottom edge and lands on top of whatever the screen itself
-          docks there — which is exactly what was covering the planner's chat
-          input. Hiding it also gives the screen back a bar's worth of room
-          while typing, which is what every other app does. */}
-      {!keyboardVisible && (
-        <>
-          {/* Content scrolls under the docked bar, so it dissolves into the page
-              just above it rather than being cut off by the bar's edge. The bar is
-              flush with the screen edge, so the fade sits on top of its full
-              height plus the safe-area padding underneath it. */}
-          <BottomBarFade bottom={TAB_BAR_HEIGHT + insets.bottom} />
+      {/* Content scrolls under the docked bar, so it dissolves into the page
+          just above it rather than being cut off by the bar's edge. The bar is
+          flush with the screen edge, so the fade sits on top of its full
+          height plus the safe-area padding underneath it. The wrapper fills the
+          container so the fade's own absolute coordinates still measure from
+          the screen edge, and is inert either way. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, fadeStyle]}
+      >
+        <BottomBarFade bottom={TAB_BAR_HEIGHT + insets.bottom} />
+      </Animated.View>
 
-          {/* Docked tab bar: flush with the bottom edge, full width, hairline top
-              border. Screens reserve TAB_BAR_CLEARANCE + insets.bottom for it. */}
-          <View style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
-            {tabs.map((tab, index) => (
-              <TabButton
-                key={tab.key}
-                icon={tab.icon}
-                label={t(tab.labelKey)}
-                isActive={currentPage === index}
-                index={index}
-                scrollPosition={scrollPosition}
-                onPress={() => handleTabPress(index)}
-              />
-            ))}
-          </View>
-        </>
-      )}
+      {/* Docked tab bar: flush with the bottom edge, full width, hairline top
+          border. Screens reserve TAB_BAR_CLEARANCE + insets.bottom for it. */}
+      <Animated.View
+        style={[styles.tabBar, { paddingBottom: insets.bottom }, barStyle]}
+        // Travelling past the bottom edge is what stops a touch landing, but
+        // only once the travel is over; and while it is gone the bar leaves the
+        // accessibility tree entirely, the way an unmounted one used to.
+        pointerEvents={keyboardVisible ? "none" : "auto"}
+        accessibilityElementsHidden={keyboardVisible}
+        importantForAccessibility={keyboardVisible ? "no-hide-descendants" : "auto"}
+      >
+        {tabs.map((tab, index) => (
+          <TabButton
+            key={tab.key}
+            icon={tab.icon}
+            label={t(tab.labelKey)}
+            isActive={currentPage === index}
+            index={index}
+            scrollPosition={scrollPosition}
+            onPress={() => handleTabPress(index)}
+          />
+        ))}
+      </Animated.View>
     </View>
   );
 }

@@ -30,7 +30,7 @@ import { Button, SkeletonFade, SkeletonMomentsGrid } from "@/components/ui";
 import { colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-import { TAB_BAR_CLEARANCE } from "@/constants/layout";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { generatedImages } from "@/assets/images/generated";
 import { Image } from "expo-image";
 
@@ -58,6 +58,7 @@ interface UserMomentsViewProps {
 
 function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMomentsViewProps) {
   const styles = useThemedStyles(makeStyles);
+  const bottomClearance = useTabBarClearance();
   const { moments, isLoading, addMoment, deleteMoment } = useMoments(userId);
   const mountedRef = useRef(true);
 
@@ -205,7 +206,7 @@ function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMoments
               columnWrapperStyle={styles.row}
               contentContainerStyle={[
                 styles.listContent,
-                { paddingBottom: TAB_BAR_CLEARANCE + insets.bottom },
+                { paddingBottom: bottomClearance },
               ]}
               showsVerticalScrollIndicator={false}
               // No RefreshControl: the Convex query is a live subscription, so

@@ -9,7 +9,7 @@ import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
 import { categoryColors, colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-import { TAB_BAR_CLEARANCE } from "@/constants/layout";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useFavorites } from "@/hooks/useConvexData";
 import { SkeletonFade, SkeletonList } from "@/components/ui";
 import { LodgingCard } from "@/components/lodging/LodgingCard";
@@ -85,6 +85,7 @@ function toLodging(l: FavoriteListing): FavoriteItem {
 export function FavoritesScreenContent() {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
+  const bottomClearance = useTabBarClearance();
   const { t, language, isRTL } = useLanguage();
   const { format } = useCurrency();
 
@@ -168,7 +169,7 @@ export function FavoritesScreenContent() {
           )}
           contentContainerStyle={[
             styles.listContent,
-            { paddingBottom: TAB_BAR_CLEARANCE + insets.bottom },
+            { paddingBottom: bottomClearance },
           ]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={

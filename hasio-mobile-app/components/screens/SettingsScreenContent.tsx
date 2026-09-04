@@ -31,7 +31,8 @@ import { ScreenGradient } from "@/components/ui/Gradients";
 import { EditNameSheet } from "@/components/settings/EditNameSheet";
 import { formatPhoneForDisplay } from "@/lib/phone";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-import { LIST_CONTAINER_PADDING, TAB_BAR_CLEARANCE } from "@/constants/layout";
+import { LIST_CONTAINER_PADDING } from "@/constants/layout";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useAppStore } from "@/stores/appStore";
@@ -61,6 +62,10 @@ interface SettingsScreenContentProps {
 export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContentProps = {}) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
+  // Both render paths below end in a spacer that owes the docked bar its
+  // height, the fade above it and the inset under it. It was the bare constant,
+  // which is why the version line ended up behind the gesture bar.
+  const bottomClearance = useTabBarClearance();
   const router = useRouter();
   const { t, language, changeLanguage, isRTL } = useLanguage();
   // Display currency only — hosts still price in riyals, and the peg is fixed,
@@ -386,7 +391,7 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
             </Text>
           </Animated.View>
 
-          <View style={styles.bottomSpacing} />
+          <View style={{ height: bottomClearance }} />
         </ScrollView>
       </View>
     );
@@ -675,7 +680,7 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
           </Text>
         </Animated.View>
 
-        <View style={styles.bottomSpacing} />
+        <View style={{ height: bottomClearance }} />
       </ScrollView>
 
       {/* Upgrade Modal */}
@@ -1193,10 +1198,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     textAlign: "center",
     lineHeight: 22,
   },
-  // Clears the floating tab bar.
-  bottomSpacing: {
-    height: TAB_BAR_CLEARANCE,
-  },
+  // The tab-bar spacer's height is `useTabBarClearance()` at each call site —
+  // it needs the safe-area inset, which a module-scope style cannot see.
   // Guest Card Styles
   guestCard: {
     marginTop: 16,

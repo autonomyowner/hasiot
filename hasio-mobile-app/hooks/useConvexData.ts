@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/backend";
 import { useConvexAuth } from "convex/react";
+import { canonicalCity } from "@/constants/cities";
 import type { Lodging, ListingDetails } from "@/types";
 
 // Type for Convex listing documents
@@ -183,10 +185,28 @@ export function useHomeData() {
  *
  * Driven off the data rather than a hardcoded list on purpose: a filter that
  * offers a city with nothing in it is worse than one that does not offer it.
+ *
+ * Rows are folded to their canonical city first. The backend counts whatever
+ * string a listing stores, and production still stores Al-Ahsa villages —
+ * without this the filter offered "الأحساء" three times over, once per village,
+ * each with a third of the count.
  */
 export function useCities() {
   const cities = useQuery(api.listings.queries.getCities, {});
-  return { cities: cities || [], isLoading: cities === undefined };
+
+  const grouped = useMemo(() => {
+    if (!cities) return [];
+    const totals = new Map<string, number>();
+    for (const { city, count } of cities) {
+      const key = canonicalCity(city);
+      totals.set(key, (totals.get(key) || 0) + count);
+    }
+    return Array.from(totals.entries())
+      .map(([city, count]) => ({ city, count }))
+      .sort((a, b) => b.count - a.count || a.city.localeCompare(b.city));
+  }, [cities]);
+
+  return { cities: grouped, isLoading: cities === undefined };
 }
 
 /**

@@ -35,9 +35,11 @@ import {
   SkeletonFade,
   SkeletonHomeSections,
 } from "@/components/ui";
+import { canonicalCity } from "@/constants/cities";
 import { categoryColors, colors, type AppFonts } from "@/constants/colors";
 import { CaptionScrim, ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
+import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import {
   HOME_CARD_GAP,
   HOME_CARD_WIDTH,
@@ -46,7 +48,6 @@ import {
   HOME_RAIL_CARD_WIDTH,
   HOME_RAIL_GAP,
   HOME_STAY_BANNER_HEIGHT,
-  TAB_BAR_CLEARANCE,
 } from "@/constants/layout";
 import { generatedImages } from "@/assets/images/generated";
 import {
@@ -87,6 +88,7 @@ interface HomeScreenContentProps {
 export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
+  const bottomClearance = useTabBarClearance();
   const { t, language, isRTL } = useLanguage();
   const { format } = useCurrency();
   const [searchQuery, setSearchQuery] = useState("");
@@ -119,33 +121,58 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
   const filterCount = activeFilterCount(filters);
   const [kind, setKind] = useState<KindChip>("all");
 
+  // The cheapest and dearest night on offer, snapped outwards to the slider's
+  // step so its ends are round numbers. Derived from the data rather than
+  // fixed: a range that stops below the only suite in town cannot select it.
+  const priceBounds = useMemo(() => {
+    const rates = lodgings
+      .map((item) => item.pricePerNight)
+      .filter((rate): rate is number => rate != null && rate > 0);
+    if (rates.length === 0) return undefined;
+    const step = 50;
+    return {
+      min: Math.floor(Math.min(...rates) / step) * step,
+      max: Math.ceil(Math.max(...rates) / step) * step,
+    };
+  }, [lodgings]);
+
+  const budgetActive = filters.priceMin !== null || filters.priceMax !== null;
+
   // Filters narrow the whole screen, not just the search results — otherwise
   // setting one and then clearing the query would silently drop it.
+  //
+  // A stay with no nightly rate is dropped once a budget is set. It is not that
+  // it fails the test — nobody knows what it costs — and showing it anyway
+  // would put the one listing whose price you cannot check inside the range you
+  // just drew.
   const allLodging = useMemo(
     () =>
       lodgings.filter(
         (item) =>
           (!filters.type || item.type === filters.type) &&
-          (!filters.city || item.city === filters.city) &&
-          (!filters.price || item.priceRange === filters.price)
+          (!filters.city || canonicalCity(item.city) === filters.city) &&
+          (!budgetActive ||
+            (item.pricePerNight != null &&
+              (filters.priceMin === null || item.pricePerNight >= filters.priceMin) &&
+              (filters.priceMax === null || item.pricePerNight <= filters.priceMax)))
       ),
-    [lodgings, filters]
+    [lodgings, filters, budgetActive]
   );
 
-  // A destination has no type or price of its own, so those two filters
+  // A destination has no type or nightly rate of its own, so those two filters
   // exclude destinations entirely rather than matching everything: asking for
-  // "$$ hotels" and being shown a set of parks is not a filter working. The
-  // kind chips are a separate axis and narrow only this half.
+  // stays under 300 a night and being shown a set of parks is not a filter
+  // working. The kind chips are a separate axis and narrow only this half.
   const destinations = useMemo(
     () =>
-      filters.type || filters.price
+      filters.type || budgetActive
         ? []
         : allDestinations.filter(
             (item) =>
-              (!filters.city || item.city === filters.city) &&
+              (!filters.city || canonicalCity(item.city) === filters.city) &&
               (kind === "all" || item.kind === kind)
           ),
-    [allDestinations, filters, kind]
+    [allDestinations, filters, budgetActive, kind]
   );
 
   // Only the lodging types actually present, so the sheet never offers a
@@ -625,8 +652,9 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
         )}
 
         {/* Clears the docked tab bar — the results view needs it as much as
-            the grid does. */}
-        <View style={styles.bottomSpacing} />
+            the grid does. Inline because the height carries the bottom inset,
+            which only a hook can read. */}
+        <View style={{ height: bottomClearance }} />
         </SkeletonFade>
       </Animated.ScrollView>
 
@@ -637,6 +665,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
         value={filters}
         cities={cities}
         types={lodgingTypes}
+        priceBounds={priceBounds}
         onChange={setFilters}
         onClose={() => setFilterOpen(false)}
       />
@@ -1251,9 +1280,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.35)",
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 8,
-  },
-  bottomSpacing: {
-    height: TAB_BAR_CLEARANCE,
   },
   searchResultsContainer: {
     paddingHorizontal: CONTAINER_PADDING,

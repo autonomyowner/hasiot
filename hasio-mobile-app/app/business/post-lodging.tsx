@@ -28,6 +28,7 @@ import { BackButton, Button } from "@/components/ui";
 import { LodgingType } from "@/types";
 import { Feather } from "@expo/vector-icons";
 import { AMENITIES, type AmenityKey } from "@/constants/amenities";
+import { CITIES } from "@/constants/cities";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
@@ -54,7 +55,6 @@ export default function PostLodgingScreen() {
   const [nameAr, setNameAr] = useState("");
   const [type, setType] = useState<LodgingType>("hotel");
   const [city, setCity] = useState("");
-  const [cityAr, setCityAr] = useState("");
   const [neighborhood, setNeighborhood] = useState("");
   const [neighborhoodAr, setNeighborhoodAr] = useState("");
   const [priceRange, setPriceRange] = useState("");
@@ -113,7 +113,7 @@ export default function PostLodgingScreen() {
     if (isLoading) return;
 
     // Validation
-    if (!name.trim() || !nameAr.trim() || !city.trim() || !cityAr.trim()) {
+    if (!name.trim() || !nameAr.trim() || !city.trim()) {
       appAlert(t("error"), t("fillRequiredFields"));
       return;
     }
@@ -270,28 +270,32 @@ export default function PostLodgingScreen() {
             textAlign="right"
           />
 
-          {/* City */}
+          {/* City. Picked, not typed: a typed city is a new city as far as the
+              filter is concerned, and "Hofuf" / "hofuf" / "الهفوف" were three
+              of them. The Arabic box next to it was never sent anywhere — the
+              label now comes from the key. */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("city")} *
           </Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={isRTL}
-            value={city}
-            onChangeText={setCity}
-            placeholder={t("placeholderCityEn")}
-            placeholderTextColor="#A3A3A3"
-          />
-
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={true}
-            value={cityAr}
-            onChangeText={setCityAr}
-            placeholder={t("placeholderCityAr")}
-            placeholderTextColor="#A3A3A3"
-            textAlign="right"
-          />
+          <View style={[styles.optionGrid, isRTL && styles.optionGridRTL]}>
+            {CITIES.map((option) => {
+              const on = city === option.key;
+              return (
+                <Pressable
+                  key={option.key}
+                  onPress={() => setCity(option.key)}
+                  style={[styles.optionChip, on && styles.optionChipOn]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
+                  accessibilityLabel={language === "ar" ? option.ar : option.en}
+                >
+                  <Text style={[styles.optionLabel, on && styles.optionLabelOn]}>
+                    {language === "ar" ? option.ar : option.en}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
           {/* Neighborhood */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
@@ -432,7 +436,7 @@ export default function PostLodgingScreen() {
           <Text style={[styles.hint, isRTL && styles.textRTL]}>
             {t("amenitiesHint")}
           </Text>
-          <View style={[styles.amenityGrid, isRTL && styles.amenityGridRTL]}>
+          <View style={[styles.optionGrid, isRTL && styles.optionGridRTL]}>
             {AMENITIES.map((amenity) => {
               const on = selectedAmenities.includes(amenity.key);
               return (
@@ -440,9 +444,9 @@ export default function PostLodgingScreen() {
                   key={amenity.key}
                   onPress={() => toggleAmenity(amenity.key)}
                   style={[
-                    styles.amenityChip,
+                    styles.optionChip,
                     isRTL && styles.rowRTL,
-                    on && styles.amenityChipOn,
+                    on && styles.optionChipOn,
                   ]}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: on }}
@@ -454,7 +458,7 @@ export default function PostLodgingScreen() {
                     color={on ? colors.ink : colors.onSurface.variant}
                   />
                   <Text
-                    style={[styles.amenityLabel, on && styles.amenityLabelOn]}
+                    style={[styles.optionLabel, on && styles.optionLabelOn]}
                   >
                     {language === "ar" ? amenity.ar : amenity.en}
                   </Text>
@@ -672,17 +676,17 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   rowRTL: {
     flexDirection: "row-reverse",
   },
-  amenityGrid: {
+  optionGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
   },
-  amenityGridRTL: {
+  optionGridRTL: {
     flexDirection: "row-reverse",
   },
   // Off is the same white pill the filter chips use; on is lime, and lime is a
   // fill, so the label and the icon on it are ink.
-  amenityChip: {
+  optionChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
@@ -693,16 +697,16 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  amenityChipOn: {
+  optionChipOn: {
     backgroundColor: colors.primary.DEFAULT,
     borderColor: colors.primary.DEFAULT,
   },
-  amenityLabel: {
+  optionLabel: {
     fontSize: 13,
     fontFamily: fonts.medium,
     color: colors.onSurface.variant,
   },
-  amenityLabelOn: {
+  optionLabelOn: {
     color: colors.ink,
     fontFamily: fonts.semibold,
   },

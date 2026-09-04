@@ -6,7 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Hasio is an **Al-Ahsa travel guide platform**. The product is the **React Native (Expo) mobile app** — AI travel planner, hotel/restaurant/attraction directory with map, bookings, trip itinerary builder, freelancer services marketplace and favourites. The **React + Vite website** in this repo is now only a **marketing landing page plus a hidden admin portal**; the public product pages (map, listings, services, dashboards, signup) were removed 2026-08-29. Both share the same Convex backend, and the backend still serves every feature — only the website's UI for them is gone.
 
-**Al-Ahsa Focus:** The app is specifically for Al-Ahsa (الأحساء), the largest governorate in Saudi Arabia's Eastern Province, named after the Al-Ahsa Oasis. In Classical Arabic, 'Ahsa' means the sound of water underground. All content, city dropdowns, map center, AI planner, and seed data should reference Al-Ahsa area locations — NOT all of Saudi Arabia.
+**Eastern Province focus:** Hasio covers Saudi Arabia's Eastern Province, and nothing outside it. It began as an Al-Ahsa-only guide and the oasis is still its heart — the map centre, the AI planner's expertise and every seeded listing are Al-Ahsa — but as of 2026-09-04 the city model is the **thirteen** governorates and cities of the province: Dammam, Al Khobar, Al Ahsa, Qatif, Jubail, Hafar Al Batin, Khafji, Ras Tanura, Abqaiq, Nairyah, Qaryat Al Ulya, Al Udayd, Al Bayda.
+
+Al-Ahsa is now **one** entry rather than its villages. Hofuf, Mubarraz and Al Oyoun are sub-areas that belong in an address, and stored listings still carry them, so both clients fold aliases up to the city above: `hasio-mobile-app/constants/cities.ts` (`canonicalCity`, `cityLabel`) and `src/admin/constants.js` (`CITY_ALIASES`, `canonicalCity`). The two lists must be kept in step — the database stores the English key and each side looks up its own label. Dhahran folds into Al Khobar; Saihat, Safwa, Darin and Tarout into Qatif.
+
+Content, city pickers and seed data must stay inside the province — NOT all of Saudi Arabia.
 
 Three user roles: tourists (immediate access), business owners (post listings — hotels/restaurants/events/attractions), and service providers (post freelancer services — photographer/driver/guide/etc.). Business and service accounts require document upload + admin approval.
 

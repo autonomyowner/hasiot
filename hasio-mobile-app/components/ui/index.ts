@@ -28,4 +28,11 @@ export {
   ScreenGradient,
   SurfaceGradient,
 } from "./Gradients";
-export { FilterSheet, EMPTY_FILTERS, activeFilterCount, type HomeFilters } from "./FilterSheet";
+export {
+  FilterSheet,
+  EMPTY_FILTERS,
+  activeFilterCount,
+  type HomeFilters,
+  type PriceBounds,
+} from "./FilterSheet";
+export { RangeSlider } from "./RangeSlider";
