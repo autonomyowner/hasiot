@@ -11,8 +11,9 @@ import { useConvexUser } from "@/hooks/useConvexUser";
 import { useLanguage } from "@/hooks/useLanguage";
 import { relativeTime } from "@/lib/dates";
 import { routeForNotificationData } from "@/lib/bookingDisplay";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
+import { ScreenGradient } from "@/components/ui/Gradients";
 
 /**
  * The in-app notification inbox.
@@ -37,6 +38,7 @@ export default function NotificationsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+      <ScreenGradient />
       <View style={[styles.header, isRTL && styles.rowRTL]}>
         <BackButton />
         <Text style={styles.title}>{t("notifications")}</Text>
@@ -56,7 +58,7 @@ export default function NotificationsScreen() {
         <SkeletonList variant="lodging" isRTL={isRTL} count={4} />
       ) : notifications.length === 0 ? (
         <View style={styles.empty}>
-          <Feather name="bell" size={40} color="#C4C0BA" />
+          <Feather name="bell" size={40} color={colors.onSurface.muted} />
           <Text style={styles.emptyTitle}>{t("noNotifications")}</Text>
           <Text style={styles.emptyHint}>{t("notificationsSubtitle")}</Text>
         </View>
@@ -100,7 +102,7 @@ export default function NotificationsScreen() {
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF7F2",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -114,9 +116,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: 24,
-    fontFamily: fonts.bold,
-    color: "#1A1A1A",
+    fontSize: 28,
+    fontFamily: fonts.serif,
+    color: colors.ink,
   },
   markAll: {
     paddingVertical: 6,
@@ -124,27 +126,31 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   markAllText: {
     fontSize: 14,
     fontFamily: fonts.semibold,
-    color: "#0D7A5F",
+    color: colors.primary.deep,
   },
   list: {
     paddingHorizontal: 20,
-    gap: 10,
   },
+  // Rows are content on the page, divided by a hairline. The negative margin
+  // cancels the list's padding so an unread row's tint runs edge to edge as a
+  // band rather than reading as a card sitting on the cream.
   row: {
     flexDirection: "row",
     gap: 10,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 14,
+    marginHorizontal: -20,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
   },
   rowUnread: {
-    backgroundColor: "#F4FBF8",
+    backgroundColor: colors.mint,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: "#0D7A5F",
+    backgroundColor: colors.primary.DEFAULT,
     marginTop: 6,
   },
   dotRead: {
@@ -156,17 +162,19 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   rowTitle: {
     fontSize: 15,
     fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    color: colors.ink,
   },
   rowBodyText: {
     fontSize: 14,
     lineHeight: 20,
-    color: "#4B4B4B",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     marginTop: 3,
   },
   time: {
     fontSize: 12,
-    color: "#8A8178",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
     marginTop: 6,
   },
   textRTL: {
@@ -180,14 +188,15 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     gap: 8,
   },
   emptyTitle: {
-    fontSize: 17,
-    fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    fontSize: 22,
+    fontFamily: fonts.serif,
+    color: colors.ink,
     marginTop: 8,
   },
   emptyHint: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     textAlign: "center",
   },
 });

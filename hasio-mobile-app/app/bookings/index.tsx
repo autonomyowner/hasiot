@@ -14,8 +14,9 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { todayRiyadhISO } from "@/lib/dates";
 import { haptic } from "@/lib/haptics";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
+import { ScreenGradient } from "@/components/ui/Gradients";
 
 type Tab = "upcoming" | "past";
 
@@ -75,6 +76,7 @@ export default function MyBookingsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+      <ScreenGradient />
       <View style={[styles.header, isRTL && styles.headerRTL]}>
         <BackButton />
         <Text style={styles.title}>{t("myBookings")}</Text>
@@ -93,7 +95,7 @@ export default function MyBookingsScreen() {
         <Animated.View key={tab} style={styles.fill} entering={crossFadeIn} exiting={crossFadeOut}>
           {shown.length === 0 ? (
             <View style={styles.empty}>
-              <Feather name="calendar" size={40} color="#C4C0BA" />
+              <Feather name="calendar" size={40} color={colors.onSurface.muted} />
               <Text style={styles.emptyTitle}>{t("noBookings")}</Text>
               <Text style={styles.emptyHint}>{t("noBookingsHint")}</Text>
             </View>
@@ -120,7 +122,7 @@ export default function MyBookingsScreen() {
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF7F2",
+    backgroundColor: colors.background,
   },
   fill: {
     flex: 1,
@@ -136,9 +138,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row-reverse",
   },
   title: {
-    fontSize: 24,
-    fontFamily: fonts.bold,
-    color: "#1A1A1A",
+    fontSize: 28,
+    fontFamily: fonts.serif,
+    color: colors.ink,
   },
   tabs: {
     flexDirection: "row",
@@ -146,9 +148,10 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 16,
   },
+  // No gap: the rows divide themselves with a hairline now, and a gap on top
+  // of that would break the run of dividers back into separate cards.
   list: {
     paddingHorizontal: 20,
-    gap: 12,
   },
   empty: {
     flex: 1,
@@ -158,14 +161,15 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     gap: 8,
   },
   emptyTitle: {
-    fontSize: 17,
-    fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    fontSize: 22,
+    fontFamily: fonts.serif,
+    color: colors.ink,
     marginTop: 8,
   },
   emptyHint: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     textAlign: "center",
   },
 });

@@ -21,8 +21,9 @@ import { todayRiyadhISO } from "@/lib/dates";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { haptic } from "@/lib/haptics";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
+import { ScreenGradient } from "@/components/ui/Gradients";
 import type { TranslationKey } from "@/constants/translations";
 
 type Tab = "requests" | "upcoming" | "past";
@@ -160,6 +161,7 @@ export default function OwnerBookingsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+      <ScreenGradient />
       <View style={[styles.header, isRTL && styles.rowRTL]}>
         <BackButton />
         <Text style={styles.title}>{t("bookingRequests")}</Text>
@@ -185,7 +187,7 @@ export default function OwnerBookingsScreen() {
         <Animated.View key={tab} style={styles.fill} entering={crossFadeIn} exiting={crossFadeOut}>
           {shown.length === 0 ? (
             <View style={styles.empty}>
-              <Feather name="inbox" size={40} color="#C4C0BA" />
+              <Feather name="inbox" size={40} color={colors.onSurface.muted} />
               <Text style={styles.emptyTitle}>{emptyCopy.title}</Text>
               {emptyCopy.hint ? <Text style={styles.emptyHint}>{emptyCopy.hint}</Text> : null}
             </View>
@@ -217,7 +219,7 @@ export default function OwnerBookingsScreen() {
           accessibilityLiveRegion="polite"
           pointerEvents="none"
         >
-          <Feather name="check" size={14} color="#FFFFFF" />
+          <Feather name="check" size={14} color={colors.hostingAccent} />
           <Text style={styles.toastText}>{t(toast)}</Text>
         </Animated.View>
       ) : null}
@@ -244,7 +246,7 @@ export default function OwnerBookingsScreen() {
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF7F2",
+    backgroundColor: colors.background,
   },
   fill: {
     flex: 1,
@@ -260,9 +262,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row-reverse",
   },
   title: {
-    fontSize: 24,
-    fontFamily: fonts.bold,
-    color: "#1A1A1A",
+    fontSize: 28,
+    fontFamily: fonts.serif,
+    color: colors.ink,
   },
   tabs: {
     flexDirection: "row",
@@ -282,16 +284,19 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     gap: 8,
   },
   emptyTitle: {
-    fontSize: 17,
-    fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    fontSize: 22,
+    fontFamily: fonts.serif,
+    color: colors.ink,
     marginTop: 8,
   },
   emptyHint: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     textAlign: "center",
   },
+  // The one dark surface in the flow, so its check takes the lime accent kept
+  // for ink backgrounds and its label the plain light face.
   toast: {
     position: "absolute",
     alignSelf: "center",
@@ -301,11 +306,11 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 999,
-    backgroundColor: "#1A1A1A",
+    backgroundColor: colors.ink,
   },
   toastText: {
     fontSize: 14,
     fontFamily: fonts.semibold,
-    color: "#FFFFFF",
+    color: colors.surface.DEFAULT,
   },
 });

@@ -19,6 +19,7 @@ import { SkeletonBookingDetail } from "@/components/ui/SkeletonScreens";
 import { nightsLabel } from "@/lib/bookingDisplay";
 import { haptic } from "@/lib/haptics";
 import { colors, type AppFonts } from "@/constants/colors";
+import { ScreenGradient, SurfaceGradient } from "@/components/ui/Gradients";
 
 export default function BookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -91,6 +92,7 @@ export default function BookingDetailScreen() {
   if (booking === undefined) {
     return (
       <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+        <ScreenGradient />
         <View style={[styles.header, isRTL && styles.rowRTL]}>
           <BackButton />
           <Text style={styles.title}>{t("bookingDetails")}</Text>
@@ -103,12 +105,13 @@ export default function BookingDetailScreen() {
   if (booking === null) {
     return (
       <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+        <ScreenGradient />
         <View style={[styles.header, isRTL && styles.rowRTL]}>
           <BackButton />
           <Text style={styles.title}>{t("bookingDetails")}</Text>
         </View>
         <View style={styles.empty}>
-          <Feather name="calendar" size={40} color="#C4C0BA" />
+          <Feather name="calendar" size={40} color={colors.onSurface.muted} />
           <Text style={styles.emptyTitle}>{t("bookingNotFound")}</Text>
           <Text style={styles.emptyHint}>{t("bookingNotFoundHint")}</Text>
         </View>
@@ -118,13 +121,17 @@ export default function BookingDetailScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
+      <ScreenGradient />
       <View style={[styles.header, isRTL && styles.rowRTL]}>
         <BackButton />
         <Text style={styles.title}>{t("bookingDetails")}</Text>
       </View>
 
       <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 24 }]}>
-        <View style={styles.card}>
+        <View style={styles.summaryCard}>
+          {/* The one raised surface on the page: status and code are what the
+              guest opens this screen to see. Everything below is content. */}
+          <SurfaceGradient />
           <BookingStatusChip status={booking.status} />
           {booking.confirmationCode ? (
             <>
@@ -137,7 +144,7 @@ export default function BookingDetailScreen() {
         </View>
 
         {listing ? (
-          <View style={styles.card}>
+          <View style={styles.section}>
             {listing.images?.[0] ? (
               <Image
                 source={{ uri: listing.images[0] }}
@@ -160,7 +167,7 @@ export default function BookingDetailScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={t("detailCall")}
                 >
-                  <Feather name="phone" size={16} color="#0D7A5F" />
+                  <Feather name="phone" size={16} color={colors.primary.deep} />
                   <Text style={styles.actionText}>{t("detailCall")}</Text>
                 </Pressable>
               ) : null}
@@ -171,7 +178,7 @@ export default function BookingDetailScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={t("detailDirections")}
                 >
-                  <Feather name="navigation" size={16} color="#0D7A5F" />
+                  <Feather name="navigation" size={16} color={colors.primary.deep} />
                   <Text style={styles.actionText}>{t("detailDirections")}</Text>
                 </Pressable>
               ) : null}
@@ -179,7 +186,7 @@ export default function BookingDetailScreen() {
           </View>
         ) : null}
 
-        <View style={styles.card}>
+        <View style={styles.section}>
           <Row
             label={isStay ? t("checkIn") : t("date")}
             value={
@@ -218,7 +225,7 @@ export default function BookingDetailScreen() {
         </View>
 
         {booking.notes ? (
-          <View style={styles.card}>
+          <View style={styles.section}>
             <Text style={[styles.sectionLabel, isRTL && styles.textRTL]}>
               {t("notesOptional")}
             </Text>
@@ -227,7 +234,7 @@ export default function BookingDetailScreen() {
         ) : null}
 
         {booking.declineReason ? (
-          <View style={styles.card}>
+          <View style={styles.section}>
             <Text style={[styles.sectionLabel, isRTL && styles.textRTL]}>
               {t("declineReason")}
             </Text>
@@ -312,7 +319,7 @@ function Row({
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FAF7F2",
+    backgroundColor: colors.background,
   },
   header: {
     flexDirection: "row",
@@ -325,9 +332,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row-reverse",
   },
   title: {
-    fontSize: 24,
-    fontFamily: fonts.bold,
-    color: "#1A1A1A",
+    fontSize: 28,
+    fontFamily: fonts.serif,
+    color: colors.ink,
   },
   empty: {
     flex: 1,
@@ -337,52 +344,65 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     gap: 8,
   },
   emptyTitle: {
-    fontSize: 17,
-    fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    fontSize: 22,
+    fontFamily: fonts.serif,
+    color: colors.ink,
     marginTop: 8,
     textAlign: "center",
   },
   emptyHint: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     textAlign: "center",
   },
   scroll: {
     paddingHorizontal: 20,
-    gap: 12,
   },
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
+  // The status and the code, raised off the page with the surface wash.
+  summaryCard: {
+    borderRadius: 24,
+    overflow: "hidden",
+    backgroundColor: colors.surface.DEFAULT,
+    padding: 18,
+    gap: 8,
+    marginBottom: 4,
+  },
+  // Everything else: content on the page, separated by space and a hairline
+  // rather than stacked as a column of white boxes.
+  section: {
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
     gap: 8,
   },
   codeLabel: {
     fontSize: 13,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     marginTop: 4,
   },
   code: {
-    fontSize: 26,
-    fontFamily: fonts.bold,
+    fontSize: 30,
+    fontFamily: fonts.serif,
     letterSpacing: 2,
-    color: "#1A1A1A",
+    color: colors.ink,
   },
   hero: {
     width: "100%",
-    height: 140,
-    borderRadius: 12,
-    backgroundColor: "#E8DFD4",
+    height: 160,
+    borderRadius: 20,
+    backgroundColor: colors.sand,
   },
   listingName: {
-    fontSize: 17,
-    fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    fontSize: 20,
+    fontFamily: fonts.serif,
+    color: colors.ink,
   },
   muted: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
   },
   textRTL: {
     textAlign: "right",
@@ -396,15 +416,15 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "#EEF7F4",
+    borderRadius: 999,
+    backgroundColor: colors.mint,
   },
   actionText: {
     fontSize: 14,
     fontFamily: fonts.semibold,
-    color: "#0D7A5F",
+    color: colors.primary.deep,
   },
   row: {
     flexDirection: "row",
@@ -414,50 +434,58 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   rowLabel: {
     fontSize: 14,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
   },
   rowValue: {
     fontSize: 15,
     fontFamily: fonts.semibold,
-    color: "#1A1A1A",
+    color: colors.ink,
   },
+  // The total, so it takes the display face like every other headline number.
   rowValueStrong: {
-    fontSize: 18,
-    fontFamily: fonts.bold,
+    fontSize: 22,
+    fontFamily: fonts.serif,
   },
   sectionLabel: {
-    fontSize: 13,
+    fontSize: 12,
     fontFamily: fonts.semibold,
-    color: "#737373",
+    color: colors.onSurface.muted,
+    textTransform: "uppercase",
+    letterSpacing: 1,
   },
   body: {
     fontSize: 15,
-    color: "#1A1A1A",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     lineHeight: 22,
   },
   pendingNote: {
     fontSize: 13,
     lineHeight: 19,
-    color: "#8A8178",
-    paddingHorizontal: 4,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
+    paddingTop: 16,
   },
+  // Destructive, and the only action on the page, so it stays a quiet outline
+  // with the destructive label rather than a filled red block.
   cancelButton: {
+    minHeight: 50,
     height: 50,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#FCA5A5",
-    backgroundColor: "#FEF2F2",
+    borderColor: colors.border,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 4,
+    marginTop: 20,
   },
   cancelButtonDisabled: {
     opacity: 0.6,
   },
   cancelButtonText: {
     fontSize: 15,
-    fontFamily: fonts.semibold,
-    color: "#B91C1C",
+    fontFamily: fonts.medium,
+    color: colors.signOut,
   },
 });
 
@@ -473,10 +501,11 @@ const makePromptStyles = (fonts: AppFonts) =>
   StyleSheet.create({
     ratePrompt: {
       backgroundColor: colors.mint,
-      borderRadius: 18,
+      borderRadius: 24,
       padding: 18,
       gap: 6,
-      marginBottom: 16,
+      marginTop: 20,
+      marginBottom: 4,
     },
     ratePromptTitle: { fontFamily: fonts.serif, fontSize: 20, color: colors.ink },
     ratePromptBody: {
