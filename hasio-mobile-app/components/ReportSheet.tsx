@@ -21,7 +21,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { TranslationKey } from "@/constants/translations";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 type TargetType = "listing" | "service" | "review";
 
@@ -48,6 +49,7 @@ export function ReportSheet({
   targetId,
   ownerId,
 }: ReportSheetProps) {
+  const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
   const {
@@ -234,7 +236,7 @@ export function ReportSheet({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",

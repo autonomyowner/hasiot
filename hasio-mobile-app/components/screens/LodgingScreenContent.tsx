@@ -9,7 +9,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
-import { categoryColors, colors, fonts } from "@/constants/colors";
+import { categoryColors, colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { useLodgings } from "@/hooks/useConvexData";
 import { FilterChip, SkeletonFade, SkeletonList } from "@/components/ui";
@@ -29,6 +30,7 @@ const filters: { key: LodgingFilter; labelKey: "all" | "hotels" | "apartments" |
 ];
 
 export function LodgingScreenContent() {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, language, isRTL } = useLanguage();
   const [activeFilter, setActiveFilter] = useState<LodgingFilter>("all");
@@ -145,7 +147,7 @@ export function LodgingScreenContent() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

@@ -26,7 +26,8 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { BackButton, Button } from "@/components/ui";
 import { DestinationCategory } from "@/types";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const DESTINATION_CATEGORIES: { value: DestinationCategory; labelKey: string }[] = [
   { value: "historical", labelKey: "historical" },
@@ -37,6 +38,7 @@ const DESTINATION_CATEGORIES: { value: DestinationCategory; labelKey: string }[]
 ];
 
 export default function PostDestinationScreen() {
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { t, isRTL } = useLanguage();
   const {
@@ -337,7 +339,7 @@ export default function PostDestinationScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",

@@ -26,7 +26,8 @@ import { useMutation } from "convex/react";
 import Constants from "expo-constants";
 import { Feather } from "@expo/vector-icons";
 import { api } from "@/backend";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAppStore } from "@/stores/appStore";
@@ -47,6 +48,7 @@ const CAN_RATE_APP = Platform.OS !== "ios" || IOS_APP_STORE_ID !== null;
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function SettingsScreenContent() {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, language, changeLanguage, isRTL } = useLanguage();
@@ -692,6 +694,7 @@ function SettingRow({
   icon,
   isLast,
 }: SettingRowProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -771,7 +774,7 @@ function SettingRow({
 // SettingRowWithSwitch was removed alongside the notifications toggle — it had
 // no other caller. Recover it from git history when a real switch setting lands.
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

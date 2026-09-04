@@ -15,7 +15,8 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/backend";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -25,6 +26,7 @@ import type { Id } from "../../convex/_generated/dataModel";
  * Required alongside blocking itself so the action is reversible.
  */
 export default function BlockedAccountsScreen() {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, isRTL } = useLanguage();
@@ -165,7 +167,7 @@ export default function BlockedAccountsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
   header: { paddingHorizontal: 24, paddingBottom: 8 },

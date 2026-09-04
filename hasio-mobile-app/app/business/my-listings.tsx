@@ -15,7 +15,8 @@ import { useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { ApprovalStatus } from "@/types";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#D97706",
@@ -24,6 +25,7 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 export default function MyListingsScreen() {
+  const styles = useThemedStyles(makeStyles);
   const { t, isRTL, language } = useLanguage();
   const [filter, setFilter] = useState<"all" | string>("all");
   const [refreshing, setRefreshing] = useState<boolean>(false);
@@ -146,7 +148,7 @@ export default function MyListingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",

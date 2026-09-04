@@ -27,7 +27,8 @@ import { useConvexUser } from "@/hooks/useConvexUser";
 import { useMoments } from "@/hooks/useMoments";
 import { MomentCard } from "@/components/moments/MomentCard";
 import { Button, SkeletonFade, SkeletonMomentsGrid } from "@/components/ui";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { generatedImages } from "@/assets/images/generated";
 import { Image } from "expo-image";
@@ -55,6 +56,7 @@ interface UserMomentsViewProps {
 }
 
 function UserMomentsView({ insets, t, isRTL, userId, isAuthLoaded }: UserMomentsViewProps) {
+  const styles = useThemedStyles(makeStyles);
   const { moments, isLoading, addMoment, deleteMoment } = useMoments(userId);
   const mountedRef = useRef(true);
 
@@ -360,6 +362,7 @@ interface AddButtonProps {
 }
 
 function AddButton({ onPress }: AddButtonProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -386,7 +389,7 @@ function AddButton({ onPress }: AddButtonProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

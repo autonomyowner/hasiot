@@ -19,7 +19,8 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { useMutation } from "convex/react";
 import { api } from "@/backend";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { uploadDocumentToConvex } from "@/lib/convexUpload";
@@ -33,6 +34,7 @@ import { uploadDocumentToConvex } from "@/lib/convexUpload";
  * `isApproved` and unlocks `submitListing` / `submitService`.
  */
 export default function VerificationScreenContent() {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, isRTL } = useLanguage();
@@ -295,7 +297,7 @@ export default function VerificationScreenContent() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   loadingContainer: {
     flex: 1,

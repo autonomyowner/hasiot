@@ -25,13 +25,15 @@ import { api } from "@/backend";
 import { signIn, signUp, signOut, getAuthErrorKey } from "@/lib/auth";
 import { convex, refreshAuth } from "@/lib/convex";
 import { useAppStore } from "@/stores/appStore";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 // Served from the website's public/ — the same pair Settings links to.
 const PRIVACY_POLICY_URL = "https://www.hasio.xyz/privacy-policy.html";
 const TERMS_OF_SERVICE_URL = "https://www.hasio.xyz/terms-of-service.html";
 
 export default function AuthScreen() {
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, isRTL } = useLanguage();
@@ -326,7 +328,7 @@ export default function AuthScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",

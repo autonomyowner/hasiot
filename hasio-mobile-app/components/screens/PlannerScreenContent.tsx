@@ -30,7 +30,8 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { useAppStore } from "@/stores/appStore";
 import { ChatBubble } from "@/components/planner";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { TAB_BAR_HEIGHT, TAB_BAR_MARGIN } from "@/constants/layout";
 import { Feather } from "@expo/vector-icons";
 import type { ChatMessage } from "@/types";
@@ -43,6 +44,7 @@ interface PlannerScreenContentProps {
 }
 
 export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentProps) {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, language, isRTL } = useLanguage();
   const scrollViewRef = useRef<ScrollView>(null);
@@ -388,6 +390,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
 
 // Typing indicator component
 function TypingIndicator() {
+  const styles = useThemedStyles(makeStyles);
   const dot1 = useSharedValue(0);
   const dot2 = useSharedValue(0);
   const dot3 = useSharedValue(0);
@@ -453,6 +456,7 @@ interface SuggestionButtonProps {
 }
 
 function SuggestionButton({ label, onPress, delay = 0 }: SuggestionButtonProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -480,7 +484,7 @@ function SuggestionButton({ label, onPress, delay = 0 }: SuggestionButtonProps) 
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

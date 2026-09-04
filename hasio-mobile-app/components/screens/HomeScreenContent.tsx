@@ -29,7 +29,8 @@ import {
   SkeletonFade,
   SkeletonHomeSections,
 } from "@/components/ui";
-import { categoryColors, colors, fonts } from "@/constants/colors";
+import { categoryColors, colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import {
   HOME_CARD_GAP,
   HOME_CARD_WIDTH,
@@ -55,6 +56,7 @@ interface HomeScreenContentProps {
 }
 
 export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
+  const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, language, isRTL } = useLanguage();
   const [searchQuery, setSearchQuery] = useState("");
@@ -435,6 +437,7 @@ interface SearchResultItemProps {
 }
 
 function SearchResultItem({ name, subtitle, image, isRTL, index, onPress }: SearchResultItemProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -500,6 +503,7 @@ function DestinationGridCard({
   isTall = false,
   onPress,
 }: DestinationGridCardProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
   const cardHeight = isTall ? 260 : 210;
 
@@ -567,7 +571,7 @@ function DestinationGridCard({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

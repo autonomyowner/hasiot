@@ -2,7 +2,8 @@ import React, { useEffect, useId } from "react";
 import { View, Text, Modal, Pressable, StyleSheet } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useDialogStore, type AppAlertButton } from "@/stores/dialogStore";
 
@@ -15,6 +16,7 @@ import { useDialogStore, type AppAlertButton } from "@/stores/dialogStore";
  * behind it on iOS).
  */
 export function AppDialogHost() {
+  const styles = useThemedStyles(makeStyles);
   const hostId = useId();
   const { isRTL } = useLanguage();
   const visible = useDialogStore((s) => s.visible);
@@ -108,7 +110,7 @@ export function AppDialogHost() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: "rgba(31, 29, 23, 0.45)",

@@ -1,7 +1,8 @@
 import React from "react";
 import { View, TextInput, Pressable, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 interface SearchBarProps {
   placeholder: string;
@@ -16,6 +17,7 @@ export function SearchBar({
   onChangeText,
   isRTL = false,
 }: SearchBarProps) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.container, isRTL && styles.containerRTL]}>
       <Feather
@@ -49,7 +51,7 @@ export function SearchBar({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",

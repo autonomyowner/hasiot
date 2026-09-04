@@ -19,7 +19,8 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import { ReportSheet } from "@/components/ReportSheet";
 import type { ListingDetails } from "@/types";
@@ -60,6 +61,7 @@ const IMAGE_HEIGHT = 380;
 const SHEET_OVERLAP = 28;
 
 export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
+  const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -414,6 +416,7 @@ function Section({
   isRTL: boolean;
   children: React.ReactNode;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>{title}</Text>
@@ -433,6 +436,7 @@ function ActionButton({
   onPress: () => void;
   primary?: boolean;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
       onPress={onPress}
@@ -466,6 +470,7 @@ function InfoRow({
   isRTL: boolean;
   onPress?: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   const content = (
     <View style={[styles.infoRow, isRTL && styles.rowRTL]}>
       <Feather name={icon} size={15} color={colors.onSurface.muted} />
@@ -486,7 +491,7 @@ function InfoRow({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

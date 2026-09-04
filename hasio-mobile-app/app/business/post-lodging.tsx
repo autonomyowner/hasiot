@@ -26,7 +26,8 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { BackButton, Button } from "@/components/ui";
 import { LodgingType } from "@/types";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const LODGING_TYPES: { value: LodgingType; labelKey: string }[] = [
   { value: "hotel", labelKey: "hotels" },
@@ -36,6 +37,7 @@ const LODGING_TYPES: { value: LodgingType; labelKey: string }[] = [
 ];
 
 export default function PostLodgingScreen() {
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { t, isRTL } = useLanguage();
   const {
@@ -379,7 +381,7 @@ export default function PostLodgingScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",

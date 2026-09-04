@@ -26,7 +26,8 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { BackButton, Button } from "@/components/ui";
 import { ServiceType, PriceUnit } from "@/types";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const SERVICE_TYPES: { value: ServiceType; labelKey: string }[] = [
   { value: "tour_guide", labelKey: "tourGuide" },
@@ -47,6 +48,7 @@ const PRICE_UNITS: { value: PriceUnit; labelKey: string }[] = [
 ];
 
 export default function PostServiceScreen() {
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { t, isRTL } = useLanguage();
   const {
@@ -407,7 +409,7 @@ export default function PostServiceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FAF7F2",

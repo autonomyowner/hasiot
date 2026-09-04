@@ -11,6 +11,15 @@ import {
   Outfit_600SemiBold,
   Outfit_700Bold,
 } from "@expo-google-fonts/outfit";
+// Per-weight subpaths, not the package root. The root index re-exports all
+// eight weights with a require() each, so importing from it makes Metro bundle
+// every one — 753 kB for the five actually registered below. This is the
+// import style the package's own README documents.
+import { Cairo_300Light } from "@expo-google-fonts/cairo/300Light";
+import { Cairo_400Regular } from "@expo-google-fonts/cairo/400Regular";
+import { Cairo_500Medium } from "@expo-google-fonts/cairo/500Medium";
+import { Cairo_600SemiBold } from "@expo-google-fonts/cairo/600SemiBold";
+import { Cairo_700Bold } from "@expo-google-fonts/cairo/700Bold";
 import "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ConvexProviderWithAuth } from "convex/react";
@@ -24,6 +33,9 @@ import "../global.css";
 SplashScreen.preventAutoHideAsync();
 
 function InnerLayout() {
+  // Both families load up front rather than on demand: the language toggle is
+  // instant, and expo-font caches by family name, so a font fetched only when
+  // Arabic is first selected would leave a frame of system-font text behind it.
   const [fontsLoaded, fontError] = useFonts({
     InstrumentSerif_400Regular,
     Outfit_300Light,
@@ -31,6 +43,11 @@ function InnerLayout() {
     Outfit_500Medium,
     Outfit_600SemiBold,
     Outfit_700Bold,
+    Cairo_300Light,
+    Cairo_400Regular,
+    Cairo_500Medium,
+    Cairo_600SemiBold,
+    Cairo_700Bold,
   });
 
   // Fall through on error too — a failed font download must not leave the

@@ -12,7 +12,8 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -35,6 +36,7 @@ export function Button({
   disabled,
   ...props
 }: ButtonProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -80,7 +82,7 @@ export function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   base: {
     borderRadius: 12,
     alignItems: "center",

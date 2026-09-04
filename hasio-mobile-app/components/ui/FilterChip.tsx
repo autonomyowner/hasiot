@@ -1,6 +1,7 @@
 import React from "react";
 import { Text, StyleSheet } from "react-native";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { PressableScale } from "./PressableScale";
 import { PRESS_SCALE_CHIP } from "@/constants/motion";
 
@@ -11,6 +12,7 @@ interface FilterChipProps {
 }
 
 export function FilterChip({ label, selected, onPress }: FilterChipProps) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <PressableScale
       style={[styles.chip, selected && styles.chipSelected]}
@@ -27,7 +29,7 @@ export function FilterChip({ label, selected, onPress }: FilterChipProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   // Ink-on-white pills: green stays reserved for the tab puck and prices.
   chip: {
     paddingVertical: 9,

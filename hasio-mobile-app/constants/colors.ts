@@ -77,6 +77,15 @@ export const colors = {
 
 // Typography — v5 redesign (Instrument Serif headings + Outfit body).
 // The font keys match the names registered via useFonts() in app/_layout.tsx.
+//
+// Two maps, one shape. Neither Instrument Serif nor Outfit carries a single
+// Arabic glyph, so Arabic text used to fall through to whatever the OS
+// supplies — SF Arabic on iOS, Noto on Android — which is why the app and the
+// website did not look like the same product. `arabicFonts` is the same six
+// roles in Cairo, the face the website has always used for Arabic.
+//
+// Do not read these directly in a component. Go through useAppFonts() (or
+// useThemedStyles), which picks the map matching the active language.
 export const fonts = {
   serif: "InstrumentSerif_400Regular", // display headings
   light: "Outfit_300Light",
@@ -85,6 +94,19 @@ export const fonts = {
   semibold: "Outfit_600SemiBold",
   bold: "Outfit_700Bold",
 } as const;
+
+// Cairo has no serif cut, so the display role maps to its heaviest weight —
+// the usual substitution when a Latin display serif meets Arabic.
+export const arabicFonts: AppFonts = {
+  serif: "Cairo_700Bold",
+  light: "Cairo_300Light",
+  regular: "Cairo_400Regular",
+  medium: "Cairo_500Medium",
+  semibold: "Cairo_600SemiBold",
+  bold: "Cairo_700Bold",
+};
+
+export type AppFonts = { [K in keyof typeof fonts]: string };
 
 // Category Badge Colors
 export const categoryColors = {

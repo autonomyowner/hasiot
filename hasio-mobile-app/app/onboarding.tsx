@@ -19,11 +19,13 @@ import Animated, {
 import { useAppStore } from "@/stores/appStore";
 import { useLanguage } from "@/hooks/useLanguage";
 import { Button } from "@/components/ui";
-import { fonts } from "@/constants/colors";
+import { type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function OnboardingScreen() {
+  const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const { t, language, changeLanguage, isRTL } = useLanguage();
   const setOnboardingComplete = useAppStore(
@@ -131,6 +133,7 @@ interface LanguageButtonProps {
 }
 
 function LanguageButton({ label, selected, onPress }: LanguageButtonProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -168,7 +171,7 @@ function LanguageButton({ label, selected, onPress }: LanguageButtonProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#1A1A1A",

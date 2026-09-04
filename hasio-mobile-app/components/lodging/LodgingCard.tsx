@@ -5,7 +5,8 @@ import { useConvexAuth } from "convex/react";
 import type { Lodging, Language } from "@/types";
 import { Feather } from "@expo/vector-icons";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useAppStore } from "@/stores/appStore";
 import { useToggleFavorite, useFavorites } from "@/hooks/useConvexData";
 import { ReportSheet } from "@/components/ReportSheet";
@@ -26,6 +27,7 @@ export function LodgingCard({
   onPress,
   perNightText,
 }: LodgingCardProps) {
+  const styles = useThemedStyles(makeStyles);
   const [reportOpen, setReportOpen] = useState(false);
   const { t } = useLanguage();
   const { isAuthenticated } = useConvexAuth();
@@ -148,7 +150,7 @@ export function LodgingCard({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   shadowWrap: {
     marginBottom: 20,
     shadowColor: colors.ink,

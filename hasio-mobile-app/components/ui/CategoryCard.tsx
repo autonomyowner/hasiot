@@ -3,7 +3,8 @@ import { View, Text, StyleSheet } from "react-native";
 import { Image, type ImageSource } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { Feather } from "@expo/vector-icons";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import {
   CATEGORY_CARD_HEIGHT,
   CATEGORY_CARD_WIDTH,
@@ -26,6 +27,7 @@ export function CategoryCard({
   onPress,
   isRTL = false,
 }: CategoryCardProps) {
+  const styles = useThemedStyles(makeStyles);
   const source =
     typeof imageUrl === "string"
       ? imageUrl
@@ -59,7 +61,7 @@ export function CategoryCard({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     width: CATEGORY_CARD_WIDTH,
     height: CATEGORY_CARD_HEIGHT,

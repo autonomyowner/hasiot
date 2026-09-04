@@ -8,7 +8,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import type { Moment } from "@/types";
-import { colors, fonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
+import { useThemedStyles } from "@/hooks/useAppFonts";
 import { MOMENT_CARD_WIDTH } from "@/constants/layout";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -23,6 +24,7 @@ interface MomentCardProps {
 }
 
 export function MomentCard({ moment, isRTL, onPress, onDelete }: MomentCardProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -107,7 +109,7 @@ export function MomentCard({ moment, isRTL, onPress, onDelete }: MomentCardProps
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
     width: cardWidth,
     backgroundColor: colors.surface.DEFAULT,
