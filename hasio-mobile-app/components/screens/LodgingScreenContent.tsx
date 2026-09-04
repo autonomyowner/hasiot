@@ -60,8 +60,18 @@ export function LodgingScreenContent() {
     badge: t(`cat_${item.type}` as const),
     badgeColor: categoryColors[item.type],
     rating: item.rating,
-    priceLine: item.priceRange ? `${item.priceRange} ${t("perNight")}` : undefined,
-    bookable: true,
+    // A real nightly rate wins over the "$$$" band: it is the number the quote
+    // is built from, and the Book bar only renders when there is a priceLine.
+    priceLine: item.pricePerNight
+      ? `${t("sar")} ${item.pricePerNight} ${t("perNight")}`
+      : item.priceRange
+        ? `${item.priceRange} ${t("perNight")}`
+        : undefined,
+    // Only a listing the host has actually priced can be booked: the sheet
+    // quotes from `pricePerNight`, and `priceRange` is free-text display copy
+    // ("$$$") that cannot be multiplied by nights.
+    bookable: item.pricePerNight != null,
+    maxGuests: item.maxGuests,
     images: item.images,
     description: getLocalizedText(item.description, item.descriptionAr, language),
     amenities: language === "ar" ? item.amenitiesAr : item.amenities,

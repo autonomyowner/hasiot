@@ -19,10 +19,14 @@ import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useConvexAuth } from "convex/react";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useConvexUser } from "@/hooks/useConvexUser";
 import { ReportSheet } from "@/components/ReportSheet";
+import { BookingSheet } from "@/components/booking/BookingSheet";
 import { amenityIcon } from "./amenityIcon";
 import type { ListingDetails } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -56,6 +60,8 @@ export interface DetailItem {
    * neither is something you book a night in.
    */
   bookable?: boolean;
+  /** Ceiling for the guest stepper in the booking sheet. */
+  maxGuests?: number;
 }
 
 interface ListingDetailSheetProps {
@@ -78,7 +84,28 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   const { width } = useWindowDimensions();
   const [imageIndex, setImageIndex] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
+  const [bookingOpen, setBookingOpen] = useState(false);
   const galleryRef = React.useRef<ScrollView>(null);
+  const router = useRouter();
+  const { isAuthenticated } = useConvexAuth();
+  const { user } = useConvexUser();
+
+  // Three gates, in order of what the guest can do about them. A visitor is
+  // sent to sign in; a signed-in guest with no verified number is asked for
+  // one, because the host has to be able to phone them; everyone else books.
+  const handleBook = () => {
+    if (!isAuthenticated) {
+      onClose();
+      router.push("/auth");
+      return;
+    }
+    if (!user?.phoneVerified) {
+      onClose();
+      router.push("/auth");
+      return;
+    }
+    setBookingOpen(true);
+  };
 
   const scrollGalleryTo = (index: number) => {
     galleryRef.current?.scrollTo({ x: index * width, animated: true });
@@ -409,21 +436,15 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                   <Text style={styles.bookBarPrice} numberOfLines={1}>
                     {item.priceLine}
                   </Text>
-                  <Text style={styles.bookBarNote} numberOfLines={1}>
-                    {t("detailBookSoon")}
-                  </Text>
                 </View>
-                {/* Deliberately inert until the stay-booking flow exists.
-                    `disabled` also drops it out of the tab order, so it is not
-                    a focusable control that does nothing. */}
-                <View
-                  style={styles.bookButtonDisabled}
+                <Pressable
+                  style={styles.bookButton}
+                  onPress={handleBook}
                   accessibilityRole="button"
-                  accessibilityState={{ disabled: true }}
-                  accessibilityLabel={`${t("detailBook")} — ${t("detailBookSoon")}`}
+                  accessibilityLabel={t("detailBook")}
                 >
                   <Text style={styles.bookButtonText}>{t("detailBook")}</Text>
-                </View>
+                </Pressable>
               </View>
             )}
 
@@ -460,6 +481,16 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
         targetType="listing"
         targetId={item.id}
         ownerId={item.ownerId ? (item.ownerId as Id<"users">) : null}
+      />
+    )}
+
+    {/* Same reason as the report sheet: presented as a sibling so it covers the
+        screen instead of being clipped to the iOS pageSheet's frame. */}
+    {item && (
+      <BookingSheet
+        visible={bookingOpen}
+        item={item}
+        onClose={() => setBookingOpen(false)}
       />
     )}
     </>
@@ -771,20 +802,11 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 18,
     color: colors.ink,
   },
-  bookBarNote: {
-    fontFamily: fonts.regular,
-    fontSize: 12,
-    color: colors.onSurface.muted,
-    marginTop: 2,
-  },
-  // Dimmed rather than greyed: the lime still reads as the primary action, so
-  // the bar looks finished while the flow behind it is not.
-  bookButtonDisabled: {
+  bookButton: {
     paddingHorizontal: 28,
     paddingVertical: 13,
     borderRadius: 14,
     backgroundColor: colors.primary.DEFAULT,
-    opacity: 0.45,
   },
   bookButtonText: {
     fontFamily: fonts.semibold,

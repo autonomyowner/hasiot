@@ -175,8 +175,16 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
     badge: t(`cat_${item.type}` as const),
     badgeColor: categoryColors[item.type],
     rating: item.rating,
-    priceLine: item.priceRange ? `${item.priceRange} ${t("perNight")}` : undefined,
-    bookable: true,
+    // A real nightly rate wins over the "$$$" band — see LodgingScreenContent.
+    priceLine: item.pricePerNight
+      ? `${t("sar")} ${item.pricePerNight} ${t("perNight")}`
+      : item.priceRange
+        ? `${item.priceRange} ${t("perNight")}`
+        : undefined,
+    // Only a listing the host has actually priced can be booked — see the same
+    // note in LodgingScreenContent.
+    bookable: item.pricePerNight != null,
+    maxGuests: item.maxGuests,
     images: item.images,
     description: getLocalizedText(item.description, item.descriptionAr, language),
     amenities: language === "ar" ? item.amenitiesAr : item.amenities,
