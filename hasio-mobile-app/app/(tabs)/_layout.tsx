@@ -18,6 +18,7 @@ import { colors, type AppFonts } from "@/constants/colors";
 import { TAB_BAR_HEIGHT } from "@/constants/layout";
 import { BottomBarFade } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
+import { useKeyboardVisible } from "@/hooks/useKeyboardVisible";
 import { useLanguage } from "@/hooks/useLanguage";
 import type { TranslationKey } from "@/constants/translations";
 
@@ -122,6 +123,7 @@ const HOME_INDEX = tabs.findIndex((tab) => tab.key === "home");
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const styles = useThemedStyles(makeStyles);
   const { t } = useLanguage();
   const pagerRef = useRef<any>(null);
@@ -222,27 +224,38 @@ export default function TabLayout() {
         </View>
       )}
 
-      {/* Content scrolls under the docked bar, so it dissolves into the page
-          just above it rather than being cut off by the bar's edge. The bar is
-          flush with the screen edge, so the fade sits on top of its full
-          height plus the safe-area padding underneath it. */}
-      <BottomBarFade bottom={TAB_BAR_HEIGHT + insets.bottom} />
+      {/* Both the bar and its fade stand down while the keyboard is up.
+          The bar is absolutely positioned over the pager, so on the Android
+          versions that still resize the window for the keyboard it rides up
+          with the bottom edge and lands on top of whatever the screen itself
+          docks there — which is exactly what was covering the planner's chat
+          input. Hiding it also gives the screen back a bar's worth of room
+          while typing, which is what every other app does. */}
+      {!keyboardVisible && (
+        <>
+          {/* Content scrolls under the docked bar, so it dissolves into the page
+              just above it rather than being cut off by the bar's edge. The bar is
+              flush with the screen edge, so the fade sits on top of its full
+              height plus the safe-area padding underneath it. */}
+          <BottomBarFade bottom={TAB_BAR_HEIGHT + insets.bottom} />
 
-      {/* Docked tab bar: flush with the bottom edge, full width, hairline top
-          border. Screens reserve TAB_BAR_CLEARANCE + insets.bottom for it. */}
-      <View style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
-        {tabs.map((tab, index) => (
-          <TabButton
-            key={tab.key}
-            icon={tab.icon}
-            label={t(tab.labelKey)}
-            isActive={currentPage === index}
-            index={index}
-            scrollPosition={scrollPosition}
-            onPress={() => handleTabPress(index)}
-          />
-        ))}
-      </View>
+          {/* Docked tab bar: flush with the bottom edge, full width, hairline top
+              border. Screens reserve TAB_BAR_CLEARANCE + insets.bottom for it. */}
+          <View style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
+            {tabs.map((tab, index) => (
+              <TabButton
+                key={tab.key}
+                icon={tab.icon}
+                label={t(tab.labelKey)}
+                isActive={currentPage === index}
+                index={index}
+                scrollPosition={scrollPosition}
+                onPress={() => handleTabPress(index)}
+              />
+            ))}
+          </View>
+        </>
+      )}
     </View>
   );
 }

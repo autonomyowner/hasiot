@@ -30,7 +30,7 @@ import { ReportSheet } from "@/components/ReportSheet";
 import { BookingSheet } from "@/components/booking/BookingSheet";
 import { VerifyPhoneSheet } from "@/components/auth/VerifyPhoneSheet";
 import { RatingSummary, ReviewCard, ReviewSheet } from "@/components/review";
-import { amenityIcon } from "./amenityIcon";
+import { resolveAmenity } from "@/constants/amenities";
 import type { ListingDetails } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -82,7 +82,7 @@ const SHEET_OVERLAP = 28;
 
 export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   const styles = useThemedStyles(makeStyles);
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [imageIndex, setImageIndex] = useState(0);
@@ -377,19 +377,24 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                 {item.amenities && item.amenities.length > 0 && (
                   <Section title={t("detailAmenities")} isRTL={isRTL}>
                     <View style={[styles.chips, isRTL && styles.rowRTL]}>
-                      {item.amenities.map((amenity) => (
-                        <View
-                          key={amenity}
-                          style={[styles.chip, isRTL && styles.rowRTL]}
-                        >
-                          <Feather
-                            name={amenityIcon(amenity)}
-                            size={13}
-                            color={colors.onSurface.variant}
-                          />
-                          <Text style={styles.chipText}>{amenity}</Text>
-                        </View>
-                      ))}
+                      {item.amenities.map((amenity) => {
+                        // The stored value is a key on anything posted through
+                        // the toggles, and free text on older listings.
+                        const { icon, label } = resolveAmenity(amenity, language);
+                        return (
+                          <View
+                            key={amenity}
+                            style={[styles.chip, isRTL && styles.rowRTL]}
+                          >
+                            <Feather
+                              name={icon}
+                              size={13}
+                              color={colors.onSurface.variant}
+                            />
+                            <Text style={styles.chipText}>{label}</Text>
+                          </View>
+                        );
+                      })}
                     </View>
                   </Section>
                 )}

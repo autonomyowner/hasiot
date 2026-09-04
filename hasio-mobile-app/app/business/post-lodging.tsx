@@ -26,7 +26,9 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { BackButton, Button } from "@/components/ui";
 import { LodgingType } from "@/types";
-import { type AppFonts } from "@/constants/colors";
+import { Feather } from "@expo/vector-icons";
+import { AMENITIES, type AmenityKey } from "@/constants/amenities";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const LODGING_TYPES: { value: LodgingType; labelKey: string }[] = [
@@ -39,7 +41,7 @@ const LODGING_TYPES: { value: LodgingType; labelKey: string }[] = [
 export default function PostLodgingScreen() {
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
-  const { t, isRTL } = useLanguage();
+  const { t, isRTL, language } = useLanguage();
   const {
     ref: keyboardRef,
     overlap: keyboardOverlap,
@@ -65,8 +67,16 @@ export default function PostLodgingScreen() {
   const [checkOutTime, setCheckOutTime] = useState("12:00");
   const [description, setDescription] = useState("");
   const [descriptionAr, setDescriptionAr] = useState("");
-  const [amenities, setAmenities] = useState("");
-  const [amenitiesAr, setAmenitiesAr] = useState("");
+  // Canonical keys, not typed words — see `constants/amenities.ts`. The old
+  // pair of comma-separated fields also collected an Arabic line that was
+  // never sent anywhere, so a host's Arabic amenities were silently dropped.
+  const [selectedAmenities, setSelectedAmenities] = useState<AmenityKey[]>([]);
+  const toggleAmenity = (key: AmenityKey) =>
+    setSelectedAmenities((current) =>
+      current.includes(key)
+        ? current.filter((item) => item !== key)
+        : [...current, key]
+    );
   const [images, setImages] = useState<string[]>([]);
 
   const pickImage = async () => {
@@ -160,7 +170,7 @@ export default function PostLodgingScreen() {
         unitCount: units,
         checkInTime: checkInTime.trim(),
         checkOutTime: checkOutTime.trim(),
-        amenities: amenities.trim() ? amenities.split(",").map((a) => a.trim()).filter(Boolean) : undefined,
+        amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
       });
 
@@ -413,28 +423,45 @@ export default function PostLodgingScreen() {
             textAlign="right"
           />
 
-          {/* Amenities */}
+          {/* Amenities. A closed list of toggles: what the host switches on
+              here is exactly what a guest sees, icon and all, in both
+              languages — which free text could never guarantee. */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("amenities")} (comma separated)
+            {t("amenities")}
           </Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={isRTL}
-            value={amenities}
-            onChangeText={setAmenities}
-            placeholder={t("placeholderAmenitiesEn")}
-            placeholderTextColor="#A3A3A3"
-          />
-
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={true}
-            value={amenitiesAr}
-            onChangeText={setAmenitiesAr}
-            placeholder={t("placeholderAmenitiesAr")}
-            placeholderTextColor="#A3A3A3"
-            textAlign="right"
-          />
+          <Text style={[styles.hint, isRTL && styles.textRTL]}>
+            {t("amenitiesHint")}
+          </Text>
+          <View style={[styles.amenityGrid, isRTL && styles.amenityGridRTL]}>
+            {AMENITIES.map((amenity) => {
+              const on = selectedAmenities.includes(amenity.key);
+              return (
+                <Pressable
+                  key={amenity.key}
+                  onPress={() => toggleAmenity(amenity.key)}
+                  style={[
+                    styles.amenityChip,
+                    isRTL && styles.rowRTL,
+                    on && styles.amenityChipOn,
+                  ]}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: on }}
+                  accessibilityLabel={language === "ar" ? amenity.ar : amenity.en}
+                >
+                  <Feather
+                    name={amenity.icon}
+                    size={14}
+                    color={on ? colors.ink : colors.onSurface.variant}
+                  />
+                  <Text
+                    style={[styles.amenityLabel, on && styles.amenityLabelOn]}
+                  >
+                    {language === "ar" ? amenity.ar : amenity.en}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
           {/* Images */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
@@ -634,5 +661,49 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   bottomSpacing: {
     height: 32,
+  },
+  hint: {
+    fontSize: 12.5,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
+    marginTop: -4,
+    marginBottom: 10,
+  },
+  rowRTL: {
+    flexDirection: "row-reverse",
+  },
+  amenityGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  amenityGridRTL: {
+    flexDirection: "row-reverse",
+  },
+  // Off is the same white pill the filter chips use; on is lime, and lime is a
+  // fill, so the label and the icon on it are ink.
+  amenityChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 9,
+    paddingHorizontal: 13,
+    borderRadius: 999,
+    backgroundColor: colors.surface.DEFAULT,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  amenityChipOn: {
+    backgroundColor: colors.primary.DEFAULT,
+    borderColor: colors.primary.DEFAULT,
+  },
+  amenityLabel: {
+    fontSize: 13,
+    fontFamily: fonts.medium,
+    color: colors.onSurface.variant,
+  },
+  amenityLabelOn: {
+    color: colors.ink,
+    fontFamily: fonts.semibold,
   },
 });

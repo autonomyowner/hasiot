@@ -1210,6 +1210,38 @@
 }
 .admin-pill.active .admin-pill-badge { background: #fff; color: var(--ar-ink); }
 
+/* Amenity toggles on the listing form. Not `.admin-pill`: that is the tab nav,
+   it lives on a tinted track, and it is a single-choice control — these are
+   independent switches on a white card and have to read as pressed or not. */
+.admin-amenity-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.admin-amenity {
+  padding: 0.4375rem 0.8125rem;
+  border: 1px solid var(--ar-line);
+  border-radius: var(--ar-r-pill);
+  background: var(--ar-surface);
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--ar-ink-2);
+  cursor: pointer;
+  transition: background 0.18s var(--ar-ease), border-color 0.18s var(--ar-ease),
+    color 0.18s var(--ar-ease);
+}
+
+.admin-amenity:hover { border-color: var(--ar-ink-3); color: var(--ar-ink); }
+
+.admin-amenity.active {
+  background: var(--ar-ink);
+  border-color: var(--ar-ink);
+  color: #fff;
+  font-weight: 600;
+}
+
 .admin-topbar-actions { display: flex; align-items: center; gap: 0.5rem; }
 
 .admin-icon-btn,

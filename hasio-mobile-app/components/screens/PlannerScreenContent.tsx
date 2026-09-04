@@ -28,6 +28,7 @@ import { useAction } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
+import { useKeyboardVisible } from "@/hooks/useKeyboardVisible";
 import { useAppStore } from "@/stores/appStore";
 import { ChatBubble } from "@/components/planner";
 import { colors, type AppFonts } from "@/constants/colors";
@@ -75,20 +76,12 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // The floating tab bar hovers over this screen; the input clears it while
-  // the keyboard is closed. With the keyboard open the bar is covered anyway,
-  // so the clearance collapses back to a normal padding.
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
-  useEffect(() => {
-    const showEvt = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
-    const hideEvt = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const show = Keyboard.addListener(showEvt, () => setKeyboardVisible(true));
-    const hide = Keyboard.addListener(hideEvt, () => setKeyboardVisible(false));
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
+  // The docked tab bar sits over this screen, so the input clears it while the
+  // keyboard is closed. Once the keyboard is up the tab shell hides the bar
+  // (see `app/(tabs)/_layout.tsx`) and the clearance collapses to a normal
+  // padding — reserving the bar's height here as well is what used to leave
+  // the input stranded under it.
+  const keyboardVisible = useKeyboardVisible();
   const inputBottomPadding = keyboardVisible
     ? 10
     : TAB_BAR_CLEARANCE + insets.bottom;

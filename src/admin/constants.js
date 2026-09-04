@@ -230,6 +230,34 @@ export function formatISODate(iso) {
   }
 }
 
+// The amenities a listing can carry, as a closed list.
+//
+// The keys must stay identical to `hasio-mobile-app/constants/amenities.ts`:
+// the app looks the stored key up there to draw an icon and the guest's own
+// language beside it, and a key only this file knows about falls back to being
+// printed raw. Add to both files or to neither. The English label is not needed
+// here — this panel is Arabic-only.
+export const AMENITIES = [
+  { key: 'wifi', label: 'واي فاي' },
+  { key: 'parking', label: 'موقف سيارات' },
+  { key: 'ac', label: 'تكييف' },
+  { key: 'breakfast', label: 'إفطار' },
+  { key: 'restaurant', label: 'مطعم' },
+  { key: 'pool', label: 'مسبح' },
+  { key: 'gym', label: 'نادي رياضي' },
+  { key: 'tv', label: 'تلفاز' },
+  { key: 'laundry', label: 'خدمة غسيل' },
+  { key: 'room_service', label: 'خدمة الغرف' },
+  { key: 'reception_24h', label: 'استقبال ٢٤ ساعة' },
+  { key: 'elevator', label: 'مصعد' },
+  { key: 'family_rooms', label: 'غرف عائلية' },
+  { key: 'prayer_room', label: 'مصلى' },
+  { key: 'kitchen', label: 'مطبخ صغير' },
+  { key: 'airport_shuttle', label: 'نقل من المطار' },
+  { key: 'garden', label: 'حديقة أو تراس' },
+  { key: 'non_smoking', label: 'غرف لغير المدخنين' },
+]
+
 export function formatMoney(amount, currency = 'ر.س') {
   if (amount === undefined || amount === null) return '—'
   return `${Number(amount).toLocaleString('en-US')} ${currency}`

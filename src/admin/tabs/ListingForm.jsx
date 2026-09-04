@@ -3,7 +3,7 @@ import Modal from '../components/Modal'
 import ImageUploader from '../components/ImageUploader'
 import FilterSelect from '../components/FilterSelect'
 import {
-  CATEGORIES, CATEGORIES_BY_TYPE, CATEGORY_LABELS,
+  AMENITIES, CATEGORIES, CATEGORIES_BY_TYPE, CATEGORY_LABELS,
   CITIES, CITY_LABELS, LISTING_TYPES, PRICE_RANGES,
 } from '../constants'
 
@@ -47,6 +47,17 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
     isActive: initialData?.isActive !== false,
   })
   const [images, setImages] = useState(initialData?.images || [])
+  // Canonical keys. A listing saved before this field existed carries free
+  // text, which no toggle matches — it is kept as it is rather than dropped,
+  // and shows up on the row below the grid.
+  const [amenities, setAmenities] = useState(initialData?.amenities || [])
+  const toggleAmenity = (key) =>
+    setAmenities((current) =>
+      current.includes(key) ? current.filter((a) => a !== key) : [...current, key]
+    )
+  const customAmenities = amenities.filter(
+    (a) => !AMENITIES.some((known) => known.key === a)
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -141,6 +152,7 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
         checkInTime: isHotel ? form.checkInTime || undefined : undefined,
         checkOutTime: isHotel ? form.checkOutTime || undefined : undefined,
         images,
+        amenities,
         isVerified: form.isVerified,
         isActive: form.isActive,
       })
@@ -356,6 +368,29 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
                 </div>
               </>
             )}
+
+            <div className="admin-form-group">
+              <label className="admin-form-label">المرافق</label>
+              <div className="admin-amenity-grid">
+                {AMENITIES.map((amenity) => (
+                  <button
+                    key={amenity.key}
+                    type="button"
+                    className={`admin-amenity${amenities.includes(amenity.key) ? ' active' : ''}`}
+                    aria-pressed={amenities.includes(amenity.key)}
+                    onClick={() => toggleAmenity(amenity.key)}
+                  >
+                    {amenity.label}
+                  </button>
+                ))}
+              </div>
+              {customAmenities.length > 0 && (
+                <p className="admin-form-hint">
+                  مرافق مكتوبة يدوياً على هذا المكان، تُعرض كما هي:{' '}
+                  {customAmenities.join('، ')}
+                </p>
+              )}
+            </div>
 
             <div className="admin-form-row-3">
               <div className="admin-form-group">
