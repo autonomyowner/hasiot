@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import VoiceOrb from './VoiceOrb'
-import Waveform from './Waveform'
 import './voice-agent.css'
 
 /**
@@ -20,32 +19,28 @@ const copy = {
   en: {
     launch: 'Talk to أبشر',
     greeting: 'أبشر · Hasio',
-    question: 'How can I help you today?',
+    permission: 'Allow the microphone…',
     connecting: 'Connecting…',
     listening: 'Listening…',
     speaking: 'Speaking…',
     prompt: 'Ask anything',
-    end: 'End',
     close: 'Close',
     micDenied: 'Microphone blocked. Allow it from your browser’s address bar, then try again.',
     failed: 'Could not connect right now. Please try again in a moment.',
     unconfigured: 'The voice agent is not configured yet.',
-    hint: 'Arabic or English — interrupt any time.',
   },
   ar: {
     launch: 'كلّم أبشر',
     greeting: 'أبشر · Hasio',
-    question: 'كيف أقدر أساعدك اليوم؟',
+    permission: 'اسمح باستخدام الميكروفون…',
     connecting: 'جاري الاتصال…',
     listening: 'أسمعك…',
     speaking: 'يتحدث…',
     prompt: 'اسأل عن أي شيء',
-    end: 'إنهاء',
     close: 'إغلاق',
     micDenied: 'الميكروفون محظور. اسمح به من شريط العنوان ثم حاول مرة أخرى.',
     failed: 'تعذّر الاتصال الآن. حاول بعد قليل.',
     unconfigured: 'الوكيل الصوتي غير مهيأ بعد.',
-    hint: 'بالعربية أو الإنجليزية — تقدر تقاطعه في أي وقت.',
   },
 }
 
@@ -104,9 +99,13 @@ export default function VoiceAgent({ lang = 'en' }) {
       return
     }
     setError(null)
-    setStatus('connecting')
+    // Two distinct waits, and the user needs to know which one they are in: the
+    // permission prompt can sit open indefinitely, and a bare "Connecting…" gives
+    // no hint that the browser is waiting on them.
+    setStatus('permission')
     try {
       await navigator.mediaDevices.getUserMedia({ audio: true })
+      setStatus('connecting')
     } catch {
       setError(t.micDenied)
       setStatus('error')
@@ -174,8 +173,10 @@ export default function VoiceAgent({ lang = 'en' }) {
   useEffect(() => () => { convoRef.current?.endSession?.().catch(() => {}) }, [])
 
   const live = status === 'connected'
+  const busy = status === 'connecting' || status === 'permission'
   const pillLabel =
-    status === 'connecting' ? t.connecting
+    status === 'permission' ? t.permission
+    : status === 'connecting' ? t.connecting
     : live && speaking ? t.speaking
     : live ? t.listening
     : t.prompt
@@ -196,39 +197,30 @@ export default function VoiceAgent({ lang = 'en' }) {
           dir={isRtl ? 'rtl' : 'ltr'}
           onClick={(e) => { if (e.target === e.currentTarget) close() }}
         >
-          <div className="va-panel">
-            <button type="button" className="va-close" onClick={close} aria-label={t.close}>
-              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor"
-                      strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
+          <button type="button" className="va-close" onClick={close} aria-label={t.close}>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor"
+                    strokeWidth="2" strokeLinecap="round" />
+            </svg>
+          </button>
 
-            <div className={`va-stage ${live ? 'is-live' : ''}`}>
-              <VoiceOrb getLevel={getLevel} open />
-            </div>
+          {/*
+            The orb is the entire interface: tap to start, tap to end. The status
+            never becomes visible text — it rides the aria-label for screen readers
+            and the orb's own motion for everyone else.
+          */}
+          <button
+            type="button"
+            className={`va-stage ${live ? 'is-live' : ''} ${busy ? 'is-busy' : ''}`}
+            onClick={live ? stop : start}
+            disabled={busy}
+            aria-label={pillLabel}
+          >
+            <VoiceOrb getLevel={getLevel} open />
+          </button>
 
-            <p className="va-greeting">{t.greeting}</p>
-            <h2 className="va-question">{t.question}</h2>
-
-            {error && <p className="va-error">{error}</p>}
-
-            <button
-              type="button"
-              className={`va-pill ${live ? 'is-live' : ''}`}
-              onClick={live ? stop : start}
-              disabled={status === 'connecting'}
-              aria-live="polite"
-            >
-              <span className="va-pill-text">{pillLabel}</span>
-              <span className="va-pill-right">
-                {live && <span className="va-pill-end">{t.end}</span>}
-                <Waveform getLevel={getLevel} active={live} />
-              </span>
-            </button>
-
-            <p className="va-hint">{t.hint}</p>
-          </div>
+          {/* Only ever rendered when something actually went wrong. */}
+          {error && <p className="va-error" role="alert">{error}</p>}
         </div>
       )}
     </>

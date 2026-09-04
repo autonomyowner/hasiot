@@ -73,57 +73,48 @@
 
 @keyframes va-fade { from { opacity: 0; } to { opacity: 1; } }
 
-.va-panel {
-  position: relative;
-  width: min(26rem, 100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: clamp(2.25rem, 6vw, 3rem) clamp(1.25rem, 4vw, 1.9rem) clamp(1.35rem, 4vw, 1.75rem);
-
-  border: 1px solid rgba(120, 200, 220, 0.13);
-  border-radius: 30px;
-  /* Near-black with a cold lift behind the orb, so the sphere sits in a space. */
-  background:
-    radial-gradient(90% 55% at 50% 20%, rgba(30, 92, 122, 0.42) 0%, rgba(8, 18, 30, 0) 68%),
-    linear-gradient(180deg, #0a1420 0%, #050a12 100%);
-  box-shadow: 0 50px 100px -34px rgba(0, 0, 0, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-  text-align: center;
-  animation: va-rise 0.42s cubic-bezier(0.2, 0.85, 0.3, 1) both;
-}
-
-@keyframes va-rise {
-  from { opacity: 0; transform: translateY(18px) scale(0.97); }
-  to   { opacity: 1; transform: none; }
-}
+/* The overlay is the orb and nothing else — no card, no copy, no controls. */
 
 .va-close {
-  position: absolute;
-  top: 0.9rem;
-  inset-inline-end: 0.9rem;
+  position: fixed;
+  top: clamp(1rem, 3vw, 1.75rem);
+  inset-inline-end: clamp(1rem, 3vw, 1.75rem);
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.04);
-  color: rgba(210, 232, 240, 0.6);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(220, 238, 245, 0.6);
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
 }
-.va-close:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
-.va-close:focus-visible { outline: 2px solid #4fd6d6; outline-offset: 2px; }
+.va-close:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.va-close:focus-visible { outline: 2px solid #4fd6d6; outline-offset: 3px; }
 
-/* ---------- orb ---------- */
-
+/* The orb is the control. No chrome of its own — the sphere is the affordance. */
 .va-stage {
   position: relative;
-  width: min(14.5rem, 56vw);
+  width: min(30rem, 74vw, 74vh);
   aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  background: none;
   display: grid;
   place-items: center;
+  cursor: pointer;
+  animation: va-rise 0.5s cubic-bezier(0.2, 0.85, 0.3, 1) both;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.va-stage:hover:not(:disabled) { transform: scale(1.02); }
+.va-stage:disabled { cursor: default; }
+.va-stage:focus-visible { outline: 2px solid rgba(120, 220, 230, 0.8); outline-offset: 12px; border-radius: 50%; }
+
+@keyframes va-rise {
+  from { opacity: 0; transform: scale(0.9); }
+  to   { opacity: 1; transform: none; }
 }
 
 .va-orb { width: 100%; height: 100%; display: block; }
@@ -132,113 +123,24 @@
 .va-orb.is-fallback {
   border-radius: 50%;
   background:
-    radial-gradient(circle at 34% 26%, rgba(255,255,255,0.75) 0%, rgba(255,255,255,0) 30%),
+    radial-gradient(circle at 34% 26%, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0) 30%),
     radial-gradient(circle at 64% 72%, #7b6bf0 0%, #1fb6bd 46%, #04182a 100%);
-  box-shadow: 0 0 70px -8px rgba(70, 210, 215, 0.55);
+  box-shadow: 0 0 90px -10px rgba(70, 210, 215, 0.5);
   animation: va-breathe 3.6s ease-in-out infinite;
 }
 
-/* ---------- text ---------- */
-
-.va-greeting {
-  margin: 0.35rem 0 0;
-  font-size: 0.82rem;
-  letter-spacing: 0.08em;
-  color: rgba(160, 196, 212, 0.66);
-}
-
-.va-question {
-  margin: 0.5rem 0 0;
-  max-width: 15ch;
-  font-size: clamp(1.5rem, 5.4vw, 1.95rem);
-  line-height: 1.2;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  text-wrap: balance;
-  color: #f2f8fb;
-}
-
+/* Errors are the one thing allowed to speak — silence on failure is worse. */
 .va-error {
-  margin: 0.85rem 0 0;
-  max-width: 26ch;
-  font-size: 0.86rem;
+  position: fixed;
+  bottom: clamp(2rem, 8vh, 4rem);
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  max-width: min(30ch, 86vw);
+  text-align: center;
+  font-size: 0.9rem;
   line-height: 1.5;
-  color: #ff9f95;
-}
-
-/* ---------- pill ---------- */
-
-.va-pill {
-  margin-top: 1.6rem;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.85rem;
-  padding: 0.9rem 1.15rem;
-
-  border: 1px solid rgba(130, 205, 225, 0.18);
-  border-radius: 999px;
-  background: linear-gradient(180deg, rgba(38, 96, 128, 0.5) 0%, rgba(16, 44, 66, 0.5) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
-
-  font: inherit;
-  font-size: 0.95rem;
-  color: rgba(196, 224, 236, 0.8);
-  cursor: pointer;
-  transition: border-color 0.22s ease, background 0.22s ease, transform 0.18s ease;
-}
-.va-pill:hover:not(:disabled) { border-color: rgba(130, 205, 225, 0.34); transform: translateY(-1px); }
-.va-pill:disabled { opacity: 0.65; cursor: default; }
-.va-pill:focus-visible { outline: 2px solid #4fd6d6; outline-offset: 3px; }
-.va-pill.is-live {
-  border-color: rgba(90, 226, 210, 0.42);
-  background: linear-gradient(180deg, rgba(30, 120, 130, 0.55) 0%, rgba(12, 52, 66, 0.55) 100%);
-  color: #d8f6f6;
-}
-
-.va-pill-text { text-align: start; }
-
-.va-pill-right {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.65rem;
-  flex: none;
-}
-
-.va-pill-end {
-  font-size: 0.76rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: rgba(255, 168, 158, 0.9);
-}
-
-/* ---------- meter ---------- */
-
-.va-wave {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  height: 20px;
-  flex: none;
-}
-.va-wave i {
-  display: block;
-  width: 3px;
-  height: 20px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, #7fe9e2 0%, #4aa8c8 100%);
-  transform: scaleY(0.18);
-  transform-origin: center;
-  will-change: transform;
-}
-.va-pill:not(.is-live) .va-wave i { background: rgba(170, 210, 226, 0.5); }
-
-.va-hint {
-  margin: 0.85rem 0 0;
-  font-size: 0.76rem;
-  line-height: 1.5;
-  color: rgba(150, 186, 202, 0.5);
+  color: #ffb1a6;
 }
 
 /* ---------- small screens ---------- */
@@ -251,6 +153,6 @@
 @media (prefers-reduced-motion: reduce) {
   .va-launch-orb,
   .va-orb.is-fallback { animation: none; }
-  .va-overlay, .va-panel { animation-duration: 0.01ms; }
-  .va-launch, .va-pill { transition: none; }
+  .va-overlay, .va-stage { animation-duration: 0.01ms; }
+  .va-launch, .va-stage { transition: none; }
 }

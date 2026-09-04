@@ -40,15 +40,25 @@ float noise(vec2 p) {
              mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
-float fbm(vec2 p) {
-  float v = 0.0;
-  float a = 0.5;
-  for (int i = 0; i < 5; i++) {
-    v += a * noise(p);
-    p = p * 2.03 + vec2(1.7, 9.2);
-    a *= 0.5;
-  }
-  return v;
+/** Two octaves only. Detail here reads as static, not as liquid. */
+float flow(vec2 p) {
+  return noise(p) * 0.65 + noise(p * 2.07 + vec2(3.1, 1.7)) * 0.35;
+}
+
+/**
+ * Three fixed stops rather than a cosine palette. A cosine cycles through every hue,
+ * which is where the yellow came from; this can only ever be teal, cyan or violet.
+ * The argument must be a continuous function of the normal — never atan(), whose
+ * wrap from +pi to -pi draws a hard seam straight down the sphere.
+ */
+vec3 pal(float x) {
+  vec3 teal   = vec3(0.043, 0.396, 0.443);
+  vec3 cyan   = vec3(0.376, 0.878, 0.925);
+  vec3 violet = vec3(0.478, 0.404, 0.902);
+  x = clamp(x, 0.0, 1.0);
+  return x < 0.5
+    ? mix(teal, cyan, smoothstep(0.0, 0.5, x))
+    : mix(cyan, violet, smoothstep(0.5, 1.0, x));
 }
 
 void main() {
@@ -57,54 +67,77 @@ void main() {
   float t = uTime * mix(1.0, 0.22, uCalm);
   float level = uLevel;
 
-  // The sphere swells slightly with the voice, and breathes when idle.
-  float breathe = sin(t * 0.55) * 0.006 * (1.0 - uCalm);
-  float R = 0.335 + uOpen * 0.02 + breathe + level * 0.028;
+  float breathe = sin(t * 0.5) * 0.005 * (1.0 - uCalm);
+  float R = 0.275 + uOpen * 0.015 + breathe + level * 0.024;
 
   float r = length(p);
   float d = r / R;
 
-  // Reconstructed sphere normal — this is what makes light wrap instead of sit flat.
-  float z = sqrt(max(0.0, 1.0 - d * d));
-  vec3 N = normalize(vec3(p / max(R, 0.0001), z));
+  float z = sqrt(max(0.0, 1.0 - min(d, 1.0) * min(d, 1.0)));
+  vec3 N = normalize(vec3(p / max(R, 0.0001), z + 0.0001));
   vec3 V = vec3(0.0, 0.0, 1.0);
+  vec3 L = normalize(vec3(-0.42, 0.55, 0.72));
 
-  float fres = pow(1.0 - max(dot(N, V), 0.0), 2.6);
+  float fres = pow(1.0 - max(dot(N, V), 0.0), 3.6);
+  float diff = max(dot(N, L), 0.0);
 
-  // Internal swirl, sampled in surface space so it wraps with the sphere.
-  vec2 sp = N.xy * (1.35 + N.z * 0.55);
-  vec2 warp = vec2(fbm(sp * 2.1 + vec2(0.0, t * 0.13)),
-                   fbm(sp * 2.1 + vec2(4.7, 2.1) - t * 0.11));
-  float swirl = fbm(sp * 2.8 + warp * (1.5 + level * 1.1) + t * 0.07);
+  // Sampled at very low frequency and in flat screen space, so it is two or three
+  // soft blobs drifting across the whole ball — not a texture. Sampling in normal
+  // space smears radially at the rim and reads as smoke, which is the thing that
+  // made this look cheap.
+  float cur = flow(p * 1.6 + vec2(t * 0.05, -t * 0.035)) - 0.5;
 
-  // Palette: near-black core, teal through cyan, violet at the grazing edge.
-  vec3 core   = vec3(0.016, 0.043, 0.075);
-  vec3 teal   = vec3(0.043, 0.463, 0.435);
-  vec3 cyan   = vec3(0.322, 0.886, 0.902);
-  vec3 violet = vec3(0.502, 0.404, 0.925);
+  // Hue travels along a tilted axis across the ball — continuous everywhere, so
+  // there is no seam. Fresnel pushes the grazing edge toward violet, which is what
+  // makes it read as a thin film over glass.
+  float axis = dot(N, normalize(vec3(0.55, -0.72, 0.42))) * 0.5 + 0.5;
+  float hue = clamp(axis * 0.55 + fres * 0.62 + cur * 0.10 + sin(t * 0.16) * 0.05, 0.0, 1.0);
+  vec3 sheen = pal(hue);
+
+  vec3 core = vec3(0.012, 0.036, 0.065);
+
+  // The light lives INSIDE the glass, not on its edge. A soft source sits behind the
+  // surface, up and to the left, and falls off exponentially in every direction — so
+  // the brightness is a smooth gradient across the body with no ring anywhere.
+  vec2 lp = vec2(-0.30, 0.26);
+  float inner = exp(-length(N.xy - lp) * 1.75);
+  // Ease it out before the silhouette so the glow never stacks into a rim.
+  inner *= smoothstep(1.06, 0.45, d);
 
   vec3 col = core;
-  col = mix(col, teal, smoothstep(0.12, 0.85, swirl) * (0.42 + level * 0.35));
-  col = mix(col, cyan, smoothstep(0.55, 0.98, swirl + fres * 0.55) * (0.5 + level * 0.4));
+  col += sheen * inner * (1.05 + level * 0.95);
 
-  // Rim: the brightest thing on screen, and where the violet lives.
-  vec3 rimCol = mix(cyan, violet, 0.35 + swirl * 0.45);
-  col += rimCol * fres * (1.15 + level * 1.35);
+  // A second, deeper source further in, which keeps the centre from going flat as
+  // the first one falls away.
+  float deep = exp(-length(N.xy - lp * 0.35) * 3.1) * smoothstep(1.0, 0.2, d);
+  col += mix(sheen, vec3(0.72, 0.93, 1.0), 0.30) * deep * (0.55 + level * 0.6);
 
-  // A single specular highlight, upper-left, to sell the glass.
-  vec3 L = normalize(vec3(-0.45, 0.62, 0.75));
-  float spec = pow(max(dot(reflect(-L, N), V), 0.0), 26.0);
-  col += vec3(0.85, 0.95, 1.0) * spec * 0.5;
+  // Broad ambient wash so the unlit side is still glass rather than a void.
+  col += sheen * pow(diff, 1.6) * 0.10;
+  col += sheen * 0.05;
 
-  // Contact shadow at the lower edge keeps it from floating.
-  col *= mix(1.0, 0.55, smoothstep(0.25, 1.0, -N.y) * 0.6);
+  // The rim is now only a whisper — enough to define the sphere's edge against the
+  // background, far too faint to read as a ring of its own.
+  float edge = fres * (0.25 + 0.75 * smoothstep(-0.5, 0.9, dot(N, L)));
+  col += mix(sheen, vec3(0.80, 0.95, 1.0), 0.35) * edge * (0.30 + level * 0.35);
 
-  float body = smoothstep(1.005, 0.985, d);
-  float halo = exp(-max(d - 1.0, 0.0) * 5.2) * (0.30 + level * 0.62);
+  // Gentle shade along the lower edge so it still reads as a ball.
+  col *= mix(1.0, 0.74, smoothstep(0.05, 1.0, -N.y) * 0.5);
 
-  col += mix(cyan, violet, 0.4) * halo * 0.55;
+  float body = smoothstep(1.020, 0.965, d);
+  // Falls to zero well inside the canvas, so no square edge can show.
+  // Outside the sphere only. exp(-max(d-1,0)*k) is 1.0 for every d < 1, so without
+  // this gate the glow was painted flat across the whole face and washed the dark
+  // core out to mid-teal. The second gate is in screen radius, so the glow always
+  // reaches zero before the canvas edge and cannot draw a rectangle.
+  float halo = exp(-max(d - 1.0, 0.0) * 3.4)
+             * smoothstep(0.930, 1.10, d)
+             * smoothstep(0.495, 0.30, r);
+  halo *= 0.34 + level * 0.5;
 
-  float alpha = clamp(body + halo * 0.75, 0.0, 1.0) * uOpen;
+  col += mix(sheen, vec3(0.35, 0.6, 1.0), 0.4) * halo * 0.8;
+
+  float alpha = clamp(body + halo * 0.8, 0.0, 1.0) * uOpen;
   gl_FragColor = vec4(col * alpha, alpha);
 }
 `
