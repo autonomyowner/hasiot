@@ -82,6 +82,7 @@ function InnerLayout() {
         <Stack.Screen name="blocked-accounts" />
         <Stack.Screen name="bookings" />
         <Stack.Screen name="notifications" />
+        <Stack.Screen name="reviews" />
       </Stack>
       <StatusBar style="dark" />
       {/* Branded alert dialog (appAlert). Native Modals that fire alerts while
