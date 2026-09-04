@@ -10,8 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
   Keyboard,
+  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -31,20 +31,36 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { useAppStore } from "@/stores/appStore";
 import { ChatBubble } from "@/components/planner";
 import { colors, type AppFonts } from "@/constants/colors";
-import { ScreenGradient } from "@/components/ui/Gradients";
+import { ScreenGradient, SurfaceGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { TAB_BAR_CLEARANCE } from "@/constants/layout";
 import { Feather } from "@expo/vector-icons";
+import type { TranslationKey } from "@/constants/translations";
 import type { ChatMessage } from "@/types";
 import type { TabKey } from "@/app/(tabs)/_layout";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+// Two per row inside the chat's 16px side padding, with a 10px gutter.
+const SUGGESTION_CARD_WIDTH = (Dimensions.get("window").width - 32 - 10) / 2;
+
+type FeatherName = React.ComponentProps<typeof Feather>["name"];
+
+// All four are sent to the planner as a message; none navigates away, so the
+// first thing a new user does stays inside the conversation.
+const SUGGESTIONS: { key: TranslationKey; icon: FeatherName }[] = [
+  { key: "suggestItinerary", icon: "map" },
+  { key: "suggestHeritage", icon: "book-open" },
+  { key: "suggestFamily", icon: "users" },
+  { key: "suggestFood", icon: "coffee" },
+];
+
 interface PlannerScreenContentProps {
+  /** Unused here — the tab shell passes it to every screen. */
   onNavigateToTab?: (key: TabKey) => void;
 }
 
-export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentProps) {
+export function PlannerScreenContent(_props: PlannerScreenContentProps) {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, language, isRTL } = useLanguage();
@@ -53,6 +69,7 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
 
   const chatMessages = useAppStore((state) => state.chatMessages);
   const addChatMessage = useAppStore((state) => state.addChatMessage);
+  const clearChatMessages = useAppStore((state) => state.clearChatMessages);
   const ensureSessionId = useAppStore((state) => state.ensureSessionId);
 
   const [inputText, setInputText] = useState("");
@@ -101,164 +118,103 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
     appAlert(t("thankYou"), t("reportReceived"));
   };
 
-  const handleSend = async () => {
-    if (!inputText.trim() || isLoading) return;
-
-    const userMessage: ChatMessage = {
-      id: Date.now().toString(),
-      text: inputText.trim(),
-      isUser: true,
-      timestamp: new Date().toISOString(),
-    };
-    addChatMessage(userMessage);
-    const userText = inputText.trim();
-    setInputText("");
-    setIsLoading(true);
-
-    // Scroll to bottom to show user message
-    setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
-
-    try {
-      // Build conversation history from chat messages
-      const conversationHistory = chatMessages
-        .filter((m) => m.id !== userMessage.id) // exclude the just-added message
-        .map((m) => ({
-          role: m.isUser ? "user" : "assistant",
-          content: m.text,
-        }));
-
-      // Call Convex AI travel planner
-      const result = await planTravel({
-        userInput: userText,
-        language,
-        conversationHistory,
-        sessionId: ensureSessionId(),
-      });
-
-      let responseText = "";
-      if (result.success) {
-        if (result.ready && result.plan) {
-          // Full plan received
-          responseText = result.plan.itinerary || result.message || "";
-          if (result.plan.travelTips) {
-            responseText += "\n\n" + (language === "ar" ? result.plan.travelTips_ar || result.plan.travelTips : result.plan.travelTips);
-          }
-          if (result.plan.estimatedBudget) {
-            responseText += "\n\n" + (language === "ar" ? result.plan.estimatedBudget_ar || result.plan.estimatedBudget : result.plan.estimatedBudget);
-          }
-        } else {
-          // Follow-up question
-          responseText = (language === "ar" ? result.message_ar : result.message) || result.message || "";
-        }
-      } else {
-        responseText = result.error || t("somethingWentWrong");
-      }
-
-      const botMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        text: responseText,
-        isUser: false,
-        timestamp: new Date().toISOString(),
-      };
-      addChatMessage(botMessage);
-
-      // Scroll to show bot response
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    } catch (error) {
-      const errorMessage: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        text: t("pleaseTryAgain"),
-        isUser: false,
-        timestamp: new Date().toISOString(),
-      };
-      addChatMessage(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleNewChat = () => {
+    appAlert(t("newChat"), t("newChatConfirm"), [
+      { text: t("cancel"), style: "cancel" },
+      { text: t("newChat"), style: "destructive", onPress: () => clearChatMessages() },
+    ]);
   };
 
-  const suggestionButtons = [
-    { key: "lodging", label: t("suggestLodging"), tabKey: "lodging" as const },
-    { key: "itinerary", label: t("suggestItinerary"), tabKey: null },
-  ];
+  // The one send path: the input and the suggestion cards both land here.
+  const sendMessage = useCallback(
+    async (text: string) => {
+      if (!text.trim() || isLoading) return;
 
-  const handleSuggestion = async (tabKey: TabKey | null, label: string) => {
-    if (tabKey !== null) {
-      onNavigateToTab?.(tabKey);
-    } else {
-      // Send as a message to AI
+      const userText = text.trim();
       const userMessage: ChatMessage = {
         id: Date.now().toString(),
-        text: label,
+        text: userText,
         isUser: true,
         timestamp: new Date().toISOString(),
       };
       addChatMessage(userMessage);
+      setInputText("");
       setIsLoading(true);
-
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+      scrollToEndSoon();
 
       try {
+        // This turn goes up as `userInput`, so it must not also appear in the
+        // history sent alongside it.
         const conversationHistory = chatMessages
+          .filter((m) => m.id !== userMessage.id)
           .map((m) => ({
             role: m.isUser ? "user" : "assistant",
             content: m.text,
           }));
 
         const result = await planTravel({
-          userInput: label,
+          userInput: userText,
           language,
           conversationHistory,
           sessionId: ensureSessionId(),
         });
 
         let responseText = "";
-        if (result.success) {
-          if (result.ready && result.plan) {
-            responseText = result.plan.itinerary || result.message || "";
-            if (result.plan.travelTips) {
-              responseText += "\n\n" + (language === "ar" ? result.plan.travelTips_ar || result.plan.travelTips : result.plan.travelTips);
-            }
-            if (result.plan.estimatedBudget) {
-              responseText += "\n\n" + (language === "ar" ? result.plan.estimatedBudget_ar || result.plan.estimatedBudget : result.plan.estimatedBudget);
-            }
-          } else {
-            responseText = (language === "ar" ? result.message_ar : result.message) || result.message || "";
-          }
+        let plan: ChatMessage["plan"];
+
+        if (result.success && result.ready && result.plan) {
+          const itinerary = result.plan.itinerary || result.message || "";
+          const tips =
+            (language === "ar"
+              ? result.plan.travelTips_ar || result.plan.travelTips
+              : result.plan.travelTips) || undefined;
+          const budget =
+            (language === "ar"
+              ? result.plan.estimatedBudget_ar || result.plan.estimatedBudget
+              : result.plan.estimatedBudget) || undefined;
+          plan = { itinerary, tips, budget };
+          // PlanCard renders the parts. The flattened copy stays on the message
+          // because the conversation history sent back to the AI is plain text.
+          responseText = [itinerary, tips, budget].filter(Boolean).join("\n\n");
+        } else if (result.success) {
+          responseText =
+            (language === "ar" ? result.message_ar : result.message) || result.message || "";
         } else {
           responseText = result.error || t("somethingWentWrong");
         }
 
-        const botMessage: ChatMessage = {
+        addChatMessage({
           id: (Date.now() + 1).toString(),
           text: responseText,
           isUser: false,
           timestamp: new Date().toISOString(),
-        };
-        addChatMessage(botMessage);
-
-        setTimeout(() => {
-          scrollViewRef.current?.scrollToEnd({ animated: true });
-        }, 100);
+          plan,
+        });
+        scrollToEndSoon();
       } catch (error) {
-        const errorMessage: ChatMessage = {
+        addChatMessage({
           id: (Date.now() + 1).toString(),
           text: t("pleaseTryAgain"),
           isUser: false,
           timestamp: new Date().toISOString(),
-        };
-        addChatMessage(errorMessage);
+        });
       } finally {
         setIsLoading(false);
       }
-    }
-  };
+    },
+    [
+      addChatMessage,
+      chatMessages,
+      ensureSessionId,
+      isLoading,
+      language,
+      planTravel,
+      scrollToEndSoon,
+      t,
+    ]
+  );
+
+  const sendDisabled = !inputText.trim() || isLoading;
 
   return (
     <KeyboardAvoidingView
@@ -274,15 +230,30 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
       >
         {/* Header */}
         <View style={[styles.header, isRTL && styles.headerRTL]}>
-          <Text style={[styles.title, isRTL && styles.textRTL]}>
-            {t("plannerAssistant")}
-          </Text>
-          <View style={[styles.subtitleRow, isRTL && styles.subtitleRowRTL]}>
-            <Text style={styles.subtitleIcon}>✦</Text>
+          <View style={[styles.headerText, isRTL && styles.headerTextRTL]}>
+            <View style={[styles.eyebrowRow, isRTL && styles.rowRTL]}>
+              <View style={styles.eyebrowDot} />
+              <Text style={styles.eyebrow}>{t("plannerEyebrow")}</Text>
+            </View>
+            <Text style={[styles.title, isRTL && styles.textRTL]}>
+              {t("plannerTitle")}
+            </Text>
             <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
               {t("plannerSubtitle")}
             </Text>
           </View>
+
+          {/* Only worth showing once there is a conversation to clear. */}
+          {chatMessages.length > 0 && (
+            <Pressable
+              onPress={handleNewChat}
+              style={styles.newChatButton}
+              accessibilityRole="button"
+              accessibilityLabel={t("newChat")}
+            >
+              <Feather name="rotate-ccw" size={16} color={colors.ink} />
+            </Pressable>
+          )}
         </View>
 
         {/* Chat Area */}
@@ -299,8 +270,11 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
               entering={FadeInDown.delay(200).duration(600)}
               style={styles.welcomeContainer}
             >
-              <View style={[styles.welcomeBubble, isRTL && styles.welcomeBubbleRTL]}>
-                <Text style={[styles.welcomeEmoji]}>👋</Text>
+              <View style={[styles.welcomeCard, isRTL && styles.welcomeCardRTL]}>
+                <SurfaceGradient />
+                <View style={styles.welcomeIcon}>
+                  <Feather name="compass" size={20} color={colors.ink} />
+                </View>
                 <Text style={[styles.welcomeTitle, isRTL && styles.textRTL]}>
                   {t("plannerWelcome")}
                 </Text>
@@ -312,13 +286,15 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
               <Text style={[styles.suggestionsTitle, isRTL && styles.textRTL]}>
                 {t("quickSuggestions")}
               </Text>
-              <View style={[styles.suggestions, isRTL && styles.suggestionsRTL]}>
-                {suggestionButtons.map((btn, index) => (
-                  <SuggestionButton
-                    key={btn.key}
-                    label={btn.label}
-                    onPress={() => handleSuggestion(btn.tabKey, btn.label)}
-                    delay={index * 100}
+              <View style={[styles.suggestionGrid, isRTL && styles.suggestionGridRTL]}>
+                {SUGGESTIONS.map((suggestion, index) => (
+                  <SuggestionCard
+                    key={suggestion.key}
+                    icon={suggestion.icon}
+                    label={t(suggestion.key)}
+                    isRTL={isRTL}
+                    onPress={() => sendMessage(t(suggestion.key))}
+                    delay={index * 70}
                   />
                 ))}
               </View>
@@ -354,14 +330,14 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
 
         {/* Input Area */}
         <View style={[styles.inputContainer, { paddingBottom: inputBottomPadding }]}>
-          <View style={[styles.inputPill, isRTL && styles.inputPillRTL]}>
+          <View style={styles.inputPill}>
           <TextInput
             style={[styles.input, isRTL && styles.inputRTL]}
             placeholder={t("chatPlaceholder")}
             placeholderTextColor={colors.onSurface.muted}
             value={inputText}
             onChangeText={setInputText}
-            onSubmitEditing={handleSend}
+            onSubmitEditing={() => sendMessage(inputText)}
             multiline
             maxLength={500}
             textAlign={isRTL ? "right" : "left"}
@@ -369,18 +345,19 @@ export function PlannerScreenContent({ onNavigateToTab }: PlannerScreenContentPr
           />
           </View>
           <Pressable
-            style={[
-              styles.sendButton,
-              (!inputText.trim() || isLoading) && styles.sendButtonDisabled
-            ]}
-            onPress={handleSend}
-            disabled={!inputText.trim() || isLoading}
+            style={[styles.sendButton, sendDisabled && styles.sendButtonDisabled]}
+            onPress={() => sendMessage(inputText)}
+            disabled={sendDisabled}
           >
             {isLoading ? (
               <ActivityIndicator size="small" color={colors.ink} />
             ) : (
               // arrow-up is symmetric, so no RTL mirroring is needed.
-              <Feather name="arrow-up" size={22} color={colors.ink} />
+              <Feather
+                name="arrow-up"
+                size={22}
+                color={sendDisabled ? colors.onSurface.muted : colors.ink}
+              />
             )}
           </Pressable>
         </View>
@@ -451,13 +428,15 @@ function TypingIndicator() {
   );
 }
 
-interface SuggestionButtonProps {
+interface SuggestionCardProps {
+  icon: FeatherName;
   label: string;
+  isRTL: boolean;
   onPress: () => void;
   delay?: number;
 }
 
-function SuggestionButton({ label, onPress, delay = 0 }: SuggestionButtonProps) {
+function SuggestionCard({ icon, label, isRTL, onPress, delay = 0 }: SuggestionCardProps) {
   const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
@@ -476,12 +455,19 @@ function SuggestionButton({ label, onPress, delay = 0 }: SuggestionButtonProps) 
   return (
     <AnimatedPressable
       entering={FadeInDown.delay(delay).duration(400)}
-      style={[styles.suggestionButton, animatedStyle]}
+      style={[styles.suggestionCard, animatedStyle]}
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={label}
     >
-      <Text style={styles.suggestionText}>{label}</Text>
+      <View style={[styles.suggestionIcon, isRTL && styles.suggestionIconRTL]}>
+        <Feather name={icon} size={15} color={colors.ink} />
+      </View>
+      <Text style={[styles.suggestionLabel, isRTL && styles.textRTL]} numberOfLines={2}>
+        {label}
+      </Text>
     </AnimatedPressable>
   );
 }
@@ -495,39 +481,67 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
+    gap: 12,
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-    backgroundColor: colors.background,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
   headerRTL: {
+    flexDirection: "row-reverse",
+  },
+  headerText: {
+    flex: 1,
+  },
+  headerTextRTL: {
     alignItems: "flex-end",
+  },
+  eyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  rowRTL: {
+    flexDirection: "row-reverse",
+  },
+  eyebrowDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primary.deep,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontFamily: fonts.semibold,
+    color: colors.primary.deep,
+    letterSpacing: 2,
+    textTransform: "uppercase",
   },
   title: {
     fontSize: 30,
     fontFamily: fonts.serif,
     color: colors.ink,
     letterSpacing: -0.3,
-  },
-  subtitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    marginTop: 2,
-  },
-  subtitleRowRTL: {
-    flexDirection: "row-reverse",
-  },
-  subtitleIcon: {
-    fontSize: 12,
-    color: colors.primary.deep,
+    marginTop: 4,
   },
   subtitle: {
-    fontSize: 12.5,
-    fontFamily: fonts.medium,
-    color: colors.primary.deep,
+    fontSize: 13,
+    lineHeight: 18,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
+    marginTop: 4,
+  },
+  newChatButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surface.DEFAULT,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    alignItems: "center",
+    justifyContent: "center",
   },
   textRTL: {
     textAlign: "right",
@@ -536,69 +550,86 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flex: 1,
   },
   chatContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 4,
     paddingBottom: 8,
   },
   welcomeContainer: {
     marginBottom: 16,
   },
-  welcomeBubble: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    padding: 18,
-    marginBottom: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
+  welcomeCard: {
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 24,
+    // Clips the lit-from-above wash to the card's corners.
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: 20,
   },
-  welcomeBubbleRTL: {
+  welcomeCardRTL: {
     alignItems: "flex-end",
   },
-  welcomeEmoji: {
-    fontSize: 28,
-    marginBottom: 8,
+  welcomeIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primary.DEFAULT,
+    alignItems: "center",
+    justifyContent: "center",
   },
   welcomeTitle: {
-    fontSize: 18,
-    fontFamily: fonts.semibold,
-    color: colors.primary.deep,
-    marginBottom: 4,
+    fontSize: 26,
+    fontFamily: fonts.serif,
+    color: colors.ink,
+    marginTop: 14,
   },
   welcomeText: {
     fontSize: 14,
     lineHeight: 21,
     fontFamily: fonts.regular,
     color: colors.onSurface.variant,
+    marginTop: 6,
   },
   suggestionsTitle: {
-    fontSize: 13,
+    fontSize: 11,
     fontFamily: fonts.semibold,
     color: colors.onSurface.muted,
-    marginBottom: 8,
-    paddingHorizontal: 2,
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    marginTop: 22,
+    marginBottom: 10,
   },
-  suggestions: {
+  suggestionGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: 10,
   },
-  suggestionsRTL: {
+  suggestionGridRTL: {
     flexDirection: "row-reverse",
   },
-  // Matches the FilterChip language on the list screens.
-  suggestionButton: {
-    backgroundColor: colors.surface.DEFAULT,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
+  suggestionCard: {
+    width: SUGGESTION_CARD_WIDTH,
+    minHeight: 96,
+    borderRadius: 20,
+    backgroundColor: colors.mint,
+    padding: 14,
+    justifyContent: "space-between",
   },
-  suggestionText: {
-    fontSize: 13,
-    fontFamily: fonts.medium,
+  suggestionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary.DEFAULT,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "flex-start",
+  },
+  suggestionIconRTL: {
+    alignSelf: "flex-end",
+  },
+  suggestionLabel: {
+    fontSize: 13.5,
+    fontFamily: fonts.semibold,
     color: colors.ink,
   },
   loadingContainer: {
@@ -609,16 +640,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row-reverse",
   },
   loadingBubble: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface.DEFAULT,
     borderRadius: 20,
     borderBottomLeftRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
   },
   typingIndicator: {
     flexDirection: "row",
@@ -641,18 +669,14 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   inputPill: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface.DEFAULT,
     borderRadius: 26,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     justifyContent: "center",
     minHeight: 50,
     paddingHorizontal: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
-  inputPillRTL: {},
   input: {
     flex: 1,
     paddingHorizontal: 14,
@@ -672,19 +696,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: colors.primary.DEFAULT,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
   sendButtonDisabled: {
-    backgroundColor: "#D1D5DB",
-    shadowOpacity: 0.1,
-  },
-  sendButtonText: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    fontFamily: fonts.bold,
+    backgroundColor: colors.chip,
   },
 });

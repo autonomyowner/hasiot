@@ -1,14 +1,17 @@
 import { appAlert } from "@/stores/dialogStore";
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Pressable, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
+import type { TranslationKey } from "@/constants/translations";
 import type { ChatMessage } from "@/types";
+import { PlanCard } from "./PlanCard";
 
 interface ChatBubbleProps {
   message: ChatMessage;
   isRTL: boolean;
-  t: (key: any) => string;
+  t: (key: TranslationKey) => string;
   onReport?: (messageId: string) => void;
 }
 
@@ -16,6 +19,8 @@ export function ChatBubble({ message, isRTL, t, onReport }: ChatBubbleProps) {
   const styles = useThemedStyles(makeStyles);
   const isUser = message.isUser;
   const [showReportButton, setShowReportButton] = useState(false);
+  // A finished plan gets the full width: PlanCard is a card, not a bubble.
+  const isPlan = !isUser && !!message.plan;
 
   // Format timestamp
   const formatTime = (isoString: string) => {
@@ -59,33 +64,40 @@ export function ChatBubble({ message, isRTL, t, onReport }: ChatBubbleProps) {
       style={[
         styles.container,
         isUser ? styles.userContainer : styles.botContainer,
+        isPlan && styles.planContainer,
         isRTL && (isUser ? styles.userContainerRTL : styles.botContainerRTL),
       ]}
     >
       {!isUser && (
-        <View style={styles.avatarContainer}>
+        <View style={[styles.avatarContainer, isRTL && styles.avatarContainerRTL]}>
           <View style={styles.botAvatar}>
-            <Text style={styles.avatarText}>AI</Text>
+            <Feather name="compass" size={14} color={colors.ink} />
           </View>
         </View>
       )}
       <View style={styles.bubbleWrapper}>
         <Pressable
           onLongPress={handleLongPress}
-          style={[
-            styles.bubble,
-            isUser ? styles.userBubble : styles.botBubble,
-          ]}
+          style={
+            isPlan
+              ? undefined
+              : [styles.bubble, isUser ? styles.userBubble : styles.botBubble,
+                 isRTL && (isUser ? styles.userBubbleRTL : styles.botBubbleRTL)]
+          }
         >
-          <Text
-            style={[
-              styles.text,
-              isUser ? styles.userText : styles.botText,
-              isRTL && styles.textRTL,
-            ]}
-          >
-            {message.text}
-          </Text>
+          {message.plan && !isUser ? (
+            <PlanCard plan={message.plan} isRTL={isRTL} t={t} />
+          ) : (
+            <Text
+              style={[
+                styles.text,
+                isUser ? styles.userText : styles.botText,
+                isRTL && styles.textRTL,
+              ]}
+            >
+              {message.text}
+            </Text>
+          )}
         </Pressable>
 
         <View style={styles.bottomRow}>
@@ -118,6 +130,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     maxWidth: "85%",
     flexDirection: "row",
   },
+  planContainer: {
+    maxWidth: "100%",
+  },
   userContainer: {
     alignSelf: "flex-end",
   },
@@ -136,6 +151,11 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     marginRight: 8,
     marginTop: 4,
   },
+  // row-reverse puts the avatar on the right, so the gap has to move with it.
+  avatarContainerRTL: {
+    marginRight: 0,
+    marginLeft: 8,
+  },
   botAvatar: {
     width: 28,
     height: 28,
@@ -143,11 +163,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     backgroundColor: colors.primary.DEFAULT,
     justifyContent: "center",
     alignItems: "center",
-  },
-  avatarText: {
-    color: colors.ink,
-    fontSize: 12,
-    fontFamily: fonts.bold,
   },
   bubbleWrapper: {
     flex: 1,
@@ -157,24 +172,25 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     paddingHorizontal: 15,
     borderRadius: 20,
   },
-  // Ink rather than green: green is reserved for prices and primary actions.
+  // Ink rather than lime: lime is a fill for chips and the send button, and
+  // white on it is unreadable anyway.
   userBubble: {
     backgroundColor: colors.ink,
     borderBottomRightRadius: 6,
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+  },
+  userBubbleRTL: {
+    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 6,
   },
   botBubble: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: colors.surface.DEFAULT,
     borderBottomLeftRadius: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  botBubbleRTL: {
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 6,
   },
   text: {
     fontSize: 14,
@@ -217,14 +233,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   reportButton: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    backgroundColor: "#FEE2E2",
+    backgroundColor: colors.chip,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#DC2626",
   },
   reportButtonText: {
     fontSize: 11,
-    color: "#DC2626",
+    color: colors.signOut,
     fontFamily: fonts.semibold,
   },
 });

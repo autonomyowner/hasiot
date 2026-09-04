@@ -115,43 +115,50 @@ export function useLodgings(type?: Lodging["type"]) {
 }
 
 /**
- * Hook to get destinations (attractions) from Convex
+ * Everything on the home screen that is not somewhere to sleep: attractions,
+ * tours and events, in one list.
+ *
+ * One unfiltered query rather than one per type. The public set is ~56 rows and
+ * the server already caps and filters it, so three subscriptions to show three
+ * kinds side by side would cost more than the whole table. `kind` is carried
+ * through so the screen's chips can narrow the pool without another round trip.
  */
-export function useDestinations(featured?: boolean) {
-  const listings = useQuery(api.listings.queries.listListings, {
-    type: "attraction",
-  });
+export function useDestinations() {
+  const listings = useQuery(api.listings.queries.listListings, {});
 
   const destinations = listings
-    ? listings.map((l) => ({
-        id: l._id,
-        name: l.name_en,
-        nameAr: l.name_ar,
-        subtitle: l.category,
-        subtitleAr: l.category_ar || l.category,
-        // Carried so the home filter can narrow destinations by place; the
-        // subtitle above is the category, not a location.
-        city: l.city,
-        image: l.images?.[0] || "",
-        featured: (l.rating || 0) >= 4.5,
-        // Carried so a tapped destination can open the same detail sheet as a
-        // hotel or a restaurant instead of being a dead end.
-        images: l.images || [],
-        description: l.description_en || "",
-        descriptionAr: l.description_ar || "",
-        rating: l.rating || 0,
-        owner_id: l.ownerId || null,
-        details: toDetails(l),
-      }))
+    ? listings
+        .filter(
+          (l) => l.type === "attraction" || l.type === "tour" || l.type === "event"
+        )
+        .map((l) => ({
+          id: l._id,
+          name: l.name_en,
+          nameAr: l.name_ar,
+          subtitle: l.category,
+          subtitleAr: l.category_ar || l.category,
+          // Which of the three this is, so the home chips can filter locally.
+          kind: l.type as "attraction" | "tour" | "event",
+          // Carried so the home filter can narrow destinations by place; the
+          // subtitle above is the category, not a location.
+          city: l.city,
+          image: l.images?.[0] || "",
+          // Carried so a tapped destination can open the same detail sheet as a
+          // hotel or a restaurant instead of being a dead end.
+          images: l.images || [],
+          description: l.description_en || "",
+          descriptionAr: l.description_ar || "",
+          rating: l.rating || 0,
+          // The tie-break behind `rating` when the home screen picks its
+          // featured five: 5.0 from one review is not better than 4.8 from forty.
+          reviewCount: l.reviewCount || 0,
+          owner_id: l.ownerId || null,
+          details: toDetails(l),
+        }))
     : [];
 
-  const filtered =
-    featured !== undefined
-      ? destinations.filter((d) => d.featured === featured)
-      : destinations;
-
   return {
-    destinations: filtered,
+    destinations,
     isLoading: listings === undefined,
     isUsingMockData: false,
   };

@@ -26,8 +26,9 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { useCities, useHomeData } from "@/hooks/useConvexData";
 import {
   SearchBar,
-  CategoryCard,
+  FilterChip,
   FilterSheet,
+  PressableScale,
   EMPTY_FILTERS,
   activeFilterCount,
   type HomeFilters,
@@ -41,6 +42,10 @@ import {
   HOME_CARD_GAP,
   HOME_CARD_WIDTH,
   HOME_CONTAINER_PADDING,
+  HOME_RAIL_CARD_HEIGHT,
+  HOME_RAIL_CARD_WIDTH,
+  HOME_RAIL_GAP,
+  HOME_STAY_BANNER_HEIGHT,
   TAB_BAR_CLEARANCE,
 } from "@/constants/layout";
 import { generatedImages } from "@/assets/images/generated";
@@ -48,6 +53,7 @@ import {
   ListingDetailSheet,
   type DetailItem,
 } from "@/components/listing/ListingDetailSheet";
+import type { TranslationKey } from "@/constants/translations";
 import type { Lodging } from "@/types";
 import type { TabKey } from "@/app/(tabs)/_layout";
 
@@ -56,6 +62,23 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const CARD_GAP = HOME_CARD_GAP;
 const CONTAINER_PADDING = HOME_CONTAINER_PADDING;
 const CARD_WIDTH = HOME_CARD_WIDTH;
+
+// What the destination chips filter on. "all" is not a kind any row carries,
+// which is why it lives in the chip union and not in this one.
+type DestinationKind = "attraction" | "tour" | "event";
+type KindChip = "all" | DestinationKind;
+
+// Chip order, and the key each kind reads under — "Places" rather than
+// "Attractions" is a decision that belongs in the translations, not here.
+const KIND_CHIPS: { key: DestinationKind; labelKey: TranslationKey }[] = [
+  { key: "attraction", labelKey: "attractions" },
+  { key: "tour", labelKey: "tours" },
+  { key: "event", labelKey: "events" },
+];
+
+// How many cards the featured rail holds. Small on purpose: past five the rail
+// stops being a selection and becomes the grid again, sideways.
+const FEATURED_COUNT = 5;
 
 interface HomeScreenContentProps {
   onNavigateToTab?: (key: TabKey) => void;
@@ -77,16 +100,15 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
     setTimeout(() => setRefreshing(false), 800);
   };
 
-  // Bundled AI-generated imagery — no network fetch, renders instantly.
-  const categoryCards = [
-    {
-      id: "lodging",
-      title: t("discoverLodging"),
-      subtitle: t("lodging"),
-      image: generatedImages.catLodging,
-      tabKey: "lodging" as const,
-    },
-  ];
+  // Read at render rather than memoised: it is one call to Date, and a value
+  // cached for the life of the screen would still say "good morning" at dinner.
+  const hour = new Date().getHours();
+  const greetingKey: TranslationKey =
+    hour < 12
+      ? "morningGreeting"
+      : hour < 17
+        ? "afternoonGreeting"
+        : "eveningGreeting";
 
   // Get data from Convex with fallback to mock data
   const { lodgings, destinations: allDestinations, isLoading } = useHomeData();
@@ -95,6 +117,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
   const [filters, setFilters] = useState<HomeFilters>(EMPTY_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);
   const filterCount = activeFilterCount(filters);
+  const [kind, setKind] = useState<KindChip>("all");
 
   // Filters narrow the whole screen, not just the search results — otherwise
   // setting one and then clearing the query would silently drop it.
@@ -111,13 +134,18 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
 
   // A destination has no type or price of its own, so those two filters
   // exclude destinations entirely rather than matching everything: asking for
-  // "$$ hotels" and being shown a set of parks is not a filter working.
+  // "$$ hotels" and being shown a set of parks is not a filter working. The
+  // kind chips are a separate axis and narrow only this half.
   const destinations = useMemo(
     () =>
       filters.type || filters.price
         ? []
-        : allDestinations.filter((item) => !filters.city || item.city === filters.city),
-    [allDestinations, filters]
+        : allDestinations.filter(
+            (item) =>
+              (!filters.city || item.city === filters.city) &&
+              (kind === "all" || item.kind === kind)
+          ),
+    [allDestinations, filters, kind]
   );
 
   // Only the lodging types actually present, so the sheet never offers a
@@ -127,8 +155,39 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
     [lodgings]
   );
 
-  const featuredItems = destinations.filter((d) => d.featured);
-  const moreDestinations = destinations.filter((d) => !d.featured);
+  // Same rule for the kind chips, off the unfiltered pool: which kinds exist
+  // is a fact about the data, not about what is currently selected.
+  const kindChips = useMemo<{ key: KindChip; labelKey: TranslationKey }[]>(() => {
+    const present = new Set(allDestinations.map((item) => item.kind));
+    return [
+      { key: "all", labelKey: "all" },
+      ...KIND_CHIPS.filter((chip) => present.has(chip.key)),
+    ];
+  }, [allDestinations]);
+
+  // Featured is the best of what is on screen, not a flag on the row. It used
+  // to be `rating >= 4.5`, and those ratings are seed data due to be cleared —
+  // the day that lands, a threshold empties the rail while ranking still fills
+  // it. Review count breaks the tie so 5.0 from one review does not outrank
+  // 4.8 from forty, and the index keeps the sort stable under any engine.
+  const { featured, rest } = useMemo(() => {
+    const top = destinations
+      .map((dest, index) => ({ dest, index }))
+      .sort(
+        (a, b) =>
+          b.dest.rating - a.dest.rating ||
+          b.dest.reviewCount - a.dest.reviewCount ||
+          a.index - b.index
+      )
+      .slice(0, FEATURED_COUNT)
+      .map((entry) => entry.dest);
+
+    const picked = new Set(top.map((dest) => dest.id));
+    return {
+      featured: top,
+      rest: destinations.filter((dest) => !picked.has(dest.id)),
+    };
+  }, [destinations]);
 
   // One results view for a query, for a set of filters, or for both. The
   // lists arriving here are already filtered, so this only applies the text
@@ -250,6 +309,43 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           />
         }
       >
+        {/* Greeting and the filter toggle. Inside the ScrollView rather than
+            pinned above it: this is an opening line, not a chrome bar, and it
+            should leave the screen as soon as there is content to read. */}
+        <Animated.View
+          entering={FadeInDown.duration(600)}
+          style={[styles.topBar, isRTL && styles.topBarRTL]}
+        >
+          <View style={[styles.topBarText, isRTL && styles.topBarTextRTL]}>
+            <Text style={[styles.greeting, isRTL && styles.textRTL]}>
+              {t(greetingKey)}
+            </Text>
+            <Text style={[styles.topBarTitle, isRTL && styles.textRTL]}>
+              {t("exploreAlAhsa")}
+            </Text>
+          </View>
+          {/* Out of the search pill and up here, where it reads as a control
+              over the whole screen rather than over the query. Active, it
+              carries the count instead of the icon — ink on lime, never white. */}
+          <Pressable
+            onPress={() => setFilterOpen(true)}
+            style={[
+              styles.filterToggle,
+              filterCount > 0 && styles.filterToggleActive,
+            ]}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={t("filters")}
+            accessibilityState={{ expanded: filterCount > 0 }}
+          >
+            {filterCount > 0 ? (
+              <Text style={styles.filterToggleCount}>{filterCount}</Text>
+            ) : (
+              <Feather name="sliders" size={18} color={colors.ink} />
+            )}
+          </Pressable>
+        </Animated.View>
+
         {/* Mini-hero header: bundled oasis imagery with the brand block
             overlaid, the inspiration's "text over landscape" opening. */}
         <Animated.View
@@ -288,22 +384,42 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           style={styles.searchContainer}
         >
           <SearchBar
-            placeholder={t("searchPlaceholder")}
+            label={t("whereTo")}
+            placeholder={t("searchHint")}
             value={searchQuery}
             onChangeText={setSearchQuery}
             isRTL={isRTL}
-            onFilterPress={() => setFilterOpen(true)}
-            filterCount={filterCount}
           />
         </Animated.View>
 
         {/* Everything below the search bar is data-driven, so the skeleton
-            covers all of it: the category rail and both destination grids, at
-            their own dimensions rather than as a stack of list cards. */}
+            covers all of it: the kind chips, the featured rail, the stay
+            banner and the grid, at their own dimensions rather than as a stack
+            of list cards. */}
         <SkeletonFade
           loading={isLoading}
           skeleton={<SkeletonHomeSections isRTL={isRTL} />}
         >
+        {/* Above the fork, so the same chips narrow the browse view and the
+            destination half of the results. */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[
+            styles.kindChips,
+            isRTL && styles.kindChipsRTL,
+          ]}
+        >
+          {(isRTL ? [...kindChips].reverse() : kindChips).map((chip) => (
+            <FilterChip
+              key={chip.key}
+              label={t(chip.labelKey)}
+              selected={kind === chip.key}
+              onPress={() => setKind(chip.key)}
+            />
+          ))}
+        </ScrollView>
+
         {searchResults ? (
           <View style={styles.searchResultsContainer}>
             {searchResults.total === 0 ? (
@@ -374,119 +490,143 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           </View>
         ) : (
           <>
-            {/* Category Cards. These sections used to drop in one after another;
-                SkeletonFade now cross-fades the lot, and a slide underneath a
-                fading placeholder only fights it. */}
-        <View style={styles.section}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={[
-              styles.categoryCardsContainer,
-              isRTL && styles.categoryCardsContainerRTL,
-            ]}
-          >
-            {(isRTL ? [...categoryCards].reverse() : categoryCards).map(
-              (card) => (
-                <CategoryCard
-                  key={card.id}
-                  title={card.title}
-                  subtitle={card.subtitle}
-                  imageUrl={card.image}
-                  onPress={() => onNavigateToTab?.(card.tabKey)}
-                  isRTL={isRTL}
-                />
-              )
+            {/* Featured. Hidden outright when the pool is empty rather than
+                headed over nothing — the grid below owns the empty state. */}
+            {featured.length > 0 && (
+              <>
+                <View style={styles.sectionHead}>
+                  <Text style={[styles.sectionEyebrow, isRTL && styles.textRTL]}>
+                    {t("handpicked")}
+                  </Text>
+                  <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>
+                    {t("featuredDestinations")}
+                  </Text>
+                </View>
+
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  snapToInterval={HOME_RAIL_CARD_WIDTH + HOME_RAIL_GAP}
+                  decelerationRate="fast"
+                  contentContainerStyle={[styles.rail, isRTL && styles.railRTL]}
+                >
+                  {(isRTL ? [...featured].reverse() : featured).map((dest) => (
+                    <FeaturedCard
+                      key={dest.id}
+                      name={getLocalizedText(dest.name, dest.nameAr, language)}
+                      subtitle={getLocalizedText(
+                        dest.subtitle,
+                        dest.subtitleAr,
+                        language
+                      )}
+                      city={dest.city}
+                      image={dest.image}
+                      rating={dest.rating}
+                      isRTL={isRTL}
+                      onPress={() => setSelected(destinationDetail(dest))}
+                    />
+                  ))}
+                </ScrollView>
+              </>
             )}
-          </ScrollView>
-        </View>
 
-        {/* Featured Destinations - 2 Column Grid */}
-        <View style={styles.section}>
-          <View style={[styles.sectionHeader, isRTL && styles.sectionHeaderRTL]}>
-            <Text
-              style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
-            >
-              {t("featuredDestinations")}
-            </Text>
-          </View>
+            {/* The one route out of this screen. It replaces the category rail
+                that used to sit here with a single card in it — a rail of one
+                scrolls nowhere and reads as a loading failure. Only under
+                "All": under a kind chip it would advertise the one thing the
+                chip just excluded. */}
+            {kind === "all" && (
+              <View style={styles.bannerWrapper}>
+                <PressableScale
+                  style={styles.banner}
+                  onPress={() => onNavigateToTab?.("lodging")}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("findYourStay")}
+                >
+                  <Image
+                    source={generatedImages.catLodging}
+                    style={styles.bannerImage}
+                    contentFit="cover"
+                    transition={300}
+                  />
+                  {/* Sideways scrim, weighted behind the text — so the stops
+                      flip with the row rather than the photograph. */}
+                  <LinearGradient
+                    colors={
+                      isRTL
+                        ? ["rgba(31,29,23,0.10)", "rgba(31,29,23,0.78)"]
+                        : ["rgba(31,29,23,0.78)", "rgba(31,29,23,0.10)"]
+                    }
+                    start={{ x: 0, y: 0.5 }}
+                    end={{ x: 1, y: 0.5 }}
+                    style={styles.bannerGradient}
+                  />
+                  <View style={[styles.bannerRow, isRTL && styles.bannerRowRTL]}>
+                    <View style={[styles.bannerText, isRTL && styles.bannerTextRTL]}>
+                      <Text style={[styles.bannerEyebrow, isRTL && styles.textRTL]}>
+                        {t("lodging")}
+                      </Text>
+                      <Text style={[styles.bannerTitle, isRTL && styles.textRTL]}>
+                        {t("findYourStay")}
+                      </Text>
+                      <Text style={[styles.bannerSub, isRTL && styles.textRTL]}>
+                        {t("stayBannerSub")}
+                      </Text>
+                    </View>
+                    <View style={styles.bannerArrow}>
+                      <Feather
+                        name={isRTL ? "arrow-left" : "arrow-right"}
+                        size={18}
+                        color={colors.ink}
+                      />
+                    </View>
+                  </View>
+                </PressableScale>
+              </View>
+            )}
 
-          {featuredItems.length > 0 ? (
-            <View style={[styles.gridContainer, isRTL && styles.gridContainerRTL]}>
-              {featuredItems.map((dest, index) => (
-                <DestinationGridCard
-                  key={dest.id}
-                  name={getLocalizedText(dest.name, dest.nameAr, language)}
-                  subtitle={getLocalizedText(
-                    dest.subtitle,
-                    dest.subtitleAr,
-                    language
-                  )}
-                  image={dest.image}
-                  rating={dest.rating}
-                  isRTL={isRTL}
-                  isTall={index % 3 === 0}
-                  onPress={() => setSelected(destinationDetail(dest))}
-                />
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyStateContainer}>
-              <Text style={[styles.emptyStateTitle, isRTL && styles.textRTL]}>
-                {t("emptyDestinationsTitle")}
-              </Text>
-              <Text style={[styles.emptyStateMessage, isRTL && styles.textRTL]}>
-                {t("emptyDestinationsMessage")}
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* More Destinations - 2 Column Grid */}
-        <View style={styles.section}>
-          <View style={[styles.sectionHeader, isRTL && styles.sectionHeaderRTL]}>
-            <Text
-              style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}
-            >
-              {t("moreDestinations")}
-            </Text>
-          </View>
-
-          {moreDestinations.length > 0 ? (
-            <View style={[styles.gridContainer, isRTL && styles.gridContainerRTL]}>
-              {moreDestinations.map((dest, index) => (
-                <DestinationGridCard
-                  key={dest.id}
-                  name={getLocalizedText(dest.name, dest.nameAr, language)}
-                  subtitle={getLocalizedText(
-                    dest.subtitle,
-                    dest.subtitleAr,
-                    language
-                  )}
-                  image={dest.image}
-                  rating={dest.rating}
-                  isRTL={isRTL}
-                  isTall={index % 3 === 1}
-                  onPress={() => setSelected(destinationDetail(dest))}
-                />
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyStateContainer}>
-              <Text style={[styles.emptyStateTitle, isRTL && styles.textRTL]}>
-                {t("emptyDestinationsTitle")}
-              </Text>
-              <Text style={[styles.emptyStateMessage, isRTL && styles.textRTL]}>
-                {t("emptyDestinationsMessage")}
+            {/* Everything the rail did not take. */}
+            <View style={styles.sectionHead}>
+              <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>
+                {t("moreDestinations")}
               </Text>
             </View>
-          )}
-        </View>
 
-        {/* Bottom Spacing */}
-        <View style={styles.bottomSpacing} />
+            {rest.length > 0 ? (
+              <View style={[styles.gridContainer, isRTL && styles.gridContainerRTL]}>
+                {rest.map((dest, index) => (
+                  <DestinationGridCard
+                    key={dest.id}
+                    name={getLocalizedText(dest.name, dest.nameAr, language)}
+                    subtitle={getLocalizedText(
+                      dest.subtitle,
+                      dest.subtitleAr,
+                      language
+                    )}
+                    image={dest.image}
+                    rating={dest.rating}
+                    isRTL={isRTL}
+                    isTall={index % 3 === 1}
+                    onPress={() => setSelected(destinationDetail(dest))}
+                  />
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyStateContainer}>
+                <Text style={[styles.emptyStateTitle, isRTL && styles.textRTL]}>
+                  {t("emptyDestinationsTitle")}
+                </Text>
+                <Text style={[styles.emptyStateMessage, isRTL && styles.textRTL]}>
+                  {t("emptyDestinationsMessage")}
+                </Text>
+              </View>
+            )}
           </>
         )}
+
+        {/* Clears the docked tab bar — the results view needs it as much as
+            the grid does. */}
+        <View style={styles.bottomSpacing} />
         </SkeletonFade>
       </Animated.ScrollView>
 
@@ -558,6 +698,95 @@ function SearchResultItem({ name, subtitle, image, isRTL, index, onPress }: Sear
         </View>
       </AnimatedPressable>
     </Animated.View>
+  );
+}
+
+interface FeaturedCardProps {
+  name: string;
+  subtitle: string;
+  city: string;
+  image: string;
+  rating?: number;
+  isRTL: boolean;
+  onPress?: () => void;
+}
+
+/** The rail card: the grid card's caption grammar, one size up, plus a place. */
+function FeaturedCard({
+  name,
+  subtitle,
+  city,
+  image,
+  rating,
+  isRTL,
+  onPress,
+}: FeaturedCardProps) {
+  const styles = useThemedStyles(makeStyles);
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+  };
+
+  return (
+    // Same wrapper/card split as the grid — see the note on `gridCardWrapper`.
+    <View style={styles.railCardWrapper}>
+      <AnimatedPressable
+        style={[styles.railCard, animatedStyle]}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        accessibilityRole="button"
+        accessibilityLabel={`${name}, ${subtitle}, ${city}`}
+      >
+        <Image
+          source={image ? { uri: image } : undefined}
+          style={styles.railCardImage}
+          contentFit="cover"
+          transition={300}
+        />
+        <CaptionScrim tall />
+
+        {/* No pill rather than "0.0": an unreviewed place is not a bad one. */}
+        {rating != null && rating > 0 && (
+          <View style={[styles.gridCardRating, isRTL && styles.gridCardRatingRTL]}>
+            <Feather name="star" size={11} color={colors.warm} />
+            <Text style={styles.gridCardRatingText}>{rating.toFixed(1)}</Text>
+          </View>
+        )}
+
+        <View style={[styles.railCaption, isRTL && styles.railCaptionRTL]}>
+          <View style={styles.gridCardChip}>
+            <Text style={styles.gridCardChipText} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          </View>
+          <Text
+            style={[styles.railCardName, isRTL && styles.textRTL]}
+            numberOfLines={2}
+          >
+            {name}
+          </Text>
+          <View style={[styles.railCityRow, isRTL && styles.railCityRowRTL]}>
+            <Feather name="map-pin" size={12} color="#FFFFFF" />
+            <Text
+              style={[styles.railCity, isRTL && styles.textRTL]}
+              numberOfLines={1}
+            >
+              {city}
+            </Text>
+          </View>
+        </View>
+      </AnimatedPressable>
+    </View>
   );
 }
 
@@ -653,11 +882,62 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: CONTAINER_PADDING,
+    paddingTop: 8,
+  },
+  topBarRTL: {
+    flexDirection: "row-reverse",
+  },
+  topBarText: {
+    flex: 1,
+  },
+  topBarTextRTL: {
+    alignItems: "flex-end",
+  },
+  greeting: {
+    fontSize: 11,
+    fontFamily: fonts.semibold,
+    color: colors.onSurface.muted,
+    letterSpacing: 2,
+    textTransform: "uppercase",
+  },
+  topBarTitle: {
+    fontSize: 30,
+    lineHeight: 34,
+    fontFamily: fonts.serif,
+    color: colors.ink,
+    letterSpacing: -0.3,
+  },
+  filterToggle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.surface.DEFAULT,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+  },
+  // The lime fill is the "on" state, so the hairline that outlined the empty
+  // button would only muddy its edge.
+  filterToggleActive: {
+    backgroundColor: colors.primary.DEFAULT,
+    borderWidth: 0,
+  },
+  filterToggleCount: {
+    fontSize: 14,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
+  },
   hero: {
     marginHorizontal: CONTAINER_PADDING,
-    marginTop: 12,
-    height: 176,
-    borderRadius: 24,
+    marginTop: 14,
+    height: 190,
+    borderRadius: 28,
     overflow: "hidden",
     backgroundColor: colors.sand,
   },
@@ -713,42 +993,169 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   textRTL: {
     textAlign: "right",
   },
-  rowRTL: {
-    flexDirection: "row-reverse",
-  },
   // Pulled up over the hero's bottom edge so the pill floats over the image.
   searchContainer: {
-    paddingHorizontal: CONTAINER_PADDING + 14,
-    marginTop: -26,
-    paddingBottom: 4,
+    paddingHorizontal: CONTAINER_PADDING + 12,
+    marginTop: -30,
   },
-  section: {
+  kindChips: {
+    paddingHorizontal: CONTAINER_PADDING,
+    marginTop: 18,
+  },
+  kindChipsRTL: {
+    flexDirection: "row-reverse",
+  },
+  // Every section opens the same way: an optional eyebrow, then a serif title.
+  sectionHead: {
+    paddingHorizontal: CONTAINER_PADDING,
+    marginTop: 24,
+    marginBottom: 14,
+  },
+  sectionEyebrow: {
+    fontSize: 11,
+    fontFamily: fonts.semibold,
+    color: colors.primary.deep,
+    letterSpacing: 2,
+    textTransform: "uppercase",
+  },
+  sectionTitle: {
+    fontSize: 26,
+    fontFamily: fonts.serif,
+    color: colors.ink,
+    letterSpacing: -0.3,
+  },
+  rail: {
+    paddingHorizontal: CONTAINER_PADDING,
+    gap: HOME_RAIL_GAP,
+  },
+  railRTL: {
+    flexDirection: "row-reverse",
+  },
+  railCardWrapper: {
+    width: HOME_RAIL_CARD_WIDTH,
+    height: HOME_RAIL_CARD_HEIGHT,
+    borderRadius: 28,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  railCard: {
+    flex: 1,
+    borderRadius: 28,
+    overflow: "hidden",
+    backgroundColor: colors.sand,
+  },
+  railCardImage: {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    backgroundColor: colors.sand,
+  },
+  railCaption: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 16,
+    alignItems: "flex-start",
+  },
+  railCaptionRTL: {
+    alignItems: "flex-end",
+  },
+  railCardName: {
+    alignSelf: "stretch",
+    marginTop: 8,
+    fontSize: 22,
+    lineHeight: 28,
+    fontFamily: fonts.serif,
+    color: "#FFFFFF",
+    letterSpacing: -0.2,
+    textShadowColor: "rgba(0, 0, 0, 0.35)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
+  },
+  railCityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 5,
+  },
+  railCityRowRTL: {
+    flexDirection: "row-reverse",
+  },
+  railCity: {
+    fontSize: 12.5,
+    fontFamily: fonts.medium,
+    color: "rgba(255, 255, 255, 0.9)",
+  },
+  bannerWrapper: {
+    marginHorizontal: CONTAINER_PADDING,
     marginTop: 20,
+    borderRadius: 24,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
-  sectionHeader: {
+  banner: {
+    height: HOME_STAY_BANNER_HEIGHT,
+    borderRadius: 24,
+    overflow: "hidden",
+    backgroundColor: colors.sand,
+  },
+  bannerImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  bannerGradient: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  bannerRow: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: CONTAINER_PADDING,
-    marginBottom: 12,
+    // Gap rather than a margin on the arrow: it is the same 12 on whichever
+    // side the row runs, so RTL needs no variant of its own.
+    gap: 12,
+    padding: 18,
   },
-  sectionHeaderRTL: {
+  bannerRowRTL: {
     flexDirection: "row-reverse",
   },
-  sectionTitle: {
-    fontSize: 18,
+  bannerText: {
+    flex: 1,
+    alignItems: "flex-start",
+  },
+  bannerTextRTL: {
+    alignItems: "flex-end",
+  },
+  bannerEyebrow: {
+    fontSize: 10.5,
     fontFamily: fonts.semibold,
-    color: colors.ink,
+    color: colors.hostingAccent,
+    letterSpacing: 1.5,
+    textTransform: "uppercase",
+  },
+  bannerTitle: {
+    fontSize: 24,
+    fontFamily: fonts.serif,
+    color: "#FFFFFF",
     letterSpacing: -0.2,
   },
-  sectionTitleRTL: {
-    textAlign: "right",
+  bannerSub: {
+    fontSize: 12.5,
+    fontFamily: fonts.regular,
+    color: "rgba(255, 255, 255, 0.88)",
   },
-  categoryCardsContainer: {
-    paddingHorizontal: CONTAINER_PADDING,
-  },
-  categoryCardsContainerRTL: {
-    flexDirection: "row-reverse",
+  bannerArrow: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primary.DEFAULT,
   },
   gridContainer: {
     flexDirection: "row",
@@ -877,31 +1284,31 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     marginBottom: 24,
   },
   resultSectionTitle: {
-    fontSize: 18,
-    fontFamily: fonts.semibold,
+    fontSize: 22,
+    fontFamily: fonts.serif,
     color: colors.ink,
+    letterSpacing: -0.3,
     marginBottom: 12,
   },
+  // A hairline instead of a shadow: a results list is a stack of rows, and a
+  // dozen shadows on the cream ground read as fog rather than as depth.
   searchResultItem: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: colors.surface.DEFAULT,
     borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
     padding: 10,
     marginBottom: 10,
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
   },
   searchResultItemRTL: {
     flexDirection: "row-reverse",
   },
   searchResultImage: {
-    width: 62,
-    height: 62,
-    borderRadius: 14,
+    width: 64,
+    height: 64,
+    borderRadius: 16,
     backgroundColor: colors.sand,
   },
   searchResultContent: {
@@ -930,10 +1337,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 13,
     fontFamily: fonts.regular,
     color: colors.onSurface.muted,
-  },
-  loadingContainer: {
-    paddingTop: 40,
-    alignItems: "center",
   },
   emptyStateContainer: {
     paddingHorizontal: 24,

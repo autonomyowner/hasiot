@@ -192,6 +192,10 @@ export interface ChatMessage {
   text: string;
   isUser: boolean;
   timestamp: string;
+  /** Set only on a finished plan, and rendered as a PlanCard. `text` keeps the
+   *  flattened copy because the conversation history sent back to the AI is
+   *  plain text. */
+  plan?: { itinerary: string; tips?: string; budget?: string };
 }
 
 // Filter Types

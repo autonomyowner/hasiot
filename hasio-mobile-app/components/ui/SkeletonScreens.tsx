@@ -2,11 +2,13 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { colors } from "@/constants/colors";
 import {
-  CATEGORY_CARD_HEIGHT,
-  CATEGORY_CARD_WIDTH,
   HOME_CARD_GAP,
   HOME_CARD_WIDTH,
   HOME_CONTAINER_PADDING,
+  HOME_RAIL_CARD_HEIGHT,
+  HOME_RAIL_CARD_WIDTH,
+  HOME_RAIL_GAP,
+  HOME_STAY_BANNER_HEIGHT,
   LIST_CONTAINER_PADDING,
   MOMENT_CARD_WIDTH,
 } from "@/constants/layout";
@@ -116,13 +118,31 @@ export function SkeletonList({
 function SkeletonSectionHeader({
   seed,
   isRTL,
+  eyebrow = false,
 }: {
   seed: number;
   isRTL: boolean;
+  /** Featured opens with a small uppercase line above its title. */
+  eyebrow?: boolean;
 }) {
+  // A column, not a row: the eyebrow stacks over the title. SkeletonLine
+  // aligns its own bar, so the block needs no RTL variant of its own.
   return (
-    <View style={[styles.sectionHeader, isRTL && styles.rowReverse]}>
-      <SkeletonLine width={150} box={22} bar={16} phase={sweepPhase(seed)} />
+    <View style={styles.sectionHeader}>
+      {eyebrow && (
+        <SkeletonLine
+          width={110}
+          box={12}
+          isRTL={isRTL}
+          phase={sweepPhase(seed)}
+        />
+      )}
+      <SkeletonLine
+        width={210}
+        box={26}
+        isRTL={isRTL}
+        phase={sweepPhase(seed + 1)}
+      />
     </View>
   );
 }
@@ -140,7 +160,7 @@ function SkeletonDestinationGrid({
     <View style={[styles.grid, isRTL && styles.rowReverse]}>
       {heights.map((height, index) => (
         <View key={index} style={[styles.gridCard, { height }]}>
-          <Skeleton radius={24} phase={sweepPhase(seed + index)} style={styles.gridCardFill} />
+          <Skeleton radius={24} phase={sweepPhase(seed + index)} style={styles.cardFill} />
         </View>
       ))}
     </View>
@@ -148,41 +168,47 @@ function SkeletonDestinationGrid({
 }
 
 /**
- * The home screen below its header and search bar: the category rail, then the
- * two destination grids. `DestinationGridCard` alternates a tall card in on
- * every third position, which is why the heights below are uneven.
+ * The home screen below its search bar: the kind chips, the featured rail, the
+ * stay banner, then the "more" grid. `DestinationGridCard` alternates a tall
+ * card in on every third position, which is why the heights below are uneven.
  */
 export function SkeletonHomeSections({ isRTL = false }: { isRTL?: boolean }) {
   return (
     <View>
-      <View style={styles.section}>
-        <View style={[styles.categoryRail, isRTL && styles.rowReverse]}>
-          {[0, 1].map((index) => (
-            <Skeleton
-              key={index}
-              radius={24}
-              phase={sweepPhase(index)}
-              style={styles.categoryCard}
-            />
-          ))}
-        </View>
+      {/* Kind chips — "All" plus whichever kinds the data holds. */}
+      <View style={[styles.chipRow, isRTL && styles.rowReverse]}>
+        {[56, 72, 64, 68].map((width, index) => (
+          <SkeletonPill
+            key={index}
+            width={width}
+            height={36}
+            phase={sweepPhase(index)}
+          />
+        ))}
       </View>
 
-      {/* Featured destinations — tall card at index % 3 === 0. */}
-      <View style={styles.section}>
-        <SkeletonSectionHeader seed={2} isRTL={isRTL} />
-        <SkeletonDestinationGrid
-          heights={[260, 210, 210, 260]}
-          seed={4}
-          isRTL={isRTL}
-        />
+      {/* Featured — eyebrow over a serif title, then the snapping rail. */}
+      <SkeletonSectionHeader seed={4} isRTL={isRTL} eyebrow />
+      <View style={[styles.rail, isRTL && styles.rowReverse]}>
+        {[0, 1].map((index) => (
+          <View key={index} style={styles.railCard}>
+            <Skeleton
+              radius={28}
+              phase={sweepPhase(6 + index)}
+              style={styles.cardFill}
+            />
+          </View>
+        ))}
+      </View>
+
+      {/* The stay banner. */}
+      <View style={styles.banner}>
+        <Skeleton radius={24} phase={sweepPhase(8)} style={styles.cardFill} />
       </View>
 
       {/* More destinations — tall card at index % 3 === 1. */}
-      <View style={styles.section}>
-        <SkeletonSectionHeader seed={8} isRTL={isRTL} />
-        <SkeletonDestinationGrid heights={[210, 260]} seed={10} isRTL={isRTL} />
-      </View>
+      <SkeletonSectionHeader seed={9} isRTL={isRTL} />
+      <SkeletonDestinationGrid heights={[210, 260]} seed={11} isRTL={isRTL} />
     </View>
   );
 }
@@ -325,25 +351,47 @@ const styles = StyleSheet.create({
   },
 
   // --- Home screen ---
-  section: {
-    marginTop: 20,
+  // The chip rail, at the gutter and stride the real FilterChip row uses.
+  chipRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: HOME_CONTAINER_PADDING,
+    marginTop: 18,
   },
   sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
     paddingHorizontal: HOME_CONTAINER_PADDING,
-    marginBottom: 12,
+    marginTop: 24,
+    marginBottom: 14,
   },
-  categoryRail: {
+  rail: {
     flexDirection: "row",
+    gap: HOME_RAIL_GAP,
     paddingHorizontal: HOME_CONTAINER_PADDING,
+    // The rail scrolls in the real screen; here the second card is only ever
+    // half seen, and without this it widens the whole scroll view.
+    overflow: "hidden",
   },
-  // CategoryCard.
-  categoryCard: {
-    width: CATEGORY_CARD_WIDTH,
-    height: CATEGORY_CARD_HEIGHT,
-    marginRight: 16,
+  // Same wrapper/shadow split as the grid cards below.
+  railCard: {
+    width: HOME_RAIL_CARD_WIDTH,
+    height: HOME_RAIL_CARD_HEIGHT,
+    borderRadius: 28,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  banner: {
+    height: HOME_STAY_BANNER_HEIGHT,
+    marginHorizontal: HOME_CONTAINER_PADDING,
+    marginTop: 20,
+    borderRadius: 24,
+    shadowColor: colors.ink,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
   },
   grid: {
     flexDirection: "row",
@@ -363,7 +411,7 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 4,
   },
-  gridCardFill: {
+  cardFill: {
     width: "100%",
     height: "100%",
   },

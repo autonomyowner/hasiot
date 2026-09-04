@@ -35,6 +35,14 @@ export const TAB_BAR_MARGIN = 0;
 // did — content ends against the bar's hairline rather than under a shadow.
 export const TAB_BAR_CLEARANCE = TAB_BAR_HEIGHT + 12;
 
+// Home screen featured rail card (shared with SkeletonHomeSections).
+export const HOME_RAIL_CARD_WIDTH = 240;
+export const HOME_RAIL_CARD_HEIGHT = 300;
+// Gap between rail cards, and with the width above the rail's snap stride.
+export const HOME_RAIL_GAP = 12;
+// The "find your stay" banner that closes the featured rail.
+export const HOME_STAY_BANNER_HEIGHT = 120;
+
 // Home screen category rail card (shared with SkeletonHomeSections).
 export const CATEGORY_CARD_WIDTH = 300;
 export const CATEGORY_CARD_HEIGHT = 180;
