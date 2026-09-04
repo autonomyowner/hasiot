@@ -220,3 +220,32 @@ describe("recomputeListingRating", () => {
     expect(listing?.rating).toBeUndefined();
   });
 });
+
+describe("the seeded-rating sweep", () => {
+  it("clears invented scores but leaves earned ones alone", async () => {
+    const t = makeT();
+    const guestId = await seedUser(t, {});
+    const seeded = await seedHotel(t, { name_en: "Seeded" });
+    const reviewed = await seedHotel(t, { name_en: "Reviewed" });
+
+    await t.run(async (ctx) => {
+      // A fabricated score, with nothing behind it.
+      await ctx.db.patch(seeded, { rating: 4.8 });
+      // A real one.
+      const user = (await ctx.db.get(guestId))!;
+      await addReviewForUser(ctx, user, { listingId: reviewed, rating: 3 });
+      // The sweep is `recomputeListingRating` over every listing.
+      for (const listing of await ctx.db.query("listings").collect()) {
+        await recomputeListingRating(ctx, listing._id);
+      }
+    });
+
+    const after = await t.run(async (ctx) => ({
+      seeded: await ctx.db.get(seeded),
+      reviewed: await ctx.db.get(reviewed),
+    }));
+
+    expect(after.seeded?.rating).toBeUndefined();
+    expect(after.reviewed?.rating).toBe(3);
+  });
+});

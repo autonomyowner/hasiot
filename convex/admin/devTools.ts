@@ -203,3 +203,40 @@ export const backfillUserSearchText = internalMutation({
     return { patched, scanned: users.length };
   },
 });
+
+/**
+ * Clear ratings that no review ever produced.
+ *
+ * The seeded Al-Ahsa catalogue shipped with an invented score on almost every
+ * listing (3.7 to 4.9) and `reviewCount` unset — decoration, not data. Left in
+ * place, the first genuine review would turn a fabricated 4.8 into a real 3.0
+ * and look like a bug rather than the truth arriving.
+ *
+ * Safe to run repeatedly: it recomputes from the reviews that exist, so a
+ * listing with real reviews keeps its real average.
+ */
+export const clearSeededRatings = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const listings = await ctx.db.query("listings").collect();
+    let cleared = 0;
+
+    for (const listing of listings) {
+      const reviews = await ctx.db
+        .query("reviews")
+        .withIndex("by_listingId", (q) => q.eq("listingId", listing._id))
+        .take(1);
+
+      if (reviews.length === 0 && listing.rating !== undefined) {
+        await ctx.db.patch(listing._id, {
+          rating: undefined,
+          reviewCount: undefined,
+          updatedAt: Date.now(),
+        });
+        cleared += 1;
+      }
+    }
+
+    return { scanned: listings.length, cleared };
+  },
+});
