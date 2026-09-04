@@ -232,11 +232,7 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
       keyboardVerticalOffset={0}
     >
       <ScreenGradient />
-      <View
-        ref={innerRef}
-        onLayout={keyboardOnLayout}
-        style={[styles.inner, { paddingTop: insets.top, paddingBottom: androidKeyboardHeight }]}
-      >
+      <View style={[styles.inner, { paddingTop: insets.top }]}>
         {/* Header */}
         <View style={[styles.header, isRTL && styles.headerRTL]}>
           <View style={[styles.headerText, isRTL && styles.headerTextRTL]}>
@@ -337,7 +333,23 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
           )}
         </ScrollView>
 
-        {/* Input Area */}
+        {/* Input Area.
+            The keyboard overlap is measured on THIS view rather than on the
+            screen, and that is the whole fix. Measuring the outer container
+            asked "how much of the screen is covered", which inside a PagerView
+            on an edge-to-edge window came back as nothing — so the composer sat
+            under the keyboard while the screen believed it was clear. Measuring
+            the composer asks the only question that matters: how much of the
+            box the guest is typing into is hidden.
+
+            The padding goes inside the measured view's own box, so it moves the
+            row without moving the frame — which is what stops it oscillating
+            between covered and clear. */}
+        <View
+          ref={innerRef}
+          onLayout={keyboardOnLayout}
+          style={[styles.inputDock, { paddingBottom: androidKeyboardHeight }]}
+        >
         <Animated.View style={[styles.inputContainer, inputClearanceStyle]}>
           <View style={styles.inputPill}>
           <TextInput
@@ -370,6 +382,7 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
             )}
           </Pressable>
         </Animated.View>
+        </View>
 
       </View>
     </KeyboardAvoidingView>
@@ -667,6 +680,11 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: colors.primary.deep,
+  },
+  // The measured view. Opaque, because the space its padding opens up sits
+  // over the chat while the keyboard is on its way in.
+  inputDock: {
+    backgroundColor: colors.background,
   },
   inputContainer: {
     flexDirection: "row",
