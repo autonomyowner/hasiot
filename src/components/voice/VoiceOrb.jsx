@@ -1,14 +1,17 @@
 import { useEffect, useRef } from 'react'
 
 /**
- * The animated orb. A single full-quad fragment shader — no three.js, which would
- * cost more than the rest of the landing page put together.
+ * The orb — a glossy iridescent sphere, not a flat disc.
  *
- * Audio drives it through `getLevel`, a function polled once per frame rather than a
+ * The look comes from three things layered in one fragment shader: a reconstructed
+ * sphere normal so light behaves like it is wrapping a ball, a fresnel rim that
+ * carries most of the colour, and a slow internal swirl sampled in surface space so
+ * it reads as liquid under glass rather than a texture pasted on front.
+ *
+ * Audio arrives through `getLevel`, polled once per frame rather than passed as a
  * prop, so the orb never re-renders while the level changes sixty times a second.
- * React state here would thrash the whole tree.
  *
- * Falls back to a CSS-only orb if WebGL is unavailable — the widget must still work.
+ * Falls back to a CSS sphere if WebGL is unavailable — the widget must still work.
  */
 
 const VERT = `
@@ -17,7 +20,7 @@ void main() { gl_Position = vec4(aPos, 0.0, 1.0); }
 `
 
 const FRAG = `
-precision mediump float;
+precision highp float;
 
 uniform vec2  uRes;
 uniform float uTime;
@@ -42,7 +45,7 @@ float fbm(vec2 p) {
   float a = 0.5;
   for (int i = 0; i < 5; i++) {
     v += a * noise(p);
-    p *= 2.02;
+    p = p * 2.03 + vec2(1.7, 9.2);
     a *= 0.5;
   }
   return v;
@@ -51,44 +54,57 @@ float fbm(vec2 p) {
 void main() {
   vec2 p = (gl_FragCoord.xy - 0.5 * uRes) / min(uRes.x, uRes.y);
 
-  float t = uTime * mix(1.0, 0.25, uCalm);
+  float t = uTime * mix(1.0, 0.22, uCalm);
   float level = uLevel;
 
-  // Domain warp — this is what stops it reading as a pulsing circle and starts it
-  // reading as something with a surface.
-  vec2 q = vec2(fbm(p * 2.2 + vec2(0.0, t * 0.18)),
-                fbm(p * 2.2 + vec2(5.2, 1.3) - t * 0.14));
-  float n = fbm(p * 2.6 + q * (1.1 + level * 0.9) + t * 0.08);
+  // The sphere swells slightly with the voice, and breathes when idle.
+  float breathe = sin(t * 0.55) * 0.006 * (1.0 - uCalm);
+  float R = 0.335 + uOpen * 0.02 + breathe + level * 0.028;
 
   float r = length(p);
+  float d = r / R;
 
-  // The rim breathes on its own and swells with the voice.
-  float breathe = sin(t * 0.7) * 0.012 * (1.0 - uCalm);
-  float radius = 0.30 + uOpen * 0.06 + breathe + level * 0.075 + (n - 0.5) * (0.05 + level * 0.06);
+  // Reconstructed sphere normal — this is what makes light wrap instead of sit flat.
+  float z = sqrt(max(0.0, 1.0 - d * d));
+  vec3 N = normalize(vec3(p / max(R, 0.0001), z));
+  vec3 V = vec3(0.0, 0.0, 1.0);
 
-  float core = smoothstep(radius, radius - 0.20, r);
-  float rim  = smoothstep(radius + 0.015, radius - 0.045, r) - core * 0.55;
-  float halo = exp(-max(r - radius, 0.0) * 7.0) * (0.32 + level * 0.55);
+  float fres = pow(1.0 - max(dot(N, V), 0.0), 2.6);
 
-  vec3 deep = vec3(0.016, 0.208, 0.153);
-  vec3 green = vec3(0.051, 0.478, 0.373);
-  vec3 mint = vec3(0.361, 0.918, 0.702);
-  vec3 gold = vec3(0.906, 0.729, 0.435);
+  // Internal swirl, sampled in surface space so it wraps with the sphere.
+  vec2 sp = N.xy * (1.35 + N.z * 0.55);
+  vec2 warp = vec2(fbm(sp * 2.1 + vec2(0.0, t * 0.13)),
+                   fbm(sp * 2.1 + vec2(4.7, 2.1) - t * 0.11));
+  float swirl = fbm(sp * 2.8 + warp * (1.5 + level * 1.1) + t * 0.07);
 
-  float grad = clamp(r / max(radius, 0.001), 0.0, 1.0);
-  vec3 col = mix(deep, green, smoothstep(0.0, 0.75, grad + (n - 0.5) * 0.5));
-  col = mix(col, mint, smoothstep(0.55, 1.05, grad + n * 0.35) * (0.55 + level * 0.45));
+  // Palette: near-black core, teal through cyan, violet at the grazing edge.
+  vec3 core   = vec3(0.016, 0.043, 0.075);
+  vec3 teal   = vec3(0.043, 0.463, 0.435);
+  vec3 cyan   = vec3(0.322, 0.886, 0.902);
+  vec3 violet = vec3(0.502, 0.404, 0.925);
 
-  // Gold only where the noise peaks, and only when there is voice — it should read
-  // as light catching a surface, not as a second colour in the palette.
-  col += gold * smoothstep(0.72, 0.96, n) * (0.10 + level * 0.55) * core;
+  vec3 col = core;
+  col = mix(col, teal, smoothstep(0.12, 0.85, swirl) * (0.42 + level * 0.35));
+  col = mix(col, cyan, smoothstep(0.55, 0.98, swirl + fres * 0.55) * (0.5 + level * 0.4));
 
-  col += mint * rim * (0.35 + level * 0.5);
-  col += mix(green, mint, 0.5) * halo * 0.85;
+  // Rim: the brightest thing on screen, and where the violet lives.
+  vec3 rimCol = mix(cyan, violet, 0.35 + swirl * 0.45);
+  col += rimCol * fres * (1.15 + level * 1.35);
 
-  float alpha = clamp(core * 0.98 + rim * 0.75 + halo * 0.6, 0.0, 1.0);
-  alpha *= uOpen;
+  // A single specular highlight, upper-left, to sell the glass.
+  vec3 L = normalize(vec3(-0.45, 0.62, 0.75));
+  float spec = pow(max(dot(reflect(-L, N), V), 0.0), 26.0);
+  col += vec3(0.85, 0.95, 1.0) * spec * 0.5;
 
+  // Contact shadow at the lower edge keeps it from floating.
+  col *= mix(1.0, 0.55, smoothstep(0.25, 1.0, -N.y) * 0.6);
+
+  float body = smoothstep(1.005, 0.985, d);
+  float halo = exp(-max(d - 1.0, 0.0) * 5.2) * (0.30 + level * 0.62);
+
+  col += mix(cyan, violet, 0.4) * halo * 0.55;
+
+  float alpha = clamp(body + halo * 0.75, 0.0, 1.0) * uOpen;
   gl_FragColor = vec4(col * alpha, alpha);
 }
 `
@@ -107,8 +123,6 @@ function compile(gl, type, src) {
 
 export default function VoiceOrb({ getLevel, open = true, className = '' }) {
   const canvasRef = useRef(null)
-  const failedRef = useRef(false)
-  // Read through refs so a changing level never re-renders React.
   const levelRef = useRef(getLevel)
   const openRef = useRef(open)
   levelRef.current = getLevel
@@ -118,9 +132,12 @@ export default function VoiceOrb({ getLevel, open = true, className = '' }) {
     const canvas = canvasRef.current
     if (!canvas) return
 
-    const gl = canvas.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false })
+    const gl = canvas.getContext('webgl', {
+      alpha: true,
+      premultipliedAlpha: true,
+      antialias: false,
+    })
     if (!gl) {
-      failedRef.current = true
       canvas.classList.add('is-fallback')
       return
     }
@@ -137,6 +154,7 @@ export default function VoiceOrb({ getLevel, open = true, className = '' }) {
     gl.attachShader(prog, fs)
     gl.linkProgram(prog)
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      console.warn('[VoiceOrb] link failed:', gl.getProgramInfoLog(prog))
       canvas.classList.add('is-fallback')
       return
     }
@@ -182,10 +200,9 @@ export default function VoiceOrb({ getLevel, open = true, className = '' }) {
       resize()
 
       const raw = levelRef.current ? levelRef.current() : 0
-      // Fast attack, slow release — matches how a voice actually reads, and stops
-      // the orb strobing on consonants.
       const target = Math.min(1, Math.max(0, raw))
-      smooth += (target - smooth) * (target > smooth ? 0.35 : 0.08)
+      // Fast attack, slow release — stops the orb strobing on consonants.
+      smooth += (target - smooth) * (target > smooth ? 0.35 : 0.07)
       openSmooth += ((openRef.current ? 1 : 0) - openSmooth) * 0.08
 
       gl.uniform2f(uRes, canvas.width, canvas.height)
@@ -200,7 +217,7 @@ export default function VoiceOrb({ getLevel, open = true, className = '' }) {
       raf = requestAnimationFrame(frame)
     }
 
-    // Pause when the tab is hidden — an idle GPU loop on a landing page is rude.
+    // An idle GPU loop behind a hidden tab is rude.
     const onVisibility = () => {
       if (document.hidden) {
         running = false

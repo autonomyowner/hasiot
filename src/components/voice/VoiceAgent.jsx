@@ -1,16 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import VoiceOrb from './VoiceOrb'
+import Waveform from './Waveform'
 import './voice-agent.css'
 
 /**
  * أبشر — the Hasio voice agent.
  *
  * The ElevenLabs SDK is imported dynamically on first launch, never at module scope.
- * The landing page ships ~75 kB gzip and that is deliberate (see CLAUDE.md); an
- * anonymous visitor who never clicks the orb must not pay for the voice stack.
+ * The landing page ships ~75 kB gzip and that is deliberate (see CLAUDE.md); a visitor
+ * who never opens the agent must not pay for the voice stack.
  *
- * Auth is the public agent id alone. The API key is server-side only and lives in
- * .env.local for scripts/elevenlabs-agent.mjs — it must never appear in src/.
+ * Auth is the public agent id alone. The API key is server-side only, lives in
+ * .env.local for scripts/elevenlabs-agent.mjs, and must never appear in src/.
  */
 
 const AGENT_ID = import.meta.env.VITE_ELEVENLABS_AGENT_ID
@@ -18,38 +19,33 @@ const AGENT_ID = import.meta.env.VITE_ELEVENLABS_AGENT_ID
 const copy = {
   en: {
     launch: 'Talk to أبشر',
-    launchShort: 'Talk to us',
-    title: 'أبشر',
-    subtitle: 'Hasio’s voice — ask about Al-Ahsa, the app, or the business.',
+    greeting: 'أبشر · Hasio',
+    question: 'How can I help you today?',
     connecting: 'Connecting…',
-    listening: 'Listening',
-    speaking: 'Speaking',
-    idle: 'Tap to start',
-    start: 'Start talking',
-    stop: 'End call',
+    listening: 'Listening…',
+    speaking: 'Speaking…',
+    prompt: 'Ask anything',
+    end: 'End',
     close: 'Close',
-    micDenied:
-      'Microphone access was blocked. Allow it in your browser’s address bar, then try again.',
+    micDenied: 'Microphone blocked. Allow it from your browser’s address bar, then try again.',
     failed: 'Could not connect right now. Please try again in a moment.',
     unconfigured: 'The voice agent is not configured yet.',
-    hint: 'Speak naturally in Arabic or English — you can interrupt any time.',
+    hint: 'Arabic or English — interrupt any time.',
   },
   ar: {
     launch: 'كلّم أبشر',
-    launchShort: 'كلّمنا',
-    title: 'أبشر',
-    subtitle: 'صوت Hasio — اسأل عن الأحساء أو التطبيق أو المشروع.',
+    greeting: 'أبشر · Hasio',
+    question: 'كيف أقدر أساعدك اليوم؟',
     connecting: 'جاري الاتصال…',
-    listening: 'يستمع',
-    speaking: 'يتحدث',
-    idle: 'اضغط للبدء',
-    start: 'ابدأ المحادثة',
-    stop: 'إنهاء',
+    listening: 'أسمعك…',
+    speaking: 'يتحدث…',
+    prompt: 'اسأل عن أي شيء',
+    end: 'إنهاء',
     close: 'إغلاق',
-    micDenied: 'تم حظر الميكروفون. اسمح به من شريط العنوان في المتصفح ثم حاول مرة أخرى.',
+    micDenied: 'الميكروفون محظور. اسمح به من شريط العنوان ثم حاول مرة أخرى.',
     failed: 'تعذّر الاتصال الآن. حاول بعد قليل.',
     unconfigured: 'الوكيل الصوتي غير مهيأ بعد.',
-    hint: 'تكلّم بالعربية أو الإنجليزية — تقدر تقاطعه في أي وقت.',
+    hint: 'بالعربية أو الإنجليزية — تقدر تقاطعه في أي وقت.',
   },
 }
 
@@ -65,11 +61,11 @@ export default function VoiceAgent({ lang = 'en' }) {
   const convoRef = useRef(null)
   const levelRef = useRef(0)
 
-  /** Polled by the orb once per frame. Output while the agent talks, input while it listens. */
+  /** Polled once per frame by the orb and the meter. */
   const getLevel = useCallback(() => levelRef.current, [])
 
-  // Sample the SDK's analyser on a timer rather than inside the render loop, so the
-  // orb keeps drawing smoothly even if a call throws mid-session.
+  // Sample the SDK's analyser outside the draw loop, so the orb keeps animating even
+  // if one of these calls throws mid-session.
   useEffect(() => {
     if (status !== 'connected') {
       levelRef.current = 0
@@ -120,7 +116,12 @@ export default function VoiceAgent({ lang = 'en' }) {
       const { Conversation } = await import('@elevenlabs/client')
       const convo = await Conversation.startSession({
         agentId: AGENT_ID,
-        connectionType: 'webrtc',
+        // websocket, not webrtc: the webrtc path wants a conversation token this
+        // public agent never issues, and fails before onError can say why.
+        // `textOnly: false` is required — without it startSession's return type is
+        // ambiguous and it can hand back a TextConversation with no audio at all.
+        connectionType: 'websocket',
+        textOnly: false,
         onConnect: () => setStatus('connected'),
         onDisconnect: () => {
           setStatus('idle')
@@ -129,14 +130,15 @@ export default function VoiceAgent({ lang = 'en' }) {
         },
         onModeChange: ({ mode }) => setSpeaking(mode === 'speaking'),
         onError: (err) => {
-          console.warn('[VoiceAgent]', err)
+          console.error('[VoiceAgent] session error:', err)
           setError(t.failed)
           setStatus('error')
         },
       })
       convoRef.current = convo
     } catch (err) {
-      console.warn('[VoiceAgent] start failed', err)
+      // Keep the on-screen copy friendly, but never swallow the real reason.
+      console.error('[VoiceAgent] startSession failed:', err?.message || err, err)
       setError(t.failed)
       setStatus('error')
     }
@@ -161,33 +163,26 @@ export default function VoiceAgent({ lang = 'en' }) {
     setOpen(false)
   }, [stop])
 
-  // Escape closes; leaving the page must not leave a call running.
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => {
-      if (e.key === 'Escape') close()
-    }
+    const onKey = (e) => { if (e.key === 'Escape') close() }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
   }, [open, close])
 
+  // Leaving the page must not leave a call running.
   useEffect(() => () => { convoRef.current?.endSession?.().catch(() => {}) }, [])
 
   const live = status === 'connected'
-  const stateLabel =
+  const pillLabel =
     status === 'connecting' ? t.connecting
     : live && speaking ? t.speaking
     : live ? t.listening
-    : t.idle
+    : t.prompt
 
   return (
     <>
-      <button
-        type="button"
-        className="va-launch"
-        onClick={() => setOpen(true)}
-        aria-haspopup="dialog"
-      >
+      <button type="button" className="va-launch" onClick={() => setOpen(true)} aria-haspopup="dialog">
         <span className="va-launch-orb" aria-hidden="true" />
         <span className="va-launch-label">{t.launch}</span>
       </button>
@@ -197,7 +192,7 @@ export default function VoiceAgent({ lang = 'en' }) {
           className="va-overlay"
           role="dialog"
           aria-modal="true"
-          aria-label={t.title}
+          aria-label={t.greeting}
           dir={isRtl ? 'rtl' : 'ltr'}
           onClick={(e) => { if (e.target === e.currentTarget) close() }}
         >
@@ -211,33 +206,26 @@ export default function VoiceAgent({ lang = 'en' }) {
 
             <div className={`va-stage ${live ? 'is-live' : ''}`}>
               <VoiceOrb getLevel={getLevel} open />
-              <div className="va-stage-glow" aria-hidden="true" />
             </div>
 
-            <h2 className="va-title">{t.title}</h2>
-            <p className="va-subtitle">{t.subtitle}</p>
-
-            <p className={`va-state ${live ? 'is-live' : ''}`} aria-live="polite">
-              <span className="va-dot" aria-hidden="true" />
-              {stateLabel}
-            </p>
+            <p className="va-greeting">{t.greeting}</p>
+            <h2 className="va-question">{t.question}</h2>
 
             {error && <p className="va-error">{error}</p>}
 
-            {!live ? (
-              <button
-                type="button"
-                className="va-action"
-                onClick={start}
-                disabled={status === 'connecting'}
-              >
-                {status === 'connecting' ? t.connecting : t.start}
-              </button>
-            ) : (
-              <button type="button" className="va-action is-stop" onClick={stop}>
-                {t.stop}
-              </button>
-            )}
+            <button
+              type="button"
+              className={`va-pill ${live ? 'is-live' : ''}`}
+              onClick={live ? stop : start}
+              disabled={status === 'connecting'}
+              aria-live="polite"
+            >
+              <span className="va-pill-text">{pillLabel}</span>
+              <span className="va-pill-right">
+                {live && <span className="va-pill-end">{t.end}</span>}
+                <Waveform getLevel={getLevel} active={live} />
+              </span>
+            </button>
 
             <p className="va-hint">{t.hint}</p>
           </div>
