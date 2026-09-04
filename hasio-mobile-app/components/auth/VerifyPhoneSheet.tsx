@@ -17,7 +17,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { getAuthErrorKey, sendPhoneOtp, verifyPhoneOtp } from "@/lib/auth";
 import { formatPhoneForDisplay, normalizeKsaPhone } from "@/lib/phone";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { TranslationKey } from "@/constants/translations";
 
@@ -193,7 +193,7 @@ export function VerifyPhoneSheet({ visible, onClose, onVerified }: VerifyPhoneSh
                   accessibilityState={{ disabled: loading || !normalizedPhone, busy: loading }}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color={colors.ink} />
                   ) : (
                     <Text style={styles.submitButtonText}>{t("sendCode")}</Text>
                   )}
@@ -231,7 +231,7 @@ export function VerifyPhoneSheet({ visible, onClose, onVerified }: VerifyPhoneSh
                   accessibilityState={{ disabled: loading, busy: loading }}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color={colors.ink} />
                   ) : (
                     <Text style={styles.submitButtonText}>{t("verifyCode")}</Text>
                   )}
@@ -281,7 +281,7 @@ export function VerifyPhoneSheet({ visible, onClose, onVerified }: VerifyPhoneSh
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(31, 29, 23, 0.35)",
   },
   avoider: {
     position: "absolute",
@@ -289,16 +289,18 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     right: 0,
     bottom: 0,
   },
+  // A sheet is one surface, so a flat fill is right here - with the 28px top
+  // radius every other sheet in the app uses.
   sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: colors.surface.DEFAULT,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     maxHeight: "85%",
   },
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: "#D1D5DB",
+    backgroundColor: colors.border,
     borderRadius: 2,
     alignSelf: "center",
     marginTop: 10,
@@ -310,13 +312,14 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     gap: 16,
   },
   title: {
-    fontSize: 22,
-    fontFamily: fonts.bold,
-    color: "#1A1A1A",
+    fontSize: 26,
+    fontFamily: fonts.serif,
+    color: colors.ink,
   },
   subtitle: {
     fontSize: 15,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     lineHeight: 22,
   },
   textRTL: {
@@ -329,41 +332,44 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   countryChip: {
     height: 52,
     paddingHorizontal: 14,
-    borderRadius: 12,
-    backgroundColor: "#F1EDE6",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderRadius: 14,
+    backgroundColor: colors.chip,
     justifyContent: "center",
     alignItems: "center",
   },
   countryChipText: {
     fontSize: 16,
     fontFamily: fonts.semibold,
-    color: "#404040",
+    color: colors.onSurface.variant,
   },
   input: {
     height: 52,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
+    backgroundColor: colors.surface.variant,
+    borderRadius: 14,
     paddingHorizontal: 16,
     fontSize: 16,
-    color: "#1A1A1A",
+    fontFamily: fonts.regular,
+    color: colors.ink,
     borderWidth: 1,
-    borderColor: "#E5E5E5",
+    borderColor: colors.border,
   },
   phoneInput: {
     flex: 1,
   },
+  // The code is the one display-scale thing on the sheet, so it is set in
+  // the serif like every other headline number in the app.
   codeInput: {
-    fontSize: 24,
-    fontFamily: fonts.bold,
+    fontSize: 28,
+    fontFamily: fonts.serif,
     letterSpacing: 8,
-    height: 60,
+    height: 62,
   },
+  // Lime is a fill; its label is ink. White on it is 1.4:1.
   submitButton: {
+    minHeight: 50,
     height: 52,
-    backgroundColor: "#0D7A5F",
-    borderRadius: 12,
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -372,8 +378,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   submitButtonText: {
     fontSize: 16,
-    fontFamily: fonts.bold,
-    color: "#FFFFFF",
+    fontFamily: fonts.semibold,
+    color: colors.ink,
   },
   linkRow: {
     flexDirection: "row",
@@ -381,13 +387,15 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     alignItems: "center",
     paddingTop: 4,
   },
+  // "Lime as text" is the dark lime tone: the fill itself is 1.3:1 on paper.
   link: {
     fontSize: 15,
-    color: "#0D7A5F",
+    color: colors.primary.deep,
     fontFamily: fonts.semibold,
   },
   linkMuted: {
     fontSize: 15,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
   },
 });
