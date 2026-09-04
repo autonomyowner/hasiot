@@ -28,6 +28,10 @@ export default function DashboardTab({ onNavigate, user }) {
     { label: 'خدمات بانتظار المراجعة', value: stats.pendingServices, tab: 'services' },
     { label: 'حسابات بانتظار الاعتماد', value: stats.pendingBusinesses, tab: 'pending' },
     { label: 'تبليغات مفتوحة', value: stats.pendingReports, tab: 'reports' },
+    // Waiting on the host, not on us. Listed here because an unanswered
+    // request expires after 48 hours and the guest loses the booking, so it is
+    // work someone should chase even though nobody here can approve it.
+    { label: 'طلبات حجز بانتظار المالك', value: stats.awaitingOwner ?? 0, tab: 'bookings' },
     { label: 'حجوزات بانتظار التأكيد', value: stats.pendingBookings, tab: 'bookings' },
   ]
   const openQueues = queues.filter((q) => q.value > 0)
@@ -42,7 +46,11 @@ export default function DashboardTab({ onNavigate, user }) {
   const segments = [
     { label: 'منشورة', value: (byStatus.approved ?? 0) + (byStatus.seed ?? 0), tone: 'ink' },
     { label: 'بانتظار المراجعة', value: byStatus.pending ?? 0, tone: 'gold' },
-    { label: 'مرفوضة', value: byStatus.rejected ?? 0, tone: 'hatch' },
+    {
+      label: 'مرفوضة أو موقوفة',
+      value: (byStatus.rejected ?? 0) + (byStatus.suspended ?? 0),
+      tone: 'hatch',
+    },
   ].filter((seg) => seg.value > 0)
 
   const complete = Math.max(
@@ -72,6 +80,15 @@ export default function DashboardTab({ onNavigate, user }) {
             added={stats.newUsersThisWeek}
           />
           <HeroFigure value={stats.totalBookings} label="حجز" icon="calendar" />
+          {/* Revenue from confirmed and completed stays this month. Confirmed
+              counts because the host is owed it either way — dropping it as
+              stays finish would make the figure fall through the month. */}
+          <HeroFigure
+            value={stats.stayRevenueMonth ?? 0}
+            unit="ر.س"
+            label="إيرادات الشهر"
+            icon="calendar"
+          />
         </div>
       </section>
 
@@ -286,10 +303,13 @@ const ICONS = {
   calendar: <><rect x="4" y="5.5" width="16" height="14" rx="3" stroke="currentColor" strokeWidth="1.6" /><path d="M4 10h16M9 3.5v4M15 3.5v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></>,
 }
 
-function HeroFigure({ value, label, icon, added }) {
+function HeroFigure({ value, label, icon, added, unit }) {
   return (
     <div className="ar-figure">
-      <span className="ar-figure-value">{formatNumber(value)}</span>
+      <span className="ar-figure-value">
+        {formatNumber(value)}
+        {unit ? <span className="ar-figure-unit"> {unit}</span> : null}
+      </span>
       {added > 0 && (
         <span className="ar-figure-delta">+{formatNumber(added)} هذا الأسبوع</span>
       )}
