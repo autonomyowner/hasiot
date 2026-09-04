@@ -1,10 +1,17 @@
 export const colors = {
-  // Primary Colors (Deep Teal - Oasis Water)
+  // Primary Colors (Lime)
+  //
+  // This ramp is LIGHT — the reverse of the deep teal it replaced. Anything
+  // placed on it must be dark: `ink` (#1F1D17) reads 12.1:1 here, white reads
+  // 1.39:1 and is effectively invisible. Used as a text colour on the cream
+  // background it is 1.30:1. See the note in the brand-lime commit.
+  //
+  // Still green, deliberately left alone: `mint` and `hostingAccent` below.
   primary: {
-    DEFAULT: "#0D7A5F",
-    hover: "#0F8B6E",
-    light: "#10966D",
-    dark: "#0A6650",
+    DEFAULT: "#CCE745",
+    hover: "#D1E956",
+    light: "#D4EB60",
+    dark: "#C6E431",
   },
 
   // Accent Colors
@@ -48,7 +55,7 @@ export const colors = {
   divider: "#EDE8DD",
 
   // System Colors
-  success: "#0D7A5F",
+  success: "#CCE745",
   error: "#DC6B5A",
   warning: "#D97706",
   info: "#2563EB",

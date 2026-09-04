@@ -52,8 +52,8 @@ export default function MyServicesScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#0D7A5F"
-            colors={["#0D7A5F"]}
+            tintColor="#CCE745"
+            colors={["#CCE745"]}
           />
         }
       >
@@ -191,8 +191,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderColor: "#E5E5E5",
   },
   filterButtonActive: {
-    backgroundColor: "#0D7A5F",
-    borderColor: "#0D7A5F",
+    backgroundColor: "#CCE745",
+    borderColor: "#CCE745",
   },
   filterText: {
     fontSize: 14,

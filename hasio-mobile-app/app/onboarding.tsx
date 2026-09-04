@@ -243,7 +243,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   languageButtonSelected: {
     backgroundColor: "rgba(13, 122, 95, 0.3)",
-    borderColor: "#0D7A5F",
+    borderColor: "#CCE745",
   },
   languageButtonText: {
     fontSize: 16,

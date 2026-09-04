@@ -395,7 +395,7 @@ export default function PostServiceScreen() {
           {isLoading && (
             <ActivityIndicator
               size="small"
-              color="#0D7A5F"
+              color="#CCE745"
               style={styles.loadingIndicator}
             />
           )}
@@ -477,8 +477,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderColor: "#E5E5E5",
   },
   typeButtonSelected: {
-    backgroundColor: "#0D7A5F",
-    borderColor: "#0D7A5F",
+    backgroundColor: "#CCE745",
+    borderColor: "#CCE745",
   },
   typeButtonText: {
     fontSize: 13,
@@ -499,7 +499,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   imagePickerText: {
     fontSize: 15,
-    color: "#0D7A5F",
+    color: "#CCE745",
     fontFamily: fonts.medium,
   },
   imagesContainer: {

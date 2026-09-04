@@ -242,7 +242,7 @@ export function SettingsScreenContent() {
             style={styles.guestCard}
           >
             <View style={styles.guestIconContainer}>
-              <Feather name="user" size={40} color="#0D7A5F" />
+              <Feather name="user" size={40} color="#CCE745" />
             </View>
             <Text style={[styles.guestTitle, isRTL && styles.textRTL]}>
               {t("guestProfileTitle")}
@@ -1117,13 +1117,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   guestSignInButton: {
     flexDirection: "row",
-    backgroundColor: "#0D7A5F",
+    backgroundColor: "#CCE745",
     borderRadius: 14,
     paddingVertical: 14,
     paddingHorizontal: 28,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0D7A5F",
+    shadowColor: "#CCE745",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

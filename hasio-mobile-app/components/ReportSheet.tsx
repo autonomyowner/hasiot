@@ -291,7 +291,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     gap: 12,
   },
   reasonRowActive: {
-    borderColor: "#0D7A5F",
+    borderColor: "#CCE745",
     backgroundColor: "#F0FAF6",
   },
   radio: {
@@ -304,13 +304,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     justifyContent: "center",
   },
   radioActive: {
-    borderColor: "#0D7A5F",
+    borderColor: "#CCE745",
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#0D7A5F",
+    backgroundColor: "#CCE745",
   },
   reasonLabel: {
     fontSize: 15,
@@ -318,7 +318,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flex: 1,
   },
   reasonLabelActive: {
-    color: "#0D7A5F",
+    color: "#CCE745",
     fontFamily: fonts.semibold,
   },
   detailsInput: {
@@ -334,7 +334,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   submitBtn: {
     marginTop: 16,
-    backgroundColor: "#0D7A5F",
+    backgroundColor: "#CCE745",
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: "center",
