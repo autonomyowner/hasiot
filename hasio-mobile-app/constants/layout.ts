@@ -20,14 +20,20 @@ export const HOME_CARD_WIDTH =
 // Lodging / food / events / moments all share one list gutter.
 export const LIST_CONTAINER_PADDING = 24;
 
-// Floating tab bar. The bar hovers over content (position: absolute), so every
-// scrollable screen must reserve TAB_BAR_HEIGHT + TAB_BAR_MARGIN (plus the
-// bottom safe-area inset and some breathing room) as bottom padding, or its
-// last row hides behind the bar.
-export const TAB_BAR_HEIGHT = 64;
-export const TAB_BAR_MARGIN = 12;
-// Ready-made bottom padding for scroll content (add insets.bottom where available).
-export const TAB_BAR_CLEARANCE = TAB_BAR_HEIGHT + TAB_BAR_MARGIN + 28;
+// Docked tab bar. The bar sits flush with the bottom edge (position: absolute,
+// bottom: 0, full width) and still overlays the content, so every scrollable
+// screen must reserve TAB_BAR_HEIGHT plus the bottom safe-area inset and a
+// little breathing room as bottom padding, or its last row hides behind it.
+// TAB_BAR_HEIGHT is the bar's own content height; the safe-area inset is added
+// as paddingBottom on top of it by the bar itself.
+export const TAB_BAR_HEIGHT = 60;
+// Kept at 0 for the docked bar (it has no horizontal margin and no gap to the
+// screen edge), so callers that still add it are unaffected.
+export const TAB_BAR_MARGIN = 0;
+// Ready-made bottom padding for scroll content (add insets.bottom where
+// available). A docked bar needs less breathing room than the floating pill
+// did — content ends against the bar's hairline rather than under a shadow.
+export const TAB_BAR_CLEARANCE = TAB_BAR_HEIGHT + 12;
 
 // Home screen category rail card (shared with SkeletonHomeSections).
 export const CATEGORY_CARD_WIDTH = 300;

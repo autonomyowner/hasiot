@@ -1,5 +1,5 @@
 import React, { useRef, useCallback } from "react";
-import { View, Text, Pressable, StyleSheet, Platform } from "react-native";
+import { View, Pressable, StyleSheet, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   interpolateColor,
@@ -14,9 +14,12 @@ import Animated, {
 import { Feather } from "@expo/vector-icons";
 import PagerView from "@/components/PagerViewWrapper";
 import type { PagerViewProps } from "react-native-pager-view";
-import { colors } from "@/constants/colors";
-import { TAB_BAR_HEIGHT, TAB_BAR_MARGIN } from "@/constants/layout";
+import { colors, type AppFonts } from "@/constants/colors";
+import { TAB_BAR_HEIGHT } from "@/constants/layout";
 import { BottomBarFade } from "@/components/ui/Gradients";
+import { useThemedStyles } from "@/hooks/useAppFonts";
+import { useLanguage } from "@/hooks/useLanguage";
+import type { TranslationKey } from "@/constants/translations";
 
 // Import screen content components
 import {
@@ -70,18 +73,19 @@ function usePagerScrollHandler(
 // be animated on the UI thread like any other.
 const AnimatedFeather = Animated.createAnimatedComponent(Feather);
 
-// Active icon sits on the lime puck. Lime is a light colour — white on it is
-// 1.39:1, which is why the active icon vanished into the bar — so the icon
-// tints to ink instead: 12.1:1.
+// Active icon and label sit on / beside the lime puck. Lime is a light colour —
+// white on it is 1.39:1, which is why the active icon vanished into the bar —
+// so both tint to ink instead: 12.1:1.
 const ACTIVE_TINT = colors.ink;
-const INACTIVE_TINT = "#A39D8E";
+const INACTIVE_TINT = colors.onSurface.muted;
 
-// The floating bar keeps a minimum gap to the screen edge even on devices that
-// report a 0 bottom inset (iPhone SE, most Androids). On a notched iPhone the
-// full inset pushes the bar above the home indicator.
-const MIN_BAR_BOTTOM_OFFSET = TAB_BAR_MARGIN;
-const PUCK_SIZE = 44;
-const BAR_H_PADDING = 6;
+// The puck is a fixed-size circle behind the ICON only, never behind the label:
+// labels differ in width between languages (and between "Plan" and "المفضلة"),
+// and a fixed size keeps the swipe interpolation simple and identical per tab.
+const PUCK_SIZE = 40;
+const ICON_SIZE = 22;
+const LABEL_SIZE = 11;
+const ICON_LABEL_GAP = 3;
 
 // The tab bar's order is this array's order, and every cross-screen jump is
 // addressed by key (see navigateToTab) rather than by position — an index-based
@@ -96,27 +100,30 @@ export type TabKey =
 interface TabItem {
   key: TabKey;
   icon: keyof typeof Feather.glyphMap;
-  label: string;
+  labelKey: TranslationKey;
 }
 
 // Discovery on the left of home, the guest's own things on the right.
-// Icon-only in the floating bar; labels feed accessibilityLabel.
+// Every tab carries a visible label, translated through `t(labelKey)`, which
+// doubles as its accessibilityLabel — one string, so the two can never drift.
 // Home sits in the middle slot: it is the tab the app opens on and the one
 // the thumb rests over, so it takes the centre of the bar. Everything below
 // derives from this order — HOME_INDEX, the pager's pages, the puck — so
 // reordering here is the whole change.
 const tabs: TabItem[] = [
-  { key: "lodging", icon: "map-pin", label: "Stay" },
-  { key: "planner", icon: "message-circle", label: "Plan" },
-  { key: "home", icon: "home", label: "Home" },
-  { key: "favorites", icon: "heart", label: "Favorites" },
-  { key: "settings", icon: "user", label: "Profile" },
+  { key: "lodging", icon: "map-pin", labelKey: "tabStay" },
+  { key: "planner", icon: "message-circle", labelKey: "tabPlan" },
+  { key: "home", icon: "home", labelKey: "tabHome" },
+  { key: "favorites", icon: "heart", labelKey: "tabFavorites" },
+  { key: "settings", icon: "user", labelKey: "tabProfile" },
 ];
 
 const HOME_INDEX = tabs.findIndex((tab) => tab.key === "home");
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useLanguage();
   const pagerRef = useRef<any>(null);
   const [currentPage, setCurrentPage] = React.useState(HOME_INDEX); // Start at home
   const scrollPosition = useSharedValue(HOME_INDEX);
@@ -215,25 +222,21 @@ export default function TabLayout() {
         </View>
       )}
 
-      {/* Content scrolls under the floating bar, so it dissolves into the page
-          just above it rather than being cut off by the bar's edge. */}
-      <BottomBarFade
-        bottom={Math.max(insets.bottom, MIN_BAR_BOTTOM_OFFSET) + TAB_BAR_HEIGHT}
-      />
+      {/* Content scrolls under the docked bar, so it dissolves into the page
+          just above it rather than being cut off by the bar's edge. The bar is
+          flush with the screen edge, so the fade sits on top of its full
+          height plus the safe-area padding underneath it. */}
+      <BottomBarFade bottom={TAB_BAR_HEIGHT + insets.bottom} />
 
-      {/* Floating tab bar: detached from the screen edges, hovering over the
-          content. Screens reserve TAB_BAR_CLEARANCE bottom padding for it. */}
-      <View
-        style={[
-          styles.tabBar,
-          { bottom: Math.max(insets.bottom, MIN_BAR_BOTTOM_OFFSET) },
-        ]}
-      >
+      {/* Docked tab bar: flush with the bottom edge, full width, hairline top
+          border. Screens reserve TAB_BAR_CLEARANCE + insets.bottom for it. */}
+      <View style={[styles.tabBar, { paddingBottom: insets.bottom }]}>
         {tabs.map((tab, index) => (
           <TabButton
             key={tab.key}
             icon={tab.icon}
-            label={tab.label}
+            label={t(tab.labelKey)}
+            isActive={currentPage === index}
             index={index}
             scrollPosition={scrollPosition}
             onPress={() => handleTabPress(index)}
@@ -247,6 +250,7 @@ export default function TabLayout() {
 interface TabButtonProps {
   icon: keyof typeof Feather.glyphMap;
   label: string;
+  isActive: boolean;
   index: number;
   scrollPosition: SharedValue<number>;
   onPress: () => void;
@@ -255,10 +259,12 @@ interface TabButtonProps {
 function TabButton({
   icon,
   label,
+  isActive,
   index,
   scrollPosition,
   onPress,
 }: TabButtonProps) {
+  const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
 
   const pressStyle = useAnimatedStyle(() => ({
@@ -272,10 +278,9 @@ function TabButton({
   // snapping at the end of it. interpolateColor clamps, so overdrag past the
   // first or last page cannot push the value out of range.
   //
-  // The green circle and the white icon read the SAME distance value, so they
-  // can never disagree: the icon is only ever white while the circle behind it
-  // is visible. (A separately-positioned "puck" could drift out of sync and
-  // leave a white icon on the white bar.)
+  // The lime puck and the ink icon read the SAME distance value, so they can
+  // never disagree. Only the label's *weight* comes from `isActive`, because a
+  // fontFamily cannot be interpolated; its colour animates with everything else.
   const tintStyle = useAnimatedStyle(() => {
     const distance = Math.min(Math.abs(scrollPosition.value - index), 1);
     return {
@@ -312,62 +317,86 @@ function TabButton({
         <Animated.View pointerEvents="none" style={[styles.activeCircle, circleStyle]} />
         {/* No `color` prop: the animated style supplies it, and the prop would
             be a static value competing with the interpolation. */}
-        <AnimatedFeather name={icon} size={22} style={tintStyle} />
+        <AnimatedFeather name={icon} size={ICON_SIZE} style={tintStyle} />
       </View>
+      <Animated.Text
+        numberOfLines={1}
+        style={[
+          styles.label,
+          isActive ? styles.labelActive : styles.labelInactive,
+          tintStyle,
+        ]}
+      >
+        {label}
+      </Animated.Text>
     </AnimatedPressable>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  pagerView: {
-    flex: 1,
-  },
-  page: {
-    flex: 1,
-  },
-  // Floating pill bar. Opaque white (no blur dependency); the hairline border
-  // keeps its edge legible where Android elevation shadows get clipped.
-  tabBar: {
-    position: "absolute",
-    left: TAB_BAR_MARGIN,
-    right: TAB_BAR_MARGIN,
-    height: TAB_BAR_HEIGHT,
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.surface.DEFAULT,
-    borderRadius: 26,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.border,
-    paddingHorizontal: BAR_H_PADDING,
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.14,
-    shadowRadius: 24,
-    elevation: 12,
-  },
-  // minHeight keeps every tap target at the 44pt iOS minimum.
-  tabButton: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    minHeight: 44,
-  },
-  iconWrap: {
-    width: PUCK_SIZE,
-    height: PUCK_SIZE,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  // The green circle behind the active icon; opacity tracks the swipe.
-  activeCircle: {
-    position: "absolute",
-    width: PUCK_SIZE,
-    height: PUCK_SIZE,
-    borderRadius: PUCK_SIZE / 2,
-    backgroundColor: colors.primary.DEFAULT,
-  },
-});
+// Module scope, passed the active font map by useThemedStyles — the labels have
+// to render in Cairo while the app is in Arabic, which a plain module-level
+// StyleSheet.create (evaluated once, at import) could never do.
+const makeStyles = (fonts: AppFonts) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    pagerView: {
+      flex: 1,
+    },
+    page: {
+      flex: 1,
+    },
+    // Docked bar: full width, flush with the bottom edge, no radius. The
+    // hairline top border is what separates it from the content scrolling
+    // underneath; paddingBottom carries the home-indicator inset, so the
+    // bar's own content is always TAB_BAR_HEIGHT tall.
+    tabBar: {
+      position: "absolute",
+      bottom: 0,
+      left: 0,
+      right: 0,
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface.DEFAULT,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.divider,
+    },
+    // Five equal columns; height matches the bar's content height exactly, so
+    // the icon/label pair is centred inside it above the safe-area padding.
+    tabButton: {
+      flex: 1,
+      height: TAB_BAR_HEIGHT,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    iconWrap: {
+      width: PUCK_SIZE,
+      height: PUCK_SIZE,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    // The lime puck behind the active icon; opacity tracks the swipe.
+    // Lime is a fill — the icon on it is ink, never white (1.39:1).
+    activeCircle: {
+      position: "absolute",
+      width: PUCK_SIZE,
+      height: PUCK_SIZE,
+      borderRadius: 999,
+      backgroundColor: colors.primary.DEFAULT,
+    },
+    label: {
+      marginTop: ICON_LABEL_GAP,
+      fontSize: LABEL_SIZE,
+      lineHeight: LABEL_SIZE + 4,
+      includeFontPadding: false,
+      textAlign: "center",
+    },
+    labelActive: {
+      fontFamily: fonts.semibold,
+    },
+    labelInactive: {
+      fontFamily: fonts.medium,
+    },
+  });
