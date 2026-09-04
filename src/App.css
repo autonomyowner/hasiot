@@ -10,6 +10,39 @@ html{scroll-behavior:smooth}
 @keyframes cueSlide{0%{translate:-100% 0}55%,100%{translate:100% 0}}
 @keyframes panelIn{from{opacity:0;translate:0 -10px}to{opacity:1;translate:0 0}}
 
+/* ---- landing typography ----
+   Playpen Sans Arabic carries Latin and Arabic in one family, so the page keeps
+   the same voice across the language toggle instead of swapping typeface. It is
+   scoped here rather than set on :root so the admin panel and sign-in page are
+   untouched; the wrapper is display:contents, so it changes nothing but the
+   inherited tokens. Cairo stays in the stack as the Arabic fallback while the
+   webfont loads (display=swap). */
+.landing-type{
+ --font-display:'Playpen Sans Arabic','Cairo','Outfit',system-ui,sans-serif;
+ --font-heading:var(--font-display);
+ --font-body:var(--font-display);
+ --font-arabic:var(--font-display);
+ font-family:var(--font-display)}
+.landing-type.contents{display:contents}
+
+/* Playfair is a tight-fitting serif, so several headings carried negative
+   tracking. Playpen is a rounded hand with wide sidebearings already — the same
+   values close the letters up into each other, so they are neutralised here
+   rather than edited out of each rule (those values are still right if the face
+   is ever changed back). The hero also needs its 0.85 leading relaxed: Playpen's
+   ascenders and descenders overlap between lines at that setting, and its size
+   pulled from 112px to 92px: Playpen sets much wider than Playfair, so at the
+   original clamp the English headline broke to three lines and collided with the
+   scroll cue on a 720px-tall window. RTL is untouched — .rtl .hero-copy h1 has
+   equal specificity and comes later, so it keeps its own size and leading. The
+   850px override is repeated at this specificity so the mobile size still wins. */
+.landing-type .hero-copy h1{font-size:clamp(54px,6vw,92px);letter-spacing:normal;line-height:.98}
+@media(max-width:850px){.landing-type .hero-copy h1{font-size:54px}}
+.landing-type .badge b,
+.landing-type .place-body h3,
+.landing-type .planner-top b,
+.landing-type .planner-route b{letter-spacing:normal}
+
 .home-redesign{
  --ink:#17241d;--green:#183b2b;--green-deep:#10251a;--paper:#f3f0e7;--gold:#a8842c;
  --muted:#5b6560;--line:rgba(23,36,29,.14);--line-strong:rgba(23,36,29,.26);

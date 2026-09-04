@@ -205,6 +205,11 @@ export default function App() {
   }
 
   return (
+    /* .landing-type re-points the four --font-* tokens at Playpen Sans Arabic for
+       this page only (the admin panel and sign-in keep Playfair/Outfit/Cairo).
+       It is display:contents, so it adds nothing to the layout tree — the
+       tokens simply inherit down into <main>. */
+    <div className="landing-type contents">
     <main className={`home-redesign ${isRtl ? 'rtl' : ''}`} dir={isRtl ? 'rtl' : 'ltr'}>
 
       <a className="skip-link" href="#story">{u.skip}</a>
@@ -391,5 +396,6 @@ export default function App() {
       </footer>
 
     </main>
+    </div>
   )
 }
