@@ -1,160 +1,325 @@
 /*
  * أبشر — the voice agent section.
  *
- * Every selector is prefixed and nothing here is a bare element rule: the landing
- * page's spacing is hand-tuned and a stray `button { }` from this file would fight it.
+ * Every selector is prefixed `.va` and nothing here is a bare element rule: the
+ * landing page's spacing is hand-tuned and a stray `button { }` from this file
+ * would fight it.
  *
- * The band is deliberately dark against the page's paper — the blob is a light
- * source, and it needs a night to be a light source in.
+ * The band is LIT, not dark. Its predecessor was a WebGL blob, which needed a
+ * black band to glow in and so punched a hole through the middle of a page that
+ * is paper from top to bottom. This one is a lightly cooled white studio — a
+ * shade brighter than --paper so it still reads as its own panel against the
+ * quote below it — with a green ribbon sweeping behind the floating chrome.
  */
 
-.voice-section {
+.va {
   position: relative;
-  padding: clamp(4.5rem, 11vw, 8rem) 1.5rem clamp(4rem, 9vw, 6.5rem);
-  background:
-    radial-gradient(75% 55% at 50% 34%, rgba(13, 122, 95, 0.28) 0%, rgba(4, 14, 12, 0) 70%),
-    linear-gradient(180deg, #06120f 0%, #030a09 100%);
-  overflow: hidden;
   isolation: isolate;
+  overflow: hidden;
+  padding: clamp(76px, 9vw, 132px) clamp(22px, 4vw, 40px) clamp(64px, 8vw, 104px);
+  background: linear-gradient(180deg, #fbfaf6 0%, #f6f5ef 52%, #f1f0e8 100%);
+  color: var(--ink);
 }
 
-.voice-inner {
-  max-width: 46rem;
-  margin-inline: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
+/* ---------- the scene ---------- */
+
+.va-scene { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+
+/* The sweeping band. An outsized, rotated, heavily blurred ellipse reads as a
+   curved ribbon of light far more cheaply than an SVG path would, and it scales
+   with the viewport instead of needing a viewBox per breakpoint. */
+.va-ribbon {
+  position: absolute;
+  top: -38%;
+  left: 44%;
+  width: 46%;
+  height: 176%;
+  border-radius: 50%;
+  rotate: 14deg;
+  background: linear-gradient(160deg, rgba(13, 122, 95, 0.62), rgba(13, 122, 95, 0.26) 58%, rgba(13, 122, 95, 0));
+  filter: blur(52px);
+  opacity: 0.9;
+}
+.rtl .va-ribbon { left: auto; right: 44%; rotate: -14deg; }
+
+/* A soft key light from above, which is what stops the flat wash reading as a
+   plain grey rectangle behind the white chips. */
+.va-lift {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(64% 44% at 50% 6%, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0) 70%),
+    radial-gradient(40% 34% at 12% 34%, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 72%);
 }
 
-.voice-eyebrow {
-  margin: 0 0 1rem;
-  font-size: 0.72rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(126, 214, 180, 0.72);
+/* ---------- layout ---------- */
+
+.va-inner { max-width: 1180px; margin-inline: auto; }
+
+/* The ask bubble on one side, the suggestion chips on the other, with the ribbon
+   passing through the gap between them. The waveform is NOT in here — it is one
+   trace centred beneath both, so the section reads as a single agent listening
+   rather than as a stereo meter. */
+.va-stage {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: space-between;
+  gap: clamp(24px, 5vw, 90px);
+  align-items: start;
 }
 
-.voice-title {
-  margin: 0;
-  font-size: clamp(2.1rem, 6vw, 3.4rem);
-  line-height: 1.08;
-  font-weight: 400;
-  letter-spacing: -0.015em;
-  text-wrap: balance;
-  color: #f2fbf7;
+/* ---------- floating chrome ----------
+   One shadow recipe for the bubble and the chips: a hairline contact shadow, a
+   short ambient one, and a long soft cast. Three stops rather than one is what
+   makes them read as floating above the panel instead of stuck onto it. */
+.va-ask,
+.va-chips li {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  box-shadow:
+    0 1px 2px rgba(10, 28, 18, 0.05),
+    0 10px 20px -12px rgba(10, 28, 18, 0.22),
+    0 34px 60px -34px rgba(10, 28, 18, 0.45);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
-/* The name keeps a little more weight — it is a name, not a word. */
-.voice-name {
-  color: #7fe9c2;
-  font-weight: 500;
-}
-
-.voice-body {
-  margin: 1.1rem 0 0;
-  max-width: 34rem;
-  font-size: 1.02rem;
-  line-height: 1.65;
-  color: rgba(194, 219, 209, 0.8);
-}
-
-/* ---------- the blob ---------- */
-
-.voice-stage {
+.va-ask {
   position: relative;
-  width: min(30rem, 82vw);
-  aspect-ratio: 1;
-  margin: clamp(0.5rem, 2vw, 1.25rem) 0 0;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 26px 10px 10px;
+  font-size: clamp(15px, 1.5vw, 19px);
+  color: #4d5a53;
+}
+.rtl .va-ask { padding: 10px 10px 10px 26px; }
+
+/* The speech tail. Rotated square rather than a border triangle so it can carry
+   the bubble's own background and blur without a visible seam. */
+.va-ask::after {
+  content: '';
+  position: absolute;
+  bottom: -7px;
+  inset-inline-start: 46px;
+  width: 18px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  rotate: 45deg;
+  border-radius: 0 0 5px 0;
+  box-shadow: 3px 3px 6px -3px rgba(10, 28, 18, 0.16);
+}
+
+.va-mic {
+  flex: none;
   display: grid;
   place-items: center;
-}
-
-.va-blob {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-
-/* Stand-in when WebGL2 is unavailable — still a glowing body, just not a live one. */
-.va-blob.is-fallback {
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
-  background:
-    radial-gradient(circle at 36% 30%, rgba(215, 255, 240, 0.55) 0%, rgba(215, 255, 240, 0) 34%),
-    radial-gradient(circle at 62% 68%, #23c79a 0%, #0d7a5f 44%, #041a15 100%);
-  box-shadow: 0 0 100px -14px rgba(45, 200, 155, 0.55);
-  animation: voice-breathe 5s ease-in-out infinite;
+  background: var(--color-primary, #0d7a5f);
+  color: #fff;
+  box-shadow: 0 6px 16px -6px rgba(13, 122, 95, 0.7);
+}
+/* (chip 46 − icon 22) is even, so place-items:center lands the svg on whole
+   pixels — on an odd difference it renders at half alpha. */
+.va-mic svg { width: 22px; height: 22px; }
+
+.va-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+.va-chips li {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  padding: 11px 20px;
+  font-size: clamp(13px, 1.15vw, 15px);
+  color: #2b3a33;
+  transition: translate 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* Each chip sits a little further in than the one above, which is what gives the
+   stack its drifting, suggested-not-fixed feel. */
+.va-chips li:nth-child(2) { margin-inline-end: clamp(0px, 3vw, 42px); }
+.va-chips li:nth-child(3) { margin-inline-end: clamp(0px, 1.4vw, 18px); }
+.va-chips li:hover { translate: -4px 0; }
+.rtl .va-chips li:hover { translate: 4px 0; }
+.va-chips svg { flex: none; width: 17px; height: 17px; color: var(--color-primary, #0d7a5f); }
+
+/* ---------- waveforms ---------- */
+
+.va-wave {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(3px, 0.34vw, 5px);
+  height: clamp(84px, 9.5vw, 124px);
+  width: 100%;
+  max-width: 560px;
+  margin: clamp(30px, 4vw, 54px) auto clamp(46px, 6vw, 84px);
 }
 
-@keyframes voice-breathe {
-  0%, 100% { transform: scale(1); }
-  50%      { transform: scale(1.045); }
+/* --h is written per frame from the rAF loop in VoiceSection.jsx; the transition
+   is short enough to smooth the steps without lagging behind a real voice.
+   Fixed width, not flex:1 — stretched to fill they end up ~12px across, and a
+   12px-wide bar with a 999px radius is a dot, not a waveform. Thin is the whole
+   look: past about 4px the trace stops reading as sound. */
+.va-wave i {
+  flex: 0 0 clamp(2px, 0.21vw, 3px);
+  height: var(--h, 24%);
+  min-height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #4fbf95, #0d7a5f);
+  box-shadow: 0 0 12px -2px rgba(23, 177, 132, 0.55);
+  transition: height 0.09s linear;
 }
+
+/* ---------- copy ---------- */
+
+.va-copy { text-align: center; max-width: 42rem; margin-inline: auto; }
+
+.va-eyebrow {
+  margin: 0 0 14px;
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #7b8a82;
+}
+/* Arabic has no uppercase, and letter-spacing that wide breaks its joins. */
+.rtl .va-eyebrow { text-transform: none; letter-spacing: 0.06em; font-size: 12px; }
+
+.va-title {
+  margin: 0;
+  font-size: clamp(40px, 5.4vw, 74px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.va-title em { font-style: normal; color: var(--color-primary, #0d7a5f); }
+.rtl .va-title { line-height: 1.25; letter-spacing: normal; }
+
+.va-tag {
+  margin: 16px 0 0;
+  font-size: clamp(15px, 1.5vw, 18px);
+  color: #55635c;
+}
+
+.va-body {
+  margin: 22px auto 0;
+  max-width: 34rem;
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: var(--muted, #5b6560);
+}
+.rtl .va-body { line-height: 1.95; }
 
 /* ---------- controls ---------- */
 
-.voice-controls {
-  display: flex;
-  flex-direction: column;
+.va-cta {
+  display: inline-flex;
   align-items: center;
-  gap: 0.15rem;
-  margin-top: clamp(0.5rem, 2vw, 1rem);
-}
-
-.voice-cta {
-  padding: 0.9rem 2.3rem;
+  gap: 12px;
+  margin-top: 34px;
+  padding: 14px 30px;
   border: 0;
   border-radius: 999px;
-  background: linear-gradient(180deg, #17b184 0%, #0d7a5f 100%);
-  box-shadow: 0 16px 40px -14px rgba(23, 177, 132, 0.8);
+  background: var(--color-primary, #0d7a5f);
+  box-shadow: 0 14px 32px -14px rgba(13, 122, 95, 0.85);
   font: inherit;
-  font-size: 1rem;
+  font-size: 15px;
   font-weight: 500;
   color: #fff;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.3, 1), box-shadow 0.2s ease, opacity 0.2s ease;
+  transition: translate 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s, background-color 0.25s, opacity 0.2s;
 }
-.voice-cta:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 22px 48px -14px rgba(23, 177, 132, 0.95);
-}
-.voice-cta:disabled { opacity: 0.62; cursor: default; }
-.voice-cta:focus-visible { outline: 2px solid #7fe9c2; outline-offset: 4px; }
+.va-cta:hover:not(:disabled) { translate: 0 -2px; box-shadow: 0 20px 40px -14px rgba(13, 122, 95, 0.95); }
+.va-cta:disabled { opacity: 0.6; cursor: default; }
+.va-cta:focus-visible { outline: 2px solid var(--color-primary, #0d7a5f); outline-offset: 4px; }
 
-.voice-cta.is-live {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+/* In session the button stops being the loud thing on screen — the waveform is. */
+.va-cta.is-live {
+  background: transparent;
+  border: 1px solid rgba(23, 36, 29, 0.28);
   box-shadow: none;
-  color: #e6f6ef;
+  color: var(--ink, #17241d);
 }
-.voice-cta.is-live:hover { background: rgba(255, 255, 255, 0.13); transform: none; }
+.va-cta.is-live:hover { background: rgba(23, 36, 29, 0.06); translate: 0; box-shadow: none; }
+
+.va-cta-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
+}
+.va-cta.is-live .va-cta-dot {
+  background: #d64545;
+  opacity: 1;
+  animation: va-pulse 1.5s ease-in-out infinite;
+}
+@keyframes va-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 
 /* Fixed min-height so the line existing or not never shifts what is under it. */
-.voice-state {
+.va-state {
   min-height: 1.4rem;
-  margin: 0.9rem 0 0;
-  font-size: 0.82rem;
-  letter-spacing: 0.1em;
+  margin: 18px 0 0;
+  font-size: 11px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(126, 214, 180, 0.9);
+  color: var(--color-primary, #0d7a5f);
+}
+.rtl .va-state { text-transform: none; letter-spacing: 0.04em; font-size: 12.5px; }
+
+.va-note {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #8a958f;
 }
 
-.voice-note {
-  margin: 0.35rem 0 0;
-  font-size: 0.8rem;
-  line-height: 1.5;
-  color: rgba(150, 180, 170, 0.55);
+.va-error {
+  margin: 4px auto 0;
+  max-width: 34ch;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #b4402f;
 }
 
-.voice-error {
-  margin: 0.35rem 0 0;
-  max-width: 32ch;
-  font-size: 0.86rem;
-  line-height: 1.5;
-  color: #ffb1a6;
+@media (max-width: 860px) {
+  /* One column: side by side, each half is too narrow for a chip to stay on one
+     line, and the ribbon has no gap left to show through anyway. */
+  .va-stage {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+    gap: 26px;
+    justify-items: center;
+  }
+  .va-ask { align-self: center; }
+  .va-chips { align-items: center; }
+  .va-chips li:nth-child(2),
+  .va-chips li:nth-child(3) { margin-inline-end: 0; }
+  .va-wave { max-width: none; margin-block: 30px 40px; }
+  .va-ribbon { width: 92%; left: 22%; opacity: 0.42; }
+  .rtl .va-ribbon { right: 22%; left: auto; }
+  /* The second, off-centre highlight is sized in percentages, so on a 390px
+     viewport it shrinks into a ~156px oval floating by the left edge and reads
+     as a smudge rather than as light. Only the top key light survives here. */
+  .va-lift {
+    background: radial-gradient(86% 40% at 50% 3%, rgba(255, 255, 255, 0.92), rgba(255, 255, 255, 0) 72%);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .va-blob.is-fallback { animation: none; }
-  .voice-cta { transition: none; }
+  .va-wave i { transition: none; }
+  .va-cta { transition: none; }
+  .va-cta.is-live .va-cta-dot { animation: none; }
 }
