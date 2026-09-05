@@ -73,6 +73,67 @@ export const attachListingImages = internalMutation({
 });
 
 /**
+ * Hide every active listing that has no photograph.
+ *
+ * A card with no image falls back to a flat sand panel, and a wall of those
+ * reads as a broken app rather than a sparse one. Hiding is reversible and
+ * loses nothing: the row keeps its description, coordinates and amenities, so
+ * adding a photo and calling `setListingsActive` brings it straight back.
+ *
+ * Note this can empty a city. Any city whose every listing lacks a photo
+ * disappears from the filter entirely, because `getCities` counts only public
+ * rows — the result names them so the caller can see which.
+ */
+export const deactivateListingsWithoutImages = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const listings = await ctx.db.query("listings").collect();
+    const now = Date.now();
+
+    const hidden: string[] = [];
+    for (const listing of listings) {
+      if (listing.isActive === false) continue;
+      if (listing.images?.length) continue;
+      await ctx.db.patch(listing._id, { isActive: false, updatedAt: now });
+      hidden.push(`${listing.name_en} [${listing.city}]`);
+    }
+
+    // Which cities have nothing visible left.
+    const stillVisible = new Set(
+      listings
+        .filter((l) => l.isActive !== false && l.images?.length)
+        .map((l) => l.city)
+    );
+    const emptied = [...new Set(listings.map((l) => l.city))].filter(
+      (c) => !stillVisible.has(c)
+    );
+
+    return { hidden, emptiedCities: emptied };
+  },
+});
+
+/** The undo for the above, and for anything hidden by hand. */
+export const setListingsActive = internalMutation({
+  args: { names: v.array(v.string()), isActive: v.boolean() },
+  handler: async (ctx, args) => {
+    const listings = await ctx.db.query("listings").collect();
+    const wanted = new Set(args.names);
+    const changed: string[] = [];
+
+    for (const listing of listings) {
+      if (!wanted.has(listing.name_en)) continue;
+      await ctx.db.patch(listing._id, {
+        isActive: args.isActive,
+        updatedAt: Date.now(),
+      });
+      changed.push(listing.name_en);
+    }
+
+    return { changed, missed: args.names.filter((n) => !changed.includes(n)) };
+  },
+});
+
+/**
  * Strip image URLs that no longer resolve.
  *
  * Five of the 64 Unsplash links baked into `seedImages.ts` now 404 — the
