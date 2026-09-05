@@ -753,7 +753,7 @@ export const translations = {
     morningGreeting: "صباح الخير",
     afternoonGreeting: "مساء الخير",
     eveningGreeting: "مساء الخير",
-    heroTagline: "من الواحة إلى الخليج",
+    heroTagline: "من الواحة إلى الساحل",
     lodgingEyebrow: "أقم في الشرقية",
     foodEyebrow: "تذوق الشرقية",
     eventsEyebrow: "يحدث في الشرقية",
