@@ -26,7 +26,7 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import { BackButton, Button } from "@/components/ui";
 import { DestinationCategory } from "@/types";
-import { CITIES, canonicalCity } from "@/constants/cities";
+import { CITIES, canonicalCity, cityCoordinates } from "@/constants/cities";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
@@ -140,6 +140,12 @@ export default function PostDestinationScreen() {
         ...(freshPicks.length > 0 ? await uploadMultipleToConvex(freshPicks) : []),
       ];
 
+      // A canonical key, never free text: the filter groups on this exact
+      // string. The old fallback wrote "Al-Ahsa", which is not one of them.
+      // The coordinate is derived from the same value so the pin and the label
+      // can never disagree.
+      const cityKey = city.trim() || "Al Ahsa";
+
       const payload = {
         type: "attraction",
         name_en: name.trim(),
@@ -148,10 +154,9 @@ export default function PostDestinationScreen() {
         description_en: description.trim() || undefined,
         description_ar: descriptionAr.trim() || undefined,
         address: address.trim() || name.trim(),
-        // A canonical key, never free text: the filter groups on this exact
-        // string. The old fallback wrote "Al-Ahsa", which is not one of them.
-        city: city.trim() || "Al Ahsa",
-        coordinates: { lat: 25.3854, lng: 49.5683 },
+        city: cityKey,
+        // The city centre, not the oasis: this place may be on the coast.
+        coordinates: cityCoordinates(cityKey),
         images: uploadedImages.length > 0 ? uploadedImages : undefined,
       } as const;
 

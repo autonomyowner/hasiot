@@ -399,7 +399,7 @@ export default function App() {
         </div>
         <div className="foot-bottom">
           <span>© 2026 HASIO</span>
-          <span>25°23′N&nbsp;&nbsp;49°35′E&nbsp;&nbsp;·&nbsp;&nbsp;AL-AHSA</span>
+          <span>26°26′N&nbsp;&nbsp;50°06′E&nbsp;&nbsp;·&nbsp;&nbsp;EASTERN PROVINCE</span>
         </div>
       </footer>
 

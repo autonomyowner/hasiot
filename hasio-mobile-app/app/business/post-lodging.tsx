@@ -29,7 +29,7 @@ import { LodgingType } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Feather } from "@expo/vector-icons";
 import { AMENITIES, type AmenityKey } from "@/constants/amenities";
-import { CITIES, canonicalCity } from "@/constants/cities";
+import { CITIES, canonicalCity, cityCoordinates } from "@/constants/cities";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
@@ -207,7 +207,8 @@ export default function PostLodgingScreen() {
         address: neighborhood.trim() || city.trim(),
         city: city.trim(),
         region: neighborhood.trim() || undefined,
-        coordinates: { lat: 25.3854, lng: 49.5683 },
+        // The city centre, not the oasis: this listing may be on the coast.
+        coordinates: cityCoordinates(city),
         priceRange: priceRange.trim() || undefined,
         pricePerNight: nightly,
         currency: nightly !== undefined ? "SAR" : undefined,
