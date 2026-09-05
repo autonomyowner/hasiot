@@ -339,11 +339,24 @@ html{scroll-behavior:smooth}
  .home-nav .join{display:none}
 }
 
+/* The burger takes over at 1000px, not at 850 like the rest of the mobile
+   layout, because the section list outgrew the bar before the layout did: six
+   links plus the wordmark, the language button and the CTA need ~870px of a
+   855px bar, so they wrapped onto two lines and pushed into the wordmark. This
+   is deliberately its own query rather than a change to the 850 block — every
+   other rule there is about the page body, and only the nav needs the earlier
+   switch. The panel is offset by 66px, the height the bar always has while it
+   is open (menuOpen forces .is-stuck). */
+@media(max-width:1000px){
+ .nav-menu{display:none}
+ .nav-toggle{display:grid}
+ .nav-panel{top:66px}
+}
+
 @media(max-width:850px){
  .home-redesign{--nav:64px}
  .home-nav,.home-nav.is-stuck{height:64px}
- .nav-menu{display:none}
- .nav-toggle{display:grid}
+ .nav-panel{top:64px}
  /* One screenful, not a fixed 760px: the copy only fills ~450px on a phone, so
     a taller box was just empty photo pushing the fold down. */
  /* Grid rather than flex so the one in-flow child still stretches to the full

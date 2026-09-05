@@ -1,0 +1,305 @@
+/*
+ * The AR/VR roadmap band.
+ *
+ * Every selector is prefixed `.imx` and nothing here is a bare element rule —
+ * the landing page's spacing is hand-tuned and a stray `h2 { }` from this file
+ * would fight it. The two exceptions are `.eyebrow` and `[data-reveal]`, which
+ * are page-level primitives this section deliberately reuses so the band reads
+ * as part of the same document.
+ *
+ * The band is dark by necessity: it sits over video, and text over video only
+ * survives with a scrim heavy enough to guarantee contrast on the brightest
+ * frame in the clip (here, the mid-day sea aerial around 0:40). The scrim is
+ * therefore sized for that frame, not for the average one.
+ */
+
+.imx {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: #fff;
+  /* A floor colour, so the band is already dark before a single video byte has
+     arrived and the section never flashes paper-on-paper mid-scroll. */
+  background: #06120f;
+  padding: clamp(88px, 10vw, 150px) 0 clamp(72px, 8vw, 118px);
+}
+
+/* ---- background ---- */
+.imx-stage { position: absolute; inset: 0; z-index: -1; }
+
+.imx-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  /* The poster and the first video frame are never quite the same pixel, so the
+     swap is faded rather than cut. .is-live goes on at the same moment the
+     sources are attached; if play() is blocked the poster simply stays. */
+  opacity: 0.78;
+  transition: opacity 1.2s ease;
+}
+.imx-video.is-live { opacity: 0.9; }
+
+/* Two gradients, and they MULTIPLY — that is the whole difficulty of this band.
+   Stacked alphas compose as 1−(1−a)(1−b), so a 0.8 wash under a 0.55 wash is not
+   "fairly dark", it is 0.91, and the footage underneath disappears entirely. The
+   first attempt here did exactly that and rendered a black rectangle.
+   So the two passes divide the frame instead of both covering it:
+     · the inline pass is heavy but ends at 66%, and owns the copy column;
+     · the vertical pass is light, and only lifts contrast at the very top and
+       bottom edges where the band meets paper.
+   Past 66% they no longer overlap, which is what leaves the far side of the
+   frame — the open sea in the closing aerial — actually visible. The same
+   split the concierge panel uses for its photo. */
+.imx-scrim {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to bottom, rgba(4, 14, 12, 0.35) 0%, rgba(4, 14, 12, 0.22) 40%, rgba(4, 14, 12, 0.72) 100%),
+    linear-gradient(to right, rgba(4, 14, 12, 0.82), rgba(4, 14, 12, 0) 66%);
+}
+.rtl .imx-scrim {
+  background:
+    linear-gradient(to bottom, rgba(4, 14, 12, 0.35) 0%, rgba(4, 14, 12, 0.22) 40%, rgba(4, 14, 12, 0.72) 100%),
+    linear-gradient(to left, rgba(4, 14, 12, 0.82), rgba(4, 14, 12, 0) 66%);
+}
+
+/* ---- copy ---- */
+/* Matches .section-shell so this band's text lines up with every other section's
+   left edge; it is redeclared rather than reused because the band itself is
+   full-bleed and only the inner column is constrained. */
+.imx-inner {
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: clamp(22px, 4vw, 40px);
+}
+
+.imx-copy { max-width: 780px; }
+
+.imx-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 22px;
+  padding: 7px 15px 7px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: #e6ece2;
+}
+.rtl .imx-status { padding: 7px 11px 7px 15px; }
+/* The same live dot as the concierge card's "Online" — this is a status, and the
+   page already has a vocabulary for one. */
+.imx-status i {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #58c78f;
+  box-shadow: 0 0 0 3px rgba(88, 199, 143, 0.22);
+}
+
+.imx-copy h2 {
+  font-size: clamp(42px, 5.6vw, 78px);
+  font-weight: 400;
+  line-height: 0.98;
+  margin: 0;
+  text-wrap: balance;
+}
+.imx-copy h2 em { font-style: italic; color: #cfe0d2; }
+/* No true italic exists for the Arabic face — the browser fakes an oblique and
+   it just looks broken. Same reasoning as `.rtl em` on the page proper. */
+.rtl .imx-copy h2 { line-height: 1.24; }
+.rtl .imx-copy h2 em { font-style: normal; }
+
+.imx-body {
+  max-width: 62ch;
+  margin: 28px 0 0;
+  font-size: 15px;
+  line-height: 1.78;
+  color: rgba(255, 255, 255, 0.78);
+}
+.rtl .imx-body { line-height: 1.95; }
+
+.imx-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 34px;
+  padding: 13px 13px 13px 24px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  font-size: 13px;
+  color: #fff;
+  transition: background-color 0.28s, color 0.28s, border-color 0.28s;
+}
+.rtl .imx-cta { padding: 13px 24px 13px 13px; }
+.imx-cta:hover { background: #fff; color: #0f2119; border-color: #fff; }
+/* (chip 34 − icon 18) is even, so place-items:center lands the svg on whole
+   pixels; on an odd difference the arrow renders at half alpha. stroke-width is
+   in viewBox units, so 2.67 at 18px is the same 2px rendered weight as 2.4@20px. */
+.imx-cta span {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+  transition: background-color 0.28s, translate 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.imx-cta span svg { width: 18px; height: 18px; stroke-width: 2.67; }
+.rtl .imx-cta span svg { scale: -1 1; }
+.imx-cta:hover span { background: rgba(15, 33, 25, 0.12); translate: 4px 0; }
+.rtl .imx-cta:hover span { translate: -4px 0; }
+
+/* ---- the three capability notes ----
+   Deliberately the same shape as .values and .app-features: a hairline grid with
+   a gold ordinal. Three feature strips built three different ways would read as
+   three different products. */
+.imx-points {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: clamp(58px, 7vw, 92px);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+.imx-points article {
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 30px 26px 4px;
+  padding-inline-start: 26px;
+}
+.imx-points article:first-child { border-inline-start: 0; padding-inline-start: 0; }
+.imx-points span { font-size: 9px; letter-spacing: 0.16em; color: var(--gold); }
+.imx-points h3 { font-size: 24px; font-weight: 400; margin: 20px 0 9px; }
+.imx-points p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.72;
+  color: rgba(255, 255, 255, 0.66);
+  max-width: 34ch;
+}
+.rtl .imx-points p { line-height: 1.9; }
+
+.imx-note {
+  margin: clamp(46px, 5vw, 68px) 0 0;
+  max-width: 70ch;
+  font-size: 12px;
+  line-height: 1.8;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ---- the headset band ----
+   Paper, not dark: the renders are lit on a warm off-white and belong on the
+   page's own ground. It borrows --paper/--ink/--gold from .home-redesign rather
+   than restating them, so it tracks the landing page's palette. */
+.imx-device {
+  background: var(--paper);
+  color: var(--ink);
+  padding: clamp(72px, 8vw, 116px) 0 clamp(76px, 8.5vw, 124px);
+}
+.imx-device-inner {
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: clamp(22px, 4vw, 40px);
+}
+.imx-device-head { max-width: 640px; }
+.imx-device-head h3 {
+  font-size: clamp(30px, 3.4vw, 46px);
+  font-weight: 400;
+  line-height: 1.06;
+  margin: 0;
+  text-wrap: balance;
+}
+.rtl .imx-device-head h3 { line-height: 1.3; }
+.imx-device-head p {
+  margin: 20px 0 0;
+  max-width: 52ch;
+  font-size: 14.5px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+.rtl .imx-device-head p { line-height: 1.9; }
+
+.imx-views {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(14px, 1.8vw, 24px);
+  margin-top: clamp(42px, 5vw, 68px);
+}
+/* Each render gets a plate of its own. The renders carry a vignette — their
+   corners sit several values below their centre — so dropped straight onto the
+   paper they would show a soft grey square. A rounded, shadowed surface turns
+   that gradient into product lighting inside a frame, which is what the poster
+   plates in the showcase section do too. */
+.imx-views figure {
+  margin: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #efece3;
+  box-shadow: 0 1px 2px #0a1c1214, 0 18px 34px -22px #0a1c1259;
+  transition: translate 0.5s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.5s;
+}
+.imx-views figure:hover {
+  translate: 0 -6px;
+  box-shadow: 0 2px 4px #0a1c1217, 0 40px 64px -34px #0a1c1280;
+}
+/* Square source, square box — the headset is centred in frame with its own
+   margin, so `cover` on a 1:1 box crops nothing. */
+.imx-views img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: cover;
+  transition: scale 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.imx-views figure:hover img { scale: 1.03; }
+
+.imx-device-note {
+  margin: clamp(34px, 4vw, 50px) 0 0;
+  max-width: 62ch;
+  font-size: 11.5px;
+  line-height: 1.75;
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  /* Two up, with the third running full width beneath: three squares side by
+     side on a phone leaves each ~110px, too small to read the wordmark. The
+     wide one is cropped to 4:3, not 16:9 — the headset fills roughly the middle
+     two thirds of its square frame, and 16:9 keeps only the middle 56% of the
+     height, which clips the top of the strap. */
+  .imx-views { grid-template-columns: repeat(2, 1fr); }
+  .imx-views figure:last-child { grid-column: 1 / -1; }
+  .imx-views figure:last-child img { aspect-ratio: 4 / 3; }
+  .imx-device-head p { max-width: none; }
+
+  .imx-points { grid-template-columns: 1fr; border-top: 0; }
+  .imx-points article {
+    border-inline-start: 0;
+    padding-inline-start: 0;
+    padding: 26px 0 22px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  .imx-points p { max-width: none; }
+  /* Portrait phones crop a 2.23:1 clip down to a sliver of its centre and the
+     copy runs the full width, so there is no "far side" to leave clear: the
+     inline pass is dropped and the vertical one carries the contrast alone —
+     which is why it can be a single flat-ish wash here without multiplying
+     into black the way the desktop pair would. */
+  .imx-scrim,
+  .rtl .imx-scrim {
+    background: linear-gradient(to bottom, rgba(4, 14, 12, 0.7), rgba(4, 14, 12, 0.6) 45%, rgba(4, 14, 12, 0.82));
+  }
+}
+
+/* Someone who has asked for less motion never gets the sources attached at all
+   (see ImmersiveSection.jsx), so this only settles the poster's opacity. */
+@media (prefers-reduced-motion: reduce) {
+  .imx-video { opacity: 0.6; transition: none; }
+}
