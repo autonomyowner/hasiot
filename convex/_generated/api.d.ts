@@ -34,6 +34,7 @@ import type * as listings_photoTools from "../listings/photoTools.js";
 import type * as listings_pricing from "../listings/pricing.js";
 import type * as listings_queries from "../listings/queries.js";
 import type * as listings_seedEasternProvince from "../listings/seedEasternProvince.js";
+import type * as listings_seedHotels from "../listings/seedHotels.js";
 import type * as listings_seedImages from "../listings/seedImages.js";
 import type * as moderation_mutations from "../moderation/mutations.js";
 import type * as moderation_queries from "../moderation/queries.js";
@@ -95,6 +96,7 @@ declare const fullApi: ApiFromModules<{
   "listings/pricing": typeof listings_pricing;
   "listings/queries": typeof listings_queries;
   "listings/seedEasternProvince": typeof listings_seedEasternProvince;
+  "listings/seedHotels": typeof listings_seedHotels;
   "listings/seedImages": typeof listings_seedImages;
   "moderation/mutations": typeof moderation_mutations;
   "moderation/queries": typeof moderation_queries;
