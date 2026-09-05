@@ -12,17 +12,34 @@ rather than confident errors.
 
 ## What Hasio is
 
-Hasio is a travel platform for Al-Ahsa, a governorate in the Eastern Province of Saudi
-Arabia. It is a mobile app for iPhone and Android that helps people discover, plan, and
-book a trip to Al-Ahsa. It works fully in both Arabic and English.
+Hasio is a travel platform for the Eastern Province of Saudi Arabia. It is a mobile app for
+iPhone and Android that helps people discover, plan, and book a trip anywhere in the
+province. It works fully in both Arabic and English.
 
-Hasio is focused on Al-Ahsa specifically, not on Saudi Arabia as a whole. That focus is
-the point: it covers one place in real depth rather than the whole country shallowly.
+Hasio is focused on the Eastern Province specifically, not on Saudi Arabia as a whole. That
+focus is the point: it covers one region in real depth rather than the whole country
+shallowly. It started as an Al-Ahsa guide, and Al-Ahsa is still the part it knows best.
 
-The brand is always written and spoken as "Hasio" in English, in both languages. It is
-never written in Arabic script.
+The brand is written as "Hasio" in Latin letters in both languages — that is the logo and
+the written form everywhere. In spoken Arabic it is pronounced هاسيو.
 
-## About Al-Ahsa
+## The cities Hasio covers
+
+Hasio covers thirteen governorates and cities of the Eastern Province: Dammam, Al Khobar,
+Al Ahsa, Qatif, Jubail, Hafar Al Batin, Khafji, Ras Tanura, Abqaiq, Nairyah, Qaryat Al
+Ulya, Al Udayd, and Al Bayda. Dhahran is treated as part of Al Khobar; Saihat, Safwa, Darin
+and Tarout as part of Qatif; Hofuf, Mubarraz and Al Oyoun as areas inside Al Ahsa.
+
+Nothing outside the Eastern Province is covered — not Riyadh, not Jeddah, not Makkah.
+
+The province is large, and distances matter when planning: Dammam to Hafar Al Batin is
+roughly a five-hour drive, and Dammam to Al-Ahsa about an hour and a half. Always find out
+which city someone is based in before suggesting a day plan.
+
+The province has a coast — the Gulf, corniches, beaches and diving off Al Khobar, Dammam,
+Ras Tanura, Jubail and Khafji — as well as the oasis, the desert and the mountains inland.
+
+## About Al-Ahsa, the heart of the platform
 
 Al-Ahsa is the largest governorate in Saudi Arabia's Eastern Province, named after the
 Al-Ahsa Oasis. In Classical Arabic, "Ahsa" means the sound of water running underground —
@@ -34,7 +51,7 @@ across roughly eighty-five square kilometres. It is one of the oldest continuous
 settled places on the Arabian Peninsula, with a history going back more than six thousand
 years. The landscape includes springs, caves, mountains, and heritage mudbrick sites.
 
-The main areas Hasio covers are Hofuf, Mubarraz, Al Oyoun, and Al Omran.
+The main areas inside Al-Ahsa are Hofuf, Mubarraz, Al Oyoun, and Al Omran.
 
 ## What the app does
 
@@ -43,8 +60,8 @@ is travelling, for how long, and what they enjoy, then builds a full itinerary. 
 in whichever language the traveller uses. It is text-based — there is no voice assistant
 inside the app.
 
-**Directory and map.** Hotels, restaurants, attractions, events, and tours across Al-Ahsa,
-shown on a map and searchable in Arabic and English. Listings carry photos, working hours,
+**Directory and map.** Hotels, restaurants, attractions, events, and tours across the
+Eastern Province, shown on a map and searchable in Arabic and English. Listings carry photos, working hours,
 and location.
 
 **Trip itinerary builder.** Travellers build a day-by-day trip by adding stops with dates,
@@ -98,7 +115,8 @@ or a real hotel, it means they are not competing with unverified listings.
 ## What it costs a business
 
 Listing a business on Hasio is free. The value to a business is distribution — being found
-by travellers who are actively planning a trip to Al-Ahsa, and receiving bookings directly.
+by travellers who are actively planning a trip to their city, and receiving bookings
+directly.
 
 If asked about commission, take rates, or any future pricing: the agent does not have those
 figures and should offer to connect the person with the team rather than estimating.
@@ -125,9 +143,9 @@ say the team will reach out about early access.
 
 Saudi Arabia had roughly one hundred and twenty-three million tourist visits in twenty
 twenty-five, and most of that travel is domestic — Saudis and residents travelling inside
-the Kingdom. But outside the big cities, destinations like Al-Ahsa have almost no digital
-layer. A traveller planning a weekend there is piecing it together from social media posts
-and WhatsApp numbers.
+the Kingdom. But outside Riyadh and Jeddah, destinations across the Eastern Province —
+Al-Ahsa, Qatif, Jubail, Hafar Al Batin — have almost no digital layer. A traveller planning
+a weekend there is piecing it together from social media posts and WhatsApp numbers.
 
 Hasio builds that missing layer: everything worth doing in one place, planned into a real
 itinerary, bookable, in Arabic.
@@ -142,8 +160,11 @@ Keep this brief unless the person is clearly technical.
 
 ## Common questions
 
-**Is Hasio only for Al-Ahsa?** Yes, today. That focus is intentional — depth over breadth.
-Other destinations may follow.
+**Is Hasio only for Al-Ahsa?** No. Hasio covers the whole Eastern Province — Dammam, Al
+Khobar, Al Ahsa, Qatif, Jubail, Hafar Al Batin and the rest. It began as an Al-Ahsa guide,
+which is why the oasis is still the part it covers in most depth, but the app is for the
+province. It does not cover the rest of Saudi Arabia; that focus is intentional — depth
+over breadth.
 
 **Do I need an account to browse?** Travellers can sign up quickly and free. Booking and
 saving favourites need an account.
@@ -157,7 +178,7 @@ provider there has been document-verified by the team.
 **Is there a website version of the app?** No. The website is an information page; the
 product is the mobile app.
 
-**Who is behind Hasio?** A small team building for Al-Ahsa. If they want to speak to
+**Who is behind Hasio?** A small team building for the Eastern Province. If they want to speak to
 someone directly, offer to pass their details on.
 
 ---

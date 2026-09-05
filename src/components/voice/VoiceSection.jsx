@@ -19,8 +19,8 @@ const copy = {
     titleA: 'Talk to',
     titleB: 'أبشر',
     body:
-      'Our voice agent knows Al-Ahsa, the app, and where Hasio is going. Ask it anything, ' +
-      'in Arabic or English — it answers the way a person would, and you can interrupt.',
+      'Our voice agent knows the Eastern Province, the app, and where Hasio is going. Ask it ' +
+      'anything, in Arabic or English — it answers the way a person would, and you can interrupt.',
     start: 'Start talking',
     permission: 'Allow the microphone…',
     connecting: 'Connecting…',
@@ -37,7 +37,7 @@ const copy = {
     titleA: 'كلّم',
     titleB: 'أبشر',
     body:
-      'وكيلنا الصوتي يعرف الأحساء والتطبيق وإلى أين تتجه Hasio. اسأله عن أي شيء، بالعربية ' +
+      'وكيلنا الصوتي يعرف المنطقة الشرقية والتطبيق وإلى أين تتجه Hasio. اسأله عن أي شيء، بالعربية ' +
       'أو الإنجليزية — يرد عليك مثل أي شخص، وتقدر تقاطعه في أي وقت.',
     start: 'ابدأ المحادثة',
     permission: 'اسمح باستخدام الميكروفون…',
