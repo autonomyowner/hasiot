@@ -42,7 +42,16 @@ export const attachListingImages = internalMutation({
     const notFound: string[] = [];
 
     for (const entry of args.entries) {
-      const listing = byName.get(entry.name_en);
+      // Exact name first, then a unique prefix. The prefix path exists because
+      // some listing names carry an em-dash ("Ithra — King Abdulaziz...") and
+      // passing one through a Windows shell mangles it; "Ithra" is safe to type
+      // and unambiguous. A prefix matching two listings is rejected rather than
+      // guessed at.
+      let listing = byName.get(entry.name_en);
+      if (!listing) {
+        const matches = listings.filter((l) => l.name_en.startsWith(entry.name_en));
+        if (matches.length === 1) listing = matches[0];
+      }
       if (!listing) {
         notFound.push(entry.name_en);
         continue;
