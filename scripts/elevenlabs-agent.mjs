@@ -24,7 +24,7 @@ const KB_PATH = resolve(root, "docs/voice-agent/knowledge-base.md");
 const AGENT_NAME = "أبشر — Hasio";
 const VOICE_ID = "gVzwmdZzRgBrNjXaTmi5"; // Layan — Saudi female, professional. Male alt: UXEyt6rtmFO9w5hBhzq9 (Ahmad)
 const FIRST_MESSAGE =
-  "أهلاً، أنا أبشر من Hasio. Hi, I'm Absher from Hasio — ask me anything about Al-Ahsa, the app, or where we're taking this.";
+  "أهلاً، أنا أبشر من هاسيو. Hi, I'm Absher from Hasio — ask me anything about the Eastern Province, the app, or where we're taking this.";
 
 const API = "https://api.elevenlabs.io/v1";
 
@@ -66,14 +66,22 @@ function readPrompt() {
 
 /* ---------- api ---------- */
 
-async function call(key, path, { method = "GET", body, raw } = {}) {
+async function call(key, path, { method = "GET", body, raw, soft } = {}) {
   const res = await fetch(`${API}${path}`, {
     method,
     headers: { "xi-api-key": key, ...(raw ? {} : { "Content-Type": "application/json" }) },
     body: raw ?? (body ? JSON.stringify(body) : undefined),
   });
   const text = await res.text();
-  if (!res.ok) fail(`${method} ${path} → ${res.status}\n  ${text.slice(0, 600)}`);
+  // `soft` calls report and continue; every other failure is fatal, because a half-applied
+  // agent config is worse than not pushing at all.
+  if (!res.ok) {
+    if (soft) {
+      console.warn(`  (skipped) ${method} ${path} → ${res.status}`);
+      return null;
+    }
+    fail(`${method} ${path} → ${res.status}\n  ${text.slice(0, 600)}`);
+  }
   return text ? JSON.parse(text) : {};
 }
 
@@ -88,7 +96,12 @@ async function syncKnowledgeBase(key) {
   const existing = await call(key, "/convai/knowledge-base?page_size=100");
   for (const doc of existing.documents ?? []) {
     if (doc.name === docName) {
-      await call(key, `/convai/knowledge-base/${doc.id}`, { method: "DELETE" }).catch(() => {});
+      // force=true: the document is still attached to the agent we are about to re-point at
+      // its replacement, and a plain DELETE 409s on that dependency.
+      await call(key, `/convai/knowledge-base/${doc.id}?force=true`, {
+        method: "DELETE",
+        soft: true,
+      });
     }
   }
 
