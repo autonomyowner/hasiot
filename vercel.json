@@ -5,6 +5,10 @@
       "destination": "/pd/index.html"
     },
     {
+      "source": "/pd/ar",
+      "destination": "/pd/ar/index.html"
+    },
+    {
       "source": "/((?!api/).*)",
       "destination": "/"
     }
