@@ -20,8 +20,15 @@
 set -euo pipefail
 
 # The account that will host the hotels. It must already exist in `users` —
-# it is the admin/concierge account, not a new one.
+# it is the admin/concierge account, not a new one. Confirmed 2026-09-12 as the
+# only row returned by `admin/devTools:listAdmins --prod`.
 HOST_EMAIL="${HOST_EMAIL:-autonomy.owner@gmail.com}"
+
+# The root .env.local lost its CONVEX_DEPLOYMENT line, so every convex command
+# in this repo answers "No CONVEX_DEPLOYMENT set". This names the DEV
+# deployment only to identify the project; `--prod` and `convex deploy` then
+# target production (hearty-ram-74) on their own.
+export CONVEX_DEPLOYMENT="${CONVEX_DEPLOYMENT:-dev:limitless-mockingbird-449}"
 
 cd "$(dirname "$0")/.."
 
