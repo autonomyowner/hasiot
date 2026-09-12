@@ -1,6 +1,6 @@
 import { mutation, type MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 import { riyadhDateTimeToTimestamp } from "../lib/dates";
 import { BOOKING_ERRORS } from "./logic";
@@ -32,7 +32,7 @@ export const createBooking = mutation({
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("Not authenticated");
+      throw new ConvexError("Not authenticated");
     }
 
     const { bookingId } = await createSlotForUser(ctx, user, args);
@@ -59,7 +59,7 @@ export const createStayBooking = mutation({
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("Not authenticated");
+      throw new ConvexError("Not authenticated");
     }
 
     return await createStayForUser(ctx, user, args);
@@ -75,17 +75,17 @@ export const cancelBooking = mutation({
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("Not authenticated");
+      throw new ConvexError("Not authenticated");
     }
 
     const booking = await ctx.db.get(args.bookingId);
 
     if (!booking) {
-      throw new Error("Booking not found");
+      throw new ConvexError("Booking not found");
     }
 
     if (booking.userId !== user._id) {
-      throw new Error("Not authorized to cancel this booking");
+      throw new ConvexError("Not authorized to cancel this booking");
     }
 
     await cancelAsTourist(ctx, booking, args.reason);
@@ -104,28 +104,28 @@ export const rescheduleBooking = mutation({
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("Not authenticated");
+      throw new ConvexError("Not authenticated");
     }
 
     const booking = await ctx.db.get(args.bookingId);
 
     if (!booking) {
-      throw new Error("Booking not found");
+      throw new ConvexError("Booking not found");
     }
 
     if (booking.userId !== user._id) {
-      throw new Error("Not authorized to reschedule this booking");
+      throw new ConvexError("Not authorized to reschedule this booking");
     }
 
     // Moving a stay means re-checking availability and re-pricing it against
     // whatever the host charges for the new dates — that is a new booking, not
     // an edit. The app cancels and rebooks instead.
     if (booking.kind === "stay") {
-      throw new Error(BOOKING_ERRORS.STAY_NO_RESCHEDULE);
+      throw new ConvexError(BOOKING_ERRORS.STAY_NO_RESCHEDULE);
     }
 
     if (booking.status === "cancelled" || booking.status === "completed") {
-      throw new Error("Cannot reschedule this booking");
+      throw new ConvexError("Cannot reschedule this booking");
     }
 
     const existingBooking = await ctx.db
@@ -143,14 +143,14 @@ export const rescheduleBooking = mutation({
       .first();
 
     if (existingBooking) {
-      throw new Error("This time slot is not available");
+      throw new ConvexError("This time slot is not available");
     }
 
     // Riyadh wall clock, not UTC: `new Date("2026-09-10T19:00")` parses as UTC
     // on the server, which puts an evening slot three hours further away than
     // it really is.
     if (riyadhDateTimeToTimestamp(args.newDate, args.newTime) < Date.now()) {
-      throw new Error("Cannot reschedule to a past date");
+      throw new ConvexError("Cannot reschedule to a past date");
     }
 
     await ctx.db.patch(args.bookingId, {
@@ -220,7 +220,7 @@ export const markNoShow = mutation({
     const booking = await requireBookingManager(ctx, args.bookingId);
 
     if (booking.status !== "confirmed") {
-      throw new Error(BOOKING_ERRORS.NOT_AUTHORIZED);
+      throw new ConvexError(BOOKING_ERRORS.NOT_AUTHORIZED);
     }
 
     await ctx.db.patch(args.bookingId, {
@@ -244,18 +244,18 @@ export const markNoShow = mutation({
 async function requireBookingManager(ctx: MutationCtx, bookingId: Id<"bookings">) {
   const user = await getAuthenticatedAppUser(ctx);
   if (!user) {
-    throw new Error("Not authenticated");
+    throw new ConvexError("Not authenticated");
   }
 
   const booking = await ctx.db.get(bookingId);
   if (!booking) {
-    throw new Error("Booking not found");
+    throw new ConvexError("Booking not found");
   }
 
   if (user.role !== "admin") {
     const listing = await ctx.db.get(booking.listingId);
     if (!listing || listing.ownerId !== user._id) {
-      throw new Error("Not authorized to manage this booking");
+      throw new ConvexError("Not authorized to manage this booking");
     }
   }
 

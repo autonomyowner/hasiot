@@ -15,22 +15,25 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
-  Extrapolation,
   FadeInDown,
   FadeInUp,
-  interpolate,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withRepeat,
   withSequence,
+  withTiming,
   useReducedMotion,
 } from "react-native-reanimated";
 import { useAction } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
-import { useKeyboardTransition } from "@/hooks/useKeyboardVisible";
+import {
+  KEYBOARD_EASING,
+  KEYBOARD_TRAVEL_MS,
+  useKeyboardTransition,
+} from "@/hooks/useKeyboardVisible";
 import { useAppStore } from "@/stores/appStore";
 import { ChatBubble } from "@/components/planner";
 import { colors, type AppFonts } from "@/constants/colors";
@@ -49,6 +52,8 @@ const SUGGESTION_CARD_WIDTH = (Dimensions.get("window").width - 32 - 10) / 2;
 
 // What the input rests on once the keyboard is carrying the safe area itself.
 const INPUT_KEYBOARD_GAP = 10;
+
+const IS_ANDROID = Platform.OS === "android";
 
 type FeatherName = React.ComponentProps<typeof Feather>["name"];
 
@@ -81,26 +86,23 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // The docked tab bar sits over this screen, so the input clears it while the
-  // keyboard is closed. Once the keyboard is up the tab shell walks the bar off
-  // the bottom edge (see `app/(tabs)/_layout.tsx`) and the clearance collapses
-  // to a normal padding — reserving the bar's height here as well is what used
-  // to leave the input stranded under it.
+  // The docked tab bar sits over this screen, so the composer clears it while
+  // the keyboard is closed. Once the keyboard is up the tab shell walks the bar
+  // off the bottom edge (see `app/(tabs)/_layout.tsx`) and this clearance gives
+  // that room back — reserving the bar's height here as well is what used to
+  // leave the composer stranded under the keyboard.
   //
-  // Both moves ride the same shared value, so the input follows the bar down
-  // into the space it vacates in one continuous motion. Switching this on the
-  // boolean instead re-laid the whole bottom of the screen in a single frame,
-  // while the keyboard was still on its way in.
-  const { progress: keyboardProgress } = useKeyboardTransition();
+  // On Android the composer now follows the keyboard's actual height, frame by
+  // frame, because that platform has no will-show event and everything driven
+  // off `keyboardDidShow` starts only once the keyboard has finished arriving.
+  // Focus still starts the transition as a head start for the fallback path.
+  const {
+    visible: keyboardVisible,
+    beginOpen,
+    height: keyboardHeight,
+  } = useKeyboardTransition();
+  const [focused, setFocused] = useState(false);
   const closedClearance = TAB_BAR_CLEARANCE + insets.bottom;
-  const inputClearanceStyle = useAnimatedStyle(() => ({
-    paddingBottom: interpolate(
-      keyboardProgress.value,
-      [0, 1],
-      [closedClearance, INPUT_KEYBOARD_GAP],
-      Extrapolation.CLAMP
-    ),
-  }));
 
   const scrollToEndSoon = useCallback(() => {
     setTimeout(() => {
@@ -113,7 +115,53 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
     ref: innerRef,
     overlap: androidKeyboardHeight,
     onLayout: keyboardOnLayout,
+    prepare: prepareForKeyboard,
   } = useKeyboardOverlap(scrollToEndSoon);
+
+  const openForKeyboard = focused || keyboardVisible;
+
+  // `Math.max` rather than a switch, and that shape is the behaviour: the
+  // composer holds its resting place until the keyboard actually reaches it,
+  // then rides up on top of it. Anything else makes it dip before it rises.
+  //
+  // Three sources, whichever is furthest along. On Android the tracked height
+  // moves frame by frame with the keyboard; the measured overlap is the
+  // fallback for a device where tracking reports nothing, and lands late but
+  // lands. iOS uses neither — `KeyboardAvoidingView` lifts the whole screen
+  // there, so all this has to do is give back the departing tab bar's room.
+  const inputClearanceStyle = useAnimatedStyle(() => {
+    if (!IS_ANDROID) {
+      return {
+        paddingBottom: withTiming(
+          openForKeyboard ? INPUT_KEYBOARD_GAP : closedClearance,
+          { duration: KEYBOARD_TRAVEL_MS, easing: KEYBOARD_EASING }
+        ),
+      };
+    }
+    return {
+      paddingBottom: Math.max(
+        closedClearance,
+        keyboardHeight.value + INPUT_KEYBOARD_GAP,
+        androidKeyboardHeight + INPUT_KEYBOARD_GAP
+      ),
+    };
+  });
+
+  const handleInputFocus = useCallback(() => {
+    setFocused(true);
+    // Both before the keyboard has moved: the bar starts leaving and the
+    // composer starts rising on the same frame the guest taps the field.
+    prepareForKeyboard();
+    beginOpen();
+    scrollToEndSoon();
+  }, [beginOpen, prepareForKeyboard, scrollToEndSoon]);
+
+  // Android's back button dismisses the keyboard without blurring the field, so
+  // focus alone would hold the composer up over nothing. The keyboard leaving
+  // is the authority on this, not the cursor.
+  useEffect(() => {
+    if (!keyboardVisible) setFocused(false);
+  }, [keyboardVisible]);
 
   // iOS only — KeyboardAvoidingView moves the input, we just follow with a scroll.
   useEffect(() => {
@@ -232,11 +280,7 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
       keyboardVerticalOffset={0}
     >
       <ScreenGradient />
-      <View
-        ref={innerRef}
-        onLayout={keyboardOnLayout}
-        style={[styles.inner, { paddingTop: insets.top, paddingBottom: androidKeyboardHeight }]}
-      >
+      <View style={[styles.inner, { paddingTop: insets.top }]}>
         {/* Header */}
         <View style={[styles.header, isRTL && styles.headerRTL]}>
           <View style={[styles.headerText, isRTL && styles.headerTextRTL]}>
@@ -337,7 +381,23 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
           )}
         </ScrollView>
 
-        {/* Input Area */}
+        {/* Input Area.
+            The keyboard overlap is measured on THIS view rather than on the
+            screen, and that is the whole fix. Measuring the outer container
+            asked "how much of the screen is covered", which inside a PagerView
+            on an edge-to-edge window came back as nothing — so the composer sat
+            under the keyboard while the screen believed it was clear. Measuring
+            the composer asks the only question that matters: how much of the
+            box the guest is typing into is hidden.
+
+            The padding goes inside the measured view's own box, so it moves the
+            row without moving the frame — which is what stops it oscillating
+            between covered and clear. */}
+        <View
+          ref={innerRef}
+          onLayout={keyboardOnLayout}
+          style={styles.inputDock}
+        >
         <Animated.View style={[styles.inputContainer, inputClearanceStyle]}>
           <View style={styles.inputPill}>
           <TextInput
@@ -347,6 +407,8 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
             value={inputText}
             onChangeText={setInputText}
             onSubmitEditing={() => sendMessage(inputText)}
+            onFocus={handleInputFocus}
+            onBlur={() => setFocused(false)}
             multiline
             maxLength={500}
             textAlign={isRTL ? "right" : "left"}
@@ -370,6 +432,7 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
             )}
           </Pressable>
         </Animated.View>
+        </View>
 
       </View>
     </KeyboardAvoidingView>
@@ -667,6 +730,11 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: colors.primary.deep,
+  },
+  // The measured view. Opaque, because the space its padding opens up sits
+  // over the chat while the keyboard is on its way in.
+  inputDock: {
+    backgroundColor: colors.background,
   },
   inputContainer: {
     flexDirection: "row",

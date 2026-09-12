@@ -11,11 +11,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BackButton, SkeletonFade, SkeletonOwnerList } from "@/components/ui";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { useRouter } from "expo-router";
+import { Feather } from "@expo/vector-icons";
 import { useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { ApprovalStatus } from "@/types";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -27,6 +29,16 @@ const STATUS_COLORS: Record<string, string> = {
 export default function MyListingsScreen() {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL, language } = useLanguage();
+  const router = useRouter();
+
+  // Which form owns a listing. Only these two exist, so anything else has no
+  // editor to send the owner to and simply shows no button.
+  const editorFor = (type: string) =>
+    type === "hotel"
+      ? "/business/post-lodging"
+      : type === "attraction"
+        ? "/business/post-destination"
+        : null;
   const [filter, setFilter] = useState<"all" | string>("all");
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
@@ -123,10 +135,33 @@ export default function MyListingsScreen() {
                   <Text style={[styles.listingType, isRTL && styles.textRTL]}>
                     {listing.type === "hotel" ? t("lodging") : listing.type === "restaurant" ? t("food") : listing.type === "attraction" ? t("destination") : t("event")} • {listing.city}
                   </Text>
-                  <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[listing.status] || "#737373" }]}>
-                    <Text style={styles.statusText}>
-                      {listing.status === "pending" ? t("statusPending") : listing.status === "approved" ? t("statusApproved") : t("statusRejected")}
-                    </Text>
+                  <View style={[styles.cardFoot, isRTL && styles.rowRTL]}>
+                    <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[listing.status] || "#737373" }]}>
+                      <Text style={styles.statusText}>
+                        {listing.status === "pending" ? t("statusPending") : listing.status === "approved" ? t("statusApproved") : t("statusRejected")}
+                      </Text>
+                    </View>
+
+                    {/* Editable in every state, approved included: a price or a
+                        phone number that has gone stale is worse live than it
+                        is in the queue. The server sends it back for review. */}
+                    {editorFor(listing.type) && (
+                      <Pressable
+                        onPress={() =>
+                          router.push({
+                            pathname: editorFor(listing.type) as never,
+                            params: { id: listing._id },
+                          })
+                        }
+                        style={[styles.editButton, isRTL && styles.rowRTL]}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("editListing")}
+                      >
+                        <Feather name="edit-2" size={13} color={colors.ink} />
+                        <Text style={styles.editText}>{t("edit")}</Text>
+                      </Pressable>
+                    )}
                   </View>
                 </View>
               </View>
@@ -232,6 +267,30 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: "#737373",
     marginBottom: 8,
     textTransform: "capitalize",
+  },
+  cardFoot: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginTop: 8,
+  },
+  rowRTL: {
+    flexDirection: "row-reverse",
+  },
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: colors.primary.DEFAULT,
+  },
+  editText: {
+    fontSize: 12.5,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
   },
   statusBadge: {
     alignSelf: "flex-start",

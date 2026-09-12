@@ -1,15 +1,21 @@
 import { internalMutation } from "../_generated/server";
 
-// Curated Unsplash images for Al-Ahsa listings
+// Curated Unsplash images for Al-Ahsa listings.
+//
+// These are hotlinks, so they rot: five of the original 64 now 404 because the
+// photographers withdrew them, and the breakage is silent — the card just shows
+// a grey frame. They were removed from this map and from production
+// (`photoTools:dropDeadImages`). Before adding another, curl it.
+//
+// Real photographs uploaded to Convex storage are the better path and cannot
+// 404; see `photoTools:attachListingImages`.
 const imageMap: Record<string, string[]> = {
   // === HOTELS - Hofuf ===
   "InterContinental Al Ahsa": [
     "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80",
-    "https://images.unsplash.com/photo-1582719508461-905c673771eb?w=800&q=80",
   ],
   "Ramada by Wyndham Al Ahsa": [
     "https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=800&q=80",
-    "https://images.unsplash.com/photo-1590490360182-c33d82de0e5c?w=800&q=80",
   ],
   "Holiday Inn Al Ahsa": [
     "https://images.unsplash.com/photo-1584132967334-10e028bd69f7?w=800&q=80",
@@ -110,7 +116,6 @@ const imageMap: Record<string, string[]> = {
     "https://images.unsplash.com/photo-1546964124-0cce460f38ef?w=800&q=80",
   ],
   "Hasawi Dates Bistro": [
-    "https://images.unsplash.com/photo-1550966871-3ed3cdb51f3a?w=800&q=80",
     "https://images.unsplash.com/photo-1544148103-0773bf10d330?w=800&q=80",
   ],
   "Al Jafr Fish House": [
@@ -140,7 +145,6 @@ const imageMap: Record<string, string[]> = {
     "https://images.unsplash.com/photo-1586724237569-f3d0c1dee8c6?w=800&q=80",
   ],
   "Jawatha Mosque": [
-    "https://images.unsplash.com/photo-1565060169194-19fabf63012c?w=800&q=80",
     "https://images.unsplash.com/photo-1554907984-15263bfd63bd?w=800&q=80",
   ],
   "Yellow Lake (Asfar Lake)": [
@@ -149,11 +153,9 @@ const imageMap: Record<string, string[]> = {
   ],
   "Al Koot Fortress": [
     "https://images.unsplash.com/photo-1586724237569-f3d0c1dee8c6?w=800&q=80",
-    "https://images.unsplash.com/photo-1565060169194-19fabf63012c?w=800&q=80",
   ],
   "Al-Ahsa National Museum": [
     "https://images.unsplash.com/photo-1554907984-15263bfd63bd?w=800&q=80",
-    "https://images.unsplash.com/photo-1565060169194-19fabf63012c?w=800&q=80",
   ],
   "Ain Najm Spring": [
     "https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80",
@@ -169,7 +171,6 @@ const imageMap: Record<string, string[]> = {
   ],
   "Land of Civilizations Museum": [
     "https://images.unsplash.com/photo-1554907984-15263bfd63bd?w=800&q=80",
-    "https://images.unsplash.com/photo-1565060169194-19fabf63012c?w=800&q=80",
   ],
   "Al Oyoun Village": [
     "https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80",
@@ -185,7 +186,6 @@ const imageMap: Record<string, string[]> = {
   ],
   "Al-Ahsa Palm Farms": [
     "https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80",
-    "https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=800&q=80",
   ],
   "Al Mubarraz Corniche": [
     "https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800&q=80",
@@ -219,7 +219,6 @@ const imageMap: Record<string, string[]> = {
   ],
   "Palm Farm Experience": [
     "https://images.unsplash.com/photo-1509316785289-025f5b846b35?w=800&q=80",
-    "https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=800&q=80",
   ],
   "Al Uqair Coastal Trip": [
     "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80",

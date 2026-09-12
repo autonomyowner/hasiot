@@ -1,4 +1,5 @@
 import type { TranslationKey } from "@/constants/translations";
+import { serverErrorText } from "./serverError";
 
 /**
  * Map a Convex mutation error to a translation key the user can act on.
@@ -8,10 +9,7 @@ import type { TranslationKey } from "@/constants/translations";
  * so we match on the message substring rather than an exact string.
  */
 export function getSubmitErrorKey(error: unknown): TranslationKey {
-  const message =
-    typeof error === "string"
-      ? error
-      : (error as { message?: string })?.message ?? "";
+  const message = serverErrorText(error);
 
   if (/must be approved/i.test(message)) {
     return "errorNotApproved";

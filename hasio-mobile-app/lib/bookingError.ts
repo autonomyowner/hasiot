@@ -1,4 +1,5 @@
 import type { TranslationKey } from "@/constants/translations";
+import { serverErrorText } from "./serverError";
 
 /**
  * Map a booking error from the server onto a translation key.
@@ -11,7 +12,7 @@ import type { TranslationKey } from "@/constants/translations";
  * The same shape as lib/submitError.ts, which does this for listing submission.
  */
 export function getBookingErrorKey(error: unknown): TranslationKey {
-  const message = error instanceof Error ? error.message : String(error);
+  const message = serverErrorText(error);
 
   if (/verified phone/i.test(message)) return "errorPhoneRequired";
   if (/own listing/i.test(message)) return "errorOwnListing";

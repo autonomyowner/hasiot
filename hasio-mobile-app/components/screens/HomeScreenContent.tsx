@@ -348,7 +348,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
               {t(greetingKey)}
             </Text>
             <Text style={[styles.topBarTitle, isRTL && styles.textRTL]}>
-              {t("exploreAlAhsa")}
+              {t("exploreProvince")}
             </Text>
           </View>
           {/* Out of the search pill and up here, where it reads as a control
@@ -393,14 +393,14 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
             <View style={[styles.eyebrowRow, isRTL && styles.eyebrowRowRTL]}>
               <Feather name="map-pin" size={12} color="#FFFFFF" />
               <Text style={[styles.eyebrowText, isRTL && styles.textRTL]}>
-                AL-AHSA OASIS
+                EASTERN PROVINCE
               </Text>
             </View>
             <Text style={[styles.appName, isRTL && styles.textRTL]}>
               Hasio
             </Text>
             <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
-              {t("exploreOasis")}
+              {t("heroTagline")}
             </Text>
           </View>
         </Animated.View>
@@ -1246,7 +1246,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   // Same block as the lodging card, sized for a column half the width: the
   // inset drops 16 -> 12 and the title 20 -> 17, and the title takes two lines
-  // because at this width one truncates most Al-Ahsa place names.
+  // because at this width one truncates most Eastern Province place names.
   gridCaption: {
     position: "absolute",
     left: 12,

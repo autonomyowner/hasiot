@@ -68,6 +68,42 @@ const ALIASES: Record<string, CityKey> = {
 
 const BY_KEY = new Map(CITIES.map((city) => [city.key, city]));
 
+/**
+ * City centres, used as a listing's location when nobody has given a better one.
+ *
+ * The posting forms have no map picker, so every owner-posted listing gets a
+ * synthetic coordinate — and the schema requires one. Until this expanded past
+ * Al-Ahsa that was harmless, because there was only one city; now a Dammam hotel
+ * pinned in Hofuf sends the guest 150 km the wrong way, since the detail sheet's
+ * directions link prefers coordinates over the address.
+ *
+ * Al Udayd and Al Bayda are deliberately absent: both are recent, sparsely
+ * documented governorates and no reliable centre could be confirmed. They fall
+ * back to `PROVINCE_CENTER` — a guess we know is a guess beats a fabricated one
+ * that reads as precise.
+ */
+const CITY_COORDS: Partial<Record<CityKey, { lat: number; lng: number }>> = {
+  Dammam: { lat: 26.4207, lng: 50.0888 },
+  "Al Khobar": { lat: 26.2794, lng: 50.2083 },
+  "Al Ahsa": { lat: 25.3854, lng: 49.5683 },
+  Qatif: { lat: 26.5196, lng: 49.9962 },
+  Jubail: { lat: 27.0174, lng: 49.6225 },
+  "Hafar Al Batin": { lat: 28.4337, lng: 45.9601 },
+  Khafji: { lat: 28.439, lng: 48.491 },
+  "Ras Tanura": { lat: 26.654, lng: 50.1626 },
+  Abqaiq: { lat: 25.934, lng: 49.668 },
+  Nairyah: { lat: 27.4894, lng: 48.4839 },
+  "Qaryat Al Ulya": { lat: 27.5556, lng: 47.6606 },
+};
+
+/** Dammam, the provincial capital — where an unplaceable listing lands. */
+const PROVINCE_CENTER = { lat: 26.4207, lng: 50.0888 };
+
+/** The centre of a listing's city. Aliases resolve first, so "Hofuf" works. */
+export function cityCoordinates(raw: string): { lat: number; lng: number } {
+  return CITY_COORDS[canonicalCity(raw) as CityKey] ?? PROVINCE_CENTER;
+}
+
 /** The city a stored value belongs to, or the value itself if it is unknown. */
 export function canonicalCity(raw: string): string {
   const value = raw.trim();
