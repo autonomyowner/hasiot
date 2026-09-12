@@ -25,6 +25,20 @@ HOST_EMAIL="${HOST_EMAIL:-autonomy.owner@gmail.com}"
 
 cd "$(dirname "$0")/.."
 
+# `convex deploy` ships the WORKING TREE, not HEAD. On 2026-09-12 this tree held
+# an uncommitted rewrite of the travel planner's system prompt from another
+# session — deploying blind would have pushed an unfinished prompt to every
+# live app. Refuse to deploy while convex/ has uncommitted changes.
+DIRTY="$(git status --porcelain -- convex/ | grep -v '^??' || true)"
+if [ -n "$DIRTY" ]; then
+  echo "REFUSING TO DEPLOY — convex/ has uncommitted changes:"
+  echo "$DIRTY"
+  echo
+  echo "Commit them, stash them, or check them out before running this."
+  echo "Deploying would push them to production along with the pricing work."
+  exit 1
+fi
+
 echo "==> 1/4  Deploy the backend first. hostAllOwnerlessHotels is new code;"
 echo "         it does not exist on production yet."
 npx convex deploy --yes
