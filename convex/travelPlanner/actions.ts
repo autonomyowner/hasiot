@@ -4,19 +4,46 @@ import { action } from "../_generated/server";
 import { v } from "convex/values";
 import { api, internal } from "../_generated/api";
 import { Id } from "../_generated/dataModel";
+import {
+  asText,
+  buildContextBlock,
+  extractJsonObject,
+  normaliseDestinations,
+} from "./parse";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 const MODEL = "anthropic/claude-haiku-4.5";
 
-const SYSTEM_PROMPT = `You are an Eastern Province travel planning assistant for Hasio (هاسيو), a travel guidance platform covering Saudi Arabia's Eastern Province (المنطقة الشرقية) — from the Al-Ahsa oasis inland to the Gulf coast at Dammam, Al Khobar, Qatif and Jubail. You conduct thorough travel interviews to understand traveler preferences before providing personalized recommendations.
+const SYSTEM_PROMPT = `You are an Eastern Province travel planning assistant for Hasio (هاسيو), a travel guidance platform covering Saudi Arabia's Eastern Province (المنطقة الشرقية) — from the Al-Ahsa oasis inland to the Gulf coast at Dammam, Al Khobar, Qatif and Jubail. Your job is to get the traveller a concrete plan as quickly as you can, asking only what you genuinely still need in order to write one.
 
-## CRITICAL RULES
-1. NEVER provide a full travel plan after just 1-2 messages
-2. Ask at least 3-5 targeted follow-up questions before giving a complete plan
-3. Ask ONE question at a time — keep responses concise (2-3 sentences max)
-4. Be warm, enthusiastic, and knowledgeable about the whole province, coast and oasis alike
-5. THE PROVINCE IS LARGE. Dammam to Hafar Al Batin is about 5 hours by road; Dammam to Al-Ahsa about 1.5 hours. Establish which city the traveler is flying into or basing in BEFORE building an itinerary, and never put two cities hours apart into the same day.
-6. LANGUAGE MATCHING: Always reply in the SAME language the user writes in. If the user writes in English, respond in English. If in Arabic, respond in Arabic. If they mix, prefer the dominant language. Set both "message" and "message_ar" to the same text when replying in English.
+## HOW MUCH TO ASK — READ THIS BEFORE ANYTHING ELSE
+You need exactly four things to write a plan:
+  1. Which city they are basing in
+  2. When they are travelling, and for how long
+  3. Who is coming — how many people, and whether any are children
+  4. Roughly what they want to spend
+
+Work out which of the four the traveller has ALREADY told you, counting the whole
+conversation and not just their last message. Then:
+- If all four are known, write the full plan NOW. Even if this is their first
+  message and you have asked nothing at all. A traveller who opens with everything
+  gets a plan, not an interview.
+- Otherwise ask for ONE missing item, in one short question, and nothing else.
+- Never ask about something already answered, and never re-ask in different words.
+- Ask at most THREE questions in the whole conversation. After the third, assume a
+  sensible default for anything still missing, state the assumption in one line at
+  the top of the plan, and write the plan.
+- If they say "just plan it", "رتب لي", "جهز الخطة", "خلاص" or anything like it,
+  stop asking immediately and plan with sensible defaults.
+Interests, dietary needs, must-see places and travel style are NICE TO HAVE. Never
+spend a question on them while one of the four is still missing, and never hold the
+plan back for them.
+
+## OTHER RULES
+1. Keep every question to 2-3 sentences, and ask only one thing at a time
+2. Be warm, enthusiastic, and knowledgeable about the whole province, coast and oasis alike
+3. THE PROVINCE IS LARGE. Dammam to Hafar Al Batin is about 5 hours by road; Dammam to Al-Ahsa about 1.5 hours. Establish which city the traveler is flying into or basing in BEFORE building an itinerary, and never put two cities hours apart into the same day.
+4. LANGUAGE MATCHING: Always reply in the SAME language the user writes in. If the user writes in English, respond in English. If in Arabic, respond in Arabic. If they mix, prefer the dominant language. Write each field once, in that language — never add a translated copy.
 
 ## SAUDI/GULF ARABIC UNDERSTANDING
 Understand these common traveler expressions:
@@ -139,46 +166,68 @@ Note: Hofuf and Mubarraz are districts of Al-Ahsa, and Dhahran is part of Al Kho
 - Luxury: 1000-2500+ SAR/day (5-star hotels, fine dining, private tours)
 - 1 USD ≈ 3.75 SAR (fixed peg)
 
-## SMART QUESTION SELECTION
-Tailor follow-ups based on the travel query:
-- General trip: ask which city they are flying into or basing in, then dates, budget, interests, group size
-- Heritage/culture: ask about interests (history/food/crafts), duration, budget
-- Nature: ask about preferences (oasis/lake/caves/beach), fitness level, season
-- Coast and beaches: ask whether they want swimming, water sports, a corniche evening or a quiet beach — the Gulf runs the whole length of this province
-- Family: ask about ages of children, interests, activity level, budget
-- Food: ask about cuisine preferences, dietary restrictions, budget
+## WHICH QUESTION TO ASK NEXT
+Ask for the missing item highest up this list, and stop as soon as you have all four:
+1. Base city — without it you cannot pick anything, since the province is five hours end to end
+2. Dates and length of stay — decides the season and the number of days
+3. Group — how many people, and any children (changes what is suitable)
+4. Budget — decides which hotels and restaurants to name
+
+## SENSIBLE DEFAULTS
+Use these instead of asking a fourth question. Say which ones you assumed.
+- No base city given but a place is named: base them in the nearest covered city
+- No dates: assume the next cool-season month and say the plan suits Oct-Mar
+- No length: assume 3 days
+- No group: assume two adults
+- No budget: assume mid-range, 400-800 SAR per day
 - Never build a single day that crosses the province end to end
 
-## CONVERSATION FLOW
-1. First message: acknowledge warmly, ask where in the province they will be based and when
-2. Second message: ask about interests and travel style
-3. Third message: ask about budget range and any must-see places
-4. Fourth message: any special requirements or dietary needs
-5. After 3-5 exchanges: provide comprehensive travel plan
+## WHAT YOU MAY STATE AS FACT
+Two lists are appended below this prompt: the app's own listings, and notes written
+by the Hasio team. Together they are the only place your specifics may come from.
+- Recommend a place from the listings whenever one fits, and copy its English name
+  EXACTLY into "name" so the app can open its page from the plan.
+- NEVER state opening hours, a phone number, an exact price or whether something is
+  open or available. You do not have that data. Say the app has the current hours.
+- The only price signal you may quote for a listing is the tier ($ to $$$$) or the
+  per-night figure shown for it below. Everywhere else, give ranges as a guide only
+  and label them as estimates.
+- A team note beats the general knowledge above it wherever the two disagree.
+- You may still mention a famous place that has no listing — say so plainly rather
+  than implying the app can book it.
 
 ## RESPONSE FORMAT
-If still gathering information, respond with JSON:
+Reply with ONE JSON object and nothing else — no markdown fences, no sentence
+before or after it.
+
+While something is still missing:
 {
   "ready": false,
-  "message": "Your follow-up question in the user's language",
-  "message_ar": "السؤال بالعربية"
+  "message": "Your one question, in the traveller's language"
 }
 
-When you have enough information (usually 4-5 exchanges), respond with JSON:
+When you have enough:
 {
   "ready": true,
   "suggestedDestinations": [
-    {"name": "Destination Name", "name_ar": "اسم الوجهة", "type": "city|attraction|hotel|restaurant", "description": "Brief description of why this is recommended"}
+    {"name": "English name", "name_ar": "الاسم بالعربية", "type": "hotel|restaurant|attraction|event|tour", "description": "One line on why it fits"}
   ],
-  "itinerary": "Day-by-day travel plan in the user's language",
-  "travelTips": "Practical travel tips in the user's language",
-  "travelTips_ar": "نصائح السفر بالعربية",
-  "estimatedBudget": "Budget estimate in SAR with breakdown",
-  "estimatedBudget_ar": "تقدير الميزانية بالريال",
-  "disclaimer": "Travel recommendations may vary by season. Please verify opening hours and availability before visiting."
+  "itinerary": "Day-by-day plan, in the traveller's language",
+  "travelTips": "Practical tips, in the traveller's language",
+  "estimatedBudget": "Estimate in SAR with a short breakdown, in the traveller's language"
 }
 
-IMPORTANT: Be thorough and enthusiastic about the Eastern Province. Always respond in valid JSON format.`;
+### Rules for that object
+- Write every free-text field ONCE, in the traveller's language only. Do NOT add
+  translated twins such as "travelTips_ar" or "estimatedBudget_ar" — the app shows
+  one language and the duplicate used to double the length of every plan until it
+  ran out of room mid-sentence. "name_ar" is the only Arabic-suffixed field.
+- "type" is required on every destination and must be one of the five values listed.
+- Do not write a "disclaimer" field; the app adds it.
+- Give 4-8 destinations. Keep the itinerary tight: a few lines per day, not an essay.
+
+IMPORTANT: Be warm and specific about the Eastern Province, and always reply with a
+single valid JSON object.`;
 
 export const planTravel = action({
   args: {
@@ -268,10 +317,29 @@ export const planTravel = action({
         ? "Respond in Arabic. Understand Saudi/Gulf dialect. Use Modern Standard Arabic for the main response but feel free to use Gulf expressions when appropriate."
         : "Respond in English.";
 
+    // The real catalogue and the team's notes. Best-effort: a planner that has
+    // lost its context is worse at naming places, but it still works, so a
+    // failure here must not take the whole conversation down with it.
+    let contextBlock = "";
+    try {
+      const plannerContext = await ctx.runQuery(
+        internal.travelPlanner.context.getPlannerContext,
+        {}
+      );
+      contextBlock = buildContextBlock(
+        plannerContext.listings,
+        plannerContext.knowledge
+      );
+    } catch (e) {
+      console.error("Planner context unavailable:", e);
+    }
+
     const messages: Array<{ role: string; content: string }> = [
       {
         role: "system",
-        content: `${SYSTEM_PROMPT}\n\n${languageInstruction}`,
+        content: [SYSTEM_PROMPT, contextBlock, languageInstruction]
+          .filter(Boolean)
+          .join("\n\n"),
       },
     ];
 
@@ -297,7 +365,13 @@ export const planTravel = action({
           model: MODEL,
           messages,
           temperature: 0.4,
-          max_tokens: 3000,
+          // A finished plan is long, and Arabic costs roughly a token every 1.7
+          // characters. At the old 3000 every plan beyond a single day was cut
+          // off mid-sentence — a 3-day English plan died at 7,597 characters and
+          // a 7-day Arabic one at 5,070, both exactly on the cap. The format no
+          // longer asks for translated twins of every field, which roughly
+          // halves the output again; this leaves real headroom on top of that.
+          max_tokens: 8000,
         }),
       });
 
@@ -308,103 +382,127 @@ export const planTravel = action({
       }
 
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
+      const choice = data.choices?.[0];
+      const content: string | undefined = choice?.message?.content;
+      const hitTokenCap = choice?.finish_reason === "length";
 
       if (!content) {
         return { success: false, ready: false, error: "No response from AI" };
       }
 
-      let parsed;
+      // Everything we cannot turn into a plan or a question ends here. The one
+      // outcome that must never happen is the raw reply reaching the chat:
+      // `PlannerScreenContent` renders `message` verbatim, so a leaked JSON blob
+      // is literally what the traveller reads.
+      const retryMessageAr =
+        "عذرًا، لم أتمكن من إنهاء الخطة. حاول مرة أخرى من فضلك.";
+      const retry = () => ({
+        success: true,
+        ready: false,
+        message:
+          language === "ar"
+            ? retryMessageAr
+            : "Sorry — I couldn't finish that plan. Please try again.",
+        message_ar: retryMessageAr,
+      });
+
+      const parsed = extractJsonObject(content);
+
+      if (!parsed) {
+        if (hitTokenCap) {
+          console.error(
+            "Model reply truncated at max_tokens; chars:",
+            content.length
+          );
+          return retry();
+        }
+        // No object at all. Plain prose is safe to show as a reply; anything
+        // that merely looks like JSON is not.
+        const prose = content
+          .trim()
+          .replace(/^```(?:json)?\s*/i, "")
+          .replace(/\s*```$/i, "")
+          .trim();
+        if (!prose || prose.startsWith("{") || prose.includes('"ready"')) {
+          console.error("Unparseable model reply:", content.slice(0, 200));
+          return retry();
+        }
+        return {
+          success: true,
+          ready: false,
+          message: prose,
+          message_ar: language === "ar" ? prose : undefined,
+        };
+      }
+
+      // `ready` has arrived as the string "true" before, so the boolean check
+      // alone used to drop such a reply into the raw-content fallback.
+      const isReady = parsed.ready === true || parsed.ready === "true";
+
+      if (!isReady) {
+        const message = asText(parsed.message) ?? asText(parsed.message_ar);
+        if (!message) {
+          console.error("Model asked nothing and planned nothing:", content.slice(0, 200));
+          return retry();
+        }
+        return {
+          success: true,
+          ready: false,
+          message,
+          message_ar: asText(parsed.message_ar) ?? message,
+        };
+      }
+
+      const suggestedDestinations = normaliseDestinations(parsed.suggestedDestinations);
+      const itinerary = asText(parsed.itinerary);
+
+      // The model is now asked to write each field once, in the traveller's
+      // language, so the "_ar" twin usually arrives empty. Mirroring the text
+      // into both keys means either branch of the client's
+      // `language === "ar" ? tips_ar || tips : tips` finds it — including on the
+      // binaries already in the stores, which cannot be changed from here.
+      const travelTips = asText(parsed.travelTips) ?? asText(parsed.travelTips_ar);
+      const estimatedBudget =
+        asText(parsed.estimatedBudget) ?? asText(parsed.estimatedBudget_ar);
+
+      // The chat renders the itinerary, the tips and the budget and nothing
+      // else, so "ready" with none of the three would post an empty bubble.
+      // Destinations alone are invisible — they only feed "save as trip".
+      if (!itinerary && !travelTips && !estimatedBudget) {
+        console.error("Model claimed ready with an empty plan:", content.slice(0, 200));
+        return retry();
+      }
+
+      const plan = {
+        suggestedDestinations,
+        itinerary,
+        travelTips,
+        travelTips_ar: travelTips,
+        estimatedBudget,
+        estimatedBudget_ar: estimatedBudget,
+        disclaimer:
+          asText(parsed.disclaimer) ??
+          (language === "ar"
+            ? "توصيات السفر قد تختلف حسب الموسم. يرجى التحقق من أوقات العمل والتوفر قبل الزيارة."
+            : "Travel recommendations may vary by season. Please verify opening hours and availability before visiting."),
+      };
+
+      // Storing is what powers plan history and "save as trip", but it is not
+      // worth losing a finished plan over — the traveller waited for this one.
+      let planId: string | undefined;
       try {
-        // Strip markdown code fences if present
-        let cleanContent = content.trim();
-        cleanContent = cleanContent.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '');
-
-        const jsonMatch = cleanContent.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          parsed = JSON.parse(jsonMatch[0]);
-        } else {
-          return {
-            success: true,
-            ready: false,
-            message: cleanContent,
-            message_ar: language === "ar" ? cleanContent : undefined,
-          };
-        }
-      } catch (e) {
-        console.error("JSON parse error:", e, "Content:", content.substring(0, 200));
-        // If JSON parsing fails, try to extract just the message text
-        const msgMatch = content.match(/"message(?:_ar)?"\s*:\s*"([^"]+)"/);
-        if (msgMatch) {
-          return {
-            success: true,
-            ready: false,
-            message: msgMatch[1],
-            message_ar: language === "ar" ? msgMatch[1] : undefined,
-          };
-        }
-        return {
-          success: true,
-          ready: false,
-          message: content,
-          message_ar: language === "ar" ? content : undefined,
-        };
-      }
-
-      if (parsed.ready === false) {
-        return {
-          success: true,
-          ready: false,
-          message: parsed.message,
-          message_ar: parsed.message_ar,
-        };
-      }
-
-      if (parsed.ready === true && parsed.suggestedDestinations) {
-        if (!parsed.disclaimer) {
-          parsed.disclaimer =
-            language === "ar"
-              ? "توصيات السفر قد تختلف حسب الموسم. يرجى التحقق من أوقات العمل والتوفر قبل الزيارة."
-              : "Travel recommendations may vary by season. Please verify opening hours and availability before visiting.";
-        }
-
-        const planId = await ctx.runMutation(api.travelPlanner.mutations.storePlan, {
+        planId = await ctx.runMutation(api.travelPlanner.mutations.storePlan, {
           userId,
           sessionId: args.sessionId,
           userInput: args.userInput,
           language,
-          plan: {
-            suggestedDestinations: parsed.suggestedDestinations,
-            itinerary: parsed.itinerary,
-            travelTips: parsed.travelTips,
-            travelTips_ar: parsed.travelTips_ar,
-            estimatedBudget: parsed.estimatedBudget,
-            estimatedBudget_ar: parsed.estimatedBudget_ar,
-            disclaimer: parsed.disclaimer,
-          },
+          plan,
         });
-
-        return {
-          success: true,
-          ready: true,
-          plan: {
-            suggestedDestinations: parsed.suggestedDestinations,
-            itinerary: parsed.itinerary,
-            travelTips: parsed.travelTips,
-            travelTips_ar: parsed.travelTips_ar,
-            estimatedBudget: parsed.estimatedBudget,
-            estimatedBudget_ar: parsed.estimatedBudget_ar,
-            disclaimer: parsed.disclaimer,
-          },
-          planId,
-        };
+      } catch (e) {
+        console.error("storePlan failed; returning the plan anyway:", e);
       }
 
-      return {
-        success: true,
-        ready: false,
-        message: content,
-      };
+      return { success: true, ready: true, plan, planId };
     } catch (error) {
       console.error("Travel planning error:", error);
       return {
