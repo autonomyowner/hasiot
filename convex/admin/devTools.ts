@@ -314,3 +314,82 @@ export const clearSeededRatings = internalMutation({
     return { scanned: listings.length, cleared };
   },
 });
+
+/**
+ * Give every hotel that has no host to one account, so a priced listing can
+ * actually be confirmed.
+ *
+ * `isBookableStay` gates on price alone, but the host confirm path in
+ * `bookings/mutations.ts` requires `listing.ownerId === user._id`. A priced
+ * hotel with no owner therefore shows a Book button, accepts the request, and
+ * then lets the hourly `expirePendingRequests` cron kill it — the guest is
+ * told their booking expired, which is worse than never offering the button at
+ * all. Price and host must move together.
+ *
+ * Why not `assignListingOwner` eight times: it matches on a search over
+ * `name_en`, and production carries four listings beginning "Radisson Blu".
+ * A fuzzy search would happily assign the same row twice and leave another
+ * ownerless. Matching on the *absence* of an owner cannot pick the wrong row.
+ *
+ * Deliberately does not touch `isActive`. `deactivateListingsWithoutImages`
+ * hides a photoless listing by setting it false, and forcing it true here
+ * would drag those back into the app behind a Book button.
+ */
+export const hostAllOwnerlessHotels = internalMutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+    if (!user) throw new Error(`No user with email ${args.email}`);
+
+    const hotels = await ctx.db
+      .query("listings")
+      .withIndex("by_type", (q) => q.eq("type", "hotel"))
+      .take(200);
+
+    const now = Date.now();
+    const assigned: string[] = [];
+    const alreadyHosted: string[] = [];
+    const skippedHidden: string[] = [];
+
+    for (const hotel of hotels) {
+      if (hotel.ownerId) {
+        alreadyHosted.push(hotel.name_en);
+        continue;
+      }
+      if (hotel.isActive === false) {
+        skippedHidden.push(hotel.name_en);
+        continue;
+      }
+      await ctx.db.patch(hotel._id, {
+        ownerId: user._id,
+        // undefined means seed data, which predates the approval flow and is
+        // already treated as public. Only an explicit non-approved status
+        // needs correcting.
+        ...(hotel.status !== undefined && hotel.status !== "approved"
+          ? { status: "approved" as const }
+          : {}),
+        updatedAt: now,
+      });
+      assigned.push(hotel.name_en);
+    }
+
+    // A host who is not an approved business owner cannot reach their own
+    // dashboard, which makes the assignment useless.
+    await ctx.db.patch(user._id, {
+      role: user.role === "admin" ? "admin" : "business_owner",
+      isApproved: true,
+      updatedAt: now,
+    });
+
+    return {
+      scanned: hotels.length,
+      assignedCount: assigned.length,
+      assigned,
+      alreadyHosted,
+      skippedHidden,
+    };
+  },
+});
