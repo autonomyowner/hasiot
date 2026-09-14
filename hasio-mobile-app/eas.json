@@ -8,6 +8,10 @@
       "developmentClient": true,
       "distribution": "internal",
       "channel": "development",
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://hearty-ram-74.eu-west-1.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site"
+      },
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleDebug"
