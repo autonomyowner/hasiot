@@ -971,10 +971,10 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     backgroundColor: colors.sand,
   },
   heroImage: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   heroGradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   heroContent: {
     flex: 1,
@@ -1135,10 +1135,10 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     backgroundColor: colors.sand,
   },
   bannerImage: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   bannerGradient: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   bannerRow: {
     flex: 1,

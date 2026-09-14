@@ -240,7 +240,7 @@ function Chip({
 const makeStyles = (fonts: AppFonts) =>
   StyleSheet.create({
     backdrop: {
-      ...StyleSheet.absoluteFillObject,
+      ...StyleSheet.absoluteFill,
       backgroundColor: "rgba(31, 29, 23, 0.35)",
     },
     sheet: {

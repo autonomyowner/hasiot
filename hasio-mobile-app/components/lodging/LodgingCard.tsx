@@ -202,7 +202,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     backgroundColor: colors.sand,
   },
   image: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   ratingBadge: {
     position: "absolute",

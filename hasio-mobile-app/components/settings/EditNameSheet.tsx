@@ -108,7 +108,7 @@ export function EditNameSheet({ visible, initialName, onClose }: EditNameSheetPr
 
 const makeStyles = (fonts: AppFonts) =>
   StyleSheet.create({
-    backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(31, 29, 23, 0.35)" },
+    backdrop: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(31, 29, 23, 0.35)" },
     sheet: {
       position: "absolute",
       left: 0,

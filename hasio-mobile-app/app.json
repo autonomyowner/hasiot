@@ -7,8 +7,7 @@
     "scheme": "hasio",
     "icon": "./assets/IconKitchen-Output/android/play_store_512.png",
     "userInterfaceStyle": "automatic",
-    "sdkVersion": "54.0.0",
-    "newArchEnabled": true,
+    "sdkVersion": "57.0.0",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.hasio.travel",
@@ -73,7 +72,10 @@
           }
         }
       ],
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-image",
+      "expo-secure-store",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true

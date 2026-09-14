@@ -185,10 +185,10 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     backgroundColor: "#14100C",
   },
   backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   scrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   safeArea: {
     flex: 1,

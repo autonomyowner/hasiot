@@ -408,7 +408,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   outgoingLayer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     // On its way out the skeleton keeps its natural height, which need not match
     // the content that replaced it; clipping keeps any surplus in the region.
     overflow: "hidden",
