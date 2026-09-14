@@ -23,6 +23,37 @@ Three user roles: tourists (immediate access), business owners (post listings �
 **Brand:** Always use "Hasio" in English — never "هاسيو" in logos or brand display, even in Arabic mode.
 
 **Production:** https://www.hasio.xyz (Vercel, auto-deploys on push to `main`)
+**App Store:** https://apps.apple.com/sa/app/hasio-travel/id6800297588 — published under **Nabil Hamici's** Apple account, not ours (see *Stores, accounts & shipping*)
+**Play Store:** https://play.google.com/store/apps/details?id=com.hasio.travel — **stale: still the May 2026 1.0.0 binary** (see the same section)
+
+## The goal right now — polish, fix, ship 1.1.0 to both stores (set 2026-09-14)
+
+The app is live on both stores but Android is four months stale and the owner considers the app
+far from what it should be. The job is to **polish and enhance the mobile app, fix every problem
+found, and ship it as a production-ready native build to the App Store and Play Store** — the
+first release that brings Android up to date. Work happens on branch **`sdk-57`** (Expo SDK 57 /
+RN 0.86), which `main` has not absorbed yet.
+
+How to do good work here:
+
+- **Test on a real phone through the dev client, never Expo Go** — Expo Go cannot host this app's
+  native modules, so what it shows is not the app. Commands under *Local device testing* below.
+  Nothing can be verified on-device from this machine: say so, and hand the owner exactly what to
+  look at (which screen, which gesture, what "correct" looks like).
+- **Root causes, not symptoms.** This codebase explains *why* in comments and commit messages
+  (read `hooks/useKeyboardOverlap.ts` for the house style); a fix that does not say what was
+  actually wrong is not finished. When the cause cannot be confirmed, say which alternatives
+  remain and what observation would tell them apart.
+- **Green before commit:** `npm run typecheck`, `npm run lint`, `npm run test` in
+  `hasio-mobile-app/`. Lint has existed only since 2026-09-14 — the baseline is 0 errors / ~55
+  warnings, and the warnings are real pre-existing cleanups (unused vars, dead handlers). Don't
+  add errors; burning down warnings is welcome polish.
+- **JS-only changes need no rebuild** — Metro hot-reloads into the installed dev client. Rebuild
+  the dev client only for a new native module or an SDK change.
+- **The release itself is gated** by the pre-flight list in *Stores, accounts & shipping*. Two of
+  those items are not optional: `SMS_PROVIDER` is still `demo` in production (anyone signs in as
+  anyone), and Android cannot be submitted until the Play service-account key is restored or the
+  AAB is uploaded by hand.
 
 ## Commands
 
@@ -122,6 +153,20 @@ All admin queries/mutations in `convex/admin/` and `approveBusinessAccount` in `
 ### Mobile App (React Native + Expo)
 
 Located in `hasio-mobile-app/`. **Renamed 2026-08-11** from `hasio<SPACE><SPACE>mobile app` (two spaces) — the double space broke iOS builds (CocoaPods script phases over-escape the path, failing with `bash: /Users/expo/workingdir/build/hasio: No such file or directory`). Never reintroduce spaces in this directory name. Shares the same Convex backend.
+
+**Expo SDK 57 / React Native 0.86 / React 19.2 since 2026-09-14, on branch `sdk-57`** (`main` is
+still SDK 54 / RN 0.81 until that branch merges). Three things the upgrade taught, so nobody
+re-learns them: `sdkVersion` is pinned in `app.json` and must move with the `expo` package or
+`expo install --fix` silently keeps resolving the old SDK; `newArchEnabled` is no longer a valid
+key (the New Architecture is the only one in 0.86 — leaving it in fails config validation); and
+`StyleSheet.absoluteFillObject` is gone from the runtime, `absoluteFill` is now the plain object
+and spreads identically. The old `phase-1-stays` branch also carries an SDK 57 bump but is 139
+commits stale and bundled with a separate UI redesign — do not merge it for the SDK.
+
+**Lint** (`npm run lint`) works since the same day: `hasio-mobile-app/eslint.config.js` on
+`eslint-config-expo`. ESLint is pinned to **9** — 10 breaks `eslint-plugin-react` on every file.
+`react-hooks/immutability` is off because it flags every Reanimated shared-value write
+(`x.value = …`, which is the whole API); the other React Compiler rules are warnings, not errors.
 
 - `app/business/` — Business owner screens: `post-lodging.tsx`, `post-food.tsx`, `post-event.tsx`, `post-destination.tsx`, `my-listings.tsx`
 - `app/provider/` — Service provider screens: `post-service.tsx`, `my-services.tsx`
@@ -325,9 +370,117 @@ The mobile app (`hasio-mobile-app/`) includes these reliability features:
 - **Email Validation**: `auth.tsx` validates with `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` after empty check.
 - **Dark Mode**: Toggle replaced with "Coming Soon" subtitle in settings. Zustand `isDarkMode` state preserved for future use.
 
-## Mobile App Play Store Deployment
+## Stores, accounts & shipping — read before any build, submit or OTA
 
-**Status**: v1.0.0 published via EAS to Google Play. Passed 14-day closed testing (12 testers) and granted production access. Promoted tested build to Production track.
+Two companion documents hold the exact procedures and must be updated after every release:
+`IOS_RELEASE_STATUS.md` (iOS playbook + credentials recipe + version history) and
+`docs/SHIPPING.md` (OTA-vs-build decision table, rollback, compliance forms). This section is the
+map of *who owns what and what is broken*, verified live on 2026-09-14.
+
+### iOS — published under Nabil's Apple account
+
+- **Why:** the owner's own Apple Developer enrolment is blocked (Apple case `20000130148873`; the
+  Developer app answers "enrollment is not available for this Apple Account" after a failed web
+  enrolment, and the card cannot pay Apple). So Hasio ships under **Nabil Hamici's** account,
+  **Team ID `W23759GRP4`**. He owns the App Store Connect record and its metadata; we build and
+  upload from this Windows PC over EAS with an ASC API key. **After every `eas submit` Nabil must
+  select the build in ASC and press submit himself — nothing happens until he does.** Message him
+  the build number the same day.
+- **Live:** "Hasio Travel", `com.hasio.travel`, https://apps.apple.com/sa/app/hasio-travel/id6800297588,
+  seller shown as Nabil Hamici. v1.0.2 build 6, approved 2026-08-29, minimum iOS 15.1. The public
+  listing reports version "1.0" while the shipped build is `app.json` 1.0.2 — ask Nabil what the
+  ASC release is labelled before the next one so the two agree.
+- **ASC identifiers** (all already filled in `eas.json → submit.production.ios`): ascAppId
+  **`6800297588`**, bundle-id internal id `THCRG443T9`, team `W23759GRP4`.
+- **Keys and signing files** — all in `hasio-mobile-app/`, all gitignored (both `.gitignore`s block
+  `*.p8 *.p12 *.mobileprovision credentials.json credentials/ google-service-account.json`),
+  **none can be re-downloaded — keep a backup off this machine**:
+
+  | File | What it is |
+  |---|---|
+  | `appstore-connect-api-key.p8` | ASC API key **`UR3PAK97LX`**, Issuer ID `30cc1bab-a280-4644-8b93-900bcb21b973`. A *team* key at App Manager level: enough to upload builds, not to manage certificates. This is what lets us ship to Nabil's account without ever logging in as him. |
+  | `credentials/hasio_dist.p12` | iOS distribution certificate `5VG6M5UPU4`, **expires 2027-08-11**. Password is in `IOS_RELEASE_STATUS.md`. |
+  | `credentials/hasio.mobileprovision` | App Store provisioning profile `5X9G7JR3K5`, **expires 2027-08-11**. |
+  | `credentials.json` | Points EAS at the two files above; `credentialsSource: "local"` in the eas.json production profile. |
+
+  The cert and profile were generated **from Windows through the ASC API** — no Mac, no Apple ID —
+  and expire together on **2027-08-11**; after that every iOS build dies in `PREPARE_CREDENTIALS`
+  until they are regenerated the same way (recipe in `IOS_RELEASE_STATUS.md`; `openssl pkcs12
+  -export -legacy` is mandatory). `EXPO_NO_CAPABILITY_SYNC=1` in eas.json means EAS will never add
+  an Apple capability: push notifications would need the capability enabled on the App ID and the
+  profile regenerated by hand first.
+- **Still open with Nabil:** (1) the **app-transfer agreement in writing** — ownership stays with
+  him otherwise; the build has no iCloud entitlement so a transfer is not blocked; (2)
+  `IOS_APP_STORE_ID` in `components/screens/SettingsScreenContent.tsx` is still `null`, which hides
+  the "Rate app" row on iOS — the id is `6800297588`, wire it.
+- **App Review:** a pre-approved business-owner demo account is in the ASC review notes
+  (credentials in `IOS_RELEASE_STATUS.md`). Business/provider features are approval-gated, so a
+  review without it is rejected for incomplete access. Listing copy, territories and privacy
+  labels are in the same file.
+
+### Android — our own Google Play account, but the listing is stale
+
+- **Live:** https://play.google.com/store/apps/details?id=com.hasio.travel — **verified
+  2026-09-14: "Updated on May 15, 2026", version 1.0.0 (versionCode 11)**, listing still named
+  "Hasio - Al-Ahsa Guide". Production track, the 8 countries below. Passed the 14-day closed test
+  (12 testers) and was promoted on 2026-05-15; nothing has reached the store since.
+- **Why stale:** a 1.0.2 production AAB (versionCode 14, EAS build
+  `b56c9f78-8537-49b0-bcbd-26ca25fd69cc`, 2026-08-30) was built the day after iOS 1.0.2 was
+  approved and **never uploaded**, because `hasio-mobile-app/google-service-account.json` is **not
+  on disk** and `eas submit -p android` cannot run without it. The May release was a manual Play
+  Console upload for the same reason.
+- **Consequence:** `runtimeVersion` policy is `appVersion`, so the 1.0.0 binary only accepts
+  runtime-1.0.0 OTAs, and every production OTA since 2026-09-05 is runtime 1.0.2 (`eas update:list
+  --branch production`). **No Android user has bookings, ratings, favourites, the SAR/USD toggle,
+  the redesigned Home/Planner or the Eastern Province expansion** — they run the July bundle on a
+  May binary.
+- **What has to happen for Android:**
+  1. Restore the submit path: Play Console → *Setup → API access* names the service account;
+     in Google Cloud Console create a new JSON key for it and save it as
+     `hasio-mobile-app/google-service-account.json` (gitignored). Then
+     `eas submit -p android --profile production --id <build-id>` works. **Or** upload by hand
+     once: download the AAB from the EAS build page → Play Console → Production → Create release.
+  2. Do **not** ship build 14 — it predates the bookings merge and the SDK 57 branch. The next
+     Android binary is the 1.1.0 built from `sdk-57` after polish.
+  3. Update the listing with it: name (the app covers the whole Eastern Province now — the
+     *Coverage is not positioning* rule above applies), screenshots, and the **Data Safety form**
+     (`hasio-mobile-app/docs/DATA_SAFETY_ANSWERS.md`) — phone-number sign-in is new data.
+- **Signing:** the Android keystore is **EAS-managed** (Build Credentials `GDSrtB1EXC`); nothing
+  local is needed to build.
+
+### Shared release facts
+
+- EAS project `8859775e-cedf-45b7-aa94-3c7cbfb7be12`, owner `autonomy`, login `autonomy.owner`
+  (`npx eas whoami`). Channels: `production` for store builds, `development` for the dev client.
+- **Next store release is 1.1.0 on SDK 57**, from `sdk-57`. Live binaries are 1.0.2 (iOS) and
+  1.0.0 (Android). **Never publish an OTA from `sdk-57` to the 1.0.2 runtime**: RN 0.86 JS on an
+  RN 0.81 binary crashes at launch. The `version` bump is the safety catch — leave it in place.
+- **Release order:** `npx convex deploy --yes` → `eas build` both platforms → submit Android
+  (service account or manual upload) → `eas submit -p ios` → tell Nabil → after approval update
+  `IOS_RELEASE_STATUS.md`, `docs/SHIPPING.md` ("Current live versions") and this section.
+- **Pre-flight for 1.1.0** — every line, no exceptions:
+  - [ ] `SMS_PROVIDER` off `demo` in prod — **still `demoAuth: true` on 2026-09-14**; any six digits
+        sign in as any phone number. `npx convex env set SMS_PROVIDER console --prod` is the
+        stopgap (phone sign-in stops; email unaffected), `infobip` once a Saudi route works.
+  - [ ] `main` is not behind any feature branch; `sdk-57` merged.
+  - [ ] `version` is `1.1.0` in `app.json`; leave `buildNumber`/`versionCode` to `autoIncrement`.
+  - [ ] Play Data Safety, ASC App Privacy and `public/privacy-policy.html` all mention phone number.
+  - [ ] `google-service-account.json` present, or the manual upload planned.
+  - [ ] `eas update:list --branch production` shows no update already tagged for runtime 1.1.0
+        (the stale-bundle trap that crashed iOS build 4).
+  - [ ] Nabil told the iOS build number the day it is submitted.
+
+### Local device testing (dev client, set up 2026-09-14)
+
+```bash
+cd hasio-mobile-app
+npx expo start --dev-client       # add --tunnel when phone and PC are on different networks
+```
+
+The phone runs a **development build** of the app, not Expo Go: `npx eas build -p android
+--profile development` (profile in eas.json, ~20 min on EAS). Rebuild it only when a native
+module or the SDK changes. Current SDK 57 dev APK: EAS build `af661805-cc1b-4b28-a669-941eeee026ec`.
+`.env` points at **production** Convex, so anything created from the phone is real data.
 
 ### Production Target Countries (8)
 Algeria, Australia, Bahrain, Kuwait, Oman, Qatar, Saudi Arabia, United Arab Emirates.
@@ -344,12 +497,12 @@ Algeria, Australia, Bahrain, Kuwait, Oman, Qatar, Saudi Arabia, United Arab Emir
 cd "hasio-mobile-app"
 npx eas build -p android --profile production   # Builds AAB, auto-increments versionCode
 npx eas submit -p android --profile production   # Uploads to Play Store (track set in eas.json)
-npx eas update --channel production --message "description"  # OTA update (JS-only, no review)
+npx eas update --channel production --environment production --message "description"  # OTA (JS-only, no review); --environment is mandatory since SDK 55
 ```
 
 - `eas.json` production profile has `EXPO_PUBLIC_CONVEX_URL` and `EXPO_PUBLIC_CONVEX_SITE_URL` env vars baked in.
-- Submit track is `"internal"` for initial closed testing. Change to `"production"` after 14-day testing period + production access granted.
-- Service account key: `google-service-account.json` (gitignored).
+- Submit track is `"production"` (changed from `"internal"` on 2026-05-13 once the closed test passed).
+- Service account key: `google-service-account.json` (gitignored) — **currently missing from disk**, which is the reason Android is stale; see *Stores, accounts & shipping* above.
 
 ### Legal Documents (3 locations in mobile app)
 - `docs/terms-of-service.html` — Terms of Service
