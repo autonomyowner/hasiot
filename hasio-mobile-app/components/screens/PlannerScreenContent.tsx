@@ -138,6 +138,23 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
         ),
       };
     }
+    // Closed is a state, not the smallest of three numbers.
+    //
+    // `Math.max` on its own is a ratchet with no reset: it assumes all three
+    // sources return to zero, and holds the composer up at the highest one
+    // that does not. Neither height source is reliable that way here — two
+    // `useAnimatedKeyboard` instances are live at once (this screen and the
+    // tab bar), and on Android that hook drives the window's soft-input mode,
+    // so one of them settling a frame late or not at all leaves a keyboard's
+    // worth of blank space wedged under the composer until the screen
+    // remounts. That is the "it never comes back down to the tab bar" bug.
+    //
+    // `openForKeyboard` is the authority the iOS branch above already trusts,
+    // and it is the same answer here: when the keyboard is gone the composer
+    // goes back to resting, whatever the heights still claim. Rising is
+    // untouched — `focused` is true from the moment the field is tapped, which
+    // is what lets `prepare()` lift it before the keyboard has moved at all.
+    if (!openForKeyboard) return { paddingBottom: closedClearance };
     return {
       paddingBottom: Math.max(
         closedClearance,
