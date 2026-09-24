@@ -23,7 +23,7 @@ import { ReviewSheet } from "@/components/review";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-import { formatDateRange, formatISODate, todayRiyadhISO } from "@/lib/dates";
+import { formatISODate, todayRiyadhISO } from "@/lib/dates";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { SkeletonBookingDetail } from "@/components/ui/SkeletonScreens";
 import { displayTotalSar, nightsLabel, telUrl } from "@/lib/bookingDisplay";
