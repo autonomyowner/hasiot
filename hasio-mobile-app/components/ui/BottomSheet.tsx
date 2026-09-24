@@ -27,6 +27,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "@/constants/colors";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useDialogStore } from "@/stores/dialogStore";
 import { AppDialogHost } from "./AppDialog";
 
 interface BottomSheetProps {
@@ -103,16 +104,37 @@ export function BottomSheet({
   maxHeightRatio = 0.9,
 }: BottomSheetProps) {
   const reducedMotion = useReducedMotion();
+  const dialogUp = useDialogStore((state) => state.current !== null);
 
   // The Modal outlives `visible` by the length of the closing animation.
   // Adjusted during render rather than in an effect, so the frame that makes
   // the sheet visible already has its Modal mounted.
   const [mounted, setMounted] = useState(visible);
+
+  // On iOS, dismissing a Modal that is itself presenting something dismisses
+  // that child instead: the alert goes, and the sheet stays presented but
+  // empty — a transparent screen that swallows every touch. So the sheet's
+  // Modal is never taken down while a dialog is up (it renders in this sheet's
+  // own host, above it). Two cases:
+  // - asked to close *under* an alert ("Saved" then close, a confirm whose
+  //   action closes the sheet): the panel stays until the alert has left, then
+  //   slides away — the order people expect;
+  // - an alert raised *after* the close began (a parent reporting on the
+  //   request the sheet sent): the panel keeps sliding away, and only the
+  //   invisible Modal waits for the alert (see finishClose).
+  const [holding, setHolding] = useState(false);
   const [prevVisible, setPrevVisible] = useState(visible);
   if (visible !== prevVisible) {
     setPrevVisible(visible);
-    if (visible) setMounted(true);
+    if (visible) {
+      setMounted(true);
+      setHolding(false);
+    } else if (mounted && dialogUp) {
+      setHolding(true);
+    }
   }
+  if (holding && !dialogUp) setHolding(false);
+  const shown = visible || holding;
 
   // 0 = off screen, 1 = open. The panel's translation derives from it and
   // from its measured height, so it starts fully hidden whatever its size.
@@ -127,7 +149,11 @@ export function BottomSheet({
     onDismissedRef.current = onDismissed;
   });
 
-  const finishClose = useCallback(() => {
+  // Set when the panel has finished leaving while a dialog was still up in the
+  // sheet's host: the Modal comes down once the dialog has gone instead.
+  const unmountDeferred = useRef(false);
+
+  const unmount = useCallback(() => {
     setMounted(false);
     // iOS says so itself once the native dismissal is over — `onDismiss` on
     // the Modal below. Android has no such event and no presentation to wait
@@ -138,8 +164,23 @@ export function BottomSheet({
     }
   }, []);
 
+  const finishClose = useCallback(() => {
+    if (useDialogStore.getState().current !== null) {
+      unmountDeferred.current = true;
+      return;
+    }
+    unmount();
+  }, [unmount]);
+
   useEffect(() => {
-    if (visible) {
+    if (dialogUp || !unmountDeferred.current) return;
+    unmountDeferred.current = false;
+    unmount();
+  }, [dialogUp, unmount]);
+
+  useEffect(() => {
+    if (shown) {
+      unmountDeferred.current = false;
       drag.value = 0;
       // Start from fully hidden whatever the last content measured; the new
       // panel's first layout corrects it before a frame of it shows.
@@ -159,7 +200,7 @@ export function BottomSheet({
         }
       );
     }
-  }, [visible, mounted, reducedMotion, finishClose, progress, drag, panelHeight]);
+  }, [shown, mounted, reducedMotion, finishClose, progress, drag, panelHeight]);
 
   const handleNativeDismiss = useCallback(() => {
     onDismissedRef.current?.();
