@@ -2,6 +2,13 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { colors } from "@/constants/colors";
 import {
+  LODGING_CARD_CHIP_PADDING_VERTICAL,
+  LODGING_CARD_CHIP_TEXT,
+  LODGING_CARD_HEIGHT,
+  LODGING_CARD_LOCATION_TEXT,
+  LODGING_CARD_NAME_TEXT,
+  LODGING_CARD_PRICE_TEXT,
+  lineHeightFor,
   HOME_CARD_GAP,
   HOME_CARD_WIDTH,
   HOME_CONTAINER_PADDING,
@@ -37,8 +44,28 @@ type ListingVariant = "lodging";
 
 // LodgingCard image (the image *is* the card now).
 const IMAGE_HEIGHT: Record<ListingVariant, number> = {
-  lodging: 240,
+  lodging: LODGING_CARD_HEIGHT,
 };
+
+/**
+ * The caption's three lines as LodgingCard sets them, in the script being
+ * shown. The caption is pinned to the card's bottom edge, so every point a
+ * line is short of its Arabic height moved the lines above it down: the chip
+ * and the title bar sat 4–6pt low and jumped up as the cards faded in.
+ */
+function lodgingCaptionBoxes(arabic: boolean) {
+  return {
+    chip:
+      LODGING_CARD_CHIP_PADDING_VERTICAL * 2 +
+      lineHeightFor(LODGING_CARD_CHIP_TEXT, arabic),
+    name: lineHeightFor(LODGING_CARD_NAME_TEXT, arabic),
+    // The meta row is as tall as the taller of its two lines.
+    meta: Math.max(
+      lineHeightFor(LODGING_CARD_LOCATION_TEXT, arabic),
+      lineHeightFor(LODGING_CARD_PRICE_TEXT, arabic)
+    ),
+  };
+}
 
 interface SkeletonListingCardProps {
   variant: ListingVariant;
@@ -53,6 +80,8 @@ export function SkeletonListingCard({
   index = 0,
 }: SkeletonListingCardProps) {
   const seed = index * 3;
+  // In this app a right-to-left layout is always the Arabic one.
+  const boxes = lodgingCaptionBoxes(isRTL);
 
   return (
     <View style={styles.listingCard}>
@@ -68,18 +97,18 @@ export function SkeletonListingCard({
         <Skeleton
           radius={999}
           phase={sweepPhase(seed + 1)}
-          style={styles.listingCaptionChip}
+          style={[styles.listingCaptionChip, { height: boxes.chip }]}
         />
         <SkeletonLine
           width="62%"
-          box={28}
+          box={boxes.name}
           isRTL={isRTL}
           phase={sweepPhase(seed + 2)}
           style={[styles.captionLine, styles.gapTop8]}
         />
         <SkeletonLine
           width="45%"
-          box={17}
+          box={boxes.meta}
           isRTL={isRTL}
           phase={sweepPhase(seed + 3)}
           style={[styles.captionLine, styles.gapTop6]}
@@ -327,9 +356,9 @@ const styles = StyleSheet.create({
   listingCaptionRTL: {
     alignItems: "flex-end",
   },
+  // Its height comes from `lodgingCaptionBoxes`, per language.
   listingCaptionChip: {
     width: 64,
-    height: 22,
   },
   // The chip sizes to itself, so the two lines under it have to be stretched
   // back to full width or their percentage widths resolve against nothing.
