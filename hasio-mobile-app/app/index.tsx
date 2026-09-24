@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
-import { View, ActivityIndicator, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { useAppStore } from "@/stores/appStore";
 
 export default function Index() {
@@ -11,7 +11,8 @@ export default function Index() {
 
   // Wait for the real hydration signal rather than a fixed delay — a slow read
   // from AsyncStorage used to route returning users back into onboarding.
-  // Read lazily in case hydration finished before this screen mounted.
+  // Read lazily in case hydration finished before this screen mounted, which
+  // is now the normal case: the root layout keeps the splash up until it has.
   const [hydrated, setHydrated] = useState(() =>
     useAppStore.persist.hasHydrated()
   );
@@ -21,7 +22,7 @@ export default function Index() {
     const unsubscribe = useAppStore.persist.onFinishHydration(() =>
       setHydrated(true)
     );
-    // Watchdog: never strand the user on a spinner if storage is wedged.
+    // Watchdog: never strand the user here if storage is wedged.
     const watchdog = setTimeout(() => setHydrated(true), 3000);
     return () => {
       unsubscribe();
@@ -34,18 +35,15 @@ export default function Index() {
     router.replace(hasCompletedOnboarding ? "/(tabs)" : "/onboarding");
   }, [hydrated, hasCompletedOnboarding, router]);
 
-  return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color="#4F5E10" />
-    </View>
-  );
+  // Just the splash's own colour. This screen is on for a frame or two while
+  // the redirect lands, and the spinner it used to show flashed between the
+  // splash and the first real screen.
+  return <View style={styles.container} />;
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
     backgroundColor: "#FAF7F2",
   },
 });
