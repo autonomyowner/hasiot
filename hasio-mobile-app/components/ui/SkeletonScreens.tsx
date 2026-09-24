@@ -517,6 +517,55 @@ export function SkeletonBookingList({
   );
 }
 
+/**
+ * Mirrors HostBookingCard on business/bookings.tsx, as the Requests tab it
+ * opens on shows it: a raised card (24 radius, 16 padding, 12 gap) holding the
+ * 72pt thumb and its lines, the guest row with its 44pt call button, then the
+ * two 50pt action buttons. The host inbox used to borrow the guests' list
+ * skeleton, a different card, so everything jumped when the real one landed.
+ */
+export function SkeletonHostBookingList({
+  isRTL = false,
+  count = 3,
+}: {
+  isRTL?: boolean;
+  count?: number;
+}) {
+  return (
+    <View style={bookingStyles.hostList}>
+      {Array.from({ length: count }).map((_, index) => {
+        const seed = index * 6;
+        return (
+          <View key={index} style={bookingStyles.hostCard}>
+            <View style={[bookingStyles.hostTop, isRTL && bookingStyles.rowRTL]}>
+              <Skeleton radius={14} phase={sweepPhase(seed)} style={bookingStyles.hostThumb} />
+              <View style={bookingStyles.hostBody}>
+                <SkeletonLine width="70%" box={21} isRTL={isRTL} phase={sweepPhase(seed + 1)} />
+                <SkeletonLine width="55%" box={19} isRTL={isRTL} phase={sweepPhase(seed + 2)} />
+                <View style={[bookingStyles.footer, isRTL && bookingStyles.rowRTL]}>
+                  <SkeletonPill width={76} height={22} phase={sweepPhase(seed + 3)} />
+                  <Skeleton radius={4} phase={sweepPhase(seed + 3)} style={bookingStyles.amount} />
+                </View>
+              </View>
+            </View>
+            <View style={[bookingStyles.hostGuestRow, isRTL && bookingStyles.rowRTL]}>
+              <View style={bookingStyles.hostBody}>
+                <SkeletonLine width="45%" box={20} isRTL={isRTL} phase={sweepPhase(seed + 4)} />
+                <SkeletonLine width="35%" box={19} isRTL={isRTL} phase={sweepPhase(seed + 4)} />
+              </View>
+              <SkeletonPill width={44} height={44} phase={sweepPhase(seed + 5)} />
+            </View>
+            <View style={[bookingStyles.hostActions, isRTL && bookingStyles.rowRTL]}>
+              <Skeleton radius={14} phase={sweepPhase(seed + 5)} style={bookingStyles.hostAction} />
+              <Skeleton radius={14} phase={sweepPhase(seed + 5)} style={bookingStyles.hostAction} />
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 /** Mirrors app/bookings/[id].tsx: status card, listing card with hero, facts card. */
 export function SkeletonBookingDetail({ isRTL = false }: { isRTL?: boolean }) {
   const edge = isRTL ? bookingStyles.selfEnd : undefined;
@@ -565,6 +614,27 @@ const bookingStyles = StyleSheet.create({
     marginTop: 8,
   },
   amount: { width: 64, height: 16 },
+  // HostBookingCard.
+  hostList: { paddingHorizontal: 20, gap: 12 },
+  hostCard: {
+    backgroundColor: colors.surface.DEFAULT,
+    borderRadius: 24,
+    padding: 16,
+    gap: 12,
+  },
+  hostTop: { flexDirection: "row", gap: 12 },
+  hostThumb: { width: 72, height: 72 },
+  hostBody: { flex: 1 },
+  hostGuestRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.divider,
+    paddingTop: 12,
+  },
+  hostActions: { flexDirection: "row", gap: 10 },
+  hostAction: { flex: 1, height: 50 },
   detail: { paddingHorizontal: 20, gap: 12 },
   card: {
     backgroundColor: colors.surface.DEFAULT,

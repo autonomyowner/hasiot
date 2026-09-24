@@ -1,7 +1,7 @@
 import { appAlert } from "@/stores/dialogStore";
 import React, { useCallback, useMemo, useState } from "react";
-import { View, Text, FlatList, Linking, StyleSheet } from "react-native";
-import Animated, { FadeInDown, FadeOut } from "react-native-reanimated";
+import { View, Text, Linking, StyleSheet } from "react-native";
+import Animated, { FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useMutation, useQuery } from "convex/react";
@@ -9,7 +9,7 @@ import { api } from "@/backend";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { BackButton } from "@/components/ui/BackButton";
 import { FilterChip } from "@/components/ui/FilterChip";
-import { SkeletonBookingList } from "@/components/ui/SkeletonScreens";
+import { SkeletonHostBookingList } from "@/components/ui/SkeletonScreens";
 import { DeclineReasonSheet } from "@/components/booking/DeclineReasonSheet";
 import {
   HostBookingCard,
@@ -19,7 +19,13 @@ import {
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { todayRiyadhISO } from "@/lib/dates";
-import { displayTotalSar, nightsLabel, telUrl, type StayTotal } from "@/lib/bookingDisplay";
+import {
+  displayTotalSar,
+  nightsLabel,
+  partitionHostBookings,
+  telUrl,
+  type StayTotal,
+} from "@/lib/bookingDisplay";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { haptic } from "@/lib/haptics";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
@@ -42,7 +48,8 @@ const TOAST_MS = 1800;
  * Confirm is one tap. It is the action the host takes twenty times a week,
  * it is reversible on the admin side, and the guest is told either way — a
  * "are you sure?" in front of it only trains the host to tap through it.
- * Decline keeps its sheet, because a reason is worth asking for.
+ * Decline keeps its sheet, because a reason is worth asking for. No-show asks
+ * first, because nothing in the app takes it back.
  */
 export default function OwnerBookingsScreen() {
   const styles = useThemedStyles(makeStyles);
@@ -51,7 +58,10 @@ export default function OwnerBookingsScreen() {
   const { format, currency } = useCurrency();
   const [tab, setTab] = useState<Tab>("requests");
   const [decliningId, setDecliningId] = useState<Id<"bookings"> | null>(null);
-  const [busy, setBusy] = useState<{ id: string; action: HostAction } | null>(null);
+  // Which action is running on which booking. It used to be one slot for the
+  // whole screen: acting on a second card while the first was still saving
+  // overwrote it, and the first card's buttons came back mid-request.
+  const [busy, setBusy] = useState<Record<string, HostAction>>({});
   const [toast, setToast] = useState<TranslationKey | null>(null);
 
   const bookings = useQuery(api.bookings.queries.getBusinessBookings, {});
@@ -62,35 +72,40 @@ export default function OwnerBookingsScreen() {
 
   const today = todayRiyadhISO();
 
-  const groups = useMemo(() => {
-    const requests: HostBookingData[] = [];
-    const upcoming: HostBookingData[] = [];
-    const past: HostBookingData[] = [];
-
-    for (const booking of bookings ?? []) {
-      if (booking.status === "pending") requests.push(booking);
-      else if (booking.status === "confirmed" && (booking.checkOut ?? booking.date) >= today) {
-        upcoming.push(booking);
-      } else past.push(booking);
-    }
-    return { requests, upcoming, past };
-  }, [bookings, today]);
+  // Soonest arrival first in Requests and Upcoming; see partitionHostBookings.
+  const groups = useMemo(
+    () => partitionHostBookings<HostBookingData>(bookings ?? [], today),
+    [bookings, today]
+  );
 
   const shown = groups[tab];
 
+  // Resolves whether the change went through, so the decline sheet can stay
+  // open on a failure.
   const run = useCallback(
-    async (id: string, action: HostAction, mutate: () => Promise<unknown>, successKey: TranslationKey) => {
-      setBusy({ id, action });
+    async (
+      id: string,
+      action: HostAction,
+      mutate: () => Promise<unknown>,
+      successKey: TranslationKey
+    ): Promise<boolean> => {
+      setBusy((current) => ({ ...current, [id]: action }));
       try {
         await mutate();
         haptic("success");
         setToast(successKey);
         setTimeout(() => setToast((current) => (current === successKey ? null : current)), TOAST_MS);
+        return true;
       } catch (error) {
         haptic("warning");
         appAlert(t("error"), t(getBookingErrorKey(error)));
+        return false;
       } finally {
-        setBusy(null);
+        setBusy((current) => {
+          const next = { ...current };
+          delete next[id];
+          return next;
+        });
       }
     },
     [t]
@@ -108,14 +123,27 @@ export default function OwnerBookingsScreen() {
           setDecliningId(bookingId);
           return;
         case "noShow":
-          run(id, action, () => markNoShow({ bookingId }), "noShowToast");
+          // Asked first. It sits beside "Mark completed", marks the guest's
+          // booking as a no-show for good — the app has no way to take it
+          // back — and one stray tap was all it took.
+          haptic("warning");
+          appAlert(t("noShowConfirmTitle"), t("noShowConfirmMessage"), [
+            { text: t("cancel"), style: "cancel" },
+            {
+              text: t("markNoShow"),
+              style: "destructive",
+              onPress: () => {
+                void run(id, action, () => markNoShow({ bookingId }), "noShowToast");
+              },
+            },
+          ]);
           return;
         case "complete":
           run(id, action, () => completeBooking({ bookingId }), "completedToast");
           return;
       }
     },
-    [run, confirmBooking, markNoShow, completeBooking]
+    [run, t, confirmBooking, markNoShow, completeBooking]
   );
 
   const labels = useMemo(
@@ -143,16 +171,21 @@ export default function OwnerBookingsScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: HostBookingData }) => (
-      <HostBookingCard
-        booking={item}
-        today={today}
-        language={language}
-        isRTL={isRTL}
-        busy={busy?.id === item._id ? busy.action : null}
-        labels={labels}
-        onAction={onAction}
-        onCall={callGuest}
-      />
+      // A request confirmed or declined leaves the Requests list: it fades
+      // out while the cards below close the gap (itemLayoutAnimation), where
+      // it used to vanish and the list jump up under the host's thumb.
+      <Animated.View exiting={FadeOut.duration(180)}>
+        <HostBookingCard
+          booking={item}
+          today={today}
+          language={language}
+          isRTL={isRTL}
+          busy={busy[item._id] ?? null}
+          labels={labels}
+          onAction={onAction}
+          onCall={callGuest}
+        />
+      </Animated.View>
     ),
     [today, language, isRTL, busy, labels, onAction, callGuest]
   );
@@ -193,7 +226,7 @@ export default function OwnerBookingsScreen() {
       </View>
 
       {bookings === undefined ? (
-        <SkeletonBookingList isRTL={isRTL} count={3} />
+        <SkeletonHostBookingList isRTL={isRTL} count={3} />
       ) : (
         <Animated.View key={tab} style={styles.fill} entering={crossFadeIn} exiting={crossFadeOut}>
           {shown.length === 0 ? (
@@ -203,17 +236,23 @@ export default function OwnerBookingsScreen() {
               {emptyCopy.hint ? <Text style={styles.emptyHint}>{emptyCopy.hint}</Text> : null}
             </View>
           ) : (
-            <FlatList
+            <Animated.FlatList
               data={shown}
               keyExtractor={(booking) => booking._id}
               renderItem={renderItem}
               // The busy card must re-render when busy changes even though
               // its booking object did not.
               extraData={busy}
+              // The cards under a card that left slide up into its place.
+              itemLayoutAnimation={LinearTransition.duration(220)}
+              // Not on a tab switch, though: the whole list cross-fades there,
+              // and every card fading out on its own would fight it.
+              skipEnteringExitingAnimations
               contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 24 }]}
               initialNumToRender={6}
               windowSize={5}
-              removeClippedSubviews
+              // No removeClippedSubviews: detaching off-screen cards breaks the
+              // layout animation above, and a host's inbox is short.
               showsVerticalScrollIndicator={false}
             />
           )}
@@ -239,15 +278,19 @@ export default function OwnerBookingsScreen() {
         visible={decliningId !== null}
         onClose={() => setDecliningId(null)}
         onSubmit={async (reason) => {
-          if (!decliningId) return;
+          if (!decliningId) return false;
           const bookingId = decliningId;
-          setDecliningId(null);
-          await run(
+          const declined = await run(
             bookingId,
             "decline",
             () => declineBooking({ bookingId, reason: reason || undefined }),
             "declinedToast"
           );
+          // Closed only once the decline has gone through. It used to close
+          // before sending, taking its spinner with it, and a failure then
+          // threw away the reason the host had written.
+          if (declined) setDecliningId(null);
+          return declined;
         }}
       />
     </View>

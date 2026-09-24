@@ -9,7 +9,13 @@ import { useThemedStyles } from "@/hooks/useAppFonts";
 interface DeclineReasonSheetProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (reason: string) => Promise<void> | void;
+  /**
+   * Send the decline; resolve true once it has gone through. The caller
+   * closes the sheet then — not before sending, as it used to, which took the
+   * spinner away with the sheet and threw out the reason when the send
+   * failed. On false the sheet stays up with the reason as typed.
+   */
+  onSubmit: (reason: string) => Promise<boolean>;
 }
 
 /**
@@ -25,19 +31,34 @@ export function DeclineReasonSheet({ visible, onClose, onSubmit }: DeclineReason
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Cleared as the sheet opens rather than as it closes, which blanked the
+  // reason while the sheet was still sliding away with it.
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) {
+      setReason("");
+      setSubmitting(false);
+    }
+  }
+
+  // The backdrop, the drag and Android's back button all come here: none of
+  // them closes the sheet while the decline is on its way.
   const handleClose = () => {
-    setReason("");
+    if (submitting) return;
     onClose();
   };
 
   const handleSubmit = async () => {
     if (submitting) return;
     setSubmitting(true);
+    let sent = false;
     try {
-      await onSubmit(reason.trim());
-      setReason("");
+      sent = await onSubmit(reason.trim());
     } finally {
-      setSubmitting(false);
+      // Sent, the sheet is on its way out: keep the spinner rather than flash
+      // the label back while it leaves. The next opening starts clean.
+      if (!sent) setSubmitting(false);
     }
   };
 
@@ -87,8 +108,14 @@ export function DeclineReasonSheet({ visible, onClose, onSubmit }: DeclineReason
 
       <Pressable
         onPress={handleClose}
-        style={({ pressed }) => [styles.cancelButton, pressed && styles.pressed]}
+        disabled={submitting}
+        style={({ pressed }) => [
+          styles.cancelButton,
+          submitting && styles.buttonDisabled,
+          pressed && styles.pressed,
+        ]}
         accessibilityRole="button"
+        accessibilityState={{ disabled: submitting }}
       >
         <Text style={styles.cancelButtonText}>{t("cancel")}</Text>
       </Pressable>

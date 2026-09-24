@@ -6,6 +6,7 @@ import {
   displayTotalSar,
   hostActionsFor,
   nightsLabel,
+  partitionHostBookings,
   pluralForm,
   quoteFooterState,
   telUrl,
@@ -149,6 +150,56 @@ describe("quoteFooterState", () => {
     expect(
       quoteFooterState({ checkIn: "2026-09-10", checkOut: "2026-09-12", quote, lastGood: null })
     ).toEqual({ kind: "error", message: "Maximum stay is 30 nights" });
+  });
+});
+
+// A stay booking as the lists see it.
+const stay = (id: string, status: string, checkIn: string, checkOut: string) => ({
+  _id: id,
+  status,
+  date: checkIn,
+  checkIn,
+  checkOut,
+});
+const ids = (rows: { _id: string }[]) => rows.map((row) => row._id);
+
+describe("partitionHostBookings", () => {
+  const today = "2026-09-10";
+
+  it("puts the nearest arrival first in requests and upcoming", () => {
+    const { requests, upcoming } = partitionHostBookings(
+      [
+        stay("spring", "pending", "2027-03-01", "2027-03-03"),
+        stay("tomorrow", "pending", "2026-09-11", "2026-09-12"),
+        stay("later", "confirmed", "2026-10-01", "2026-10-04"),
+        stay("soon", "confirmed", "2026-09-15", "2026-09-16"),
+      ],
+      today
+    );
+    expect(ids(requests)).toEqual(["tomorrow", "spring"]);
+    expect(ids(upcoming)).toEqual(["soon", "later"]);
+  });
+
+  it("keeps a stay under upcoming until the guest checks out", () => {
+    const { upcoming } = partitionHostBookings(
+      [stay("checking-out-today", "confirmed", "2026-09-08", "2026-09-10")],
+      today
+    );
+    expect(ids(upcoming)).toEqual(["checking-out-today"]);
+  });
+
+  it("puts everything closed or over under past, most recent first", () => {
+    const { requests, upcoming, past } = partitionHostBookings(
+      [
+        stay("old", "completed", "2026-05-01", "2026-05-02"),
+        stay("over", "confirmed", "2026-09-01", "2026-09-03"),
+        stay("declined", "declined", "2026-09-20", "2026-09-21"),
+      ],
+      today
+    );
+    expect(requests).toEqual([]);
+    expect(upcoming).toEqual([]);
+    expect(ids(past)).toEqual(["declined", "over", "old"]);
   });
 });
 

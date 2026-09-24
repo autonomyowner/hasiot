@@ -124,6 +124,44 @@ export function quoteFooterState(input: {
   return { kind: "total", stale: false, ...quote.quote };
 }
 
+/** What the booking lists sort and split on. */
+export type StayDates = { status: string; date: string; checkIn?: string; checkOut?: string };
+
+/** The first day of a stay, or a slot booking's date. */
+const startOf = (b: StayDates) => b.checkIn ?? b.date;
+/** The day a stay ends (check-out is exclusive), or a slot booking's date. */
+const endOf = (b: StayDates) => b.checkOut ?? b.date;
+// ISO days compare as strings.
+const soonestFirst = (a: StayDates, b: StayDates) =>
+  startOf(a) < startOf(b) ? -1 : startOf(a) > startOf(b) ? 1 : 0;
+const latestFirst = (a: StayDates, b: StayDates) => soonestFirst(b, a);
+
+/**
+ * A host's inbox, split into its three tabs.
+ *
+ * Requests and upcoming stays are soonest first — the nearest arrival is the
+ * one to act on — and past ones most recent first. The server returns
+ * bookings newest-made first, which put a request made today for next spring
+ * above one arriving tomorrow.
+ */
+export function partitionHostBookings<T extends StayDates>(
+  bookings: readonly T[],
+  todayISO: string
+): { requests: T[]; upcoming: T[]; past: T[] } {
+  const requests: T[] = [];
+  const upcoming: T[] = [];
+  const past: T[] = [];
+  for (const booking of bookings) {
+    if (booking.status === "pending") requests.push(booking);
+    else if (booking.status === "confirmed" && endOf(booking) >= todayISO) upcoming.push(booking);
+    else past.push(booking);
+  }
+  requests.sort(soonestFirst);
+  upcoming.sort(soonestFirst);
+  past.sort(latestFirst);
+  return { requests, upcoming, past };
+}
+
 export type HostActionSet = "decide" | "close" | "none";
 
 /**
