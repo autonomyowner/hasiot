@@ -124,8 +124,11 @@ export function FilterSheet({
           <Text style={styles.title}>{t("filters")}</Text>
           <Pressable
             onPress={onClose}
-            hitSlop={12}
-            style={({ pressed }) => pressed && styles.pressed}
+            style={({ pressed }) => [
+              styles.close,
+              isRTL ? styles.closeRTL : styles.closeLTR,
+              pressed && styles.pressed,
+            ]}
             accessibilityRole="button"
             accessibilityLabel={t("close")}
           >
@@ -300,6 +303,19 @@ const makeStyles = (fonts: AppFonts) =>
     rowRTL: { flexDirection: "row-reverse" },
     textRTL: { textAlign: "right" },
     title: { fontFamily: fonts.serif, fontSize: 24, color: colors.ink },
+    // A 44pt square around the 22pt X. It relied on 12pt of hitSlop, but the
+    // header row is shorter than that and clips it, so only ~30pt of it took
+    // touches. The negative margins give back what the square adds: the header
+    // keeps its height, and the X its place at the edge.
+    close: {
+      width: 44,
+      height: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      marginVertical: -11,
+    },
+    closeLTR: { marginRight: -11 },
+    closeRTL: { marginLeft: -11 },
     nothing: {
       fontFamily: fonts.regular,
       fontSize: 14,
