@@ -406,6 +406,13 @@ than re-solving the same problems. Most were set by the 2026-09-24 UI audit
 - **Buttons**: `<Button loading>` shows a spinner at its resting size; every pressable gets pressed
   feedback (`PressableScale` for cards — it has a 90ms press delay so a scroll doesn't shrink them —
   or a `pressed` opacity) and a ≥44pt target with an `accessibilityLabel` when icon-only.
+- **A primary button is never faded out to wait for input.** At 45–60% opacity the lime fill is a
+  tint an Android screen barely shows on white, and its label fades to grey: on the owner's phone
+  "Send booking request" read as text (2026-09-24). It stays the lime fill; pressed too early it
+  calls `nudge(reason)` from `hooks/useNudge.ts` on whatever is missing (the booking footer also
+  scrolls the calendar back into view). Fading is for "busy" only, a request in flight. Choices in
+  a sheet are outlined cards with an icon and a chevron (`components/settings/UpgradeSheet.tsx`),
+  never the page's cream on the sheet's white — 1.04:1, invisible on a phone.
 - **Favourites**: a guest's live on the device (`appStore.favorites`), are shown by `useFavorites()`
   and merged into the account at sign-in (`useMergeGuestFavorites`, mounted in the tab shell);
   hearts read `useFavoriteIds()`; `useToggleFavorite` is optimistic for accounts.

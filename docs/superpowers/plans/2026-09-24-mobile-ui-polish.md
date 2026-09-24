@@ -490,6 +490,21 @@ so use throwaway accounts for anything destructive.
 20. Tap a budget thumb without moving it → the filter count stays 0 and places still show.
 21. As a guest, heart a stay → it appears in Favorites → sign in → it is still a favourite.
 
+**From the owner's first Android run (same day, commit `245c311`):**
+The owner reported "Send booking request" looking like text, and the upgrade popup offering only
+Cancel. Both were controls that did not read as controls: a 45%-opacity lime button, and two choices
+drawn in the page's cream on the sheet's white (1.04:1) with no icon. The popup's cause is the
+likeliest reading, not a confirmed one — the same sheet drew both choices in a browser — so item 23
+is also the test that tells the two apart.
+22. Book your stay, before picking dates: "Send booking request" is a solid lime button. Tap it → the
+    line above it ("Choose your dates to see the total") shakes and the page scrolls back up to the
+    calendar. With dates picked it sends as before.
+23. Profile → Upgrade account → Get started: two outlined choices, each with a lime icon and an
+    arrow, then "This action cannot be undone" as a small note, then Cancel. **If the two choices are
+    missing on Android**, send a screenshot: then they are not being drawn at all, a different bug.
+24. Verification: Submit before choosing a document → the two pickers shake. Report: Submit before
+    choosing a reason → the reasons shake. Edit name: Save with the field empty → the field shakes.
+
 ## Summary
 
 We looked through every screen of the app and listed about 150 things that felt broken, slow or unfinished.
