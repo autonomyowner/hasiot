@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPhoneForDisplay, isPlaceholderEmail, normalizeKsaPhone } from "./phone";
+import { formatPhoneForDisplay, isPlaceholderEmail, ltr, normalizeKsaPhone } from "./phone";
 
 describe("normalizeKsaPhone", () => {
   it("accepts every shape a Saudi guest might type", () => {
@@ -68,6 +68,21 @@ describe("formatPhoneForDisplay", () => {
     expect(formatPhoneForDisplay("+971501234567")).toBe("+971501234567");
     expect(formatPhoneForDisplay(null)).toBe("");
     expect(formatPhoneForDisplay(undefined)).toBe("");
+  });
+});
+
+describe("ltr", () => {
+  it("wraps text in a left-to-right embedding", () => {
+    expect(ltr("+966 50 123 4567")).toBe("‪+966 50 123 4567‬");
+  });
+
+  it("changes nothing a reader sees", () => {
+    const wrapped = ltr(formatPhoneForDisplay("+966501234567"));
+    expect(wrapped.replace(/[‪‬]/g, "")).toBe("+966 50 123 4567");
+  });
+
+  it("adds nothing to an empty string, so a missing number stays falsy", () => {
+    expect(ltr("")).toBe("");
   });
 });
 
