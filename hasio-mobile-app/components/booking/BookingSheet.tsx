@@ -1,6 +1,6 @@
 import { appAlert } from "@/stores/dialogStore";
 import { AppDialogHost } from "@/components/ui/AppDialog";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Keyboard,
   Modal,
@@ -68,6 +68,31 @@ const makeCalendarTheme = (fonts: AppFonts) =>
     textMonthFontSize: 20,
   }) as const;
 
+/**
+ * The calendar's month arrows, pointing the way they go in both languages.
+ *
+ * They used to be flipped in Arabic, on the belief that the library mirrors
+ * its header there. It does only when `I18nManager.isRTL` is set, which this
+ * app never sets (RTL is laid out by hand), so the previous-month arrow stays
+ * on the left: flipped, both arrows pointed in at the month's name. The grid
+ * under it is not mirrored either, so left-for-earlier is consistent.
+ *
+ * Module scope, so the calendar is handed the same function every render.
+ */
+function renderCalendarArrow(direction: "left" | "right") {
+  return (
+    <Feather
+      name={direction === "left" ? "chevron-left" : "chevron-right"}
+      size={20}
+      color={colors.primary.deep}
+    />
+  );
+}
+
+/** A stay being picked: arrival first, then departure. */
+type DateRange = { checkIn: string | null; checkOut: string | null };
+const NO_RANGE: DateRange = { checkIn: null, checkOut: null };
+
 interface BookingSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -99,8 +124,10 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
   // left the stepper above its own maximum, a count the server rejects.
   const startingGuests = Math.min(DEFAULT_GUESTS, maxGuests);
 
-  const [checkIn, setCheckIn] = useState<string | null>(null);
-  const [checkOut, setCheckOut] = useState<string | null>(null);
+  // One state for both ends, so a tap can decide from the range as it is
+  // (a functional update) and the handler never has to change.
+  const [range, setRange] = useState<DateRange>(NO_RANGE);
+  const { checkIn, checkOut } = range;
   const [guests, setGuests] = useState(startingGuests);
   const notesRef = useRef<BookingNotesFieldHandle>(null);
   // Whether the notes box holds anything. The draft itself stays in the box
@@ -123,8 +150,7 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
   if (visible !== wasVisible) {
     setWasVisible(visible);
     if (visible) {
-      setCheckIn(null);
-      setCheckOut(null);
+      setRange(NO_RANGE);
       setGuests(startingGuests);
       setNotesWritten(false);
       setSubmitting(false);
@@ -218,20 +244,22 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
     return marks;
   }, [checkIn, checkOut]);
 
-  const handleDayPress = (day: { dateString: string }) => {
+  // Stable for the life of the sheet. The calendar passes it to each of its
+  // ~42 memoised day cells, which compare props by reference: a new function
+  // every render — a guest added, a quote arriving — redrew every cell.
+  const handleDayPress = useCallback((day: { dateString: string }) => {
     haptic("light");
     const picked = day.dateString;
 
     // First tap sets arrival. Second tap sets departure if it is later;
     // anything else starts a new range, which is what someone tapping an
     // earlier date almost always means.
-    if (!checkIn || checkOut || picked <= checkIn) {
-      setCheckIn(picked);
-      setCheckOut(null);
-      return;
-    }
-    setCheckOut(picked);
-  };
+    setRange((current) =>
+      !current.checkIn || current.checkOut || picked <= current.checkIn
+        ? { checkIn: picked, checkOut: null }
+        : { checkIn: current.checkIn, checkOut: picked }
+    );
+  }, []);
 
   // Every way out comes through here: the close button, Android's back
   // button, and on iOS a swipe down. Nothing closes the sheet while the
@@ -443,16 +471,7 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
                 firstDay={0}
                 theme={calendarTheme}
                 style={styles.calendar}
-                // The library names its arrows by position, not by meaning, and
-                // does not flip them for RTL: in Arabic the previous-month
-                // arrow sits on the right and has to point that way too.
-                renderArrow={(direction: "left" | "right") => (
-                  <Feather
-                    name={(direction === "left") !== isRTL ? "chevron-left" : "chevron-right"}
-                    size={20}
-                    color={colors.primary.deep}
-                  />
-                )}
+                renderArrow={renderCalendarArrow}
               />
 
               {checkIn && checkOut && (
