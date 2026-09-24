@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -26,8 +27,10 @@ import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import {
   EMPTY_PLACE_FORM,
   editedPlaceLocation,
+  isLive,
   isLocalPhoto,
   newPlaceLocation,
+  ownerStatusOf,
   placeFormFromListing,
   sameValues,
   withUploadedPhotos,
@@ -117,6 +120,20 @@ export default function PostDestinationScreen() {
     ? form.category
     : CHIP_FOR_SEEDED[form.category];
 
+  // Wait for the listing, or say there is none — see post-lodging.tsx.
+  const editorState: "ready" | "loading" | "missing" = !isEditing
+    ? "ready"
+    : myListings === undefined
+      ? "loading"
+      : existing
+        ? "ready"
+        : "missing";
+  // Unchanged, a save would only send the place back to review; a rejected
+  // or suspended one may be resubmitted as it is.
+  const status = ownerStatusOf(existing?.status);
+  const canResubmit = status === "rejected" || status === "suspended";
+  const saveDisabled = isEditing && !dirty && !canResubmit;
+
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -153,7 +170,7 @@ export default function PostDestinationScreen() {
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (isLoading) return;
 
     if (!form.name.trim() || !form.nameAr.trim()) {
@@ -168,6 +185,19 @@ export default function PostDestinationScreen() {
       return;
     }
 
+    // Any edit sends the place back to review, which hides it; a live one
+    // asks first rather than going quiet without a word.
+    if (isEditing && isLive(existing?.status)) {
+      appAlert(t("editLiveConfirmTitle"), t("editLivePlaceMessage"), [
+        { text: t("cancel"), style: "cancel" },
+        { text: t("submitForReview"), onPress: () => void save() },
+      ]);
+      return;
+    }
+    void save();
+  };
+
+  const save = async () => {
     setIsLoading(true);
     const thisAttempt = ++attempt.current;
 
@@ -274,14 +304,30 @@ export default function PostDestinationScreen() {
           <Text style={[styles.title, isRTL && styles.textRTL]}>
             {isEditing ? t("editListing") : t("postDestination")}
           </Text>
-          {isEditing && (
+          {isEditing && editorState === "ready" && (
             <Text style={[styles.editNotice, isRTL && styles.textRTL]}>
               {t("editReviewNotice")}
             </Text>
           )}
         </Animated.View>
 
-        {/* Form, locked while it submits. */}
+        {editorState === "loading" ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator color={colors.primary.deep} />
+          </View>
+        ) : editorState === "missing" ? (
+          <View style={styles.stateBox}>
+            <Text style={styles.stateTitle}>{t("editorNotFound")}</Text>
+            <Text style={styles.stateBody}>{t("editorNotFoundHint")}</Text>
+            <Button
+              title={t("back")}
+              variant="outline"
+              onPress={() => router.back()}
+              style={styles.stateButton}
+            />
+          </View>
+        ) : (
+        /* Form, locked while it submits. */
         <Animated.View
           entering={FadeInDown.delay(200).duration(600)}
           style={styles.form}
@@ -441,6 +487,7 @@ export default function PostDestinationScreen() {
             onPress={handleSubmit}
             fullWidth
             loading={isLoading}
+            disabled={saveDisabled}
             style={styles.submitButton}
           />
 
@@ -454,6 +501,7 @@ export default function PostDestinationScreen() {
             </Text>
           )}
         </Animated.View>
+        )}
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -488,6 +536,30 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   form: {
     paddingHorizontal: 24,
     paddingTop: 16,
+  },
+  // The editor's "still loading" and "nothing to edit" states.
+  stateBox: {
+    paddingHorizontal: 32,
+    paddingTop: 56,
+    alignItems: "center",
+    gap: 8,
+  },
+  stateTitle: {
+    fontSize: 18,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
+    textAlign: "center",
+  },
+  stateBody: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  stateButton: {
+    marginTop: 16,
+    alignSelf: "stretch",
   },
   label: {
     fontSize: 14,

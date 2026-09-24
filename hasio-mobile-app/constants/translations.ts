@@ -757,6 +757,13 @@ export const translations = {
     statLive: "Live",
     statInReview: "In review",
     statAddFirstService: "Add your first service",
+    editLiveConfirmTitle: "Send your changes for review?",
+    editLiveStayMessage:
+      "Until our team approves them, travellers won't see this listing or be able to book it.",
+    editLivePlaceMessage: "Until our team approves them, travellers won't see this place.",
+    editLiveServiceMessage: "Until our team approves them, travellers won't see this service.",
+    editorNotFound: "We couldn't find this",
+    editorNotFoundHint: "It may have been deleted, or it isn't on your account.",
 
     // ── ui-polish: app shell ──
   },
@@ -1515,6 +1522,13 @@ export const translations = {
     statLive: "منشورة",
     statInReview: "قيد المراجعة",
     statAddFirstService: "أضف خدمتك الأولى",
+    editLiveConfirmTitle: "إرسال التعديلات للمراجعة؟",
+    editLiveStayMessage:
+      "لن يظهر هذا الإعلان للمسافرين ولن يمكن حجزه حتى يوافق فريقنا على التعديلات.",
+    editLivePlaceMessage: "لن يظهر هذا المكان للمسافرين حتى يوافق فريقنا على التعديلات.",
+    editLiveServiceMessage: "لن تظهر هذه الخدمة للمسافرين حتى يوافق فريقنا على التعديلات.",
+    editorNotFound: "لم نعثر على هذا العنصر",
+    editorNotFoundHint: "ربما حُذف، أو أنه ليس ضمن حسابك.",
 
     // ── ui-polish: app shell ──
   },

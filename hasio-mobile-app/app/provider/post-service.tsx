@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -25,7 +26,9 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import {
   EMPTY_SERVICE_FORM,
+  isLive,
   isLocalPhoto,
+  ownerStatusOf,
   sameValues,
   serviceFormFromService,
   splitList,
@@ -102,6 +105,19 @@ export default function PostServiceScreen() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const attempt = useRef(0);
 
+  // Wait for the service, or say there is none — see post-lodging.tsx.
+  const editorState: "ready" | "loading" | "missing" = !isEditing
+    ? "ready"
+    : myServices === undefined
+      ? "loading"
+      : existing
+        ? "ready"
+        : "missing";
+  // Unchanged, a save would only send the service back to review; a rejected
+  // one may be resubmitted as it is.
+  const canResubmit = ownerStatusOf(existing?.status) === "rejected";
+  const saveDisabled = isEditing && !dirty && !canResubmit;
+
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -138,7 +154,7 @@ export default function PostServiceScreen() {
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (isLoading) return;
 
     if (
@@ -151,6 +167,19 @@ export default function PostServiceScreen() {
       return;
     }
 
+    // Any edit sends the service back to review, which hides it; a live one
+    // asks first.
+    if (isEditing && isLive(existing?.status)) {
+      appAlert(t("editLiveConfirmTitle"), t("editLiveServiceMessage"), [
+        { text: t("cancel"), style: "cancel" },
+        { text: t("submitForReview"), onPress: () => void save() },
+      ]);
+      return;
+    }
+    void save();
+  };
+
+  const save = async () => {
     setIsLoading(true);
     const thisAttempt = ++attempt.current;
 
@@ -251,14 +280,30 @@ export default function PostServiceScreen() {
           <Text style={[styles.title, isRTL && styles.textRTL]}>
             {isEditing ? t("editService") : t("postService")}
           </Text>
-          {isEditing && (
+          {isEditing && editorState === "ready" && (
             <Text style={[styles.editNotice, isRTL && styles.textRTL]}>
               {t("editReviewNotice")}
             </Text>
           )}
         </Animated.View>
 
-        {/* Form, locked while it submits. */}
+        {editorState === "loading" ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator color={colors.primary.deep} />
+          </View>
+        ) : editorState === "missing" ? (
+          <View style={styles.stateBox}>
+            <Text style={styles.stateTitle}>{t("editorNotFound")}</Text>
+            <Text style={styles.stateBody}>{t("editorNotFoundHint")}</Text>
+            <Button
+              title={t("back")}
+              variant="outline"
+              onPress={() => router.back()}
+              style={styles.stateButton}
+            />
+          </View>
+        ) : (
+        /* Form, locked while it submits. */
         <Animated.View
           entering={FadeInDown.delay(200).duration(600)}
           style={styles.form}
@@ -478,6 +523,7 @@ export default function PostServiceScreen() {
             onPress={handleSubmit}
             fullWidth
             loading={isLoading}
+            disabled={saveDisabled}
             style={styles.submitButton}
           />
 
@@ -491,6 +537,7 @@ export default function PostServiceScreen() {
             </Text>
           )}
         </Animated.View>
+        )}
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -639,6 +686,30 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: colors.onSurface.muted,
     marginTop: 6,
     lineHeight: 18,
+  },
+  // The editor's "still loading" and "nothing to edit" states.
+  stateBox: {
+    paddingHorizontal: 32,
+    paddingTop: 56,
+    alignItems: "center",
+    gap: 8,
+  },
+  stateTitle: {
+    fontSize: 18,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
+    textAlign: "center",
+  },
+  stateBody: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  stateButton: {
+    marginTop: 16,
+    alignSelf: "stretch",
   },
   bottomSpacing: {
     height: 32,

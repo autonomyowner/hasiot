@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
+  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -30,10 +31,12 @@ import {
   MAX_UNITS,
   editedStayLocation,
   isHHMM,
+  isLive,
   isLocalPhoto,
   isWholeInRange,
   newStayLocation,
   normaliseTime,
+  ownerStatusOf,
   parseWholeNumber,
   sameValues,
   stayFormFromListing,
@@ -57,6 +60,16 @@ const LODGING_TYPES: { value: LodgingType; labelKey: string }[] = [
   { value: "camp", labelKey: "camps" },
   { value: "homestay", labelKey: "homestays" },
 ];
+
+/** The booking fields as sent: parsed and checked, `undefined` = not sent. */
+type Pricing = {
+  pricePerNight?: number;
+  currency?: string;
+  maxGuests?: number;
+  unitCount?: number;
+  checkInTime: string;
+  checkOutTime: string;
+};
 
 export default function PostLodgingScreen() {
   const styles = useThemedStyles(makeStyles);
@@ -149,6 +162,24 @@ export default function PostLodgingScreen() {
   const cannotClear = (key: "pricePerNight" | "maxGuests" | "unitCount") =>
     isEditing && saved[key] !== "" && form[key].trim() === "";
 
+  // The editor used to open as an empty "new listing" form that filled in a
+  // moment later — or never, for a listing that had been deleted, leaving a
+  // blank form whose Save failed. Now it waits, or says there is nothing.
+  const editorState: "ready" | "loading" | "missing" = !isEditing
+    ? "ready"
+    : myListings === undefined
+      ? "loading"
+      : existing
+        ? "ready"
+        : "missing";
+
+  // Saving an unchanged listing would only send it back to review. A rejected
+  // or suspended one may be resubmitted as it is — that is how a host asks
+  // for a second look.
+  const status = ownerStatusOf(existing?.status);
+  const canResubmit = status === "rejected" || status === "suspended";
+  const saveDisabled = isEditing && !dirty && !canResubmit;
+
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
@@ -185,7 +216,7 @@ export default function PostLodgingScreen() {
     }));
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (isLoading) return;
 
     // Validation
@@ -225,6 +256,32 @@ export default function PostLodgingScreen() {
       return;
     }
 
+    // Undefined is "leave as stored" to the server, so an empty booking
+    // field is simply not sent. The price cannot be cleared that way; the
+    // form says so under the field instead of pretending it was.
+    const pricing: Pricing = {
+      pricePerNight: nightly,
+      currency: nightly !== undefined ? "SAR" : undefined,
+      maxGuests: guests,
+      unitCount: units,
+      checkInTime,
+      checkOutTime,
+    };
+
+    // Any edit sends the listing back to review, and a listing under review
+    // is hidden: fixing a price used to take a bookable hotel off the app
+    // without a word. A live one asks first.
+    if (isEditing && isLive(existing?.status)) {
+      appAlert(t("editLiveConfirmTitle"), t("editLiveStayMessage"), [
+        { text: t("cancel"), style: "cancel" },
+        { text: t("submitForReview"), onPress: () => void save(pricing) },
+      ]);
+      return;
+    }
+    void save(pricing);
+  };
+
+  const save = async (pricing: Pricing) => {
     setIsLoading(true);
     const thisAttempt = ++attempt.current;
 
@@ -245,17 +302,6 @@ export default function PostLodgingScreen() {
       const images = withUploadedPhotos(form.images, uploaded);
 
       const city = form.city.trim();
-      // Undefined is "leave as stored" to the server, so an empty booking
-      // field is simply not sent. The price cannot be cleared that way; the
-      // form says so under the field instead of pretending it was.
-      const pricing = {
-        pricePerNight: nightly,
-        currency: nightly !== undefined ? "SAR" : undefined,
-        maxGuests: guests,
-        unitCount: units,
-        checkInTime,
-        checkOutTime,
-      };
 
       if (isEditing && id) {
         // The server resets the listing to pending on any edit, which is why
@@ -349,15 +395,31 @@ export default function PostLodgingScreen() {
           <Text style={[styles.title, isRTL && styles.textRTL]}>
             {isEditing ? t("editListing") : t("postLodging")}
           </Text>
-          {isEditing && (
+          {isEditing && editorState === "ready" && (
             <Text style={[styles.editNotice, isRTL && styles.textRTL]}>
               {t("editReviewNotice")}
             </Text>
           )}
         </Animated.View>
 
-        {/* Form. Locked while it submits: a chip tapped mid-upload changed
-            the form under a save that had already read it. */}
+        {editorState === "loading" ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator color={colors.primary.deep} />
+          </View>
+        ) : editorState === "missing" ? (
+          <View style={styles.stateBox}>
+            <Text style={styles.stateTitle}>{t("editorNotFound")}</Text>
+            <Text style={styles.stateBody}>{t("editorNotFoundHint")}</Text>
+            <Button
+              title={t("back")}
+              variant="outline"
+              onPress={() => router.back()}
+              style={styles.stateButton}
+            />
+          </View>
+        ) : (
+        /* Form. Locked while it submits: a chip tapped mid-upload changed
+           the form under a save that had already read it. */
         <Animated.View
           entering={FadeInDown.delay(200).duration(600)}
           style={styles.form}
@@ -656,6 +718,7 @@ export default function PostLodgingScreen() {
             onPress={handleSubmit}
             fullWidth
             loading={isLoading}
+            disabled={saveDisabled}
             style={styles.submitButton}
           />
 
@@ -669,6 +732,7 @@ export default function PostLodgingScreen() {
             </Text>
           )}
         </Animated.View>
+        )}
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -703,6 +767,30 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   form: {
     paddingHorizontal: 24,
     paddingTop: 16,
+  },
+  // The editor's "still loading" and "nothing to edit" states.
+  stateBox: {
+    paddingHorizontal: 32,
+    paddingTop: 56,
+    alignItems: "center",
+    gap: 8,
+  },
+  stateTitle: {
+    fontSize: 18,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
+    textAlign: "center",
+  },
+  stateBody: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  stateButton: {
+    marginTop: 16,
+    alignSelf: "stretch",
   },
   label: {
     fontSize: 14,
