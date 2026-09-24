@@ -753,6 +753,8 @@ export const translations = {
     starsOutOfFive: "{n} out of 5 stars",
     noShowConfirmTitle: "Mark as a no-show?",
     noShowConfirmMessage: "Only if the guest never arrived. This can't be undone.",
+    noUpcomingStaysHint: "Your earlier stays are under Past.",
+    noPastStaysHint: "Stays appear here once they're over.",
     // Opening hours. The stored day is the key — lib/dates.ts weekdayLabelKey.
     day_sunday: "Sunday",
     day_monday: "Monday",
@@ -1520,6 +1522,8 @@ export const translations = {
     starsOutOfFive: "{n} من 5 نجوم",
     noShowConfirmTitle: "تسجيل عدم الحضور؟",
     noShowConfirmMessage: "فقط إذا لم يصل الضيف. لا يمكن التراجع عن ذلك.",
+    noUpcomingStaysHint: "إقاماتك السابقة تجدها في «السابقة».",
+    noPastStaysHint: "تظهر الإقامات هنا بعد انتهائها.",
     day_sunday: "الأحد",
     day_monday: "الإثنين",
     day_tuesday: "الثلاثاء",

@@ -137,6 +137,30 @@ const soonestFirst = (a: StayDates, b: StayDates) =>
 const latestFirst = (a: StayDates, b: StayDates) => soonestFirst(b, a);
 
 /**
+ * A guest's bookings, split the way "My bookings" shows them.
+ *
+ * Upcoming is every request or confirmed stay the guest has not checked out
+ * of yet — on the middle night they are still living it — soonest first,
+ * since the next arrival is what they open the list for. Past is everything
+ * else, most recent stay first. Both used to keep the server's order, newest
+ * made first.
+ */
+export function partitionGuestBookings<T extends StayDates>(
+  bookings: readonly T[],
+  todayISO: string
+): { upcoming: T[]; past: T[] } {
+  const upcoming: T[] = [];
+  const past: T[] = [];
+  for (const booking of bookings) {
+    const open = booking.status === "pending" || booking.status === "confirmed";
+    (open && endOf(booking) >= todayISO ? upcoming : past).push(booking);
+  }
+  upcoming.sort(soonestFirst);
+  past.sort(latestFirst);
+  return { upcoming, past };
+}
+
+/**
  * A host's inbox, split into its three tabs.
  *
  * Requests and upcoming stays are soonest first — the nearest arrival is the

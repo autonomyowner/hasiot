@@ -483,9 +483,11 @@ const styles = StyleSheet.create({
 });
 
 /**
- * Mirrors the row in app/bookings/index.tsx: 84px thumb, name, two meta
- * lines, chip + amount on the last line. Same paddings as the real list so
- * the cross-fade to content is a fade and not a shuffle.
+ * Mirrors BookingRow on app/bookings/index.tsx: rows on the page divided by a
+ * hairline, an 84pt thumb with the 14 radius, the name, two meta lines, then
+ * the status chip beside the amount. It still drew the white inset cards the
+ * rows were before they were flattened into the page, so the list shifted
+ * when the real rows replaced it.
  */
 export function SkeletonBookingList({
   isRTL = false,
@@ -500,11 +502,11 @@ export function SkeletonBookingList({
         const seed = index * 5;
         return (
           <View key={index} style={[bookingStyles.row, isRTL && bookingStyles.rowRTL]}>
-            <Skeleton radius={12} phase={sweepPhase(seed)} style={bookingStyles.thumb} />
+            <Skeleton radius={14} phase={sweepPhase(seed)} style={bookingStyles.thumb} />
             <View style={bookingStyles.body}>
-              <SkeletonLine width="70%" box={22} isRTL={isRTL} phase={sweepPhase(seed + 1)} />
-              <SkeletonLine width="55%" box={18} isRTL={isRTL} phase={sweepPhase(seed + 2)} />
-              <SkeletonLine width="40%" box={18} isRTL={isRTL} phase={sweepPhase(seed + 3)} />
+              <SkeletonLine width="70%" box={21} isRTL={isRTL} phase={sweepPhase(seed + 1)} />
+              <SkeletonLine width="55%" box={19} isRTL={isRTL} phase={sweepPhase(seed + 2)} />
+              <SkeletonLine width="40%" box={19} isRTL={isRTL} phase={sweepPhase(seed + 3)} />
               <View style={[bookingStyles.footer, isRTL && bookingStyles.rowRTL]}>
                 <SkeletonPill width={76} height={22} phase={sweepPhase(seed + 4)} />
                 <Skeleton radius={4} phase={sweepPhase(seed + 4)} style={bookingStyles.amount} />
@@ -596,13 +598,14 @@ export function SkeletonBookingDetail({ isRTL = false }: { isRTL?: boolean }) {
 // Separate sheet from `styles` above: these mirror the booking screens'
 // numbers, and keeping them together makes a drift easy to spot.
 const bookingStyles = StyleSheet.create({
-  list: { paddingHorizontal: 20, gap: 12 },
+  // BookingRow: content on the page, one hairline under each row.
+  list: { paddingHorizontal: 20 },
   row: {
     flexDirection: "row",
     gap: 12,
-    backgroundColor: colors.surface.DEFAULT,
-    borderRadius: 16,
-    padding: 12,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
   },
   rowRTL: { flexDirection: "row-reverse" },
   thumb: { width: 84, height: 84 },

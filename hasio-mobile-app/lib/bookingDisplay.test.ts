@@ -6,6 +6,7 @@ import {
   displayTotalSar,
   hostActionsFor,
   nightsLabel,
+  partitionGuestBookings,
   partitionHostBookings,
   pluralForm,
   quoteFooterState,
@@ -96,18 +97,18 @@ describe("telUrl", () => {
 
 describe("displayTotalSar", () => {
   const unit = { sar: "SAR", usd: "USD" };
-  const stay = { nights: 3, pricePerNight: 475, totalAmount: 1425 };
+  const quote = { nights: 3, pricePerNight: 475, totalAmount: 1425 };
 
   it("leaves a riyal total exactly as stored", () => {
-    expect(displayTotalSar(stay, "SAR")).toBe(1425);
-    expect(formatPrice(displayTotalSar(stay, "SAR"), "SAR", unit)).toBe("1,425 SAR");
+    expect(displayTotalSar(quote, "SAR")).toBe(1425);
+    expect(formatPrice(displayTotalSar(quote, "SAR"), "SAR", unit)).toBe("1,425 SAR");
   });
 
   it("makes a dollar total agree with nights × the dollar rate shown", () => {
     // 1,425 SAR is $380 on its own, but the rate shows as $127 and the
     // footer reads "3 × $127" — so the total has to be $381.
-    expect(formatPrice(stay.pricePerNight, "USD", unit)).toBe("$127");
-    expect(formatPrice(displayTotalSar(stay, "USD"), "USD", unit)).toBe("$381");
+    expect(formatPrice(quote.pricePerNight, "USD", unit)).toBe("$127");
+    expect(formatPrice(displayTotalSar(quote, "USD"), "USD", unit)).toBe("$381");
   });
 
   it("falls back to the stored total when the rate is not known", () => {
@@ -162,6 +163,36 @@ const stay = (id: string, status: string, checkIn: string, checkOut: string) => 
   checkOut,
 });
 const ids = (rows: { _id: string }[]) => rows.map((row) => row._id);
+
+describe("partitionGuestBookings", () => {
+  const today = "2026-09-10";
+
+  it("lists open stays not yet checked out of under upcoming, soonest first", () => {
+    const { upcoming, past } = partitionGuestBookings(
+      [
+        stay("next-year", "confirmed", "2027-01-05", "2027-01-08"),
+        stay("tomorrow", "pending", "2026-09-11", "2026-09-13"),
+        stay("mid-stay", "confirmed", "2026-09-09", "2026-09-11"),
+      ],
+      today
+    );
+    expect(ids(upcoming)).toEqual(["mid-stay", "tomorrow", "next-year"]);
+    expect(past).toEqual([]);
+  });
+
+  it("lists finished, cancelled and declined stays under past, most recent first", () => {
+    const { upcoming, past } = partitionGuestBookings(
+      [
+        stay("may", "completed", "2026-05-01", "2026-05-03"),
+        stay("cancelled", "cancelled", "2026-10-01", "2026-10-02"),
+        stay("august", "completed", "2026-08-20", "2026-08-22"),
+      ],
+      today
+    );
+    expect(upcoming).toEqual([]);
+    expect(ids(past)).toEqual(["cancelled", "august", "may"]);
+  });
+});
 
 describe("partitionHostBookings", () => {
   const today = "2026-09-10";
