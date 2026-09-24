@@ -772,6 +772,11 @@ export const translations = {
     verificationUploadFailed:
       "We couldn't upload your document. Check your connection and try again.",
     errorDailyPostLimit: "You've reached today's limit. Please try again tomorrow.",
+    hostingMode: "Hosting mode",
+    travelling: "Travelling",
+    backToTravelling: "Back to travelling",
+    statAddFirstListing: "Add your first listing",
+    postsReviewedNote: "Everything you post is checked by our team before it goes live.",
 
     // ── ui-polish: app shell ──
   },
@@ -1544,6 +1549,11 @@ export const translations = {
     verificationApprovedBody: "تمت الموافقة على حسابك، ويمكنك النشر الآن.",
     verificationUploadFailed: "تعذّر رفع الوثيقة. تحقق من اتصالك وحاول مرة أخرى.",
     errorDailyPostLimit: "وصلت إلى الحد اليومي. حاول مرة أخرى غدًا.",
+    hostingMode: "وضع الاستضافة",
+    travelling: "السفر",
+    backToTravelling: "العودة إلى وضع السفر",
+    statAddFirstListing: "أضف إعلانك الأول",
+    postsReviewedNote: "يراجع فريقنا كل ما تنشره قبل أن يظهر للمسافرين.",
 
     // ── ui-polish: app shell ──
   },

@@ -10,7 +10,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import Animated, {
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -21,6 +20,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { VerificationBanner } from "@/components/VerificationBanner";
 import { colors, type AppFonts } from "@/constants/colors";
+import { enterFade, pressSpring, PRESS_SCALE_CARD } from "@/constants/motion";
 import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
@@ -54,15 +54,16 @@ export default function ProviderDashboardContent() {
           business dashboard. */}
       {isFocused && <StatusBar style="light" />}
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Ink hosting header band */}
+        {/* Ink hosting header band; the short staggered entrance, as on the
+            business dashboard. */}
         <Animated.View
-          entering={FadeInDown.delay(100).duration(600)}
+          entering={enterFade(0)}
           style={[styles.headerBand, { paddingTop: insets.top + 16 }]}
         >
           <View style={[styles.headerRow, isRTL && styles.headerRowRTL]}>
-            <View style={isRTL && styles.alignEnd}>
+            <View style={[styles.headerText, isRTL && styles.alignEnd]}>
               <Text style={[styles.eyebrow, isRTL && styles.textRTL]}>
-                {isRTL ? "وضع الاستضافة" : "HOSTING MODE"}
+                {t("hostingMode")}
               </Text>
               <Text style={[styles.businessName, isRTL && styles.textRTL]}>
                 {t("providerDashboard")}
@@ -71,36 +72,44 @@ export default function ProviderDashboardContent() {
 
             <Pressable
               onPress={() => router.back()}
-              style={[styles.travellingChip, isRTL && styles.travellingChipRTL]}
+              hitSlop={6}
+              style={({ pressed }) => [
+                styles.travellingChip,
+                isRTL && styles.travellingChipRTL,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t("backToTravelling")}
             >
               <Text style={styles.swapIcon}>⇄</Text>
-              <Text style={styles.travellingText}>
-                {isRTL ? "السفر" : "Travelling"}
-              </Text>
+              <Text style={styles.travellingText}>{t("travelling")}</Text>
             </Pressable>
           </View>
 
-          {/* Stat cards over the ink band */}
-          <View style={styles.statsRow}>
+          {/* Stat cards over the ink band, in reading order in Arabic too. */}
+          <View style={[styles.statsRow, isRTL && styles.rowRTL]}>
             <StatCard
               value={counts ? String(counts.total) : "—"}
               label={t("statServices")}
               delta={counts && counts.total === 0 ? t("statAddFirstService") : ""}
+              isRTL={isRTL}
             />
             <StatCard
               value={counts ? String(counts.live) : "—"}
               label={t("statLive")}
               delta=""
+              isRTL={isRTL}
             />
             <StatCard
               value={counts ? String(counts.inReview) : "—"}
               label={t("statInReview")}
               delta=""
+              isRTL={isRTL}
             />
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(220).duration(600)}>
+        <Animated.View entering={enterFade(1)}>
           <VerificationBanner
             status={verificationStatus}
             onPress={() => router.push("/provider/verification")}
@@ -108,18 +117,16 @@ export default function ProviderDashboardContent() {
           />
         </Animated.View>
 
-        {isApproved && (
-          <Animated.View
-            entering={FadeInDown.delay(250).duration(600)}
-            style={styles.noteContainer}
-          >
+        {/* Only while nothing is posted yet — see the business dashboard. */}
+        {isApproved && counts?.total === 0 && (
+          <Animated.View entering={enterFade(1)} style={styles.noteContainer}>
             <Text style={[styles.noteText, isRTL && styles.textRTL]}>
-              {t("firstListingNote")}
+              {t("postsReviewedNote")}
             </Text>
           </Animated.View>
         )}
 
-        <Animated.View entering={FadeInDown.delay(300).duration(600)}>
+        <Animated.View entering={enterFade(2)}>
           <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
             {t("addNew")}
           </Text>
@@ -151,17 +158,23 @@ function StatCard({
   value,
   label,
   delta,
+  isRTL,
 }: {
   value: string;
   label: string;
   delta: string;
+  isRTL: boolean;
 }) {
   const styles = useThemedStyles(makeStyles);
   return (
-    <View style={styles.statCard}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statDelta}>{delta}</Text>
+    <View style={[styles.statCard, isRTL && styles.alignEnd]}>
+      <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>
+        {value}
+      </Text>
+      <Text style={styles.statLabel} numberOfLines={1}>
+        {label}
+      </Text>
+      {delta ? <Text style={[styles.statDelta, isRTL && styles.textRTL]}>{delta}</Text> : null}
     </View>
   );
 }
@@ -197,8 +210,8 @@ function ActionButton({
       accessibilityRole="button"
       accessibilityLabel={locked ? `${label} — ${lockedLabel}` : label}
       accessibilityState={{ disabled: !!locked }}
-      onPressIn={() => { if (!locked) scale.value = withSpring(0.98, { damping: 15, stiffness: 400 }); }}
-      onPressOut={() => { if (!locked) scale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
+      onPressIn={() => { if (!locked) scale.value = withSpring(PRESS_SCALE_CARD, pressSpring); }}
+      onPressOut={() => { if (!locked) scale.value = withSpring(1, pressSpring); }}
     >
       <Text style={[styles.actionButtonText, primary && !locked && styles.actionButtonTextPrimary, isRTL && styles.textRTL]}>{label}</Text>
       {locked && lockedLabel ? (
@@ -222,13 +235,18 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 12,
   },
   headerRowRTL: { flexDirection: "row-reverse" },
+  headerText: { flexShrink: 1 },
   alignEnd: { alignItems: "flex-end" },
+  rowRTL: { flexDirection: "row-reverse" },
+  pressed: { opacity: 0.7 },
   eyebrow: {
     fontFamily: fonts.semibold,
     fontSize: 12,
     letterSpacing: 1.5,
+    textTransform: "uppercase",
     color: "rgba(255,255,255,0.55)",
     marginBottom: 4,
   },
@@ -243,8 +261,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     gap: 6,
     backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    minHeight: 36,
   },
   travellingChipRTL: { flexDirection: "row-reverse" },
   swapIcon: { fontSize: 14, color: "#FFFFFF" },

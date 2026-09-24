@@ -9,8 +9,8 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { Feather } from "@expo/vector-icons";
 import Animated, {
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -22,10 +22,21 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { VerificationBanner } from "@/components/VerificationBanner";
 import { colors, type AppFonts } from "@/constants/colors";
+import { enterFade, pressSpring, PRESS_SCALE_CHIP } from "@/constants/motion";
+import type { TranslationKey } from "@/constants/translations";
 import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+type FeatherName = keyof typeof Feather.glyphMap;
+
+// The icon fills the square each action card used to carry empty: a grey tile
+// with nothing in it read as an image that had failed to load.
+const QUICK_ACTIONS: { key: TranslationKey; route: string; icon: FeatherName }[] = [
+  { key: "postLodging", route: "/business/post-lodging", icon: "home" },
+  { key: "postDestination", route: "/business/post-destination", icon: "map-pin" },
+];
 
 export default function BusinessDashboardContent() {
   const styles = useThemedStyles(makeStyles);
@@ -35,11 +46,6 @@ export default function BusinessDashboardContent() {
   const { t, isRTL } = useLanguage();
   const { format } = useCurrency();
   const { verificationStatus, isApproved, isSignedIn } = useConvexUser();
-
-  const quickActions = [
-    { key: "postLodging", route: "/business/post-lodging" },
-    { key: "postDestination", route: "/business/post-destination" },
-  ];
 
   // "Views" is gone rather than made real: nothing counts listing impressions,
   // and a permanent zero next to two live figures reads as a broken product.
@@ -55,46 +61,49 @@ export default function BusinessDashboardContent() {
           unconditional one left white icons over their cream headers. */}
       {isFocused && <StatusBar style="light" />}
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Ink hosting header band */}
+        {/* Ink hosting header band. The entrances are the app's short
+            staggered fade (constants/motion): these took up to a second to
+            settle, on a screen people come to for one tap. */}
         <Animated.View
-          entering={FadeInDown.delay(100).duration(600)}
+          entering={enterFade(0)}
           style={[styles.headerBand, { paddingTop: insets.top + 16 }]}
         >
           <View
             style={[styles.headerRow, isRTL && styles.headerRowRTL]}
           >
-            <View style={isRTL && styles.alignEnd}>
+            <View style={[styles.headerText, isRTL && styles.alignEnd]}>
               <Text style={[styles.eyebrow, isRTL && styles.textRTL]}>
-                {isRTL ? "وضع الاستضافة" : "HOSTING MODE"}
+                {t("hostingMode")}
               </Text>
               <Text style={[styles.businessName, isRTL && styles.textRTL]}>
                 {t("businessDashboard")}
               </Text>
             </View>
 
+            {/* Back to the traveller's side of the app. It was a bare 33pt
+                pill with no role, no label and no response to a press. */}
             <Pressable
               onPress={() => router.back()}
-              style={[styles.travellingChip, isRTL && styles.travellingChipRTL]}
+              hitSlop={6}
+              style={({ pressed }) => [
+                styles.travellingChip,
+                isRTL && styles.travellingChipRTL,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t("backToTravelling")}
             >
               <Text style={styles.swapIcon}>⇄</Text>
-              <Text style={styles.travellingText}>
-                {isRTL ? "السفر" : "Travelling"}
-              </Text>
+              <Text style={styles.travellingText}>{t("travelling")}</Text>
             </Pressable>
           </View>
 
-          {/* Stat cards over the ink band */}
-          <View style={styles.statsRow}>
+          {/* Stat cards over the ink band, in reading order in Arabic too. */}
+          <View style={[styles.statsRow, isRTL && styles.rowRTL]}>
             <StatCard
               value={stats ? String(stats.listings) : "—"}
               label={t("statListings")}
-              delta={
-                stats && stats.listings === 0
-                  ? isRTL
-                    ? "ابدأ بإضافة قائمة"
-                    : "Add your first listing"
-                  : ""
-              }
+              delta={stats && stats.listings === 0 ? t("statAddFirstListing") : ""}
               isRTL={isRTL}
             />
             <StatCard
@@ -112,7 +121,7 @@ export default function BusinessDashboardContent() {
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeInDown.delay(200).duration(600)}>
+        <Animated.View entering={enterFade(1)}>
           <VerificationBanner
             status={verificationStatus}
             onPress={() => router.push("/business/verification")}
@@ -120,26 +129,28 @@ export default function BusinessDashboardContent() {
           />
         </Animated.View>
 
-        {isApproved && (
-          <Animated.View
-            entering={FadeInDown.delay(200).duration(600)}
-            style={styles.noteContainer}
-          >
+        {/* Only while there is nothing posted yet. It used to sit here for
+            good once the account was approved, saying "Your first listing
+            requires approval" to a host with twenty live listings — and every
+            listing is reviewed, not just the first. */}
+        {isApproved && stats?.listings === 0 && (
+          <Animated.View entering={enterFade(1)} style={styles.noteContainer}>
             <Text style={[styles.noteText, isRTL && styles.textRTL]}>
-              {t("firstListingNote")}
+              {t("postsReviewedNote")}
             </Text>
           </Animated.View>
         )}
 
-        <Animated.View entering={FadeInDown.delay(300).duration(600)}>
+        <Animated.View entering={enterFade(2)}>
           <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
             {t("addNew")}
           </Text>
-          <View style={styles.actionsGrid}>
-            {quickActions.map((action) => (
+          <View style={[styles.actionsGrid, isRTL && styles.rowRTL]}>
+            {QUICK_ACTIONS.map((action) => (
               <ActionCard
                 key={action.key}
-                label={t(action.key as any)}
+                label={t(action.key)}
+                icon={action.icon}
                 onPress={() => router.push(action.route as any)}
                 isRTL={isRTL}
                 locked={!isApproved}
@@ -153,9 +164,13 @@ export default function BusinessDashboardContent() {
             are: a host whose account is still pending can still have bookings
             on a listing an admin already approved, and leaving a guest waiting
             because of an unrelated queue would be the wrong failure. */}
-        <Animated.View entering={FadeInDown.delay(320).duration(600)}>
+        <Animated.View entering={enterFade(3)}>
           <Pressable
-            style={[styles.secondaryAction, isRTL && styles.secondaryActionRTL]}
+            style={({ pressed }) => [
+              styles.secondaryAction,
+              isRTL && styles.secondaryActionRTL,
+              pressed && styles.pressed,
+            ]}
             onPress={() => router.push("/business/bookings")}
             accessibilityRole="button"
             accessibilityLabel={t("bookingRequests")}
@@ -173,9 +188,9 @@ export default function BusinessDashboardContent() {
 
         {/* Always reachable — owners need to see the status of what they posted,
             including while the account itself is still pending. */}
-        <Animated.View entering={FadeInDown.delay(350).duration(600)}>
+        <Animated.View entering={enterFade(4)}>
           <Pressable
-            style={styles.secondaryAction}
+            style={({ pressed }) => [styles.secondaryAction, pressed && styles.pressed]}
             onPress={() => router.push("/business/my-listings")}
             accessibilityRole="button"
             accessibilityLabel={t("myListings")}
@@ -208,21 +223,35 @@ function StatCard({
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.statCard, isRTL && styles.alignEnd]}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statDelta}>{delta}</Text>
+      {/* One line, shrinking to fit: "12,500 ر.س" in a third of the band
+          wrapped onto two lines and pushed its label out of line with the
+          other cards'. */}
+      <Text
+        style={styles.statValue}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.55}
+      >
+        {value}
+      </Text>
+      <Text style={styles.statLabel} numberOfLines={1}>
+        {label}
+      </Text>
+      {delta ? <Text style={[styles.statDelta, isRTL && styles.textRTL]}>{delta}</Text> : null}
     </View>
   );
 }
 
 function ActionCard({
   label,
+  icon,
   onPress,
   isRTL,
   locked,
   lockedLabel,
 }: {
   label: string;
+  icon: FeatherName;
   onPress: () => void;
   isRTL: boolean;
   locked?: boolean;
@@ -239,10 +268,12 @@ function ActionCard({
       accessibilityRole="button"
       accessibilityLabel={locked ? `${label} — ${lockedLabel}` : label}
       accessibilityState={{ disabled: !!locked }}
-      onPressIn={() => { if (!locked) scale.value = withSpring(0.95, { damping: 15, stiffness: 400 }); }}
-      onPressOut={() => { if (!locked) scale.value = withSpring(1, { damping: 15, stiffness: 400 }); }}
+      onPressIn={() => { if (!locked) scale.value = withSpring(PRESS_SCALE_CHIP, pressSpring); }}
+      onPressOut={() => { if (!locked) scale.value = withSpring(1, pressSpring); }}
     >
-      <View style={styles.actionTile} />
+      <View style={styles.actionTile}>
+        <Feather name={icon} size={22} color={colors.ink} />
+      </View>
       <Text style={[styles.actionLabel, isRTL && styles.textRTL]}>{label}</Text>
       {locked && lockedLabel ? (
         <Text style={[styles.actionLockedLabel, isRTL && styles.textRTL]}>
@@ -267,13 +298,18 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 12,
   },
   headerRowRTL: { flexDirection: "row-reverse" },
+  headerText: { flexShrink: 1 },
   alignEnd: { alignItems: "flex-end" },
+  rowRTL: { flexDirection: "row-reverse" },
+  pressed: { opacity: 0.7 },
   eyebrow: {
     fontFamily: fonts.semibold,
     fontSize: 12,
     letterSpacing: 1.5,
+    textTransform: "uppercase",
     color: "rgba(255,255,255,0.55)",
     marginBottom: 4,
   },
@@ -288,8 +324,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     gap: 6,
     backgroundColor: "rgba(255,255,255,0.12)",
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    minHeight: 36,
   },
   travellingChipRTL: { flexDirection: "row-reverse" },
   swapIcon: { fontSize: 14, color: "#FFFFFF" },
@@ -416,6 +453,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     height: 46,
     borderRadius: 14,
     backgroundColor: colors.sand,
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionLabel: {
     fontFamily: fonts.semibold,
