@@ -2,6 +2,7 @@ import { appAlert } from "@/stores/dialogStore";
 import { AppDialogHost } from "@/components/ui/AppDialog";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   View,
   Text,
   StyleSheet,
@@ -25,6 +26,7 @@ import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
+import { Button } from "@/components/ui/Button";
 import { ReportSheet } from "@/components/ReportSheet";
 import { BookingSheet } from "@/components/booking/BookingSheet";
 import { VerifyPhoneSheet } from "@/components/auth/VerifyPhoneSheet";
@@ -99,10 +101,13 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   // A number verified on the way to booking. The booking sheet opens once the
   // verify sheet has gone, not when it is told to go — see handleVerified.
   const [bookAfterVerify, setBookAfterVerify] = useState(false);
+  // Book or Rate pressed while the account was still loading — carried out
+  // once it has (see handleBook).
+  const [whenReady, setWhenReady] = useState<"book" | "rate" | null>(null);
   const galleryRef = React.useRef<ScrollView>(null);
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
-  const { user } = useConvexUser();
+  const { user, isUserLoading } = useConvexUser();
 
   // The listing the page draws. `item` goes null the moment the sheet is told
   // to close, but iOS goes on drawing the page for the whole of its slide off
@@ -126,6 +131,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     setVerifyOpen(false);
     setReviewOpen(false);
     setBookAfterVerify(false);
+    setWhenReady(null);
     // The photo counter lives out here, so it used to carry over: a listing
     // opened on its first photo with the third dot lit. Reset on the way in
     // only — reset on the way out, the dots jumped while the page, still on
@@ -152,10 +158,35 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     listingId ? { listingId } : "skip"
   );
 
+  // A press that waited for the account, carried out now that it is known.
+  // Adjusted during render, like the resets above, so the sheet it opens
+  // comes up on the frame the spinner stops. Signed out after all, the press
+  // is simply dropped and the next tap goes to sign-in the ordinary way:
+  // navigating is a side effect, which has no place in render.
+  if (whenReady && !isUserLoading) {
+    setWhenReady(null);
+    if (isAuthenticated) {
+      if (whenReady === "rate") setReviewOpen(true);
+      else if (user?.phoneVerified) setBookingOpen(true);
+      else setVerifyOpen(true);
+    }
+  }
+
   // Three gates, in order of what the guest can do about them. A visitor is
   // sent to sign in; a signed-in guest with no verified number is asked for
   // one, because the host has to be able to phone them; everyone else books.
+  //
+  // None of them can be answered while the account is still loading, and
+  // guessing got it wrong both ways: `user` is null until it arrives, so a
+  // verified guest was asked to verify again, and a signed-in guest whose
+  // session was still being restored was sent to the sign-in screen. A press
+  // made then waits, with the button showing it, and goes through once the
+  // account is known.
   const handleBook = () => {
+    if (isUserLoading) {
+      setWhenReady("book");
+      return;
+    }
     if (!isAuthenticated) {
       onClose();
       router.push("/auth");
@@ -172,6 +203,10 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   };
 
   const handleRate = () => {
+    if (isUserLoading) {
+      setWhenReady("rate");
+      return;
+    }
     if (!isAuthenticated) {
       onClose();
       router.push("/auth");
@@ -578,14 +613,27 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                       server — the guest wrote a review, pressed save and was
                       told "Server Error". Same gate as Book. */}
                   <Pressable
-                    style={styles.rateButton}
+                    style={({ pressed }) => [
+                      styles.rateButton,
+                      isRTL && styles.rowRTL,
+                      pressed && styles.pressed,
+                    ]}
                     onPress={handleRate}
+                    disabled={whenReady === "rate"}
                     accessibilityRole="button"
+                    accessibilityLabel={myReview ? t("editYourReview") : t("rateThisPlace")}
+                    accessibilityState={{ busy: whenReady === "rate" }}
                   >
-                    <Feather name="star" size={15} color={colors.ink} />
-                    <Text style={styles.rateButtonText}>
-                      {myReview ? t("editYourReview") : t("rateThisPlace")}
-                    </Text>
+                    {whenReady === "rate" ? (
+                      <ActivityIndicator color={colors.ink} />
+                    ) : (
+                      <>
+                        <Feather name="star" size={15} color={colors.ink} />
+                        <Text style={styles.rateButtonText}>
+                          {myReview ? t("editYourReview") : t("rateThisPlace")}
+                        </Text>
+                      </>
+                    )}
                   </Pressable>
 
                   {reviews?.map((review) => (
@@ -600,6 +648,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                         onClose();
                         router.push(`/reviews/${shown.id}`);
                       }}
+                      style={({ pressed }) => pressed && styles.pressed}
                       accessibilityRole="button"
                     >
                       <Text style={[styles.seeAll, isRTL && styles.textRTL]}>
@@ -612,7 +661,11 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                 {/* Report */}
                 <Pressable
                   onPress={() => setReportOpen(true)}
-                  style={[styles.reportRow, isRTL && styles.rowRTL]}
+                  style={({ pressed }) => [
+                    styles.reportRow,
+                    isRTL && styles.rowRTL,
+                    pressed && styles.pressed,
+                  ]}
                   accessibilityRole="button"
                   accessibilityLabel={t("reportTitle")}
                 >
@@ -633,19 +686,22 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                   isRTL && styles.rowRTL,
                 ]}
               >
-                <View style={isRTL ? styles.alignEnd : undefined}>
+                {/* Takes the room the button leaves, so a long price is cut
+                    short instead of running on under Book. */}
+                <View style={[styles.bookBarPriceWrap, isRTL && styles.alignEnd]}>
                   <Text style={styles.bookBarPrice} numberOfLines={1}>
                     {shown.priceLine}
                   </Text>
                 </View>
-                <Pressable
-                  style={styles.bookButton}
+                {/* The shared Button: its spinner keeps the button's size
+                    while a press waits on the account. */}
+                <Button
+                  title={t("detailBook")}
                   onPress={handleBook}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("detailBook")}
-                >
-                  <Text style={styles.bookButtonText}>{t("detailBook")}</Text>
-                </Pressable>
+                  loading={whenReady === "book"}
+                  style={styles.bookButton}
+                  textStyle={styles.bookButtonText}
+                />
               </View>
             )}
 
@@ -653,11 +709,12 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                 band, so the images run to the top edge of the sheet. */}
             <Pressable
               onPress={onClose}
-              style={[
+              style={({ pressed }) => [
                 styles.closeButton,
                 // pageSheet already insets from the top; full screen does not.
                 { top: Platform.OS === "ios" ? 16 : insets.top + 12 },
                 isRTL ? styles.closeButtonRTL : null,
+                pressed && styles.pressed,
               ]}
               hitSlop={10}
               accessibilityRole="button"
@@ -768,18 +825,24 @@ function ActionButton({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.actionButton, primary && styles.actionButtonPrimary]}
+      style={({ pressed }) => [
+        styles.actionButton,
+        primary && styles.actionButtonPrimary,
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
       <Feather
         name={icon}
-        size={16}
+        size={18}
         color={primary ? colors.ink : colors.primary.deep}
       />
+      {/* Two lines if it needs them, never cut: a long label wraps under
+          its icon rather than losing its end. */}
       <Text
         style={[styles.actionLabel, primary && styles.actionLabelPrimary]}
-        numberOfLines={1}
+        numberOfLines={2}
       >
         {label}
       </Text>
@@ -813,7 +876,12 @@ function InfoRow({
   if (!onPress) return content;
 
   return (
-    <Pressable onPress={onPress} accessibilityRole="link" accessibilityLabel={value}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => pressed && styles.pressed}
+      accessibilityRole="link"
+      accessibilityLabel={value}
+    >
       {content}
     </Pressable>
   );
@@ -966,15 +1034,17 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     gap: 10,
     marginTop: 20,
   },
+  // Icon over label, so the label has the button's whole width. Side by side
+  // in a third of the row, "الموقع الإلكتروني" was cut down to its first word.
   actionButton: {
     flex: 1,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    // 44pt: these are the primary things to tap on this screen.
-    minHeight: 44,
-    paddingHorizontal: 12,
+    gap: 4,
+    // Comfortably past 44pt: these are the primary things to tap here.
+    minHeight: 58,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: colors.border,
@@ -988,6 +1058,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: 13,
     color: colors.primary.deep,
+    textAlign: "center",
   },
   actionLabelPrimary: {
     color: colors.ink,
@@ -1031,6 +1102,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   alignEnd: {
     alignItems: "flex-end",
   },
+  bookBarPriceWrap: {
+    flex: 1,
+  },
   bookBar: {
     position: "absolute",
     left: 0,
@@ -1039,6 +1113,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 16,
     paddingHorizontal: 20,
     paddingTop: 14,
     backgroundColor: colors.surface.DEFAULT,
@@ -1099,6 +1174,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 7,
+    // Holds its height when the label gives way to a spinner.
+    minHeight: 46,
     paddingVertical: 12,
     marginTop: 14,
     borderRadius: 12,
