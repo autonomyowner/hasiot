@@ -1,6 +1,5 @@
-import { useQuery } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "@/backend";
-import { useConvexAuth } from "convex/react";
 
 /**
  * Where a business/provider account sits in the admin approval pipeline.
@@ -21,7 +20,10 @@ export function useConvexUser() {
     isAuthenticated ? {} : "skip"
   );
 
-
+  // True until it is known whether anyone is signed in. Screens that differ
+  // for a guest must wait on this rather than read `isSignedIn` straight
+  // away: it is false while the session is still being read, which is how
+  // Profile used to greet a signed-in person with the guest page.
   const isUserLoading = authLoading || (isAuthenticated && user === undefined);
 
   const isBusinessOwner = user?.role === "business_owner";

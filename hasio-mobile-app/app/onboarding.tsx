@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
   ScrollView,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useIsFocused, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { generatedImages } from "@/assets/images/generated";
@@ -20,24 +22,38 @@ import Animated, {
 } from "react-native-reanimated";
 import { useAppStore } from "@/stores/appStore";
 import { useLanguage } from "@/hooks/useLanguage";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/ui/Button";
 import { type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+/**
+ * How far the poster is raised, as a share of the window height.
+ *
+ * The poster's wordmark runs from about 27% to 47% of its height, and with
+ * `cover` on a phone-shaped screen that maps straight onto the window — while
+ * the copy and buttons, anchored to the bottom, climb to about 45% on a
+ * standard iPhone and higher on a short one. The copy sat on "TRAVEL" and the
+ * foot of the wordmark. Drawing the poster this much taller than the screen,
+ * from above its top edge, lifts the wordmark to about 21–43% and crops only
+ * the dark ornament over the arch.
+ */
+const POSTER_LIFT = 0.08;
+
+/** Below this the copy tightens as well — an iPhone SE is 667pt tall. */
+const SHORT_WINDOW = 720;
+
 export default function OnboardingScreen() {
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
+  const isFocused = useIsFocused();
+  const { height } = useWindowDimensions();
+  const short = height < SHORT_WINDOW;
   const { t, language, changeLanguage, isRTL } = useLanguage();
   const setOnboardingComplete = useAppStore(
     (state) => state.setOnboardingComplete
   );
-
-  const handleContinue = () => {
-    setOnboardingComplete(true);
-    router.replace("/(tabs)");
-  };
 
   const handleSkip = () => {
     setOnboardingComplete(true);
@@ -46,10 +62,16 @@ export default function OnboardingScreen() {
 
   return (
     <View style={styles.container}>
+      {/* White status-bar text over the dark poster; the app's default is dark
+          text, which here was black on near-black. Only while this screen is
+          focused: the status bar keeps a stack of these, and one left mounted
+          under the next screen would put white text on its cream. */}
+      {isFocused && <StatusBar style="light" />}
+
       {/* Background Image */}
       <Image
         source={generatedImages.posterArch}
-        style={styles.backgroundImage}
+        style={[styles.backgroundImage, { top: -Math.round(height * POSTER_LIFT) }]}
         contentFit="cover"
       />
 
@@ -75,16 +97,19 @@ export default function OnboardingScreen() {
           showsVerticalScrollIndicator={false}
         >
         {/* Content */}
-        <View style={styles.content}>
+        <View style={[styles.content, short && styles.contentShort]}>
           {/* Hero Section */}
           <Animated.View
             entering={FadeInDown.delay(200).duration(800)}
-            style={[styles.heroSection, isRTL && styles.heroSectionRTL]}
+            style={[styles.heroSection, short && styles.heroSectionShort, isRTL && styles.heroSectionRTL]}
           >
-            <Text style={[styles.heroGreeting, isRTL && styles.textRTL]}>
+            <Text
+              style={[styles.heroGreeting, short && styles.heroGreetingShort, isRTL && styles.textRTL]}
+              maxFontSizeMultiplier={1.3}
+            >
               {t("heroGreeting")}
             </Text>
-            <Text style={[styles.heroSubtext, isRTL && styles.textRTL]}>
+            <Text style={[styles.heroSubtext, isRTL && styles.textRTL]} maxFontSizeMultiplier={1.3}>
               {t("heroSubtext")}
             </Text>
           </Animated.View>
@@ -92,7 +117,7 @@ export default function OnboardingScreen() {
           {/* Language Selection */}
           <Animated.View
             entering={FadeInUp.delay(400).duration(800)}
-            style={styles.languageSection}
+            style={[styles.languageSection, short && styles.languageSectionShort]}
           >
             <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>
               {t("selectLanguage")}
@@ -116,14 +141,23 @@ export default function OnboardingScreen() {
             entering={FadeInUp.delay(600).duration(800)}
             style={styles.authSection}
           >
+            {/* Replace, not push: signing in goes back to whatever asked for
+                it, and with onboarding still underneath that was onboarding
+                again. With this screen gone, sign-in finds nothing to go back
+                to and opens the app; its back arrow returns here. */}
             <Button
               title={t("continueWithPhone")}
               variant="secondary"
               fullWidth
-              onPress={() => router.push("/auth")}
+              onPress={() => router.replace("/auth")}
               style={styles.authButton}
             />
-            <Pressable onPress={handleSkip} style={styles.skipButton}>
+            <Pressable
+              onPress={handleSkip}
+              style={({ pressed }) => [styles.skipButton, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel={t("skip")}
+            >
               <Text style={styles.skipText}>{t("skip")}</Text>
             </Pressable>
           </Animated.View>
@@ -166,6 +200,9 @@ function LanguageButton({ label, selected, onPress }: LanguageButtonProps) {
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
     >
       <Text
         style={[
@@ -184,6 +221,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flex: 1,
     backgroundColor: "#14100C",
   },
+  // The top is set per render: raised by POSTER_LIFT of the window height.
   backgroundImage: {
     ...StyleSheet.absoluteFill,
   },
@@ -199,10 +237,16 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   content: {
     paddingHorizontal: 24,
-    paddingBottom: 40,
+    paddingBottom: 28,
+  },
+  contentShort: {
+    paddingBottom: 16,
   },
   heroSection: {
-    marginBottom: 40,
+    marginBottom: 32,
+  },
+  heroSectionShort: {
+    marginBottom: 20,
   },
   heroSectionRTL: {
     alignItems: "flex-end",
@@ -214,6 +258,10 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     marginBottom: 12,
     letterSpacing: -0.5,
   },
+  heroGreetingShort: {
+    fontSize: 30,
+    marginBottom: 8,
+  },
   heroSubtext: {
     fontSize: 16,
     color: "rgba(255, 255, 255, 0.8)",
@@ -224,7 +272,10 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     textAlign: "right",
   },
   languageSection: {
-    marginBottom: 32,
+    marginBottom: 28,
+  },
+  languageSectionShort: {
+    marginBottom: 20,
   },
   sectionTitle: {
     fontSize: 14,
@@ -261,20 +312,24 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: "#FFFFFF",
   },
   authSection: {
-    gap: 12,
+    gap: 8,
   },
   authButton: {
     backgroundColor: "rgba(255, 255, 255, 0.95)",
   },
   skipButton: {
     alignSelf: "center",
+    minHeight: 44,
+    justifyContent: "center",
     paddingVertical: 12,
     paddingHorizontal: 24,
-    marginTop: 8,
   },
   skipText: {
     fontSize: 15,
     color: "rgba(255, 255, 255, 0.7)",
     fontFamily: fonts.medium,
+  },
+  pressed: {
+    opacity: 0.6,
   },
 });

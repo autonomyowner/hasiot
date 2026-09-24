@@ -287,7 +287,7 @@ export const translations = {
     shareFeedback: "Share your feedback",
     appVersionInfo: "App version and info",
     appName: "Hasio",
-    version: "Version 1.0.0",
+    version: "Version",
     appDescription: "Your perfect travel companion for discovering amazing places, delicious food, and unforgettable experiences across Saudi Arabia's Eastern Province.",
 
     // Common
@@ -746,6 +746,34 @@ export const translations = {
     // ── ui-polish: planner, favorites ──
 
     // ── ui-polish: account (profile, sign-in, onboarding) ──
+    // Sign-in and phone verification failures (lib/authErrors.ts). Each title
+    // is paired with a different message, never the same line twice.
+    authCodeWrong: "That code isn't right. Check the text message and try again.",
+    authCodeWrongTitle: "Wrong code",
+    authCodeExpired: "This code has expired. Tap “Resend code” to get a new one.",
+    authCodeExpiredTitle: "Code expired",
+    authTooManyAttempts: "Too many wrong codes. Tap “Resend code” to get a new one.",
+    authTooManyAttemptsTitle: "Too many tries",
+    authPhoneTaken: "This number already belongs to another Hasio account. Use a different number.",
+    authPhoneTakenTitle: "Number already in use",
+    authTooManyRequests: "Too many requests. Wait a little, then try again.",
+    authTooManyRequestsTitle: "Try again later",
+    authCheckNumberTitle: "Check the number",
+    authCheckDetailsTitle: "Check your details",
+    authSignInFailedTitle: "Couldn't sign you in",
+    authSessionExpiredTitle: "Signed out",
+    authOfflineTitle: "No connection",
+    authOk: "OK",
+    authShowPassword: "Show password",
+    authHidePassword: "Hide password",
+    // Profile — shown in place of the page while the account is going away.
+    accountSigningOut: "Signing you out…",
+    accountDeleting: "Deleting your account…",
+    profileTrips: "Trips",
+    profileGetStarted: "Get started",
+    profileAddName: "Add your name",
+    // Read by screen readers on the Notifications row's count.
+    profileUnread: "{n} unread",
 
     // ── ui-polish: business and provider ──
 
@@ -1037,8 +1065,8 @@ export const translations = {
     rateApp: "قيم التطبيق",
     shareFeedback: "شارك رأيك",
     appVersionInfo: "إصدار التطبيق والمعلومات",
-    appName: "هاسيو",
-    version: "الإصدار 1.0.0",
+    appName: "Hasio",
+    version: "الإصدار",
     appDescription: "رفيقك المثالي للسفر لاكتشاف الأماكن الرائعة والطعام اللذيذ والتجارب التي لا تُنسى في المنطقة الشرقية.",
 
     // Common
@@ -1429,7 +1457,7 @@ export const translations = {
     reviewSignInFirst: "سجّل الدخول لكتابة تقييم",
 
     reportTitle: "الإبلاغ عن هذا المحتوى",
-    reportSubtitle: "ساعدنا في الحفاظ على سلامة هاسيو. بلاغك سري.",
+    reportSubtitle: "ساعدنا في الحفاظ على سلامة Hasio. بلاغك سري.",
     reportReasonSpam: "سبام أو مضلل",
     reportReasonInappropriate: "محتوى غير لائق",
     reportReasonOffensive: "مسيء أو يحض على الكراهية",
@@ -1454,7 +1482,7 @@ export const translations = {
     unblockConfirmTitle: "إلغاء حظر هذا الحساب؟",
     unblockConfirmMessage: "ستظهر إعلاناته وخدماته مرة أخرى.",
     unblockFailed: "تعذّر إلغاء الحظر. حاول مرة أخرى.",
-    blockedAccountFallbackName: "حساب هاسيو",
+    blockedAccountFallbackName: "حساب Hasio",
 
     // Permission alerts
     permissionRequired: "إذن مطلوب",
@@ -1493,6 +1521,32 @@ export const translations = {
     // ── ui-polish: planner, favorites ──
 
     // ── ui-polish: account (profile, sign-in, onboarding) ──
+    // Sign-in and phone verification failures — see the English block.
+    authCodeWrong: "الرمز غير صحيح. تحقق من الرسالة النصية وحاول مرة أخرى.",
+    authCodeWrongTitle: "رمز غير صحيح",
+    authCodeExpired: "انتهت صلاحية هذا الرمز. اضغط «إعادة إرسال الرمز» للحصول على رمز جديد.",
+    authCodeExpiredTitle: "انتهت صلاحية الرمز",
+    authTooManyAttempts: "أدخلت رموزًا خاطئة كثيرة. اضغط «إعادة إرسال الرمز» للحصول على رمز جديد.",
+    authTooManyAttemptsTitle: "محاولات كثيرة",
+    authPhoneTaken: "هذا الرقم مرتبط بحساب آخر في Hasio. استخدم رقمًا مختلفًا.",
+    authPhoneTakenTitle: "الرقم مستخدم بالفعل",
+    authTooManyRequests: "طلبات كثيرة. انتظر قليلًا ثم حاول مرة أخرى.",
+    authTooManyRequestsTitle: "حاول لاحقًا",
+    authCheckNumberTitle: "تحقق من الرقم",
+    authCheckDetailsTitle: "تحقق من بياناتك",
+    authSignInFailedTitle: "تعذّر تسجيل دخولك",
+    authSessionExpiredTitle: "تم تسجيل خروجك",
+    authOfflineTitle: "لا يوجد اتصال",
+    authOk: "حسناً",
+    authShowPassword: "إظهار كلمة المرور",
+    authHidePassword: "إخفاء كلمة المرور",
+    // Profile — see the English block.
+    accountSigningOut: "جارٍ تسجيل خروجك…",
+    accountDeleting: "جارٍ حذف حسابك…",
+    profileTrips: "الرحلات",
+    profileGetStarted: "ابدأ الآن",
+    profileAddName: "أضف اسمك",
+    profileUnread: "{n} غير مقروءة",
 
     // ── ui-polish: business and provider ──
 

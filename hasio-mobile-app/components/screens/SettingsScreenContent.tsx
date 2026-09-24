@@ -1,18 +1,14 @@
 import { appAlert } from "@/stores/dialogStore";
-import { AppDialogHost } from "@/components/ui/AppDialog";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  Modal,
-  Alert,
   Linking,
   ActivityIndicator,
   Platform,
-  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -28,8 +24,10 @@ import { Feather } from "@expo/vector-icons";
 import { api } from "@/backend";
 import { colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient } from "@/components/ui/Gradients";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { Skeleton, SkeletonGroup, SkeletonLine } from "@/components/ui/Skeleton";
 import { EditNameSheet } from "@/components/settings/EditNameSheet";
-import { formatPhoneForDisplay } from "@/lib/phone";
+import { formatPhoneForDisplay, isPlaceholderEmail, ltr } from "@/lib/phone";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { LIST_CONTAINER_PADDING } from "@/constants/layout";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
@@ -47,10 +45,39 @@ const PRIVACY_POLICY_URL = "https://www.hasio.xyz/privacy-policy.html";
 const TERMS_OF_SERVICE_URL = "https://www.hasio.xyz/terms-of-service.html";
 
 const ANDROID_PACKAGE = "com.hasio.travel";
-// Set this once the app has an App Store Connect record. Until then the
-// "Rate app" row is hidden on iOS rather than linking to a dead page.
-const IOS_APP_STORE_ID: string | null = null;
+// "Hasio Travel" in App Store Connect (published under Nabil Hamici's team).
+// Null hid the "Rate app" row on iPhone altogether.
+const IOS_APP_STORE_ID: string | null = "6800297588";
 const CAN_RATE_APP = Platform.OS !== "ios" || IOS_APP_STORE_ID !== null;
+
+// The running version, from the manifest: an over-the-air update carries its
+// own, so this is the JS actually on screen. The string used to be the
+// translation "Version 1.0.0", with the number written into the copy — the
+// footer said 1.0.0 whatever was installed, and About printed
+// "Version 1.0.0: 1.1.0".
+const APP_VERSION = Constants.expoConfig?.version ?? "";
+
+// convex/notifications/queries.ts stops counting at 50 (MAX_UNREAD_COUNT), so
+// 50 means "50 or more".
+const UNREAD_BADGE_CAP = 50;
+
+/**
+ * The longest a flow waits for a sheet's `onDismissed` before carrying on.
+ *
+ * The sheet itself is gone in about a quarter of a second. This only matters
+ * if that event never arrives — and then waiting for ever would leave the
+ * guest on "Deleting your account…" with no way off it.
+ */
+const SHEET_GONE_FALLBACK_MS = 1500;
+
+function whenSheetGone(gone: Promise<void>): Promise<void> {
+  return Promise.race([
+    gone,
+    new Promise<void>((resolve) => setTimeout(resolve, SHEET_GONE_FALLBACK_MS)),
+  ]);
+}
+
+type HostingType = "business" | "provider";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -84,22 +111,29 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
   const { trips } = useTrips();
   const { favorites } = useFavorites();
 
-  const { isSignedIn, isBusinessOwner, isServiceProvider, isAdmin, isApproved, verificationStatus, userType: convexUserType, user } = useConvexUser();
+  const {
+    isSignedIn,
+    isUserLoading,
+    isBusinessOwner,
+    isServiceProvider,
+    isApproved,
+    verificationStatus,
+    userType: convexUserType,
+    user,
+  } = useConvexUser();
   const userType: UserType = convexUserType === "business_owner" ? "business" : convexUserType === "service_provider" ? "provider" : convexUserType === "admin" ? "admin" : "user";
 
-  // Visual-only display values for the profile header (best-effort from the user record).
   // Bookings replaced Moments in the stats: Moments no longer has a tab, and
   // a count for a screen nobody can reach is not a stat.
   const bookings = useQuery(api.bookings.queries.getUserBookings, user ? {} : "skip");
-  const realName = [(user as any)?.firstName, (user as any)?.lastName]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-  const rawEmail: string | undefined = (user as any)?.email;
+  const unreadCount = useQuery(api.notifications.queries.unreadCount, user ? {} : "skip");
+
+  const realName = [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim();
   // The address a phone sign-up is given is a placeholder that accepts no
   // mail; showing it would present the person with a string they never chose.
-  const realEmail = rawEmail && !rawEmail.endsWith("@phone.hasio.xyz") ? rawEmail : "";
-  const phoneLabel = (user as any)?.phone ? formatPhoneForDisplay((user as any).phone) : "";
+  const realEmail = user?.email && !isPlaceholderEmail(user.email) ? user.email : "";
+  // Wrapped so Arabic shows "+966 50 123 4567", not "4567 123 50 966+".
+  const phoneLabel = user?.phone ? ltr(formatPhoneForDisplay(user.phone)) : "";
   const profileName = realName || phoneLabel || realEmail || t("appName");
   const profileSubtitle =
     (realName ? phoneLabel || realEmail : "") ||
@@ -110,14 +144,70 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
       : userType === "admin"
       ? t("admin")
       : t("userTypeUser"));
-  const profileAvatarUrl = (user as any)?.image || (user as any)?.avatarUrl || null;
-  const profileInitial = (profileName?.trim?.()?.[0] || "H").toUpperCase();
+  // A letter only from something that is a name. A phone sign-up without one
+  // used to get "+" in the circle — the first character of its number.
+  const avatarLetter = (realName || realEmail).trim().charAt(0).toUpperCase();
 
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [nameOpen, setNameOpen] = useState(false);
-  const [isUpgrading, setIsUpgrading] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+
+  // ── Upgrading to a hosting account ──────────────────────────────────────
+  //
+  // What froze iOS: the upgrade used to be its own transparent Modal, with the
+  // success alert drawn inside it by the modal's own dialog host. Pressing
+  // "Done" hid the alert and closed the modal in the same render, so UIKit was
+  // asked to dismiss the alert's view controller and its parent in one pass.
+  // It dismissed the child and dropped the parent's dismissal — and because
+  // React Native keeps a Modal's content mounted until UIKit reports it gone,
+  // that report never came: an empty, transparent, full-screen controller
+  // stayed presented on top of the app and took every touch. The app looked
+  // frozen until it was killed.
+  //
+  // Now it is a BottomSheet, and the success path only closes it. What
+  // happens next — the confirmation, then the verification screen — waits for
+  // the sheet's `onDismissed`, when UIKit has nothing left in flight.
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgrading, setUpgrading] = useState<HostingType | null>(null);
+  // State is a render late: two taps inside one frame would both read
+  // `upgrading` as null and send two mutations. The ref is the real guard.
+  const upgradeBusy = useRef(false);
+  // Set on success and read once the sheet is gone.
+  const upgradedTo = useRef<HostingType | null>(null);
+  // From opening until `onDismissed`. The sheet can be closed while the role
+  // change is still in flight; if it has already gone when the change lands,
+  // there is no dismissal left to wait for and the confirmation comes at once.
+  const upgradeShown = useRef(false);
+
+  // ── Signing out and deleting the account ────────────────────────────────
+  //
+  // Both take the account away while this screen is still on it. The screen
+  // follows the account: the moment the server forgets the user, `isSignedIn`
+  // turns false and the guest "Sign in" page replaced the one being acted on —
+  // the delete sheet vanished mid-spinner into the guest view, and signing out
+  // showed the guest page for the length of the navigation. While `leaving` is
+  // set the screen shows only what is happening, whatever the account's state.
+  const [leaving, setLeaving] = useState<"signOut" | "delete" | null>(null);
+  const leavingNow = useRef(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  // Resolved by the delete sheet's `onDismissed`.
+  const deleteSheetGone = useRef<(() => void) | null>(null);
+
+  const signOutNow = async () => {
+    if (leavingNow.current) return;
+    leavingNow.current = true;
+    setLeaving("signOut");
+    try {
+      await authSignOut();
+    } catch {
+      leavingNow.current = false;
+      setLeaving(null);
+      appAlert(t("error"), t("signOutFailed"));
+      return;
+    }
+    refreshAuth();
+    clearUserData();
+    setOnboardingComplete(false);
+    router.replace("/onboarding");
+  };
 
   const handleSignOut = () => {
     appAlert(
@@ -125,99 +215,107 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
       t("signOutConfirmMessage"),
       [
         { text: t("cancel"), style: "cancel" },
-        {
-          text: t("confirm"),
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await authSignOut();
-              refreshAuth();
-              clearUserData();
-              setOnboardingComplete(false);
-              router.replace("/onboarding");
-            } catch (error) {
-              appAlert(t("error"), t("signOutFailed"));
-            }
-          },
-        },
+        // The action's own name on the button, not "Confirm": the button is
+        // the last thing read before the tap.
+        { text: t("signOut"), style: "destructive", onPress: () => void signOutNow() },
       ]
     );
   };
 
-  const handleOpenPrivacyPolicy = async () => {
-    try {
-      await Linking.openURL(PRIVACY_POLICY_URL);
-    } catch (error) {
-      appAlert(t("error"), t("couldNotOpenLink"));
-    }
-  };
-
-  const handleOpenTermsOfService = async () => {
-    try {
-      await Linking.openURL(TERMS_OF_SERVICE_URL);
-    } catch (error) {
-      appAlert(t("error"), t("couldNotOpenLink"));
-    }
+  const openLink = (url: string) => {
+    Linking.openURL(url).catch(() => appAlert(t("error"), t("couldNotOpenLink")));
   };
 
   const deleteMyAccount = useMutation(api.users.mutations.deleteMyAccount);
 
-  const handleDeleteAccount = async () => {
-    setIsDeleting(true);
+  const confirmDeleteAccount = async () => {
+    if (leavingNow.current) return;
+    leavingNow.current = true;
+
+    // The sheet leaves at once and the page under it becomes "Deleting your
+    // account…". The server work runs alongside the sheet's exit; only the
+    // navigation and any error wait for the sheet to be gone, because on iOS
+    // nothing can be presented while it is still being dismissed.
+    const sheetGone = new Promise<void>((resolve) => {
+      deleteSheetGone.current = resolve;
+    });
+    setLeaving("delete");
+    setDeleteOpen(false);
+
     try {
-      // Delete all server-side data first
       await deleteMyAccount();
-
-      // Then sign out and clear local data
-      await authSignOut();
-      refreshAuth();
-
-      // Moments are server-side now and `deleteMyAccount` removes them along
-      // with their stored images, so there is no local moment cache left to
-      // clear here.
-      clearUserData();
-
-      setShowDeleteModal(false);
-      router.replace("/onboarding");
-    } catch (error: any) {
+    } catch {
+      await whenSheetGone(sheetGone);
+      leavingNow.current = false;
+      setLeaving(null);
       appAlert(t("deleteAccountError"), t("pleaseTryAgain"));
-    } finally {
-      setIsDeleting(false);
+      return;
     }
+
+    // The account is gone. Nothing from here on may report a failure to
+    // delete it, so a local sign-out that trips is not an error.
+    await authSignOut().catch(() => {});
+    refreshAuth();
+    // Moments are server-side now and `deleteMyAccount` removes them along
+    // with their stored images, so there is no local moment cache left to
+    // clear here.
+    clearUserData();
+    await whenSheetGone(sheetGone);
+    router.replace("/onboarding");
   };
 
-  const confirmDeleteAccount = () => {
-    setShowDeleteModal(true);
+  const handleDeleteSheetDismissed = () => {
+    const resolve = deleteSheetGone.current;
+    deleteSheetGone.current = null;
+    resolve?.();
   };
 
   const setUserRole = useMutation(api.users.mutations.setUserRole);
 
-  const handleUpgrade = async (newType: "business" | "provider") => {
-    setIsUpgrading(true);
+  const openUpgrade = () => {
+    upgradeShown.current = true;
+    setUpgradeOpen(true);
+  };
+
+  // The new role starts unapproved, so send them straight to verification —
+  // otherwise posting silently fails server-side with "must be approved". The
+  // push runs from the button, which the dialog only calls once it has itself
+  // gone.
+  const announceUpgrade = (type: HostingType) => {
+    const route = type === "business" ? "/business/verification" : "/provider/verification";
+    appAlert(t("upgradeSuccess"), t("verificationUnverifiedBody"), [
+      { text: t("verificationUnverifiedCta"), onPress: () => router.push(route) },
+    ]);
+  };
+
+  const handleUpgrade = async (type: HostingType) => {
+    if (upgradeBusy.current) return;
+    upgradeBusy.current = true;
+    setUpgrading(type);
     try {
       await setUserRole({
-        role: newType === "business" ? "business_owner" : "service_provider",
+        role: type === "business" ? "business_owner" : "service_provider",
       });
-      // The new role starts unapproved, so send them straight to verification —
-      // otherwise posting silently fails server-side with "must be approved".
-      appAlert(t("upgradeSuccess"), t("verificationUnverifiedBody"), [
-        {
-          text: t("done"),
-          onPress: () => {
-            setShowUpgradeModal(false);
-            router.push(
-              newType === "business"
-                ? "/business/verification"
-                : "/provider/verification"
-            );
-          },
-        },
-      ]);
-    } catch (error: any) {
+      if (upgradeShown.current) {
+        upgradedTo.current = type;
+        setUpgradeOpen(false);
+      } else {
+        announceUpgrade(type);
+      }
+    } catch {
       appAlert(t("upgradeError"), t("pleaseTryAgain"));
     } finally {
-      setIsUpgrading(false);
+      upgradeBusy.current = false;
+      setUpgrading(null);
     }
+  };
+
+  const handleUpgradeDismissed = () => {
+    upgradeShown.current = false;
+    const type = upgradedTo.current;
+    if (!type) return;
+    upgradedTo.current = null;
+    announceUpgrade(type);
   };
 
   const handleRateApp = async () => {
@@ -230,42 +328,200 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
       default: playStoreUrl,
     });
     if (!url) return;
-    const fallbackUrl = Platform.OS === "ios" ? url : playStoreUrl;
+    // Straight to openURL, with the web page as Android's fallback. The
+    // canOpenURL check this used to make answers false for market:// on
+    // Android 11+ unless the manifest declares that query, whatever is
+    // installed — and it swallowed every failure without a word.
     try {
-      const supported = await Linking.canOpenURL(url);
-      await Linking.openURL(supported ? url : fallbackUrl);
-    } catch (error) {
+      await Linking.openURL(url);
+    } catch {
+      try {
+        if (Platform.OS !== "android") throw new Error("No fallback");
+        await Linking.openURL(playStoreUrl);
+      } catch {
+        appAlert(t("error"), t("couldNotOpenLink"));
+      }
     }
   };
 
   const handleAbout = () => {
-    const version = Constants.expoConfig?.version || "1.0.0";
-    const buildNumber = Platform.OS === "android"
-      ? Constants.expoConfig?.android?.versionCode
-      : Constants.expoConfig?.ios?.buildNumber;
+    // The binary's own build number where the platform reports it; the
+    // manifest's is only what app.json said when the update was made.
+    const buildNumber =
+      Platform.OS === "android"
+        ? Constants.platform?.android?.versionCode ?? Constants.expoConfig?.android?.versionCode
+        : Constants.platform?.ios?.buildNumber ?? Constants.expoConfig?.ios?.buildNumber;
     appAlert(
       "Hasio",
-      `${t("appDescription")}\n\n${t("version")}: ${version}${buildNumber ? ` (${buildNumber})` : ""}`,
+      `${t("appDescription")}\n\n${t("version")} ${APP_VERSION}${buildNumber ? ` (${buildNumber})` : ""}`,
       [{ text: t("done") }]
     );
   };
 
-  const getUserTypeLabel = (type?: UserType) => {
-    switch (type) {
-      case "business":
-        return t("userTypeBusiness");
-      case "provider":
-        return t("userTypeProvider");
-      case "admin":
-        return t("admin");
-      default:
-        return t("userTypeUser");
-    }
-  };
+  // Rendered whichever page is showing, so a sheet that is open when the
+  // account changes under it (an upgrade, a deletion) stays mounted and can
+  // finish its exit.
+  const sheets = (
+    <>
+      <BottomSheet
+        visible={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        onDismissed={handleUpgradeDismissed}
+        header={
+          <Text style={[styles.sheetTitle, isRTL && styles.textRTL]}>
+            {t("upgradeAccount")}
+          </Text>
+        }
+      >
+        <Text style={[styles.sheetSubtitle, isRTL && styles.textRTL]}>
+          {t("upgradeWarning")}
+        </Text>
 
-  // Guest view — not signed in
-  if (!isSignedIn) {
-    return (
+        {(["business", "provider"] as const).map((type) => {
+          const busy = upgrading === type;
+          const locked = upgrading !== null;
+          const title = type === "business" ? t("userTypeBusiness") : t("userTypeProvider");
+          return (
+            <Pressable
+              key={type}
+              style={({ pressed }) => [
+                styles.upgradeOption,
+                isRTL && styles.rowRTL,
+                locked && !busy && styles.upgradeOptionIdle,
+                pressed && !locked && styles.pressed,
+              ]}
+              onPress={() => handleUpgrade(type)}
+              disabled={locked}
+              accessibilityRole="button"
+              accessibilityLabel={title}
+              accessibilityState={{ disabled: locked, busy }}
+            >
+              <View style={[styles.upgradeOptionText, isRTL && styles.alignEnd]}>
+                <Text style={[styles.upgradeOptionTitle, isRTL && styles.textRTL]}>
+                  {title}
+                </Text>
+                <Text style={[styles.upgradeOptionDesc, isRTL && styles.textRTL]}>
+                  {type === "business" ? t("userTypeBusinessDesc") : t("userTypeProviderDesc")}
+                </Text>
+              </View>
+              {busy ? <ActivityIndicator color={colors.primary.deep} /> : null}
+            </Pressable>
+          );
+        })}
+
+        <Pressable
+          style={({ pressed }) => [styles.cancelButton, pressed && styles.pressed]}
+          onPress={() => setUpgradeOpen(false)}
+          accessibilityRole="button"
+          accessibilityLabel={t("cancel")}
+        >
+          <Text style={styles.cancelButtonText}>{t("cancel")}</Text>
+        </Pressable>
+      </BottomSheet>
+
+      <EditNameSheet
+        visible={nameOpen}
+        initialName={realName}
+        onClose={() => setNameOpen(false)}
+      />
+
+      <BottomSheet
+        visible={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        onDismissed={handleDeleteSheetDismissed}
+        header={
+          <Text style={[styles.sheetTitle, styles.destructiveText, isRTL && styles.textRTL]}>
+            {t("deleteAccountConfirmTitle")}
+          </Text>
+        }
+      >
+        <Text style={[styles.sheetSubtitle, isRTL && styles.textRTL]}>
+          {t("deleteAccountConfirmMessage")}
+        </Text>
+
+        <Pressable
+          style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
+          onPress={confirmDeleteAccount}
+          accessibilityRole="button"
+          accessibilityLabel={t("deleteAccount")}
+        >
+          <Text style={styles.deleteButtonText}>{t("deleteAccount")}</Text>
+        </Pressable>
+
+        <Pressable
+          style={({ pressed }) => [styles.cancelButton, pressed && styles.pressed]}
+          onPress={() => setDeleteOpen(false)}
+          accessibilityRole="button"
+          accessibilityLabel={t("cancel")}
+        >
+          <Text style={styles.cancelButtonText}>{t("cancel")}</Text>
+        </Pressable>
+      </BottomSheet>
+    </>
+  );
+
+  // The footer: the name and the version the app is actually running.
+  const appInfo = (
+    <>
+      <Text style={[styles.appName, isRTL && styles.textRTL]}>{t("appName")}</Text>
+      {APP_VERSION ? (
+        <Text style={[styles.version, isRTL && styles.textRTL]}>
+          {`${t("version")} ${APP_VERSION}`}
+        </Text>
+      ) : null}
+    </>
+  );
+
+  let page: React.ReactNode;
+
+  if (leaving) {
+    page = (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScreenGradient />
+        <View
+          style={styles.leaving}
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={leaving === "delete" ? t("accountDeleting") : t("accountSigningOut")}
+        >
+          <ActivityIndicator size="large" color={colors.primary.deep} />
+          <Text style={styles.leavingText}>
+            {leaving === "delete" ? t("accountDeleting") : t("accountSigningOut")}
+          </Text>
+        </View>
+      </View>
+    );
+  } else if (isUserLoading) {
+    // Until the session is known. Rendering the guest page meanwhile showed a
+    // signed-in person "Sign in or create account" for the first moment of
+    // every launch. A placeholder for the profile header stands in instead:
+    // neutral for a guest, and for everyone else the header's own shape.
+    page = (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScreenGradient />
+        <View
+          style={styles.scrollContent}
+          accessible
+          accessibilityRole="progressbar"
+          accessibilityLabel={t("loading")}
+        >
+          <SkeletonGroup>
+            <View style={[styles.profileHeader, isRTL && styles.profileHeaderRTL]}>
+              <Skeleton radius={40} style={styles.avatarSkeleton} />
+              {/* Full width, with each bar aligned inside it: a percentage
+                  width has nothing to resolve against in a shrunken box. */}
+              <View style={styles.profileHeaderInfo}>
+                <SkeletonLine width="62%" box={34} isRTL={isRTL} />
+                <SkeletonLine width="40%" box={20} isRTL={isRTL} style={styles.skeletonSubtitle} />
+              </View>
+            </View>
+          </SkeletonGroup>
+        </View>
+      </View>
+    );
+  } else if (!isSignedIn) {
+    // Guest view — not signed in
+    page = (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <ScreenGradient />
         <ScrollView
@@ -296,13 +552,21 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
             <Text style={[styles.guestMessage, isRTL && styles.textRTL]}>
               {t("guestProfileMessage")}
             </Text>
+            {/* Mirrored in Arabic with the gap between icon and label. The
+                icon's margin used to switch sides instead, which in Arabic
+                put the space on its outer edge and the icon against the
+                text. */}
             <Pressable
-              style={styles.guestSignInButton}
+              style={({ pressed }) => [
+                styles.guestSignInButton,
+                isRTL && styles.rowRTL,
+                pressed && styles.pressed,
+              ]}
               onPress={() => router.push("/auth")}
               accessibilityRole="button"
               accessibilityLabel={t("guestSignInButton")}
             >
-              <Feather name="log-in" size={18} color={colors.ink} style={{ marginRight: isRTL ? 0 : 8, marginLeft: isRTL ? 8 : 0 }} />
+              <Feather name="log-in" size={18} color={colors.ink} />
               <Text style={styles.guestSignInButtonText}>
                 {t("guestSignInButton")}
               </Text>
@@ -321,6 +585,7 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
               value={language === "en" ? "English" : "العربية"}
               isRTL={isRTL}
               onPress={() => changeLanguage(language === "en" ? "ar" : "en")}
+              switches
             />
 
             <SettingRow
@@ -330,6 +595,7 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
               subtitle={t("currencyHint")}
               isRTL={isRTL}
               onPress={toggleCurrency}
+              switches
             />
 
           </Animated.View>
@@ -345,7 +611,7 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
               label={t("privacyPolicy")}
               subtitle={t("privacyPolicySubtitle")}
               isRTL={isRTL}
-              onPress={handleOpenPrivacyPolicy}
+              onPress={() => openLink(PRIVACY_POLICY_URL)}
             />
 
             <SettingRow
@@ -353,7 +619,7 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
               label={t("termsOfService")}
               subtitle={t("termsOfServiceSubtitle")}
               isRTL={isRTL}
-              onPress={handleOpenTermsOfService}
+              onPress={() => openLink(TERMS_OF_SERVICE_URL)}
             />
 
             {CAN_RATE_APP && (
@@ -380,12 +646,7 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
             entering={FadeInDown.delay(500).duration(600)}
             style={styles.appInfo}
           >
-            <Text style={[styles.appName, isRTL && styles.textRTL]}>
-              {t("appName")}
-            </Text>
-            <Text style={[styles.version, isRTL && styles.textRTL]}>
-              {t("version")}
-            </Text>
+            {appInfo}
             <Text style={[styles.appDescription, isRTL && styles.textRTL]}>
               {t("appDescription")}
             </Text>
@@ -395,409 +656,325 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
         </ScrollView>
       </View>
     );
-  }
-
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScreenGradient />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Profile Header */}
-        <Animated.View
-          entering={FadeInDown.delay(100).duration(600)}
-          style={[styles.profileHeader, isRTL && styles.profileHeaderRTL]}
-        >
-          <View style={styles.avatar}>
-            {profileAvatarUrl ? (
-              <Image source={{ uri: profileAvatarUrl }} style={styles.avatarImage} />
-            ) : (
-              <Text style={styles.avatarInitial}>{profileInitial}</Text>
-            )}
-          </View>
-          <View style={[styles.profileHeaderInfo, isRTL && styles.profileHeaderInfoRTL]}>
-            <Text style={[styles.profileName, isRTL && styles.textRTL]} numberOfLines={1}>
-              {profileName}
-            </Text>
-            <Text style={[styles.profileSubtitle, isRTL && styles.textRTL]} numberOfLines={1}>
-              {profileSubtitle}
-            </Text>
-          </View>
-        </Animated.View>
-
-        {/* Stats Strip */}
-        <Animated.View
-          entering={FadeInDown.delay(150).duration(600)}
-          style={[styles.statsCard, isRTL && styles.statsCardRTL]}
-        >
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{trips.length}</Text>
-            <Text style={styles.statLabel}>{language === "ar" ? "الرحلات" : "Trips"}</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{(bookings ?? []).length}</Text>
-            <Text style={styles.statLabel}>{t("myBookings")}</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{favorites.length}</Text>
-            <Text style={styles.statLabel}>{t("favorites")}</Text>
-          </View>
-        </Animated.View>
-
-        {/* Switch to hosting promo — only for normal users */}
-        {userType === "user" && (
-          <Animated.View entering={FadeInDown.delay(200).duration(600)}>
-            <Pressable
-              style={styles.hostingCard}
-              onPress={() => setShowUpgradeModal(true)}
-              accessibilityRole="button"
-              accessibilityLabel={t("upgradeAccount")}
-            >
-              <View style={[styles.hostingRow, isRTL && styles.hostingRowRTL]}>
-                <View style={styles.hostingIcon}>
-                  <Feather name="home" size={22} color={colors.ink} />
-                </View>
-                <View style={[styles.hostingTextWrap, isRTL && styles.profileHeaderInfoRTL]}>
-                  <Text style={[styles.hostingTitle, isRTL && styles.textRTL]}>
-                    {t("upgradeAccount")}
-                  </Text>
-                  <Text style={[styles.hostingDesc, isRTL && styles.textRTL]} numberOfLines={2}>
-                    {t("becomeBusinessOrProvider")}
-                  </Text>
-                </View>
-              </View>
-              <View style={[styles.hostingPillRow, isRTL && styles.hostingRowRTL]}>
-                <View style={styles.hostingPill}>
-                  <Text style={styles.hostingPillText}>{language === "ar" ? "ابدأ الآن" : "Get started"}</Text>
-                </View>
-              </View>
-            </Pressable>
-          </Animated.View>
-        )}
-
-        {/* Account — only rendered when the user actually has one of these
-            rows, so guests never see an empty heading. */}
-        {(isBusinessOwner || isServiceProvider) && (
+  } else {
+    page = (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <ScreenGradient />
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          {/* Profile Header */}
           <Animated.View
-            entering={FadeInDown.delay(280).duration(600)}
+            entering={FadeInDown.delay(100).duration(600)}
+            style={[styles.profileHeader, isRTL && styles.profileHeaderRTL]}
+          >
+            <View style={styles.avatar}>
+              {avatarLetter ? (
+                <Text style={styles.avatarInitial}>{avatarLetter}</Text>
+              ) : (
+                <Feather name="user" size={34} color={colors.ink} />
+              )}
+            </View>
+            <View style={[styles.profileHeaderInfo, isRTL && styles.profileHeaderInfoRTL]}>
+              <Text style={[styles.profileName, isRTL && styles.textRTL]} numberOfLines={1}>
+                {profileName}
+              </Text>
+              <Text style={[styles.profileSubtitle, isRTL && styles.textRTL]} numberOfLines={1}>
+                {profileSubtitle}
+              </Text>
+              {/* A phone sign-up has no name, and nothing ever asked for one:
+                  the host of their booking saw a bare number. The row in
+                  Preferences was the only way in, labelled "Your name" with
+                  nothing beside it. */}
+              {!realName && (
+                <Pressable
+                  onPress={() => setNameOpen(true)}
+                  hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                  style={({ pressed }) => [
+                    styles.addName,
+                    isRTL && styles.addNameRTL,
+                    pressed && styles.pressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("profileAddName")}
+                >
+                  <Feather name="plus" size={15} color={colors.primary.deep} />
+                  <Text style={styles.addNameText}>{t("profileAddName")}</Text>
+                </Pressable>
+              )}
+            </View>
+          </Animated.View>
+
+          {/* Stats Strip */}
+          <Animated.View
+            entering={FadeInDown.delay(150).duration(600)}
+            style={[styles.statsCard, isRTL && styles.statsCardRTL]}
+          >
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{trips.length}</Text>
+              <Text style={styles.statLabel}>{t("profileTrips")}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{(bookings ?? []).length}</Text>
+              <Text style={styles.statLabel}>{t("myBookings")}</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statNumber}>{favorites.length}</Text>
+              <Text style={styles.statLabel}>{t("favorites")}</Text>
+            </View>
+          </Animated.View>
+
+          {/* Switch to hosting promo — only for normal users */}
+          {userType === "user" && (
+            <Animated.View entering={FadeInDown.delay(200).duration(600)}>
+              <Pressable
+                style={({ pressed }) => [styles.hostingCard, pressed && styles.hostingCardPressed]}
+                onPress={openUpgrade}
+                accessibilityRole="button"
+                accessibilityLabel={t("upgradeAccount")}
+              >
+                <View style={[styles.hostingRow, isRTL && styles.rowRTL]}>
+                  <View style={styles.hostingIcon}>
+                    <Feather name="home" size={22} color={colors.ink} />
+                  </View>
+                  <View style={[styles.hostingTextWrap, isRTL && styles.alignEnd]}>
+                    <Text style={[styles.hostingTitle, isRTL && styles.textRTL]}>
+                      {t("upgradeAccount")}
+                    </Text>
+                    <Text style={[styles.hostingDesc, isRTL && styles.textRTL]} numberOfLines={2}>
+                      {t("becomeBusinessOrProvider")}
+                    </Text>
+                  </View>
+                </View>
+                <View style={[styles.hostingPillRow, isRTL && styles.rowRTL]}>
+                  <View style={styles.hostingPill}>
+                    <Text style={styles.hostingPillText}>{t("profileGetStarted")}</Text>
+                  </View>
+                </View>
+              </Pressable>
+            </Animated.View>
+          )}
+
+          {/* Account — only rendered when the user actually has one of these
+              rows, so guests never see an empty heading. */}
+          {(isBusinessOwner || isServiceProvider) && (
+            <Animated.View
+              entering={FadeInDown.delay(280).duration(600)}
+              style={styles.listGroup}
+            >
+              <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
+                {t("account")}
+              </Text>
+            {/* Dashboard link for business users */}
+            {isBusinessOwner && (
+              <SettingRow
+                icon="grid"
+                label={t("businessDashboard")}
+                isRTL={isRTL}
+                onPress={() => router.push("/business/dashboard")}
+              />
+            )}
+
+            {/* Dashboard link for provider users */}
+            {isServiceProvider && (
+              <SettingRow
+                icon="grid"
+                label={t("providerDashboard")}
+                isRTL={isRTL}
+                onPress={() => router.push("/provider/dashboard")}
+              />
+            )}
+
+            {/* Verification status — only while approval is still outstanding */}
+            {(isBusinessOwner || isServiceProvider) && !isApproved && (
+              <SettingRow
+                icon="shield"
+                label={t("verificationTitle")}
+                value={
+                  verificationStatus === "pending"
+                    ? t("statusPending")
+                    : t("verificationUnverifiedTitle")
+                }
+                isRTL={isRTL}
+                onPress={() =>
+                  router.push(
+                    isBusinessOwner
+                      ? "/business/verification"
+                      : "/provider/verification"
+                  )
+                }
+              />
+            )}
+
+            </Animated.View>
+          )}
+
+          {/* Preferences */}
+          <Animated.View
+            entering={FadeInDown.delay(300).duration(600)}
             style={styles.listGroup}
           >
             <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
-              {t("account")}
+              {t("preferences")}
             </Text>
-          {/* Dashboard link for business users */}
-          {isBusinessOwner && (
-            <SettingRow
-              icon="grid"
-              label={t("businessDashboard")}
-              isRTL={isRTL}
-              onPress={() => router.push("/business/dashboard")}
-            />
-          )}
 
-          {/* Dashboard link for provider users */}
-          {isServiceProvider && (
+            {/* The two screens a guest reaches only from here. Bookings first:
+                it is the one someone opens on purpose, while the inbox is
+                usually reached by following a notification. */}
             <SettingRow
-              icon="grid"
-              label={t("providerDashboard")}
+              icon="user"
+              label={t("editName")}
+              value={realName || undefined}
               isRTL={isRTL}
-              onPress={() => router.push("/provider/dashboard")}
+              onPress={() => setNameOpen(true)}
             />
-          )}
 
-          {/* Verification status — only while approval is still outstanding */}
-          {(isBusinessOwner || isServiceProvider) && !isApproved && (
+            <SettingRow
+              icon="calendar"
+              label={t("myBookings")}
+              isRTL={isRTL}
+              onPress={() => router.push("/bookings")}
+            />
+
+            <SettingRow
+              icon="bell"
+              label={t("notifications")}
+              badge={unreadCount ?? 0}
+              badgeLabel={t("profileUnread").replace("{n}", String(unreadCount ?? 0))}
+              isRTL={isRTL}
+              onPress={() => router.push("/notifications")}
+            />
+
+            <SettingRow
+              icon="heart"
+              label={t("favorites")}
+              isRTL={isRTL}
+              onPress={() => onNavigateToTab?.("favorites")}
+            />
+
+            <SettingRow
+              icon="globe"
+              label={t("language")}
+              value={language === "en" ? "English" : "العربية"}
+              isRTL={isRTL}
+              onPress={() => changeLanguage(language === "en" ? "ar" : "en")}
+              switches
+            />
+
+            <SettingRow
+              icon="dollar-sign"
+              label={t("currency")}
+              value={currency === "SAR" ? t("currencySar") : t("currencyUsd")}
+              subtitle={t("currencyHint")}
+              isRTL={isRTL}
+              onPress={toggleCurrency}
+              switches
+            />
+          </Animated.View>
+
+          {/* Support */}
+          <Animated.View
+            entering={FadeInDown.delay(320).duration(600)}
+            style={styles.listGroup}
+          >
+            <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
+              {t("support")}
+            </Text>
+
+            {/* The notifications switch lived here. The app ships no push
+                notifications, so the toggle only flipped a local Zustand flag —
+                a control that does nothing. Restore it with the feature; the
+                `notificationsEnabled` state in appStore is kept for that. */}
+
+            <SettingRow
+              icon="slash"
+              label={t("blockedAccounts")}
+              isRTL={isRTL}
+              onPress={() => router.push("/blocked-accounts")}
+            />
+
+            {CAN_RATE_APP && (
+              <SettingRow
+                icon="star"
+                label={t("rateApp")}
+                isRTL={isRTL}
+                onPress={handleRateApp}
+              />
+            )}
+
+            <SettingRow
+              icon="info"
+              label={t("about")}
+              isRTL={isRTL}
+              onPress={handleAbout}
+            />
+
             <SettingRow
               icon="shield"
-              label={t("verificationTitle")}
-              value={
-                verificationStatus === "pending"
-                  ? t("statusPending")
-                  : t("verificationUnverifiedTitle")
-              }
+              label={t("privacyPolicy")}
               isRTL={isRTL}
-              onPress={() =>
-                router.push(
-                  isBusinessOwner
-                    ? "/business/verification"
-                    : "/provider/verification"
-                )
-              }
+              onPress={() => openLink(PRIVACY_POLICY_URL)}
             />
-          )}
 
-          </Animated.View>
-        )}
-
-        {/* Preferences */}
-        <Animated.View
-          entering={FadeInDown.delay(300).duration(600)}
-          style={styles.listGroup}
-        >
-          <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
-            {t("preferences")}
-          </Text>
-
-          {/* The two screens a guest reaches only from here. Bookings first:
-              it is the one someone opens on purpose, while the inbox is
-              usually reached by following a notification. */}
-          <SettingRow
-            icon="user"
-            label={t("editName")}
-            value={realName || undefined}
-            isRTL={isRTL}
-            onPress={() => setNameOpen(true)}
-          />
-
-          <SettingRow
-            icon="calendar"
-            label={t("myBookings")}
-            isRTL={isRTL}
-            onPress={() => router.push("/bookings")}
-          />
-
-          <SettingRow
-            icon="bell"
-            label={t("notifications")}
-            isRTL={isRTL}
-            onPress={() => router.push("/notifications")}
-          />
-
-          <SettingRow
-            icon="heart"
-            label={t("favorites")}
-            isRTL={isRTL}
-            onPress={() => onNavigateToTab?.("favorites")}
-          />
-
-          <SettingRow
-            icon="globe"
-            label={t("language")}
-            value={language === "en" ? "English" : "العربية"}
-            isRTL={isRTL}
-            onPress={() => changeLanguage(language === "en" ? "ar" : "en")}
-          />
-
-          <SettingRow
-            icon="dollar-sign"
-            label={t("currency")}
-            value={currency === "SAR" ? t("currencySar") : t("currencyUsd")}
-            subtitle={t("currencyHint")}
-            isRTL={isRTL}
-            onPress={toggleCurrency}
-          />
-        </Animated.View>
-
-        {/* Support */}
-        <Animated.View
-          entering={FadeInDown.delay(320).duration(600)}
-          style={styles.listGroup}
-        >
-          <Text style={[styles.sectionTitle, isRTL && styles.sectionTitleRTL]}>
-            {t("support")}
-          </Text>
-
-          {/* The notifications switch lived here. The app ships no push
-              notifications, so the toggle only flipped a local Zustand flag —
-              a control that does nothing. Restore it with the feature; the
-              `notificationsEnabled` state in appStore is kept for that. */}
-
-          <SettingRow
-            icon="slash"
-            label={t("blockedAccounts")}
-            isRTL={isRTL}
-            onPress={() => router.push("/blocked-accounts")}
-          />
-
-          {CAN_RATE_APP && (
             <SettingRow
-              icon="star"
-              label={t("rateApp")}
+              icon="file-text"
+              label={t("termsOfService")}
               isRTL={isRTL}
-              onPress={handleRateApp}
+              onPress={() => openLink(TERMS_OF_SERVICE_URL)}
             />
-          )}
+          </Animated.View>
 
-          <SettingRow
-            icon="info"
-            label={t("about")}
-            isRTL={isRTL}
-            onPress={handleAbout}
-          />
-
-          <SettingRow
-            icon="shield"
-            label={t("privacyPolicy")}
-            isRTL={isRTL}
-            onPress={handleOpenPrivacyPolicy}
-          />
-
-          <SettingRow
-            icon="file-text"
-            label={t("termsOfService")}
-            isRTL={isRTL}
-            onPress={handleOpenTermsOfService}
-          />
-        </Animated.View>
-
-        {/* Delete account — kept apart from Support by space alone, so the
-            destructive row is never a mis-tap away from a legal link. */}
-        <Animated.View
-          entering={FadeInDown.delay(350).duration(600)}
-          style={styles.listGroupSpaced}
-        >
-          <SettingRow
-            icon="trash-2"
-            label={t("deleteAccount")}
-            isRTL={isRTL}
-            onPress={confirmDeleteAccount}
-            destructive
-          />
-        </Animated.View>
-
-        {/* Sign out */}
-        <Animated.View entering={FadeInDown.delay(400).duration(600)}>
-          <Pressable
-            style={styles.signOutButton}
-            onPress={handleSignOut}
-            accessibilityRole="button"
-            accessibilityLabel={t("signOut")}
+          {/* Delete account — kept apart from Support by space alone, so the
+              destructive row is never a mis-tap away from a legal link. */}
+          <Animated.View
+            entering={FadeInDown.delay(350).duration(600)}
+            style={styles.listGroupSpaced}
           >
-            <Text style={styles.signOutText}>{t("signOut")}</Text>
-          </Pressable>
-        </Animated.View>
+            <SettingRow
+              icon="trash-2"
+              label={t("deleteAccount")}
+              isRTL={isRTL}
+              onPress={() => setDeleteOpen(true)}
+              destructive
+            />
+          </Animated.View>
 
-        {/* App Info */}
-        <Animated.View
-          entering={FadeInDown.delay(450).duration(600)}
-          style={styles.appInfo}
-        >
-          <Text style={[styles.appName, isRTL && styles.textRTL]}>
-            {t("appName")}
-          </Text>
-          <Text style={[styles.version, isRTL && styles.textRTL]}>
-            {t("version")}
-          </Text>
-        </Animated.View>
-
-        <View style={{ height: bottomClearance }} />
-      </ScrollView>
-
-      {/* Upgrade Modal */}
-      <Modal
-        visible={showUpgradeModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowUpgradeModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 24 }]}>
-            <Text style={[styles.modalTitle, isRTL && styles.textRTL]}>
-              {t("upgradeAccount")}
-            </Text>
-            <Text style={[styles.modalSubtitle, isRTL && styles.textRTL]}>
-              {t("upgradeWarning")}
-            </Text>
-
+          {/* Sign out — with room between it and Delete account, which sat
+              directly on top of it: the everyday action and the irreversible
+              one were a thumb's slip apart. */}
+          <Animated.View
+            entering={FadeInDown.delay(400).duration(600)}
+            style={styles.signOutGroup}
+          >
             <Pressable
-              style={styles.upgradeOption}
-              onPress={() => handleUpgrade("business")}
-              disabled={isUpgrading}
+              style={({ pressed }) => [styles.signOutButton, pressed && styles.pressed]}
+              onPress={handleSignOut}
               accessibilityRole="button"
-              accessibilityLabel={t("userTypeBusiness")}
-              accessibilityState={{ disabled: isUpgrading }}
+              accessibilityLabel={t("signOut")}
             >
-              <Text style={[styles.upgradeOptionTitle, isRTL && styles.textRTL]}>
-                {t("userTypeBusiness")}
-              </Text>
-              <Text style={[styles.upgradeOptionDesc, isRTL && styles.textRTL]}>
-                {t("userTypeBusinessDesc")}
-              </Text>
+              <Text style={styles.signOutText}>{t("signOut")}</Text>
             </Pressable>
+          </Animated.View>
 
-            <Pressable
-              style={styles.upgradeOption}
-              onPress={() => handleUpgrade("provider")}
-              disabled={isUpgrading}
-              accessibilityRole="button"
-              accessibilityLabel={t("userTypeProvider")}
-              accessibilityState={{ disabled: isUpgrading }}
-            >
-              <Text style={[styles.upgradeOptionTitle, isRTL && styles.textRTL]}>
-                {t("userTypeProvider")}
-              </Text>
-              <Text style={[styles.upgradeOptionDesc, isRTL && styles.textRTL]}>
-                {t("userTypeProviderDesc")}
-              </Text>
-            </Pressable>
+          {/* App Info */}
+          <Animated.View
+            entering={FadeInDown.delay(450).duration(600)}
+            style={styles.appInfo}
+          >
+            {appInfo}
+          </Animated.View>
 
-            <Pressable
-              style={styles.cancelButton}
-              onPress={() => setShowUpgradeModal(false)}
-              accessibilityRole="button"
-              accessibilityLabel={t("cancel")}
-            >
-              <Text style={styles.cancelButtonText}>{t("cancel")}</Text>
-            </Pressable>
-          </View>
-        </View>
-        {/* Alerts fired while this modal is open render above it. */}
-        <AppDialogHost />
-      </Modal>
+          <View style={{ height: bottomClearance }} />
+        </ScrollView>
+      </View>
+    );
+  }
 
-      <EditNameSheet
-        visible={nameOpen}
-        initialName={realName}
-        onClose={() => setNameOpen(false)}
-      />
-
-      {/* Delete Account Modal */}
-      <Modal
-        visible={showDeleteModal}
-        animationType="slide"
-        transparent
-        onRequestClose={() => !isDeleting && setShowDeleteModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingBottom: insets.bottom + 24 }]}>
-            <Text style={[styles.modalTitle, isRTL && styles.textRTL, styles.destructiveText]}>
-              {t("deleteAccountConfirmTitle")}
-            </Text>
-            <Text style={[styles.modalSubtitle, isRTL && styles.textRTL]}>
-              {t("deleteAccountConfirmMessage")}
-            </Text>
-
-            <Pressable
-              style={[styles.deleteButton, isDeleting && styles.deleteButtonDisabled]}
-              onPress={handleDeleteAccount}
-              disabled={isDeleting}
-              accessibilityRole="button"
-              accessibilityLabel={t("deleteAccount")}
-              accessibilityState={{ disabled: isDeleting, busy: isDeleting }}
-            >
-              {isDeleting ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.deleteButtonText}>{t("deleteAccount")}</Text>
-              )}
-            </Pressable>
-
-            <Pressable
-              style={styles.cancelButton}
-              onPress={() => setShowDeleteModal(false)}
-              disabled={isDeleting}
-              accessibilityRole="button"
-              accessibilityLabel={t("cancel")}
-              accessibilityState={{ disabled: isDeleting }}
-            >
-              <Text style={styles.cancelButtonText}>{t("cancel")}</Text>
-            </Pressable>
-          </View>
-        </View>
-        {/* Alerts fired while this modal is open render above it. */}
-        <AppDialogHost />
-      </Modal>
-    </View>
+  return (
+    <>
+      {page}
+      {sheets}
+    </>
   );
 }
 
@@ -805,6 +982,15 @@ interface SettingRowProps {
   label: string;
   subtitle?: string;
   value?: string;
+  /** A count in a pill beside the chevron — unread notifications. */
+  badge?: number;
+  /** What the badge means, for screen readers ("3 unread"). */
+  badgeLabel?: string;
+  /**
+   * The row changes its setting in place (language, currency) rather than
+   * opening a screen, so it has no chevron: a chevron promises a page.
+   */
+  switches?: boolean;
   isRTL: boolean;
   onPress?: () => void;
   destructive?: boolean;
@@ -815,6 +1001,9 @@ function SettingRow({
   label,
   subtitle,
   value,
+  badge,
+  badgeLabel,
+  switches,
   isRTL,
   onPress,
   destructive,
@@ -840,6 +1029,15 @@ function SettingRow({
   };
 
   const iconColor = destructive ? colors.signOut : colors.primary.deep;
+  const badgeText =
+    badge && badge > 0
+      ? badge >= UNREAD_BADGE_CAP
+        ? `${UNREAD_BADGE_CAP}+`
+        : String(badge)
+      : null;
+  const a11yLabel = [label, subtitle, value, badgeText ? badgeLabel : undefined]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <AnimatedPressable
@@ -853,7 +1051,7 @@ function SettingRow({
       onPressOut={handlePressOut}
       disabled={!onPress}
       accessibilityRole={onPress ? "button" : "text"}
-      accessibilityLabel={subtitle ? `${label}, ${subtitle}` : label}
+      accessibilityLabel={a11yLabel}
     >
       <View style={[styles.settingLeft, isRTL && styles.settingRowRTL]}>
         {icon && (
@@ -879,12 +1077,22 @@ function SettingRow({
         </View>
       </View>
       <View style={[styles.settingRight, isRTL && styles.settingRowRTL]}>
+        {/* One line, and it gives way: a long value used to keep its full
+            width and squeeze the label and its hint into a narrow column. */}
         {value && (
-          <Text style={[styles.settingValue, isRTL && styles.textRTL]}>
+          <Text
+            style={[styles.settingValue, isRTL && styles.textRTL]}
+            numberOfLines={1}
+          >
             {value}
           </Text>
         )}
-        {onPress && !destructive && (
+        {badgeText ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{badgeText}</Text>
+          </View>
+        ) : null}
+        {onPress && !destructive && !switches && (
           <Feather
             name={isRTL ? "chevron-left" : "chevron-right"}
             size={18}
@@ -930,6 +1138,19 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     textAlign: "right",
     writingDirection: "rtl",
   },
+  // Every row on this screen mirrors with `row-reverse` and spaces its items
+  // with `gap`, which has no side. The margins that used to do the spacing
+  // stayed on their original side when a row reversed, so in Arabic the gap
+  // sat on the outer edge of an icon and the icon touched the text.
+  rowRTL: {
+    flexDirection: "row-reverse",
+  },
+  alignEnd: {
+    alignItems: "flex-end",
+  },
+  pressed: {
+    opacity: 0.7,
+  },
   sectionTitle: {
     fontFamily: fonts.semibold,
     fontSize: 13,
@@ -942,10 +1163,25 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   sectionTitleRTL: {
     textAlign: "right",
   },
+  // While signing out or deleting: the one thing happening, centred on the page.
+  leaving: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 16,
+    paddingHorizontal: LIST_CONTAINER_PADDING,
+  },
+  leavingText: {
+    fontFamily: fonts.medium,
+    fontSize: 16,
+    color: colors.onSurface.variant,
+    textAlign: "center",
+  },
   // Profile header
   profileHeader: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 16,
     paddingTop: 20,
     paddingBottom: 20,
   },
@@ -968,9 +1204,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  avatarImage: {
-    width: "100%",
-    height: "100%",
+  avatarSkeleton: {
+    width: 80,
+    height: 80,
   },
   avatarInitial: {
     fontFamily: fonts.serif,
@@ -979,11 +1215,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   profileHeaderInfo: {
     flex: 1,
-    marginLeft: 16,
   },
   profileHeaderInfoRTL: {
-    marginLeft: 0,
-    marginRight: 16,
     alignItems: "flex-end",
   },
   profileName: {
@@ -996,6 +1229,27 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 14,
     color: colors.onSurface.muted,
     marginTop: 2,
+  },
+  skeletonSubtitle: {
+    marginTop: 2,
+  },
+  // Its own width, not the column's: the whole row would otherwise be the
+  // target, and its pressed state a band across the header.
+  addName: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 4,
+    marginTop: 8,
+  },
+  addNameRTL: {
+    flexDirection: "row-reverse",
+    alignSelf: "flex-end",
+  },
+  addNameText: {
+    fontFamily: fonts.semibold,
+    fontSize: 14,
+    color: colors.primary.deep,
   },
   // Stats strip
   statsCard: {
@@ -1043,12 +1297,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     shadowRadius: 14,
     elevation: 4,
   },
+  hostingCardPressed: {
+    opacity: 0.85,
+  },
   hostingRow: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  hostingRowRTL: {
-    flexDirection: "row-reverse",
+    gap: 14,
   },
   hostingIcon: {
     width: 44,
@@ -1057,7 +1312,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     backgroundColor: "rgba(31, 29, 23, 0.14)",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 14,
   },
   hostingTextWrap: {
     flex: 1,
@@ -1107,6 +1361,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    gap: 12,
     // No inset of its own: scrollContent's 20 is the page's single gutter, and
     // every heading, row and rule on this screen starts from it. The 4 that
     // used to be here was compensating for listCard's own padding, and once
@@ -1122,11 +1377,14 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
   },
   settingRight: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    flexShrink: 1,
+    maxWidth: "50%",
   },
   // Alignment box only. The mint chip that used to fill it measured 1.13:1
   // against the white row it sat on and 1.00:1 against the bottom of the page
@@ -1137,7 +1395,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     height: 34,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
   },
   settingInfo: {
     flex: 1,
@@ -1157,17 +1414,39 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     marginTop: 2,
   },
   settingValue: {
+    flexShrink: 1,
     fontFamily: fonts.medium,
     fontSize: 15,
     color: colors.onSurface.muted,
+  },
+  // Lime is a fill, so the count on it is ink.
+  badge: {
+    minWidth: 22,
+    minHeight: 22,
+    borderRadius: 11,
+    paddingHorizontal: 6,
+    backgroundColor: colors.primary.DEFAULT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: {
+    fontFamily: fonts.semibold,
+    fontSize: 12,
+    lineHeight: 16,
+    color: colors.ink,
   },
   destructiveText: {
     color: colors.signOut,
   },
   // Sign out
+  signOutGroup: {
+    marginTop: 16,
+  },
   signOutButton: {
     alignItems: "center",
-    paddingVertical: 16,
+    justifyContent: "center",
+    minHeight: 52,
+    paddingVertical: 14,
     marginBottom: 8,
   },
   signOutText: {
@@ -1241,6 +1520,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   guestSignInButton: {
     flexDirection: "row",
+    gap: 8,
     backgroundColor: "#CCE745",
     borderRadius: 14,
     paddingVertical: 14,
@@ -1258,39 +1538,38 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 16,
     color: colors.ink,
   },
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-  modalContent: {
-    backgroundColor: colors.surface.DEFAULT,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 24,
-  },
-  modalTitle: {
+  // Sheets (upgrade, delete). The title sits in the sheet's drag zone, so it
+  // can be grabbed as well as the handle.
+  sheetTitle: {
     fontFamily: fonts.serif,
     fontSize: 24,
     color: colors.ink,
-    marginBottom: 8,
   },
-  modalSubtitle: {
+  sheetSubtitle: {
     fontFamily: fonts.regular,
     fontSize: 14,
+    lineHeight: 20,
     color: colors.onSurface.muted,
-    marginBottom: 24,
+    marginTop: 4,
+    marginBottom: 20,
   },
   upgradeOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
     backgroundColor: colors.background,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  // The option not being applied while the other one is.
+  upgradeOptionIdle: {
+    opacity: 0.5,
+  },
+  upgradeOptionText: {
+    flex: 1,
   },
   upgradeOptionTitle: {
     fontFamily: fonts.semibold,
@@ -1304,24 +1583,26 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: colors.onSurface.muted,
   },
   cancelButton: {
-    marginTop: 8,
-    padding: 16,
+    marginTop: 4,
+    minHeight: 48,
     alignItems: "center",
+    justifyContent: "center",
   },
   cancelButtonText: {
     fontFamily: fonts.medium,
     fontSize: 16,
     color: colors.onSurface.muted,
   },
+  // The destructive red that is also the app's destructive text colour. The
+  // coral `error` token it used to be put white text at 3.3:1; this is 5.4:1.
   deleteButton: {
-    backgroundColor: colors.error,
+    backgroundColor: colors.signOut,
     borderRadius: 12,
-    padding: 16,
+    minHeight: 50,
+    padding: 14,
     alignItems: "center",
-    marginBottom: 12,
-  },
-  deleteButtonDisabled: {
-    opacity: 0.6,
+    justifyContent: "center",
+    marginBottom: 8,
   },
   deleteButtonText: {
     fontFamily: fonts.semibold,

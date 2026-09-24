@@ -6,7 +6,6 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Alert,
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -23,6 +22,25 @@ import { useConvexUser } from "@/hooks/useConvexUser";
 import type { Id } from "../../convex/_generated/dataModel";
 
 /**
+ * When a block was made, as the rest of the app writes dates: Gregorian, with
+ * Latin digits. Plain "ar-SA" is the Umm al-Qura calendar in Arabic-Indic
+ * digits — a Hijri date in a different digit set from every other number on
+ * the screen.
+ */
+function formatBlockedOn(timestamp: number, isRTL: boolean): string {
+  try {
+    return new Date(timestamp).toLocaleDateString(
+      isRTL ? "ar-SA-u-ca-gregory-nu-latn" : "en-GB",
+      { day: "numeric", month: "short", year: "numeric" }
+    );
+  } catch {
+    // Hermes ships a trimmed ICU on some Android builds; a plain date beats
+    // a crash.
+    return new Date(timestamp).toISOString().slice(0, 10);
+  }
+}
+
+/**
  * Lets a user review and undo the blocks they created from the report sheet.
  * Required alongside blocking itself so the action is reversible.
  */
@@ -31,12 +49,16 @@ export default function BlockedAccountsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { t, isRTL } = useLanguage();
-  const { isSignedIn } = useConvexUser();
+  const { isSignedIn, isUserLoading } = useConvexUser();
 
   const blocked = useQuery(
     api.moderation.queries.getMyBlockedUsers,
     isSignedIn ? {} : "skip"
   );
+  // A skipped query stays undefined for ever, so without an account this
+  // screen used to spin indefinitely. Loading means waiting for something.
+  const loading = isSignedIn ? blocked === undefined : isUserLoading;
+  const entries = blocked ?? [];
   const unblockUser = useMutation(api.moderation.mutations.unblockUser);
 
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -50,7 +72,7 @@ export default function BlockedAccountsScreen() {
           setPendingId(blockedUserId);
           try {
             await unblockUser({ blockedUserId });
-          } catch (error) {
+          } catch {
             appAlert(t("error"), t("unblockFailed"));
           } finally {
             setPendingId(null);
@@ -73,9 +95,13 @@ export default function BlockedAccountsScreen() {
         >
           <Pressable
             onPress={() => router.back()}
-            style={[styles.backButton, isRTL && styles.alignEndSelf]}
+            style={({ pressed }) => [
+              styles.backButton,
+              isRTL && styles.alignEndSelf,
+              pressed && styles.pressed,
+            ]}
             accessibilityRole="button"
-            accessibilityLabel={isRTL ? "رجوع" : "Go back"}
+            accessibilityLabel={t("back")}
           >
             <Feather
               name={isRTL ? "arrow-right" : "arrow-left"}
@@ -92,11 +118,11 @@ export default function BlockedAccountsScreen() {
           </Text>
         </Animated.View>
 
-        {blocked === undefined ? (
+        {loading ? (
           <View style={styles.loading}>
             <ActivityIndicator color={colors.primary.deep} />
           </View>
-        ) : blocked.length === 0 ? (
+        ) : entries.length === 0 ? (
           <Animated.View
             entering={FadeInDown.delay(200).duration(600)}
             style={styles.emptyCard}
@@ -111,7 +137,7 @@ export default function BlockedAccountsScreen() {
             entering={FadeInDown.delay(200).duration(600)}
             style={styles.listCard}
           >
-            {blocked.map((entry) => {
+            {entries.map((entry) => {
               const name =
                 [entry.firstName, entry.lastName].filter(Boolean).join(" ") ||
                 t("blockedAccountFallbackName");
@@ -136,16 +162,19 @@ export default function BlockedAccountsScreen() {
                       {name}
                     </Text>
                     <Text style={[styles.rowMeta, isRTL && styles.textRTL]}>
-                      {new Date(entry.createdAt).toLocaleDateString(
-                        isRTL ? "ar-SA" : "en-GB"
-                      )}
+                      {formatBlockedOn(entry.createdAt, isRTL)}
                     </Text>
                   </View>
 
                   <Pressable
-                    style={[styles.unblockButton, isBusy && styles.unblockBusy]}
+                    style={({ pressed }) => [
+                      styles.unblockButton,
+                      isBusy && styles.unblockBusy,
+                      pressed && !isBusy && styles.pressed,
+                    ]}
                     onPress={() => handleUnblock(entry.blockedUserId)}
                     disabled={isBusy}
+                    hitSlop={6}
                     accessibilityRole="button"
                     accessibilityLabel={`${t("unblock")} ${name}`}
                     accessibilityState={{ disabled: isBusy, busy: isBusy }}
@@ -173,10 +202,11 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
   header: { paddingHorizontal: 24, paddingBottom: 8 },
+  // 44pt, the minimum a thumb can be trusted to hit; it was 40.
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.surface.DEFAULT,
     alignItems: "center",
     justifyContent: "center",
@@ -185,6 +215,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderColor: colors.border,
   },
   alignEndSelf: { alignSelf: "flex-end" },
+  pressed: { opacity: 0.7 },
   title: {
     fontFamily: fonts.serif,
     fontSize: 28,
@@ -264,10 +295,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: colors.onSurface.muted,
     marginTop: 2,
   },
+  // 36pt of pill and 6 of slop all round: a 48pt target without a heavier pill.
   unblockButton: {
     minWidth: 88,
+    minHeight: 36,
     paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingVertical: 8,
     borderRadius: 999,
     backgroundColor: colors.mint,
     alignItems: "center",
