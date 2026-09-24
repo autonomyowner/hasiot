@@ -134,6 +134,8 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   // time would present its sheet the moment this one opened again.
   const itemId = item?.id ?? null;
   const [openedId, setOpenedId] = useState(itemId);
+  // Counts openings; the page is keyed on it (see the Fragment below).
+  const [opening, setOpening] = useState(0);
   if (itemId !== openedId) {
     setOpenedId(itemId);
     setReportOpen(false);
@@ -147,7 +149,10 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     // opened on its first photo with the third dot lit. Reset on the way in
     // only — reset on the way out, the dots jumped while the page, still on
     // its third photo, slid away.
-    if (itemId !== null) setImageIndex(0);
+    if (itemId !== null) {
+      setImageIndex(0);
+      setOpening((n) => n + 1);
+    }
   }
 
   // Three reads, all skipped until there is a listing to read them for — and
@@ -392,10 +397,12 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     >
       <View style={styles.container}>
         {shown && (
-          // Keyed on the listing, so another listing opens at the top of the
-          // page and on its own first photo rather than wherever the last one
-          // was left.
-          <React.Fragment key={shown.id}>
+          // Keyed on the opening, so every listing opens at the top of the
+          // page and on its first photo rather than wherever the last one was
+          // left — the same listing reopened included, which a key on its id
+          // would not remount if iOS never reported the last dismissal and
+          // the page was still mounted underneath.
+          <React.Fragment key={opening}>
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{
