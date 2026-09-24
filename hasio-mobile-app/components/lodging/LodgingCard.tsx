@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
-import { useConvexAuth } from "convex/react";
 import type { Lodging, Language } from "@/types";
 import { Feather } from "@expo/vector-icons";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
@@ -9,8 +8,8 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { colors, type AppFonts } from "@/constants/colors";
 import { CaptionScrim, ImageScrim } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-import { useAppStore } from "@/stores/appStore";
-import { useToggleFavorite, useFavorites } from "@/hooks/useConvexData";
+import { appAlert } from "@/stores/dialogStore";
+import { useToggleFavorite, useFavoriteIds } from "@/hooks/useConvexData";
 import { ReportSheet } from "@/components/ReportSheet";
 import { PressableScale } from "@/components/ui";
 
@@ -43,25 +42,17 @@ export function LodgingCard({
   const [reportOpen, setReportOpen] = useState(false);
   const { t } = useLanguage();
   const { format } = useCurrency();
-  const { isAuthenticated } = useConvexAuth();
-  const convexToggleFavorite = useToggleFavorite();
-  const { favorites } = useFavorites();
-  const isFavoriteLocal = useAppStore((state) => state.isFavorite(lodging.id));
-  const addFavoriteLocal = useAppStore((state) => state.addFavorite);
-  const removeFavoriteLocal = useAppStore((state) => state.removeFavorite);
-  const isFavoriteConvex = isAuthenticated && favorites.some((f: any) => f._id === lodging.id);
-  const isFavorite = isAuthenticated ? isFavoriteConvex : isFavoriteLocal;
+  const isFavorite = useFavoriteIds().has(lodging.id);
+  const toggleFavoriteFor = useToggleFavorite();
 
+  // The heart flips at once either way — on the device for a guest, and as an
+  // optimistic change for an account, which Convex rolls back if the server
+  // refuses. A refusal used to be swallowed, so the heart just quietly went
+  // back to grey; now it says why.
   const toggleFavorite = () => {
-    if (isAuthenticated) {
-      convexToggleFavorite(lodging.id);
-    }
-    // Always update local state for instant feedback
-    if (isFavorite) {
-      removeFavoriteLocal(lodging.id);
-    } else {
-      addFavoriteLocal(lodging.id);
-    }
+    toggleFavoriteFor(lodging.id, isFavorite).catch(() => {
+      appAlert(t("error"), t("pleaseTryAgain"));
+    });
   };
 
   const name = getLocalizedText(lodging.name, lodging.nameAr, language);

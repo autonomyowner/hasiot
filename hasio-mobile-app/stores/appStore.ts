@@ -17,10 +17,12 @@ interface AppState {
   hasCompletedOnboarding: boolean;
   setOnboardingComplete: (complete: boolean) => void;
 
-  // Favorites
+  // Favorites — a signed-out guest's only. A signed-in account's live on the
+  // server; these are merged into it at sign-in and then cleared.
   favorites: string[];
   addFavorite: (id: string) => void;
   removeFavorite: (id: string) => void;
+  clearFavorites: () => void;
   isFavorite: (id: string) => boolean;
 
   // Moments
@@ -69,13 +71,14 @@ export const useAppStore = create<AppState>()(
       // Favorites
       favorites: [],
       addFavorite: (id) =>
-        set((state) => ({
-          favorites: [...state.favorites, id],
-        })),
+        set((state) =>
+          state.favorites.includes(id) ? state : { favorites: [...state.favorites, id] }
+        ),
       removeFavorite: (id) =>
         set((state) => ({
           favorites: state.favorites.filter((fav) => fav !== id),
         })),
+      clearFavorites: () => set({ favorites: [] }),
       isFavorite: (id) => get().favorites.includes(id),
 
       // Moments

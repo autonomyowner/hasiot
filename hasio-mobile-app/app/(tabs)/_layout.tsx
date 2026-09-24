@@ -20,6 +20,7 @@ import { BottomBarFade } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useKeyboardTransition } from "@/hooks/useKeyboardVisible";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useMergeGuestFavorites } from "@/hooks/useConvexData";
 import type { TranslationKey } from "@/constants/translations";
 
 // Import screen content components
@@ -213,6 +214,8 @@ export default function TabLayout() {
 
   return (
     <View style={styles.container}>
+      <GuestFavoritesSync />
+
       {/* Content area - PagerView on native, simple View on web */}
       {isWeb ? (
         <View style={styles.pagerView}>
@@ -284,6 +287,19 @@ export default function TabLayout() {
       </Animated.View>
     </View>
   );
+}
+
+/**
+ * Carries a guest's hearts into the account they sign in to.
+ *
+ * Mounted here because this shell exists whenever the app does, whichever
+ * screen the guest signed in from — and as its own component because the hook
+ * subscribes to the favourites: called from the shell itself, every heart
+ * tapped anywhere re-rendered the shell and with it all five screens.
+ */
+function GuestFavoritesSync() {
+  useMergeGuestFavorites();
+  return null;
 }
 
 interface TabButtonProps {
