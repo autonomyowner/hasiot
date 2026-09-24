@@ -241,7 +241,7 @@ export default function TabLayout() {
       home: <HomeScreenContent onNavigateToTab={navigateToTab} />,
       lodging: <LodgingScreenContent />,
       planner: <PlannerScreenContent onNavigateToTab={navigateToTab} />,
-      favorites: <FavoritesScreenContent />,
+      favorites: <FavoritesScreenContent onNavigateToTab={navigateToTab} />,
       settings: <SettingsScreenContent onNavigateToTab={navigateToTab} />,
     }),
     [navigateToTab]
