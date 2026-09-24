@@ -1,9 +1,12 @@
 import { useEffect } from "react";
 import { Stack, useRouter } from "expo-router";
 import { useConvexUser } from "@/hooks/useConvexUser";
+import { useLanguage } from "@/hooks/useLanguage";
+import { colors } from "@/constants/colors";
 
 export default function ProviderLayout() {
   const router = useRouter();
+  const { isRTL } = useLanguage();
   const { user, isUserLoading } = useConvexUser();
 
   useEffect(() => {
@@ -13,14 +16,17 @@ export default function ProviderLayout() {
     } else if (user.role !== "service_provider" && user.role !== "admin") {
       router.replace("/(tabs)");
     }
-  }, [user, isUserLoading]);
+  }, [user, isUserLoading, router]);
 
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: "#FAF7F2" },
-        animation: "slide_from_right",
+        contentStyle: { backgroundColor: colors.background },
+        // From the left in Arabic, with the iOS back swipe from the right
+        // edge following the finger — see app/business/_layout.tsx.
+        animation: isRTL ? "slide_from_left" : "slide_from_right",
+        animationMatchesGesture: isRTL,
       }}
     >
       <Stack.Screen name="dashboard" />
