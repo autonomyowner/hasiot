@@ -768,6 +768,9 @@ export const translations = {
     makeCover: "Make this the cover photo",
     photosCoverHint: "The first photo is the cover. Tap another photo to make it the cover.",
     removePhoto: "Remove photo",
+    verificationApprovedBody: "Your account is approved — you can post now.",
+    verificationUploadFailed:
+      "We couldn't upload your document. Check your connection and try again.",
 
     // ── ui-polish: app shell ──
   },
@@ -1537,6 +1540,8 @@ export const translations = {
     makeCover: "اجعلها صورة الغلاف",
     photosCoverHint: "الصورة الأولى هي الغلاف. اضغط على صورة أخرى لتجعلها الغلاف.",
     removePhoto: "إزالة الصورة",
+    verificationApprovedBody: "تمت الموافقة على حسابك، ويمكنك النشر الآن.",
+    verificationUploadFailed: "تعذّر رفع الوثيقة. تحقق من اتصالك وحاول مرة أخرى.",
 
     // ── ui-polish: app shell ──
   },

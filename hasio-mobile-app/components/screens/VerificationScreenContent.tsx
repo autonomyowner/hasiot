@@ -6,13 +6,12 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Image,
-  Alert,
   Linking,
   ActivityIndicator,
 } from "react-native";
+import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useIsFocused, useRouter } from "expo-router";
+import { useIsFocused, useNavigation, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
@@ -26,6 +25,7 @@ import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { uploadDocumentToConvex } from "@/lib/convexUpload";
+import { getSubmitErrorKey } from "@/lib/submitError";
 
 /**
  * Account verification screen for business owners and service providers.
@@ -39,6 +39,7 @@ export default function VerificationScreenContent() {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const navigation = useNavigation();
   const isFocused = useIsFocused();
   const { t, isRTL } = useLanguage();
   const { verificationStatus, isUserLoading } = useConvexUser();
@@ -48,6 +49,10 @@ export default function VerificationScreenContent() {
   const [docUri, setDocUri] = useState<string | null>(null);
   const [docMimeType, setDocMimeType] = useState<string>("image/jpeg");
   const [docName, setDocName] = useState<string | null>(null);
+  // Which picker the document came from, so "Replace document" opens the
+  // same one: it always opened the file picker, which sent someone who had
+  // chosen a photo into a Files browser to look for it.
+  const [docSource, setDocSource] = useState<"photo" | "file">("file");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isPending = verificationStatus === "pending";
@@ -57,8 +62,16 @@ export default function VerificationScreenContent() {
   const isImageDoc = docMimeType.startsWith("image/");
 
   const pickPhoto = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      // Straight to the system picker, which needs no library permission
+      // (see components/hosting/PhotoPickerField.tsx).
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsMultipleSelection: false,
+        quality: 0.9,
+      });
+    } catch {
       appAlert(t("permissionRequired"), t("photoPermissionMessage"), [
         { text: t("cancel"), style: "cancel" },
         { text: t("openSettings"), onPress: () => Linking.openSettings() },
@@ -66,17 +79,12 @@ export default function VerificationScreenContent() {
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsMultipleSelection: false,
-      quality: 0.9,
-    });
-
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
       setDocUri(asset.uri);
       setDocMimeType(asset.mimeType ?? "image/jpeg");
       setDocName(asset.fileName ?? null);
+      setDocSource("photo");
     }
   };
 
@@ -92,6 +100,7 @@ export default function VerificationScreenContent() {
       setDocUri(asset.uri);
       setDocMimeType(asset.mimeType ?? "application/octet-stream");
       setDocName(asset.name ?? null);
+      setDocSource("file");
     }
   };
 
@@ -108,28 +117,28 @@ export default function VerificationScreenContent() {
       const storageId = await uploadDocumentToConvex(docUri, docMimeType);
       await saveBusinessDoc({ fileId: storageId });
 
-      appAlert(
-        t("verificationSubmitted"),
-        t("verificationSubmittedMessage"),
-        [{ text: t("done"), onPress: () => router.back() }]
-      );
+      appAlert(t("verificationSubmitted"), t("verificationSubmittedMessage"), [
+        {
+          text: t("done"),
+          // Only from this screen: the upload can outlast it, and back from
+          // wherever the host went meanwhile popped an unrelated screen.
+          onPress: () => {
+            if (navigation.isFocused()) router.back();
+          },
+        },
+      ]);
     } catch (error) {
-      // Surface the underlying reason too — a silent "try again later" made an
-      // upload failure here impossible to diagnose from a tester's report.
-      const detail = error instanceof Error ? error.message : String(error);
-      appAlert(t("error"), `${t("pleaseTryAgain")}\n\n${detail}`);
+      // A sentence, not the raw "[CONVEX M(users/mutations:saveBusinessDoc)]
+      // … Server Error" the alert used to print under "please try again".
+      // The detail still goes to the log, which is where a tester's report
+      // can be diagnosed from.
+      console.warn("Verification upload failed", error);
+      const key = getSubmitErrorKey(error);
+      appAlert(t("error"), t(key === "errorUploadFailed" ? "verificationUploadFailed" : key));
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  if (isUserLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator color={colors.primary.deep} />
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -141,16 +150,21 @@ export default function VerificationScreenContent() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
       >
-        {/* Header */}
+        {/* Header — drawn while the account loads too: the screen used to be
+            a lone spinner with no way back until it did. */}
         <Animated.View
           entering={FadeInDown.delay(100).duration(600)}
           style={[styles.headerBand, { paddingTop: insets.top + 16 }]}
         >
           <Pressable
             onPress={() => router.back()}
-            style={[styles.backButton, isRTL && styles.alignEndSelf]}
+            style={({ pressed }) => [
+              styles.backButton,
+              isRTL && styles.alignEndSelf,
+              pressed && styles.pressed,
+            ]}
             accessibilityRole="button"
-            accessibilityLabel={isRTL ? "رجوع" : "Go back"}
+            accessibilityLabel={t("back")}
           >
             <Feather
               name={isRTL ? "arrow-right" : "arrow-left"}
@@ -167,138 +181,160 @@ export default function VerificationScreenContent() {
           </Text>
         </Animated.View>
 
-        {/* Status pill */}
-        <Animated.View
-          entering={FadeInDown.delay(200).duration(600)}
-          style={[
-            styles.statusCard,
-            isApproved && styles.statusCardApproved,
-            isPending && styles.statusCardPending,
-          ]}
-        >
-          <Feather
-            name={isApproved ? "check-circle" : isPending ? "clock" : "alert-circle"}
-            size={20}
-            color={isApproved ? colors.success : isPending ? colors.warning : colors.attention}
-          />
-          <View style={styles.statusTextWrap}>
-            <Text style={[styles.statusTitle, isRTL && styles.textRTL]}>
-              {isApproved
-                ? t("statusApproved")
-                : isPending
-                ? t("verificationPendingTitle")
-                : t("verificationUnverifiedTitle")}
-            </Text>
-            <Text style={[styles.statusBody, isRTL && styles.textRTL]}>
-              {isApproved
-                ? t("firstListingNote")
-                : isPending
-                ? t("verificationPendingBody")
-                : t("verificationUnverifiedBody")}
-            </Text>
+        {isUserLoading ? (
+          <View style={styles.loadingBody}>
+            <ActivityIndicator color={colors.primary.deep} />
           </View>
-        </Animated.View>
+        ) : (
+          <>
+            {/* Status */}
+            <Animated.View
+              entering={FadeInDown.delay(200).duration(600)}
+              style={[
+                styles.statusCard,
+                isRTL && styles.rowRTL,
+                isApproved && styles.statusCardApproved,
+                isPending && styles.statusCardPending,
+              ]}
+            >
+              <Feather
+                name={isApproved ? "check-circle" : isPending ? "clock" : "alert-circle"}
+                size={20}
+                // The dark lime for the tick: the `success` token is the lime
+                // fill, which on the mint card could not be seen.
+                color={
+                  isApproved
+                    ? colors.primary.deep
+                    : isPending
+                      ? colors.warning
+                      : colors.attention
+                }
+              />
+              <View style={styles.statusTextWrap}>
+                <Text style={[styles.statusTitle, isRTL && styles.textRTL]}>
+                  {isApproved
+                    ? t("statusApproved")
+                    : isPending
+                      ? t("verificationPendingTitle")
+                      : t("verificationUnverifiedTitle")}
+                </Text>
+                <Text style={[styles.statusBody, isRTL && styles.textRTL]}>
+                  {/* Approved said "Your first listing requires approval" —
+                      the opposite of the news. */}
+                  {isApproved
+                    ? t("verificationApprovedBody")
+                    : isPending
+                      ? t("verificationPendingBody")
+                      : t("verificationUnverifiedBody")}
+                </Text>
+              </View>
+            </Animated.View>
 
-        {/* Upload — hidden once approved, since there is nothing left to do */}
-        {!isApproved && (
-          <Animated.View entering={FadeInDown.delay(300).duration(600)}>
-            <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>
-              {t("verificationDocLabel")}
-            </Text>
-            <Text style={[styles.hint, isRTL && styles.textRTL]}>
-              {t("verificationDocHint")}
-            </Text>
+            {/* Upload — hidden once approved, since there is nothing left to do */}
+            {!isApproved && (
+              <Animated.View entering={FadeInDown.delay(300).duration(600)}>
+                <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>
+                  {t("verificationDocLabel")}
+                </Text>
+                <Text style={[styles.hint, isRTL && styles.textRTL]}>
+                  {t("verificationDocHint")}
+                </Text>
 
-            {docUri ? (
-              <View style={styles.previewCard}>
-                {isImageDoc ? (
-                  <Image source={{ uri: docUri }} style={styles.preview} />
+                {docUri ? (
+                  <View style={styles.previewCard}>
+                    {isImageDoc ? (
+                      <Image source={{ uri: docUri }} style={styles.preview} contentFit="cover" />
+                    ) : (
+                      <View style={styles.filePreview}>
+                        <Feather name="file-text" size={28} color={colors.primary.deep} />
+                        <Text style={styles.filePreviewName} numberOfLines={2}>
+                          {docName ?? t("verificationDocLabel")}
+                        </Text>
+                      </View>
+                    )}
+                    <Pressable
+                      style={({ pressed }) => [styles.replaceButton, pressed && styles.pressed]}
+                      onPress={docSource === "photo" ? pickPhoto : pickFile}
+                      disabled={isSubmitting}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("verificationReplaceDoc")}
+                    >
+                      <Text style={styles.replaceButtonText}>
+                        {t("verificationReplaceDoc")}
+                      </Text>
+                    </Pressable>
+                  </View>
                 ) : (
-                  <View style={styles.filePreview}>
-                    <Feather name="file-text" size={28} color={colors.primary.deep} />
-                    <Text style={styles.filePreviewName} numberOfLines={2}>
-                      {docName ?? t("verificationDocLabel")}
-                    </Text>
+                  <View style={[styles.pickerRow, isRTL && styles.rowRTL]}>
+                    <Pressable
+                      style={({ pressed }) => [styles.pickerCard, pressed && styles.pressed]}
+                      onPress={pickPhoto}
+                      disabled={isSubmitting}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("verificationChoosePhoto")}
+                    >
+                      <Feather name="image" size={22} color={colors.primary.deep} />
+                      <Text style={styles.pickerText}>{t("verificationChoosePhoto")}</Text>
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.pickerCard, pressed && styles.pressed]}
+                      onPress={pickFile}
+                      disabled={isSubmitting}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("verificationChooseFile")}
+                    >
+                      <Feather name="file-text" size={22} color={colors.primary.deep} />
+                      <Text style={styles.pickerText}>{t("verificationChooseFile")}</Text>
+                    </Pressable>
                   </View>
                 )}
-                <Pressable
-                  style={styles.replaceButton}
-                  onPress={pickFile}
-                  disabled={isSubmitting}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("verificationReplaceDoc")}
-                >
-                  <Text style={styles.replaceButtonText}>
-                    {t("verificationReplaceDoc")}
+
+                <View style={[styles.privacyRow, isRTL && styles.rowRTL]}>
+                  <Feather name="lock" size={14} color={colors.onSurface.muted} />
+                  <Text style={[styles.privacyText, isRTL && styles.textRTL]}>
+                    {t("verificationPrivacyNote")}
                   </Text>
-                </Pressable>
-              </View>
-            ) : (
-              <View style={styles.pickerRow}>
+                </View>
+
                 <Pressable
-                  style={styles.pickerCard}
-                  onPress={pickPhoto}
-                  disabled={isSubmitting}
+                  style={({ pressed }) => [
+                    styles.submitButton,
+                    (isSubmitting || !docUri) && styles.submitButtonDisabled,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={handleSubmit}
+                  disabled={isSubmitting || !docUri}
                   accessibilityRole="button"
-                  accessibilityLabel={t("verificationChoosePhoto")}
+                  accessibilityLabel={t("verificationSubmit")}
+                  accessibilityState={{ disabled: isSubmitting || !docUri, busy: isSubmitting }}
                 >
-                  <Feather name="image" size={22} color={colors.primary.deep} />
-                  <Text style={styles.pickerText}>{t("verificationChoosePhoto")}</Text>
+                  {isSubmitting ? (
+                    // Ink on the lime fill, like the label it stands in for;
+                    // it was white, which on lime barely shows.
+                    <ActivityIndicator color={colors.ink} />
+                  ) : (
+                    <Text style={styles.submitButtonText}>
+                      {t("verificationSubmit")}
+                    </Text>
+                  )}
                 </Pressable>
-                <Pressable
-                  style={styles.pickerCard}
-                  onPress={pickFile}
-                  disabled={isSubmitting}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("verificationChooseFile")}
-                >
-                  <Feather name="file-text" size={22} color={colors.primary.deep} />
-                  <Text style={styles.pickerText}>{t("verificationChooseFile")}</Text>
-                </Pressable>
-              </View>
+              </Animated.View>
             )}
 
-            <View style={styles.privacyRow}>
-              <Feather name="lock" size={14} color={colors.onSurface.muted} />
-              <Text style={[styles.privacyText, isRTL && styles.textRTL]}>
-                {t("verificationPrivacyNote")}
-              </Text>
-            </View>
-
-            <Pressable
-              style={[
-                styles.submitButton,
-                (isSubmitting || !docUri) && styles.submitButtonDisabled,
-              ]}
-              onPress={handleSubmit}
-              disabled={isSubmitting || !docUri}
-              accessibilityRole="button"
-              accessibilityLabel={t("verificationSubmit")}
-              accessibilityState={{ disabled: isSubmitting || !docUri, busy: isSubmitting }}
+            {/* Why we ask */}
+            <Animated.View
+              entering={FadeInDown.delay(400).duration(600)}
+              style={styles.whyCard}
             >
-              {isSubmitting ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.submitButtonText}>
-                  {t("verificationSubmit")}
-                </Text>
-              )}
-            </Pressable>
-          </Animated.View>
+              <Text style={[styles.whyTitle, isRTL && styles.textRTL]}>
+                {t("verificationWhyTitle")}
+              </Text>
+              <Text style={[styles.whyBody, isRTL && styles.textRTL]}>
+                {t("verificationWhyBody")}
+              </Text>
+            </Animated.View>
+          </>
         )}
-
-        {/* Why we ask */}
-        <Animated.View
-          entering={FadeInDown.delay(400).duration(600)}
-          style={styles.whyCard}
-        >
-          <Text style={[styles.whyTitle, isRTL && styles.textRTL]}>
-            {t("verificationWhyTitle")}
-          </Text>
-          <Text style={[styles.whyBody, isRTL && styles.textRTL]}>
-            {t("verificationWhyBody")}
-          </Text>
-        </Animated.View>
       </ScrollView>
     </View>
   );
@@ -306,11 +342,9 @@ export default function VerificationScreenContent() {
 
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  loadingContainer: {
-    flex: 1,
+  loadingBody: {
+    paddingTop: 48,
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: colors.background,
   },
 
   headerBand: {
@@ -320,16 +354,18 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     paddingHorizontal: 24,
     paddingBottom: 28,
   },
+  // 44pt, the smallest target a thumb can be expected to hit.
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: "rgba(255,255,255,0.12)",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
+    marginBottom: 16,
   },
   alignEndSelf: { alignSelf: "flex-end" },
+  pressed: { opacity: 0.7 },
   title: {
     fontFamily: fonts.serif,
     fontSize: 28,
@@ -343,6 +379,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: "rgba(255,255,255,0.7)",
   },
   textRTL: { textAlign: "right" },
+  rowRTL: { flexDirection: "row-reverse" },
 
   statusCard: {
     flexDirection: "row",
@@ -438,7 +475,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  preview: { width: "100%", height: 220, resizeMode: "cover" },
+  preview: { width: "100%", height: 220 },
   replaceButton: {
     paddingVertical: 14,
     alignItems: "center",
