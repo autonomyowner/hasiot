@@ -276,11 +276,14 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   // Centred in either language, so its text is centred too — it used to be
   // pushed right in Arabic inside a centred block.
+  // The bottom padding keeps the "See all" button's slop inside this view,
+  // where it can be hit.
   emptyState: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
     paddingTop: 60,
+    paddingBottom: 8,
     paddingHorizontal: 16,
   },
   emptyTitle: {

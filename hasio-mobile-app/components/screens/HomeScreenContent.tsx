@@ -1485,9 +1485,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     width: CARD_WIDTH,
     gap: CARD_GAP,
   },
+  // The bottom margin keeps the next view off the button's 6pt of slop: a
+  // later sibling lying over it would take those touches.
   showMore: {
     alignSelf: "center",
     marginTop: 20,
+    marginBottom: 8,
   },
   // The shadow lives here, on a wrapper that does not clip. Putting it on the
   // same view as `overflow: "hidden"` drops it entirely on iOS, and on Android
@@ -1679,10 +1682,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   // Centred in either language, so its text is centred too — it used to be
   // pushed right in Arabic inside a centred block.
   // Clear of the chips' target band for the same reason as the results.
+  // The bottom padding keeps the "See all" button's slop inside this view,
+  // where it can be hit.
   emptyStateContainer: {
     paddingHorizontal: 24,
     marginTop: CHIP_TARGET_INSET,
     paddingTop: 40 - CHIP_TARGET_INSET,
+    paddingBottom: 8,
     alignItems: "center",
   },
   emptyStateTitle: {
