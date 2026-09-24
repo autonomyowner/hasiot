@@ -13,7 +13,8 @@ import { Image } from "expo-image";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useIsFocused, useNavigation, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
+import { enterFade } from "@/constants/motion";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
@@ -153,7 +154,7 @@ export default function VerificationScreenContent() {
         {/* Header — drawn while the account loads too: the screen used to be
             a lone spinner with no way back until it did. */}
         <Animated.View
-          entering={FadeInDown.delay(100).duration(600)}
+          entering={enterFade(0)}
           style={[styles.headerBand, { paddingTop: insets.top + 16 }]}
         >
           <Pressable
@@ -189,7 +190,7 @@ export default function VerificationScreenContent() {
           <>
             {/* Status */}
             <Animated.View
-              entering={FadeInDown.delay(200).duration(600)}
+              entering={enterFade(1)}
               style={[
                 styles.statusCard,
                 isRTL && styles.rowRTL,
@@ -232,7 +233,7 @@ export default function VerificationScreenContent() {
 
             {/* Upload — hidden once approved, since there is nothing left to do */}
             {!isApproved && (
-              <Animated.View entering={FadeInDown.delay(300).duration(600)}>
+              <Animated.View entering={enterFade(2)}>
                 <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>
                   {t("verificationDocLabel")}
                 </Text>
@@ -323,7 +324,7 @@ export default function VerificationScreenContent() {
 
             {/* Why we ask */}
             <Animated.View
-              entering={FadeInDown.delay(400).duration(600)}
+              entering={enterFade(3)}
               style={styles.whyCard}
             >
               <Text style={[styles.whyTitle, isRTL && styles.textRTL]}>

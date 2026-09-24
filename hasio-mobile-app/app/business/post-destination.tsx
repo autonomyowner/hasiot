@@ -15,7 +15,8 @@ import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import Animated from "react-native-reanimated";
+import { enterFade } from "@/constants/motion";
 import { PhotoPickerField } from "@/components/hosting/PhotoPickerField";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
@@ -297,9 +298,9 @@ export default function PostDestinationScreen() {
         keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
         automaticallyAdjustKeyboardInsets
       >
-        {/* Header */}
+        {/* Header — the short staggered entrance, as on the stay form. */}
         <Animated.View
-          entering={FadeInDown.delay(100).duration(600)}
+          entering={enterFade(0)}
           style={[styles.header, isRTL && styles.headerRTL]}
         >
           <BackButton />
@@ -331,7 +332,7 @@ export default function PostDestinationScreen() {
         ) : (
         /* Form, locked while it submits. */
         <Animated.View
-          entering={FadeInDown.delay(200).duration(600)}
+          entering={enterFade(1)}
           style={styles.form}
           pointerEvents={isLoading ? "none" : "auto"}
           onLayout={(e) => {
