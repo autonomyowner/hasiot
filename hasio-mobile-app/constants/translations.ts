@@ -725,6 +725,21 @@ export const translations = {
     confirm: "Confirm",
 
     // ── ui-polish: discovery (Home, Stay, filters, search) ──
+    homeHeroEyebrow: "Eastern Province",
+    // Chosen by count through countForm() in lib/searchText.ts — Arabic has
+    // four forms where English has two, so every form has its own key.
+    resultsCount_one: "1 result",
+    resultsCount_two: "{n} results",
+    resultsCount_few: "{n} results",
+    resultsCount_many: "{n} results",
+    clearSearch: "Clear search",
+    filtersActiveCount: "Filters: {n} active",
+    filterNothingYet: "Nothing to filter by yet. Everything listed is already on screen.",
+    showMorePlaces: "Show more places",
+    emptyKindMessage: "Nothing of this kind is listed right now.",
+    emptyLodgingNoneMessage: "New stays are added all the time. Check back soon.",
+    loadStalledTitle: "Can't connect",
+    loadStalledMessage: "Check your internet connection. We'll keep trying.",
 
     // ── ui-polish: listing sheet, booking, reviews ──
 
@@ -1459,6 +1474,19 @@ export const translations = {
     confirm: "تأكيد",
 
     // ── ui-polish: discovery (Home, Stay, filters, search) ──
+    homeHeroEyebrow: "المنطقة الشرقية",
+    resultsCount_one: "نتيجة واحدة",
+    resultsCount_two: "نتيجتان",
+    resultsCount_few: "{n} نتائج",
+    resultsCount_many: "{n} نتيجة",
+    clearSearch: "مسح البحث",
+    filtersActiveCount: "عوامل التصفية النشطة: {n}",
+    filterNothingYet: "لا توجد خيارات للتصفية بعد. كل ما هو متاح معروض الآن.",
+    showMorePlaces: "عرض المزيد من الأماكن",
+    emptyKindMessage: "لا يوجد شيء من هذا النوع حالياً.",
+    emptyLodgingNoneMessage: "نضيف أماكن إقامة جديدة باستمرار. عد قريباً.",
+    loadStalledTitle: "تعذّر الاتصال",
+    loadStalledMessage: "تحقّق من اتصالك بالإنترنت، وسنواصل المحاولة.",
 
     // ── ui-polish: listing sheet, booking, reviews ──
 
