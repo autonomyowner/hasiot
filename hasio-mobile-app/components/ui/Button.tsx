@@ -1,8 +1,10 @@
 import React from "react";
 import {
+  ActivityIndicator,
   Text,
   Pressable,
   StyleSheet,
+  View,
   type PressableProps,
   type ViewStyle,
   type TextStyle,
@@ -13,6 +15,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 import { colors, type AppFonts } from "@/constants/colors";
+import { pressSpring } from "@/constants/motion";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -22,6 +25,13 @@ interface ButtonProps extends Omit<PressableProps, "style"> {
   variant?: "primary" | "secondary" | "outline" | "ghost";
   size?: "sm" | "md" | "lg";
   fullWidth?: boolean;
+  /**
+   * Shows a spinner in place of the label and stops presses, at exactly the
+   * button's resting size. The forms used to blank the title and hang a
+   * spinner underneath instead, which left a faded, empty bar that read as
+   * broken rather than busy.
+   */
+  loading?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
 }
@@ -31,25 +41,38 @@ export function Button({
   variant = "primary",
   size = "md",
   fullWidth = false,
+  loading = false,
   style,
   textStyle,
   disabled,
+  onPressIn,
+  onPressOut,
   ...props
 }: ButtonProps) {
   const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
+  const inactive = disabled || loading;
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  const handlePressIn = () => {
-    scale.value = withSpring(0.97, { damping: 15, stiffness: 400 });
+  // Chained rather than overridable: with these spread after the props, a
+  // caller's own onPressIn silently removed the press feedback.
+  const handlePressIn: PressableProps["onPressIn"] = (e) => {
+    scale.value = withSpring(0.97, pressSpring);
+    onPressIn?.(e);
   };
 
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
+  const handlePressOut: PressableProps["onPressOut"] = (e) => {
+    scale.value = withSpring(1, pressSpring);
+    onPressOut?.(e);
   };
+
+  // Ink on the lime and sand fills, the dark lime on the transparent ones —
+  // the same pairing the label uses, so the spinner reads as the label busy.
+  const spinnerColor =
+    variant === "primary" || variant === "secondary" ? colors.ink : colors.primary.deep;
 
   return (
     <AnimatedPressable
@@ -58,26 +81,37 @@ export function Button({
         styles[variant],
         styles[`${size}Size`],
         fullWidth && styles.fullWidth,
-        disabled && styles.disabled,
+        disabled && !loading && styles.disabled,
         animatedStyle,
         style,
       ]}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      accessibilityState={{ disabled: !!inactive, busy: loading }}
+      {...props}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      disabled={disabled}
-      {...props}
+      disabled={inactive}
     >
+      {/* The label stays laid out while loading, only hidden, so the button
+          keeps its width and height and nothing around it moves. */}
       <Text
         style={[
           styles.text,
           styles[`${variant}Text`],
           styles[`${size}Text`],
-          disabled && styles.disabledText,
+          disabled && !loading && styles.disabledText,
+          loading && styles.hiddenText,
           textStyle,
         ]}
       >
         {title}
       </Text>
+      {loading && (
+        <View style={styles.spinner} pointerEvents="none">
+          <ActivityIndicator color={spinnerColor} />
+        </View>
+      )}
     </AnimatedPressable>
   );
 }
@@ -145,7 +179,15 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   lgText: {
     fontSize: 18,
   },
-  disabledText: {
-    color: "#A3A3A3",
+  // Dimmed with the button rather than turned grey: grey on the lime fill at
+  // half opacity was close to unreadable.
+  disabledText: {},
+  hiddenText: {
+    opacity: 0,
+  },
+  spinner: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

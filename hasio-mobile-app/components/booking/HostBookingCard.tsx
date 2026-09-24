@@ -1,12 +1,12 @@
 import React, { memo } from "react";
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { BookingStatusChip } from "./BookingStatusChip";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
-import { formatPhoneForDisplay } from "@/lib/phone";
-import { hostActionsFor, nightsLabel } from "@/lib/bookingDisplay";
+import { formatPhoneForDisplay, ltr } from "@/lib/phone";
+import { hostActionsFor, type StayTotal } from "@/lib/bookingDisplay";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { SurfaceGradient } from "@/components/ui/Gradients";
@@ -22,6 +22,8 @@ export interface HostBookingData {
   checkOut?: string;
   nights?: number;
   guests?: number;
+  /** Frozen at booking time; the total is `nights × pricePerNight`. */
+  pricePerNight?: number;
   totalAmount?: number | null;
   notes?: string;
   listing?: { name_en: string; name_ar: string; images?: string[] } | null;
@@ -38,12 +40,15 @@ interface HostBookingCardProps {
   /** Which action, if any, is running on this card right now. */
   busy: HostAction | null;
   labels: {
-    night: string;
-    nights: string;
-    guests: string;
+    /** "3 nights · 2 guests" — lib/bookingDisplay `nightsLabel`, bound to `t`. */
+    stay: (nights: number, guests?: number) => string;
+    /** Stands in for a guest with no name on their account. */
     guest: string;
-    /** Formats a stored SAR amount in the viewer's display currency. */
-    formatPrice: (amountSar: number) => string;
+    /**
+     * A stay's total in the viewer's currency, agreeing with the quote the
+     * guest was shown (lib/bookingDisplay `displayTotalSar`).
+     */
+    formatTotal: (stay: StayTotal) => string;
     callGuest: string;
     confirm: string;
     decline: string;
@@ -51,6 +56,11 @@ interface HostBookingCardProps {
     complete: string;
   };
   onAction: (id: string, action: HostAction) => void;
+  /**
+   * Call the guest. The screen places the call so it can say so when the
+   * phone cannot; from here a failed `openURL` was an unhandled rejection.
+   */
+  onCall: (phone: string) => void;
 }
 
 function HostBookingCardInner({
@@ -61,15 +71,16 @@ function HostBookingCardInner({
   busy,
   labels,
   onAction,
+  onCall,
 }: HostBookingCardProps) {
   const styles = useThemedStyles(makeStyles);
   const listing = booking.listing;
   const guest = booking.tourist;
   const guestName =
     [guest?.firstName, guest?.lastName].filter(Boolean).join(" ").trim() || labels.guest;
+  const phone = guest?.phone;
   const isStay = booking.kind === "stay" && !!booking.checkIn && !!booking.checkOut;
   const actions = hostActionsFor(booking, today);
-  const t = (key: "night" | "nights" | "guests") => labels[key];
   const anyBusy = busy !== null;
 
   return (
@@ -100,14 +111,18 @@ function HostBookingCardInner({
           </Text>
           {isStay && booking.nights ? (
             <Text style={[styles.meta, isRTL && styles.textRTL]}>
-              {nightsLabel(booking.nights, t, booking.guests)}
+              {labels.stay(booking.nights, booking.guests)}
             </Text>
           ) : null}
           <View style={[styles.chipRow, isRTL && styles.rowRTL]}>
             <BookingStatusChip status={booking.status} />
             {booking.totalAmount != null ? (
               <Text style={styles.amount}>
-                {labels.formatPrice(booking.totalAmount)}
+                {labels.formatTotal({
+                  totalAmount: booking.totalAmount,
+                  nights: booking.nights,
+                  pricePerNight: booking.pricePerNight,
+                })}
               </Text>
             ) : null}
           </View>
@@ -117,18 +132,22 @@ function HostBookingCardInner({
       {/* The guest's number, one tap from a call. A host reaching a late
           arrival is the main reason a verified phone is required to book. */}
       <View style={[styles.guestRow, isRTL && styles.rowRTL]}>
-        <View>
-          <Text style={[styles.guestName, isRTL && styles.textRTL]}>{guestName}</Text>
-          {guest?.phone ? (
+        <View style={styles.guestText}>
+          <Text style={[styles.guestName, isRTL && styles.textRTL]} numberOfLines={1}>
+            {guestName}
+          </Text>
+          {phone ? (
             <Text style={[styles.meta, isRTL && styles.textRTL]}>
-              {formatPhoneForDisplay(guest.phone)}
+              {/* Kept in one piece: in an Arabic line the digit groups
+                  otherwise come out in reverse order. */}
+              {ltr(formatPhoneForDisplay(phone))}
             </Text>
           ) : null}
         </View>
-        {guest?.phone ? (
+        {phone ? (
           <Pressable
-            onPress={() => Linking.openURL(`tel:${guest.phone}`)}
-            style={styles.callButton}
+            onPress={() => onCall(phone)}
+            style={({ pressed }) => [styles.callButton, pressed && styles.pressed]}
             accessibilityRole="button"
             accessibilityLabel={labels.callGuest}
           >
@@ -207,10 +226,11 @@ function ActionButton({
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={[
+      style={({ pressed }) => [
         styles.button,
         primary ? styles.buttonPrimary : styles.buttonSecondary,
         disabled && !busy && styles.buttonDisabled,
+        pressed && styles.pressed,
       ]}
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -281,6 +301,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 12,
     borderTopWidth: 1,
     borderTopColor: colors.divider,
     paddingTop: 12,
@@ -290,13 +311,20 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontFamily: fonts.semibold,
     color: colors.ink,
   },
+  guestText: {
+    flex: 1,
+  },
+  // 44pt, the smallest target a thumb is sure of; it was 40.
   callButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.mint,
     alignItems: "center",
     justifyContent: "center",
+  },
+  pressed: {
+    opacity: 0.7,
   },
   notes: {
     fontSize: 14,

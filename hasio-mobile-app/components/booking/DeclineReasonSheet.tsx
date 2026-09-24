@@ -1,25 +1,21 @@
 import React, { useState } from "react";
-import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Text, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { useLanguage } from "@/hooks/useLanguage";
-import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 interface DeclineReasonSheetProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (reason: string) => Promise<void> | void;
+  /**
+   * Send the decline; resolve true once it has gone through. The caller
+   * closes the sheet then — not before sending, as it used to, which took the
+   * spinner away with the sheet and threw out the reason when the send
+   * failed. On false the sheet stays up with the reason as typed.
+   */
+  onSubmit: (reason: string) => Promise<boolean>;
 }
 
 /**
@@ -31,125 +27,104 @@ interface DeclineReasonSheetProps {
 export function DeclineReasonSheet({ visible, onClose, onSubmit }: DeclineReasonSheetProps) {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
-  const insets = useSafeAreaInsets();
-  const {
-    ref: keyboardRef,
-    overlap: keyboardOverlap,
-    onLayout: keyboardOnLayout,
-  } = useKeyboardOverlap();
 
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
+  // Cleared as the sheet opens rather than as it closes, which blanked the
+  // reason while the sheet was still sliding away with it.
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) {
+      setReason("");
+      setSubmitting(false);
+    }
+  }
+
+  // The backdrop, the drag and Android's back button all come here: none of
+  // them closes the sheet while the decline is on its way.
   const handleClose = () => {
-    setReason("");
-    setSubmitting(false);
+    if (submitting) return;
     onClose();
   };
 
   const handleSubmit = async () => {
     if (submitting) return;
     setSubmitting(true);
+    let sent = false;
     try {
-      await onSubmit(reason.trim());
-      setReason("");
+      sent = await onSubmit(reason.trim());
     } finally {
-      setSubmitting(false);
+      // Sent, the sheet is on its way out: keep the spinner rather than flash
+      // the label back while it leaves. The next opening starts clean.
+      if (!sent) setSubmitting(false);
     }
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
-      <Pressable style={styles.backdrop} onPress={handleClose} />
-      <KeyboardAvoidingView
-        style={styles.avoider}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        pointerEvents="box-none"
+    <BottomSheet
+      visible={visible}
+      onClose={handleClose}
+      style={styles.body}
+      header={
+        <Text style={[styles.title, isRTL && styles.textRTL]}>{t("declineTitle")}</Text>
+      }
+    >
+      <Text style={[styles.label, isRTL && styles.textRTL]}>{t("declineReasonLabel")}</Text>
+
+      <ThemedTextInput
+        style={[styles.input, styles.textArea]}
+        isRTL={isRTL}
+        value={reason}
+        onChangeText={setReason}
+        placeholder={t("declineReasonPlaceholder")}
+        placeholderTextColor={colors.onSurface.muted}
+        multiline
+        numberOfLines={3}
+        maxLength={500}
+        textAlign={isRTL ? "right" : "left"}
+        autoFocus
+      />
+
+      <Pressable
+        onPress={handleSubmit}
+        disabled={submitting}
+        style={({ pressed }) => [
+          styles.declineButton,
+          submitting && styles.buttonDisabled,
+          pressed && !submitting && styles.pressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={t("declineBooking")}
+        accessibilityState={{ disabled: submitting, busy: submitting }}
       >
-        <View
-          ref={keyboardRef}
-          onLayout={keyboardOnLayout}
-          style={[
-            styles.sheet,
-            { paddingBottom: keyboardOverlap > 0 ? keyboardOverlap + 24 : insets.bottom + 24 },
-          ]}
-        >
-          <View style={styles.handle} />
+        {submitting ? (
+          <ActivityIndicator color={colors.surface.DEFAULT} />
+        ) : (
+          <Text style={styles.declineButtonText}>{t("declineBooking")}</Text>
+        )}
+      </Pressable>
 
-          <View style={styles.body}>
-            <Text style={[styles.title, isRTL && styles.textRTL]}>{t("declineTitle")}</Text>
-            <Text style={[styles.label, isRTL && styles.textRTL]}>{t("declineReasonLabel")}</Text>
-
-            <ThemedTextInput
-              style={[styles.input, styles.textArea]}
-              isRTL={isRTL}
-              value={reason}
-              onChangeText={setReason}
-              placeholder={t("declineReasonPlaceholder")}
-              placeholderTextColor={colors.onSurface.muted}
-              multiline
-              numberOfLines={3}
-              maxLength={500}
-              textAlign={isRTL ? "right" : "left"}
-              autoFocus
-            />
-
-            <Pressable
-              onPress={handleSubmit}
-              disabled={submitting}
-              style={[styles.declineButton, submitting && styles.buttonDisabled]}
-              accessibilityRole="button"
-              accessibilityLabel={t("declineBooking")}
-              accessibilityState={{ disabled: submitting, busy: submitting }}
-            >
-              {submitting ? (
-                <ActivityIndicator color={colors.surface.DEFAULT} />
-              ) : (
-                <Text style={styles.declineButtonText}>{t("declineBooking")}</Text>
-              )}
-            </Pressable>
-
-            <Pressable onPress={handleClose} style={styles.cancelButton} accessibilityRole="button">
-              <Text style={styles.cancelButtonText}>{t("cancel")}</Text>
-            </Pressable>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      <Pressable
+        onPress={handleClose}
+        disabled={submitting}
+        style={({ pressed }) => [
+          styles.cancelButton,
+          submitting && styles.buttonDisabled,
+          pressed && styles.pressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: submitting }}
+      >
+        <Text style={styles.cancelButtonText}>{t("cancel")}</Text>
+      </Pressable>
+    </BottomSheet>
   );
 }
 
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(31, 29, 23, 0.35)",
-  },
-  avoider: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  // A sheet is one surface, so the flat fill is right here — with the same
-  // 28px top radius every other sheet in the app uses.
-  sheet: {
-    backgroundColor: colors.surface.DEFAULT,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    maxHeight: "85%",
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: colors.border,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginTop: 10,
-    marginBottom: 8,
-  },
   body: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
     gap: 12,
   },
   title: {
@@ -209,5 +184,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 15,
     fontFamily: fonts.medium,
     color: colors.onSurface.variant,
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

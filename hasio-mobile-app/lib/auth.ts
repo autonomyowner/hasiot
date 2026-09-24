@@ -29,8 +29,14 @@ interface AuthResponse {
   error?: { message: string };
 }
 
+/**
+ * A request the auth server refused. `status` is the HTTP status and `code` is
+ * Better Auth's machine-readable reason (INVALID_OTP, OTP_EXPIRED, …), which is
+ * what lib/authErrors.ts reads to tell the guest what actually went wrong.
+ */
 interface AuthError extends Error {
   status?: number;
+  code?: string;
 }
 
 function fetchWithTimeout(
@@ -78,12 +84,19 @@ async function authFetch(
     const text = await res.text();
 
     let message = `Auth request failed (${res.status})`;
+    let code: string | undefined;
     try {
       const json = JSON.parse(text);
       message = json?.message || json?.error?.message || message;
+      // The code used to be dropped here, leaving only the English message to
+      // guess from — which is how a wrong one-time code came to be reported as
+      // a wrong email or password.
+      const raw = json?.code ?? json?.error?.code;
+      if (typeof raw === "string") code = raw;
     } catch {}
     const err: AuthError = new Error(message);
     err.status = res.status;
+    err.code = code;
     throw err;
   }
 
@@ -119,35 +132,16 @@ export async function fetchConvexToken(sessionToken: string): Promise<string | n
       await SecureStore.setItemAsync(JWT_KEY, jwt);
     }
     return jwt || null;
-  } catch (e) {
+  } catch {
 
     return null;
   }
 }
 
-export function getAuthErrorKey(error: unknown): string {
-  if (error instanceof TypeError) {
-    return "networkError";
-  }
-
-  const msg = (error instanceof Error ? error.message : String(error)).toLowerCase();
-  const status = (error as AuthError)?.status;
-
-  if (status === 401 || /invalid|credentials|incorrect/.test(msg)) {
-    return "wrongCredentials";
-  }
-  if (status === 404 || /not found|no user|no account/.test(msg)) {
-    return "accountNotFound";
-  }
-  if (status === 422 || /already exists|duplicate|already registered/.test(msg)) {
-    return "emailAlreadyExists";
-  }
-  if (/network|fetch|econnrefused|timeout/.test(msg)) {
-    return "networkError";
-  }
-
-  return "somethingWentWrong";
-}
+// Moved to lib/authErrors.ts, which is pure and so can be tested under Node —
+// this file cannot be, it imports expo-secure-store. Re-exported so every
+// existing `import { getAuthErrorKey } from "@/lib/auth"` keeps working.
+export { getAuthErrorKey } from "./authErrors";
 
 export async function signIn(email: string, password: string) {
   const data: AuthResponse = await authFetch("/sign-in/email", {
@@ -165,7 +159,7 @@ export async function signIn(email: string, password: string) {
     }
     // Exchange session token for Convex JWT
     await fetchConvexToken(sessionToken);
-  } catch (e) {
+  } catch {
 
   }
 
@@ -203,6 +197,9 @@ export async function verifyPhoneOtp(
   if (opts.updatePhoneNumber && !bearer) {
     const err: AuthError = new Error("Not signed in");
     err.status = 401;
+    // Coded like a server refusal, so it reads as a lapsed session rather than
+    // as the email-and-password failure a bare 401 means on the sign-in path.
+    err.code = "NOT_SIGNED_IN";
     throw err;
   }
 
@@ -258,7 +255,7 @@ export async function signUp(
     }
     // Exchange session token for Convex JWT
     await fetchConvexToken(sessionToken);
-  } catch (e) {
+  } catch {
 
   }
 
@@ -274,7 +271,7 @@ export async function clearStoredAuth() {
     await SecureStore.deleteItemAsync(SESSION_TOKEN_KEY);
     await SecureStore.deleteItemAsync(JWT_KEY);
     await SecureStore.deleteItemAsync(SESSION_KEY);
-  } catch (e) {
+  } catch {
 
   }
 }

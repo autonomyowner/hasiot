@@ -1,13 +1,17 @@
 import React from "react";
-import { StyleSheet } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { StyleSheet, View } from "react-native";
 import ProviderDashboardContent from "@/components/screens/ProviderDashboardContent";
 
+/**
+ * A plain View, not a SafeAreaView — the content pads its own ink band by the
+ * top inset, and the SafeAreaView paid it a second time. See the business
+ * dashboard's route file.
+ */
 export default function ProviderDashboard() {
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <ProviderDashboardContent />
-    </SafeAreaView>
+    </View>
   );
 }
 

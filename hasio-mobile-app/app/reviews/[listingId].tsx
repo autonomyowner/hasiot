@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useState } from "react";
 import { FlatList, StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -6,8 +6,10 @@ import { useQuery } from "convex/react";
 import { api } from "@/backend";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { BackButton } from "@/components/ui/BackButton";
-import { RatingSummary, ReviewCard } from "@/components/review";
+import { ReportSheet } from "@/components/ReportSheet";
+import { RatingSummary, ReviewCard, type ReviewItem } from "@/components/review";
 import { ScreenGradient } from "@/components/ui/Gradients";
+import { Skeleton, SkeletonGroup, SkeletonLine, sweepPhase } from "@/components/ui/Skeleton";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -36,6 +38,23 @@ export default function ReviewsScreen() {
     api.reviews.queries.listForListing,
     id ? { listingId: id, limit: 100 } : "skip"
   );
+  // The page used to be blank until both arrived: a header over nothing.
+  const loading = !!id && (summary === undefined || reviews === undefined);
+
+  // One report sheet for the page. Each card used to hold its own — a Modal
+  // per review, mounted and idle. The id outlives the close, so the sheet is
+  // not re-pointed while it slides away.
+  const [reportId, setReportId] = useState<string | null>(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const openReport = useCallback((reviewId: string) => {
+    setReportId(reviewId);
+    setReportOpen(true);
+  }, []);
+
+  const renderItem = useCallback(
+    ({ item }: { item: ReviewItem }) => <ReviewCard review={item} onReport={openReport} />,
+    [openReport]
+  );
 
   return (
     <View style={styles.screen}>
@@ -45,25 +64,77 @@ export default function ReviewsScreen() {
         <Text style={styles.title}>{t("reviewsTitle")}</Text>
       </View>
 
-      <FlatList
-        data={reviews ?? []}
-        keyExtractor={(item) => item._id}
-        renderItem={({ item }) => <ReviewCard review={item} />}
-        ListHeaderComponent={
-          summary ? (
-            <View style={styles.summaryWrap}>
-              <RatingSummary value={summary} />
+      {loading ? (
+        <SkeletonGroup>
+          <ReviewsSkeleton isRTL={isRTL} />
+        </SkeletonGroup>
+      ) : (
+        <FlatList
+          data={reviews ?? []}
+          keyExtractor={(item) => item._id}
+          renderItem={renderItem}
+          ListHeaderComponent={
+            summary ? (
+              <View style={styles.summaryWrap}>
+                <RatingSummary value={summary} />
+              </View>
+            ) : null
+          }
+          contentContainerStyle={[
+            styles.list,
+            // A pushed stack route, not inside the tab pager, so it clears the
+            // safe area rather than the floating tab bar.
+            { paddingBottom: insets.bottom + 24 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
+
+      {reportId && (
+        <ReportSheet
+          visible={reportOpen}
+          onClose={() => setReportOpen(false)}
+          targetType="review"
+          targetId={reportId}
+        />
+      )}
+    </View>
+  );
+}
+
+/**
+ * The summary block (score and five bars) and three review rows, at the
+ * sizes of RatingSummary and ReviewCard, so the page does not shift when
+ * they land.
+ */
+function ReviewsSkeleton({ isRTL }: { isRTL: boolean }) {
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={styles.list}>
+      <View style={[styles.skeletonSummary, isRTL && styles.rowRTL]}>
+        <View style={styles.skeletonScore}>
+          <Skeleton radius={8} phase={sweepPhase(0)} style={styles.skeletonScoreNumber} />
+          <Skeleton radius={4} phase={sweepPhase(1)} style={styles.skeletonScoreStars} />
+        </View>
+        <View style={styles.skeletonBars}>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <Skeleton key={i} radius={999} phase={sweepPhase(2 + i)} style={styles.skeletonBar} />
+          ))}
+        </View>
+      </View>
+      {[0, 1, 2].map((i) => (
+        <View key={i} style={styles.skeletonCard}>
+          <View style={[styles.skeletonHead, isRTL && styles.rowRTL]}>
+            <Skeleton radius={18} phase={sweepPhase(i * 3)} style={styles.skeletonAvatar} />
+            <View style={styles.skeletonWho}>
+              <SkeletonLine width="45%" box={18} isRTL={isRTL} phase={sweepPhase(i * 3 + 1)} />
+              <SkeletonLine width="30%" box={15} isRTL={isRTL} phase={sweepPhase(i * 3 + 2)} />
             </View>
-          ) : null
-        }
-        contentContainerStyle={[
-          styles.list,
-          // A pushed stack route, not inside the tab pager, so it clears the
-          // safe area rather than the floating tab bar.
-          { paddingBottom: insets.bottom + 24 },
-        ]}
-        showsVerticalScrollIndicator={false}
-      />
+          </View>
+          <SkeletonLine width="92%" box={21} isRTL={isRTL} phase={sweepPhase(i * 3 + 3)} />
+          <SkeletonLine width="70%" box={21} isRTL={isRTL} phase={sweepPhase(i * 3 + 4)} />
+        </View>
+      ))}
     </View>
   );
 }
@@ -82,4 +153,26 @@ const makeStyles = (fonts: AppFonts) =>
     title: { fontFamily: fonts.serif, fontSize: 26, color: colors.ink },
     list: { paddingHorizontal: LIST_CONTAINER_PADDING },
     summaryWrap: { paddingVertical: 16 },
+    // RatingSummary: score block beside five bars, 20 apart.
+    skeletonSummary: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 20,
+      paddingVertical: 16,
+    },
+    skeletonScore: { alignItems: "center", gap: 8 },
+    skeletonScoreNumber: { width: 56, height: 40 },
+    skeletonScoreStars: { width: 78, height: 14 },
+    skeletonBars: { flex: 1, gap: 11 },
+    skeletonBar: { height: 6 },
+    // ReviewCard: a hairline row, a 36pt avatar beside name and stars.
+    skeletonCard: {
+      paddingVertical: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.divider,
+      gap: 8,
+    },
+    skeletonHead: { flexDirection: "row", alignItems: "center", gap: 10 },
+    skeletonAvatar: { width: 36, height: 36 },
+    skeletonWho: { flex: 1, gap: 3 },
   });

@@ -1,5 +1,5 @@
-import React, { useRef, useCallback } from "react";
-import { View, Pressable, StyleSheet, Platform } from "react-native";
+import React, { useRef, useCallback, useMemo } from "react";
+import { Keyboard, View, Pressable, StyleSheet, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   interpolateColor,
@@ -20,6 +20,7 @@ import { BottomBarFade } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useKeyboardTransition } from "@/hooks/useKeyboardVisible";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useMergeGuestFavorites } from "@/hooks/useConvexData";
 import type { TranslationKey } from "@/constants/translations";
 
 // Import screen content components
@@ -76,9 +77,10 @@ const AnimatedFeather = Animated.createAnimatedComponent(Feather);
 
 // Active icon and label sit on / beside the lime puck. Lime is a light colour —
 // white on it is 1.39:1, which is why the active icon vanished into the bar —
-// so both tint to ink instead: 12.1:1.
+// so both tint to ink instead: 12.1:1. Inactive is the variant text tone: the
+// muted one it used to be is 3.7:1 on the white bar, too faint for 11pt labels.
 const ACTIVE_TINT = colors.ink;
-const INACTIVE_TINT = colors.onSurface.muted;
+const INACTIVE_TINT = colors.onSurface.variant;
 
 // The puck is a fixed-size circle behind the ICON only, never behind the label:
 // labels differ in width between languages (and between "Plan" and "المفضلة"),
@@ -120,6 +122,7 @@ const tabs: TabItem[] = [
 ];
 
 const HOME_INDEX = tabs.findIndex((tab) => tab.key === "home");
+const PLANNER_INDEX = tabs.findIndex((tab) => tab.key === "planner");
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
@@ -149,74 +152,109 @@ export default function TabLayout() {
     opacity: 1 - keyboardProgress.value,
     transform: [{ translateY: keyboardProgress.value * barTravel }],
   }));
+  // The fade exists for content scrolling under the bar. The Plan tab has
+  // none — its composer docks there — and the fade was washing the lower half
+  // of the send button and the input's border toward cream. It thins out as
+  // the Plan page comes in, on the same swipe position that drives the tint.
   const fadeStyle = useAnimatedStyle(() => ({
-    opacity: 1 - keyboardProgress.value,
+    opacity:
+      (1 - keyboardProgress.value) *
+      Math.min(Math.abs(scrollPosition.value - PLANNER_INDEX), 1),
   }));
+
+  // True while a far jump's puck is gliding across on its own clock; the
+  // pager's scroll events would otherwise snap it straight to the end.
+  const jumping = useSharedValue(false);
 
   // Runs on the UI thread — see usePagerScrollHandler.
   const pageScrollHandler = usePagerScrollHandler({
     onPageScroll: (e) => {
       "worklet";
+      if (jumping.value) return;
       scrollPosition.value = e.position + e.offset;
     },
   });
 
-  // Only bookkeeping the JS side still needs: which page is settled, for the
-  // web render path and the label weight. The tint no longer waits on it.
+  // Which page has settled, for the label weight and for measuring how far a
+  // tap asks to travel. A ref as well as state, so the navigation callbacks
+  // below can read it without being rebuilt on every settle.
+  const settledPage = useRef(HOME_INDEX);
   const handlePageSelected = useCallback((e: any) => {
     if (isWeb) return;
     const position = e.nativeEvent.position;
+    settledPage.current = position;
     setCurrentPage(position);
   }, [isWeb]);
 
-  const handleTabPress = useCallback((index: number) => {
-    if (isWeb) {
-      setCurrentPage(index);
-      // Web has no pager to emit scroll events, so the tint has nothing driving
-      // it — animate the position by hand to match the native feel.
-      scrollPosition.value = withTiming(index, { duration: 220 });
-    } else {
-      pagerRef.current?.setPage(index);
-    }
-  }, [isWeb]);
+  // A swipe away from a screen with a field focused used to carry the keyboard
+  // onto the next tab — with the tab bar hidden under it and nothing to type
+  // into. The keyboard goes the moment a drag starts.
+  const handlePageScrollStateChanged = useCallback((e: any) => {
+    if (e.nativeEvent.pageScrollState === "dragging") Keyboard.dismiss();
+  }, []);
+
+  const goToPage = useCallback(
+    (index: number) => {
+      Keyboard.dismiss();
+      if (isWeb) {
+        setCurrentPage(index);
+        // Web has no pager to emit scroll events, so the tint has nothing
+        // driving it — animate the position by hand to match the native feel.
+        scrollPosition.value = withTiming(index, { duration: 220 });
+        return;
+      }
+      if (Math.abs(index - settledPage.current) > 1) {
+        // Two or more tabs away: arrive at once, the way a tab bar does,
+        // rather than sliding the whole way through the screens in between
+        // (each one loading its images as it passes) with the puck blinking
+        // on every tab it crossed. The puck glides there by itself instead.
+        jumping.value = true;
+        scrollPosition.value = withTiming(index, { duration: 240 }, () => {
+          "worklet";
+          jumping.value = false;
+        });
+        pagerRef.current?.setPageWithoutAnimation(index);
+      } else {
+        pagerRef.current?.setPage(index);
+      }
+    },
+    [isWeb, scrollPosition, jumping]
+  );
 
   // Jump to a tab by key, for the cross-screen shortcuts (the home category
   // cards, the planner's suggestion chips).
-  const navigateToTab = useCallback((key: TabKey) => {
-    const index = tabs.findIndex((tab) => tab.key === key);
-    if (index < 0) return;
-    if (isWeb) {
-      setCurrentPage(index);
-      // Web has no pager to emit scroll events — animate the position by hand.
-      scrollPosition.value = withTiming(index, { duration: 220 });
-    } else {
-      pagerRef.current?.setPage(index);
-    }
-  }, [isWeb]);
+  const navigateToTab = useCallback(
+    (key: TabKey) => {
+      const index = tabs.findIndex((tab) => tab.key === key);
+      if (index >= 0) goToPage(index);
+    },
+    [goToPage]
+  );
 
-  const renderScreen = (key: TabKey) => {
-    switch (key) {
-      case "home":
-        return <HomeScreenContent onNavigateToTab={navigateToTab} />;
-      case "lodging":
-        return <LodgingScreenContent />;
-      case "planner":
-        return <PlannerScreenContent onNavigateToTab={navigateToTab} />;
-      case "favorites":
-        return <FavoritesScreenContent />;
-      case "settings":
-        return <SettingsScreenContent onNavigateToTab={navigateToTab} />;
-      default:
-        return null;
-    }
-  };
+  // Built once rather than on every render of this shell. It re-renders when
+  // a swipe settles and whenever the keyboard comes or goes, and fresh screen
+  // elements each time meant all five screens re-rendered with it — the
+  // hitch at the end of a swipe and as the planner's keyboard opened. The same
+  // element objects let React skip them entirely.
+  const pages = useMemo<Record<TabKey, React.ReactNode>>(
+    () => ({
+      home: <HomeScreenContent onNavigateToTab={navigateToTab} />,
+      lodging: <LodgingScreenContent />,
+      planner: <PlannerScreenContent onNavigateToTab={navigateToTab} />,
+      favorites: <FavoritesScreenContent onNavigateToTab={navigateToTab} />,
+      settings: <SettingsScreenContent onNavigateToTab={navigateToTab} />,
+    }),
+    [navigateToTab]
+  );
 
   return (
     <View style={styles.container}>
+      <GuestFavoritesSync />
+
       {/* Content area - PagerView on native, simple View on web */}
       {isWeb ? (
         <View style={styles.pagerView}>
-          {renderScreen(tabs[currentPage].key)}
+          {pages[tabs[currentPage].key]}
         </View>
       ) : AnimatedPagerView ? (
         <AnimatedPagerView
@@ -231,18 +269,19 @@ export default function TabLayout() {
             pageScrollHandler as unknown as PagerViewProps["onPageScroll"]
           }
           onPageSelected={handlePageSelected}
+          onPageScrollStateChanged={handlePageScrollStateChanged}
           overdrag={true}
           overScrollMode="always"
         >
           {tabs.map((tab) => (
             <View key={tab.key} style={styles.page}>
-              {renderScreen(tab.key)}
+              {pages[tab.key]}
             </View>
           ))}
         </AnimatedPagerView>
       ) : (
         <View style={styles.pagerView}>
-          {renderScreen(tabs[currentPage].key)}
+          {pages[tabs[currentPage].key]}
         </View>
       )}
 
@@ -267,6 +306,7 @@ export default function TabLayout() {
         // only once the travel is over; and while it is gone the bar leaves the
         // accessibility tree entirely, the way an unmounted one used to.
         pointerEvents={keyboardVisible ? "none" : "auto"}
+        accessibilityRole="tablist"
         accessibilityElementsHidden={keyboardVisible}
         importantForAccessibility={keyboardVisible ? "no-hide-descendants" : "auto"}
       >
@@ -278,12 +318,25 @@ export default function TabLayout() {
             isActive={currentPage === index}
             index={index}
             scrollPosition={scrollPosition}
-            onPress={() => handleTabPress(index)}
+            onPress={() => goToPage(index)}
           />
         ))}
       </Animated.View>
     </View>
   );
+}
+
+/**
+ * Carries a guest's hearts into the account they sign in to.
+ *
+ * Mounted here because this shell exists whenever the app does, whichever
+ * screen the guest signed in from — and as its own component because the hook
+ * subscribes to the favourites: called from the shell itself, every heart
+ * tapped anywhere re-rendered the shell and with it all five screens.
+ */
+function GuestFavoritesSync() {
+  useMergeGuestFavorites();
+  return null;
 }
 
 interface TabButtonProps {
@@ -351,15 +404,31 @@ function TabButton({
       onPressOut={handlePressOut}
       accessibilityRole="tab"
       accessibilityLabel={label}
+      accessibilityState={{ selected: isActive }}
     >
       <View style={styles.iconWrap}>
         <Animated.View pointerEvents="none" style={[styles.activeCircle, circleStyle]} />
         {/* No `color` prop: the animated style supplies it, and the prop would
-            be a static value competing with the interpolation. */}
-        <AnimatedFeather name={icon} size={ICON_SIZE} style={tintStyle} />
+            be a static value competing with the interpolation. Except on web,
+            where Reanimated applies an animated style to a class component
+            through setNativeProps, which the icon's react-native-web Text
+            lacks — the first tint change threw and stopped the page. */}
+        {Platform.OS === "web" ? (
+          <Feather
+            name={icon}
+            size={ICON_SIZE}
+            color={isActive ? ACTIVE_TINT : INACTIVE_TINT}
+          />
+        ) : (
+          <AnimatedFeather name={icon} size={ICON_SIZE} style={tintStyle} />
+        )}
       </View>
       <Animated.Text
         numberOfLines={1}
+        // The bar's height is fixed, so the label cannot grow with the largest
+        // accessibility sizes — past ~1.5x "Favorites" is cut off. The puck
+        // and icon carry the tab; a modest cap keeps the word whole.
+        maxFontSizeMultiplier={1.2}
         style={[
           styles.label,
           isActive ? styles.labelActive : styles.labelInactive,

@@ -78,16 +78,33 @@ export async function uploadDocumentToConvex(
   return uploadToConvexStorage(fileUri, mimeType, client);
 }
 
+export interface UploadManyOptions {
+  /**
+   * Called with how many uploads have finished — 0 before the first ends,
+   * `total` after the last. Five phone photos over mobile data can take most
+   * of a minute, and a spinner alone for that long reads as a frozen screen.
+   */
+  onProgress?: (done: number, total: number) => void;
+  client?: ConvexReactClient;
+}
+
 /**
  * Upload multiple images to Convex storage in parallel.
- * Returns an array of public URLs.
+ * Returns their public URLs in the order the files were given.
  */
 export async function uploadMultipleToConvex(
   fileUris: string[],
-  client: ConvexReactClient = convex
+  { onProgress, client = convex }: UploadManyOptions = {}
 ): Promise<string[]> {
-  const results = await Promise.all(
-    fileUris.map((uri) => uploadImageToConvex(uri, client))
+  const total = fileUris.length;
+  let done = 0;
+  onProgress?.(0, total);
+  return Promise.all(
+    fileUris.map(async (uri) => {
+      const url = await uploadImageToConvex(uri, client);
+      done += 1;
+      onProgress?.(done, total);
+      return url;
+    })
   );
-  return results;
 }

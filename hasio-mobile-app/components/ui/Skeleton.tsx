@@ -327,6 +327,29 @@ export function SkeletonFade({
     if (finished) runOnJS(setFadingIn)(false);
   });
 
+  // Armed once per load, on the content's first layout. `onLayout` fires
+  // again on every later size change — search results arriving, a filter, a
+  // language switch — while only the entrance animation above ever switched
+  // this off, and that runs once. So the second layout of a screen left its
+  // whole subtree rasterised into a single texture for as long as it stayed
+  // mounted: every rail swipe and press animation on Home redrew it.
+  const armed = useRef(false);
+  useEffect(() => {
+    if (loading) armed.current = false;
+  }, [loading]);
+  const handleContentLayout = () => {
+    if (armed.current) return;
+    armed.current = true;
+    setFadingIn(true);
+  };
+  // And off on a clock as well: the callback does not come if the entrance is
+  // skipped (reduced motion) or cut short.
+  useEffect(() => {
+    if (!fadingIn) return;
+    const timer = setTimeout(() => setFadingIn(false), FADE_DURATION + 80);
+    return () => clearTimeout(timer);
+  }, [fadingIn]);
+
   return (
     <View style={[fill && styles.fill, style]}>
       {/* Two fixed child slots, so React keeps the skeleton's own subtree
@@ -335,7 +358,7 @@ export function SkeletonFade({
         <Animated.View
           style={fill ? styles.fill : undefined}
           entering={entering}
-          onLayout={() => setFadingIn(true)}
+          onLayout={handleContentLayout}
           // Composite the incoming subtree as one layer while it fades, so a
           // shadow underneath fades with the card instead of ahead of it.
           // Android needs the hardware texture, iOS the offscreen alpha pass.

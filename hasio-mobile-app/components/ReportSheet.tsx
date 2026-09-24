@@ -1,27 +1,23 @@
 import { appAlert } from "@/stores/dialogStore";
-import { AppDialogHost } from "@/components/ui/AppDialog";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
-  Modal,
   View,
   Text,
   Pressable,
   StyleSheet,
   ActivityIndicator,
-  Alert,
-  TextInput,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
-import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
+import { BottomSheet } from "@/components/ui/BottomSheet";
+import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { TranslationKey } from "@/constants/translations";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 type TargetType = "listing" | "service" | "review";
@@ -32,9 +28,17 @@ interface ReportSheetProps {
   targetType: TargetType;
   targetId: string;
   ownerId?: Id<"users"> | null;
+  /**
+   * What "Sign in" does for a signed-out guest, called once this sheet has
+   * gone. Without it the sheet opens the sign-in screen itself — right where
+   * the sheet sits on a screen. Inside another Modal (the listing sheet) pass
+   * one that closes that Modal first: a screen pushed under an open Modal
+   * stays hidden behind it until the Modal goes.
+   */
+  onSignIn?: () => void;
 }
 
-const REASONS: Array<{ key: string; label: TranslationKey }> = [
+const REASONS: { key: string; label: TranslationKey }[] = [
   { key: "spam", label: "reportReasonSpam" },
   { key: "inappropriate", label: "reportReasonInappropriate" },
   { key: "offensive", label: "reportReasonOffensive" },
@@ -42,38 +46,79 @@ const REASONS: Array<{ key: string; label: TranslationKey }> = [
   { key: "other", label: "reportReasonOther" },
 ];
 
+/**
+ * Report a listing, service or review, and optionally block whoever posted it.
+ *
+ * The last sheet still dressed in the pre-redesign theme — cold greys, a 24px
+ * radius, a bold sans title, and text with no font family at all, which in
+ * Arabic fell through to the phone's system face. It now matches the rest of
+ * the sheet family, and its rows mirror in Arabic.
+ */
 export function ReportSheet({
   visible,
   onClose,
   targetType,
   targetId,
   ownerId,
+  onSignIn,
 }: ReportSheetProps) {
   const styles = useThemedStyles(makeStyles);
+  const router = useRouter();
   const { t, isRTL } = useLanguage();
-  const insets = useSafeAreaInsets();
-  const {
-    ref: keyboardRef,
-    overlap: keyboardOverlap,
-    onLayout: keyboardOnLayout,
-  } = useKeyboardOverlap();
-  const { isAuthenticated } = useConvexAuth();
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const reportContent = useMutation(api.moderation.mutations.reportContent);
   const blockUser = useMutation(api.moderation.mutations.blockUser);
+
+  // A signed-out guest used to get the whole form — reasons, details — and
+  // learn only on Submit that reporting needs an account, with everything they
+  // had filled in thrown away. They are told first now, and offered the way
+  // in. (While the session is still being read, the form: most people who
+  // open this are signed in.)
+  const signedOut = !isAuthenticated && !authLoading;
 
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [details, setDetails] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // The confirmation waits for the sheet to be gone. Shown while it was still
+  // leaving, it was carried off with the sheet and reappeared underneath.
+  const notice = useRef<TranslationKey | null>(null);
+  // Sign-in waits for it too: nothing can be presented, or pushed where it can
+  // be seen, while the sheet is still on its way out.
+  const signInNext = useRef(false);
 
-  const reset = () => {
-    setSelectedReason(null);
-    setDetails("");
-    setSubmitting(false);
+  // Start clean on opening — not on closing, which is what it used to do: the
+  // chosen reason cleared while the sheet was still sliding away.
+  const [prevVisible, setPrevVisible] = useState(visible);
+  if (visible !== prevVisible) {
+    setPrevVisible(visible);
+    if (visible) {
+      setSelectedReason(null);
+      setDetails("");
+      setSubmitting(false);
+    }
+  }
+
+  const finish = (key: TranslationKey) => {
+    notice.current = key;
+    onClose();
   };
 
-  const handleClose = () => {
-    reset();
+  const handleSignIn = () => {
+    signInNext.current = true;
     onClose();
+  };
+
+  const handleDismissed = () => {
+    if (signInNext.current) {
+      signInNext.current = false;
+      if (onSignIn) onSignIn();
+      else router.push("/auth");
+      return;
+    }
+    const key = notice.current;
+    if (!key) return;
+    notice.current = null;
+    appAlert(t(key));
   };
 
   const handleSubmit = async () => {
@@ -91,11 +136,8 @@ export function ReportSheet({
         reason: selectedReason,
         details: details.trim() || undefined,
       });
-      appAlert(
-        result.alreadyReported ? t("reportAlreadySubmitted") : t("reportSuccess")
-      );
-      handleClose();
-    } catch (err) {
+      finish(result.alreadyReported ? "reportAlreadySubmitted" : "reportSuccess");
+    } catch {
       appAlert(t("reportFailed"));
       setSubmitting(false);
     }
@@ -114,8 +156,7 @@ export function ReportSheet({
           onPress: async () => {
             try {
               await blockUser({ blockedUserId: ownerId });
-              appAlert(t("blockSuccess"));
-              handleClose();
+              finish("blockSuccess");
             } catch {
               appAlert(t("blockFailed"));
             }
@@ -125,64 +166,86 @@ export function ReportSheet({
     );
   };
 
+  const canSubmit = !!selectedReason && !submitting;
+
   return (
-    <Modal
+    <BottomSheet
       visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={handleClose}
+      onClose={onClose}
+      onDismissed={handleDismissed}
+      header={
+        <View style={[styles.head, isRTL && styles.rowRTL]}>
+          <Text style={styles.title}>{t("reportTitle")}</Text>
+          <Pressable
+            onPress={onClose}
+            hitSlop={12}
+            style={({ pressed }) => pressed && styles.pressed}
+            accessibilityRole="button"
+            accessibilityLabel={t("close")}
+          >
+            <Feather name="x" size={22} color={colors.ink} />
+          </Pressable>
+        </View>
+      }
     >
-      <Pressable style={styles.backdrop} onPress={handleClose} />
-      <KeyboardAvoidingView
-        style={styles.avoider}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        pointerEvents="box-none"
-      >
-      {/* keyboardOverlap is Android-only (0 on iOS, where KeyboardAvoidingView
-          handles it), so on iOS this always clears the home indicator. */}
-      <View
-        ref={keyboardRef}
-        onLayout={keyboardOnLayout}
-        style={[
-          styles.sheet,
-          {
-            paddingBottom:
-              keyboardOverlap > 0 ? keyboardOverlap + 24 : insets.bottom + 24,
-          },
-        ]}
-      >
-        <View style={styles.handle} />
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={styles.scrollContent}
-        >
-          <Text style={[styles.title, isRTL && styles.rtl]}>
-            {t("reportTitle")}
-          </Text>
-          <Text style={[styles.subtitle, isRTL && styles.rtl]}>
-            {t("reportSubtitle")}
+      {signedOut ? (
+        <View style={styles.scrollContent}>
+          <Text style={[styles.signedOutText, isRTL && styles.textRTL]}>
+            {t("reportSignInRequired")}
           </Text>
 
+          <Pressable
+            onPress={handleSignIn}
+            style={({ pressed }) => [styles.submitBtn, styles.signInBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t("signIn")}
+          >
+            <Text style={styles.submitText}>{t("signIn")}</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [styles.cancelBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t("cancel")}
+          >
+            <Text style={styles.cancelText}>{t("cancel")}</Text>
+          </Pressable>
+        </View>
+      ) : (
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
+          {t("reportSubtitle")}
+        </Text>
+
+        <View accessibilityRole="radiogroup">
           {REASONS.map((reason) => {
             const active = selectedReason === reason.key;
             return (
               <Pressable
                 key={reason.key}
                 onPress={() => setSelectedReason(reason.key)}
-                style={[styles.reasonRow, active && styles.reasonRowActive]}
+                style={({ pressed }) => [
+                  styles.reasonRow,
+                  isRTL && styles.rowRTL,
+                  active && styles.reasonRowActive,
+                  pressed && !active && styles.reasonRowPressed,
+                ]}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: active }}
+                accessibilityLabel={t(reason.label)}
               >
-                <View
-                  style={[
-                    styles.radio,
-                    active && styles.radioActive,
-                  ]}
-                >
+                <View style={[styles.radio, active && styles.radioActive]}>
                   {active && <View style={styles.radioDot} />}
                 </View>
                 <Text
                   style={[
                     styles.reasonLabel,
-                    isRTL && styles.rtl,
+                    isRTL && styles.textRTL,
                     active && styles.reasonLabelActive,
                   ]}
                 >
@@ -191,186 +254,203 @@ export function ReportSheet({
               </Pressable>
             );
           })}
+        </View>
 
-          <TextInput
-            value={details}
-            onChangeText={setDetails}
-            placeholder={t("reportDetailsPlaceholder")}
-            placeholderTextColor="#999"
-            multiline
-            numberOfLines={3}
-            maxLength={500}
-            style={[styles.detailsInput, isRTL && styles.rtl]}
-          />
+        <ThemedTextInput
+          value={details}
+          onChangeText={setDetails}
+          placeholder={t("reportDetailsPlaceholder")}
+          multiline
+          numberOfLines={3}
+          maxLength={500}
+          isRTL={isRTL}
+          textAlign={isRTL ? "right" : "left"}
+          style={styles.detailsInput}
+        />
 
-          <Pressable
-            disabled={!selectedReason || submitting}
-            onPress={handleSubmit}
-            style={[
-              styles.submitBtn,
-              (!selectedReason || submitting) && styles.submitBtnDisabled,
-            ]}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.submitText}>{t("reportSubmit")}</Text>
-            )}
-          </Pressable>
-
-          {ownerId && isAuthenticated && (
-            <Pressable onPress={handleBlock} style={styles.blockBtn}>
-              <Text style={styles.blockText}>{t("blockProvider")}</Text>
-            </Pressable>
+        <Pressable
+          disabled={!canSubmit}
+          onPress={handleSubmit}
+          style={({ pressed }) => [
+            styles.submitBtn,
+            !canSubmit && styles.submitBtnDisabled,
+            pressed && canSubmit && styles.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={t("reportSubmit")}
+          accessibilityState={{ disabled: !canSubmit, busy: submitting }}
+        >
+          {submitting ? (
+            <ActivityIndicator color={colors.ink} />
+          ) : (
+            <Text style={styles.submitText}>{t("reportSubmit")}</Text>
           )}
+        </Pressable>
 
-          <Pressable onPress={handleClose} style={styles.cancelBtn}>
-            <Text style={styles.cancelText}>{t("cancel")}</Text>
+        {ownerId && isAuthenticated && (
+          <Pressable
+            onPress={handleBlock}
+            style={({ pressed }) => [styles.blockBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t("blockProvider")}
+          >
+            <Text style={styles.blockText}>{t("blockProvider")}</Text>
           </Pressable>
-        </ScrollView>
-      </View>
-      </KeyboardAvoidingView>
-      {/* Alerts fired while this modal is open render above it. */}
-      <AppDialogHost />
-    </Modal>
+        )}
+
+        <Pressable
+          onPress={onClose}
+          style={({ pressed }) => [styles.cancelBtn, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={t("cancel")}
+        >
+          <Text style={styles.cancelText}>{t("cancel")}</Text>
+        </Pressable>
+      </ScrollView>
+      )}
+    </BottomSheet>
   );
 }
 
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+  head: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
-  avoider: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
+  rowRTL: {
+    flexDirection: "row-reverse",
   },
-  sheet: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: "85%",
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: "#D1D5DB",
-    borderRadius: 2,
-    alignSelf: "center",
-    marginTop: 10,
-    marginBottom: 8,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    paddingBottom: 8,
+  textRTL: {
+    textAlign: "right",
+    writingDirection: "rtl",
   },
   title: {
-    fontSize: 20,
-    fontFamily: fonts.bold,
-    color: "#111827",
-    marginBottom: 4,
+    fontFamily: fonts.serif,
+    fontSize: 24,
+    color: colors.ink,
+  },
+  scrollContent: {
+    paddingTop: 4,
+    paddingBottom: 4,
   },
   subtitle: {
+    fontFamily: fonts.regular,
     fontSize: 14,
-    color: "#6B7280",
-    marginBottom: 20,
     lineHeight: 20,
+    color: colors.onSurface.variant,
+    marginBottom: 16,
+  },
+  // The whole message of the signed-out sheet, so a step up from the subtitle.
+  signedOutText: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.onSurface.variant,
+  },
+  signInBtn: {
+    marginTop: 20,
   },
   reasonRow: {
     flexDirection: "row",
     alignItems: "center",
+    minHeight: 48,
     paddingVertical: 12,
     paddingHorizontal: 14,
     borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
+    borderColor: colors.border,
+    borderRadius: 14,
     marginBottom: 8,
     gap: 12,
   },
+  // The mint chip surface with the dark lime: lime itself is a fill and would
+  // read at 1.3:1 as a border or a label.
   reasonRowActive: {
-    borderColor: "#4F5E10",
-    backgroundColor: "#F5F8E9",
+    borderColor: colors.primary.deep,
+    backgroundColor: colors.mint,
+  },
+  reasonRowPressed: {
+    backgroundColor: colors.surface.variant,
   },
   radio: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: "#9CA3AF",
+    borderColor: colors.onSurface.muted,
     alignItems: "center",
     justifyContent: "center",
   },
   radioActive: {
-    borderColor: "#4F5E10",
+    borderColor: colors.primary.deep,
   },
   radioDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#4F5E10",
+    backgroundColor: colors.primary.deep,
   },
   reasonLabel: {
-    fontSize: 15,
-    color: "#374151",
     flex: 1,
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    color: colors.ink,
   },
   reasonLabelActive: {
-    color: "#4F5E10",
+    color: colors.primary.deep,
     fontFamily: fonts.semibold,
   },
   detailsInput: {
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 12,
-    padding: 12,
-    minHeight: 80,
-    fontSize: 14,
-    color: "#111827",
+    marginTop: 8,
+    minHeight: 88,
+    backgroundColor: colors.surface.variant,
+    borderRadius: 14,
+    fontSize: 15,
     textAlignVertical: "top",
   },
+  // Lime is a fill, so its label and spinner are ink: white on it is 1.4:1.
   submitBtn: {
     marginTop: 16,
-    backgroundColor: "#CCE745",
-    paddingVertical: 14,
-    borderRadius: 12,
+    minHeight: 50,
+    backgroundColor: colors.primary.DEFAULT,
+    borderRadius: 14,
     alignItems: "center",
+    justifyContent: "center",
   },
   submitBtnDisabled: {
-    backgroundColor: "#E4EDC0",
+    opacity: 0.45,
   },
   submitText: {
-    color: "#1F1D17",
+    color: colors.ink,
     fontSize: 16,
     fontFamily: fonts.semibold,
   },
   blockBtn: {
     marginTop: 12,
-    paddingVertical: 12,
-    borderRadius: 12,
+    minHeight: 48,
+    borderRadius: 14,
     alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#FCA5A5",
+    borderColor: colors.signOut,
   },
   blockText: {
-    color: "#DC2626",
+    color: colors.signOut,
     fontSize: 15,
     fontFamily: fonts.medium,
   },
   cancelBtn: {
-    marginTop: 12,
-    paddingVertical: 12,
+    marginTop: 4,
+    minHeight: 48,
     alignItems: "center",
+    justifyContent: "center",
   },
   cancelText: {
-    color: "#6B7280",
+    color: colors.onSurface.variant,
+    fontFamily: fonts.medium,
     fontSize: 15,
   },
-  rtl: {
-    textAlign: "right",
-    writingDirection: "rtl",
+  pressed: {
+    opacity: 0.7,
   },
 });

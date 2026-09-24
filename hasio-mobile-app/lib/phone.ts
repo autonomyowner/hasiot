@@ -1,3 +1,5 @@
+import { toLatinDigits } from "./digits";
+
 /**
  * Saudi phone numbers, in the shapes people actually type them.
  *
@@ -19,7 +21,8 @@ const E164 = /^\+[1-9]\d{7,14}$/;
  * with a Gulf number can still sign in.
  */
 export function normalizeKsaPhone(input: string): string | null {
-  const raw = input.trim();
+  // An Arabic keyboard types ٠٥٠…, which the `\D` below would strip to nothing.
+  const raw = toLatinDigits(input).trim();
   if (!raw) return null;
 
   // Strip the separators people use for readability.
@@ -59,6 +62,23 @@ export function formatPhoneForDisplay(phone?: string | null): string {
   const match = /^\+966(5\d)(\d{3})(\d{4})$/.exec(phone);
   if (!match) return phone;
   return `+966 ${match[1]} ${match[2]} ${match[3]}`;
+}
+
+/**
+ * Keep a phone number in one piece inside Arabic text.
+ *
+ * Shown in an Arabic line, "+966 50 123 4567" came out as "4567 123 50 966+".
+ * The bidi algorithm makes each space-separated group of digits its own
+ * left-to-right run, and then lays those runs out in the paragraph's order —
+ * right to left. Wrapping the whole number in LEFT-TO-RIGHT EMBEDDING (U+202A)
+ * … POP DIRECTIONAL FORMATTING (U+202C), the most widely supported of the
+ * directional controls, makes it a single left-to-right unit. Both are
+ * invisible, so the same string is right in English too.
+ *
+ * Display only: never send or store the result, it is no longer a number.
+ */
+export function ltr(text: string): string {
+  return text ? `\u202A${text}\u202C` : text;
 }
 
 /**

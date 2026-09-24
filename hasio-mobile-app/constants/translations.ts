@@ -287,7 +287,7 @@ export const translations = {
     shareFeedback: "Share your feedback",
     appVersionInfo: "App version and info",
     appName: "Hasio",
-    version: "Version 1.0.0",
+    version: "Version",
     appDescription: "Your perfect travel companion for discovering amazing places, delicious food, and unforgettable experiences across Saudi Arabia's Eastern Province.",
 
     // Common
@@ -309,6 +309,10 @@ export const translations = {
     resultsFound: "results found",
     error: "Something went wrong",
     retry: "Retry",
+    discardChangesTitle: "Discard changes?",
+    discardChangesMessage: "You'll lose what you've entered on this screen.",
+    keepEditing: "Keep editing",
+    discardChanges: "Discard",
 
     // Empty States
     emptyLodgingTitle: "No lodging found",
@@ -573,7 +577,7 @@ export const translations = {
     deleteAccount: "Delete Account",
     deleteAccountSubtitle: "Permanently delete your account and data",
     deleteAccountConfirmTitle: "Delete Account?",
-    deleteAccountConfirmMessage: "This action cannot be undone. All your data, moments, and plans will be permanently deleted.",
+    deleteAccountConfirmMessage: "This action cannot be undone. Your account and all your data will be permanently deleted.",
     deleteAccountSuccess: "Account deleted successfully",
     deleteAccountError: "Failed to delete account",
     deleting: "Deleting...",
@@ -719,6 +723,148 @@ export const translations = {
     signOutConfirmTitle: "Sign Out",
     signOutConfirmMessage: "Are you sure you want to sign out?",
     confirm: "Confirm",
+
+    // ── ui-polish: discovery (Home, Stay, filters, search) ──
+    homeHeroEyebrow: "Eastern Province",
+    // Chosen by count through countForm() in lib/searchText.ts — Arabic has
+    // four forms where English has two, so every form has its own key.
+    resultsCount_one: "1 result",
+    resultsCount_two: "{n} results",
+    resultsCount_few: "{n} results",
+    resultsCount_many: "{n} results",
+    clearSearch: "Clear search",
+    filtersActiveCount: "Filters: {n} active",
+    filterNothingYet: "Nothing to filter by yet. Everything listed is already on screen.",
+    showMorePlaces: "Show more places",
+    emptyKindMessage: "Nothing of this kind is listed right now.",
+    emptyLodgingNoneMessage: "New stays are added all the time. Check back soon.",
+    loadStalledTitle: "Can't connect",
+    loadStalledMessage: "Check your internet connection. We'll keep trying.",
+
+    // ── ui-polish: listing sheet, booking, reviews ──
+    // Counts in words, one key per form — lib/bookingDisplay.ts `countLabel`
+    // picks the form. English only needs two, but every unit has all four so
+    // both languages share one set of keys.
+    nightsOne: "1 night",
+    nightsTwo: "2 nights",
+    nightsFew: "{n} nights",
+    nightsMany: "{n} nights",
+    guestsOne: "1 guest",
+    guestsTwo: "2 guests",
+    guestsFew: "{n} guests",
+    guestsMany: "{n} guests",
+    reviewsOne: "1 review",
+    reviewsTwo: "2 reviews",
+    reviewsFew: "{n} reviews",
+    reviewsMany: "{n} reviews",
+    starsOne: "1 star",
+    starsTwo: "2 stars",
+    starsFew: "{n} stars",
+    starsMany: "{n} stars",
+    decreaseGuests: "Fewer guests",
+    increaseGuests: "More guests",
+    bookingStayLabel: "Stay",
+    quoteIdleHint: "Choose your dates to see the total",
+    starsOutOfFive: "{n} out of 5 stars",
+    noShowConfirmTitle: "Mark as a no-show?",
+    noShowConfirmMessage: "Only if the guest never arrived. This can't be undone.",
+    noUpcomingStaysHint: "Your earlier stays are under Past.",
+    noPastStaysHint: "Stays appear here once they're over.",
+    // Opening hours. The stored day is the key — lib/dates.ts weekdayLabelKey.
+    day_sunday: "Sunday",
+    day_monday: "Monday",
+    day_tuesday: "Tuesday",
+    day_wednesday: "Wednesday",
+    day_thursday: "Thursday",
+    day_friday: "Friday",
+    day_saturday: "Saturday",
+
+    // ── ui-polish: planner, favorites ──
+    favoritesExploreStays: "Explore stays",
+    favoritesGuestHint:
+      "Places you heart are saved on this phone. Sign in to keep them on every device.",
+    plannerTyping: "Hasio is typing…",
+    plannerPlacesTitle: "Places in this plan",
+    sharePlan: "Share plan",
+
+    // ── ui-polish: account (profile, sign-in, onboarding) ──
+    // Sign-in and phone verification failures (lib/authErrors.ts). Each title
+    // is paired with a different message, never the same line twice.
+    authCodeWrong: "That code isn't right. Check the text message and try again.",
+    authCodeWrongTitle: "Wrong code",
+    authCodeExpired: "This code has expired. Tap “Resend code” to get a new one.",
+    authCodeExpiredTitle: "Code expired",
+    authTooManyAttempts: "Too many wrong codes. Tap “Resend code” to get a new one.",
+    authTooManyAttemptsTitle: "Too many tries",
+    authPhoneTaken: "This number already belongs to another Hasio account. Use a different number.",
+    authPhoneTakenTitle: "Number already in use",
+    authTooManyRequests: "Too many requests. Wait a little, then try again.",
+    authTooManyRequestsTitle: "Try again later",
+    authCheckNumberTitle: "Check the number",
+    authCheckDetailsTitle: "Check your details",
+    authSignInFailedTitle: "Couldn't sign you in",
+    authSessionExpiredTitle: "Signed out",
+    authOfflineTitle: "No connection",
+    authOk: "OK",
+    authShowPassword: "Show password",
+    authHidePassword: "Hide password",
+    // Profile — shown in place of the page while the account is going away.
+    accountSigningOut: "Signing you out…",
+    accountDeleting: "Deleting your account…",
+    profileTrips: "Trips",
+    profileGetStarted: "Get started",
+    profileAddName: "Add your name",
+    // Read by screen readers on the Notifications row's count.
+    profileUnread: "{n} unread",
+
+    // ── ui-polish: business and provider ──
+    fieldRequired: "This field is required",
+    chooseCity: "Choose a city",
+    invalidPriceRange: "Enter a whole number from 1 to 100,000",
+    invalidUnitCountRange: "Enter a number of rooms or units from 1 to 500",
+    invalidContactPhone: "Enter a valid phone number",
+    editCannotClear: "This can't be removed in the app yet. Saving keeps {value}.",
+    statusSuspended: "Suspended",
+    reviewNoteLabel: "Note from our team",
+    editToResubmit: "Edit and save to send it back for review.",
+    uploadingPhotos: "Uploading photos {done}/{total}",
+    editService: "Edit service",
+    serviceSubmittedForReview: "Your service has been submitted for review",
+    deleteListingTitle: "Delete this listing?",
+    deleteServiceTitle: "Delete this service?",
+    deleteForGoodMessage: "It will be removed from Hasio for good. This can't be undone.",
+    deleteFailed: "Couldn't delete it. Please try again.",
+    deleteBlockedTitle: "Can't delete this yet",
+    deleteBlockedOpenBookings:
+      "It still has bookings that are waiting or confirmed. Once they are declined, completed or cancelled, you can delete it.",
+    languagesCommaSeparated: "Languages (separate with commas)",
+    statServices: "Services",
+    statLive: "Live",
+    statInReview: "In review",
+    statAddFirstService: "Add your first service",
+    editLiveConfirmTitle: "Send your changes for review?",
+    editLiveStayMessage:
+      "Until our team approves them, travellers won't see this listing or be able to book it.",
+    editLivePlaceMessage: "Until our team approves them, travellers won't see this place.",
+    editLiveServiceMessage: "Until our team approves them, travellers won't see this service.",
+    editorNotFound: "We couldn't find this",
+    editorNotFoundHint: "It may have been deleted, or it isn't on your account.",
+    coverPhoto: "Cover",
+    makeCover: "Make this the cover photo",
+    photosCoverHint: "The first photo is the cover. Tap another photo to make it the cover.",
+    removePhoto: "Remove photo",
+    verificationApprovedBody: "Your account is approved — you can post now.",
+    verificationUploadFailed:
+      "We couldn't upload your document. Check your connection and try again.",
+    errorDailyPostLimit: "You've reached today's limit. Please try again tomorrow.",
+    hostingMode: "Hosting mode",
+    travelling: "Travelling",
+    backToTravelling: "Back to travelling",
+    statAddFirstListing: "Add your first listing",
+    postsReviewedNote: "Everything you post is checked by our team before it goes live.",
+    startAddingPlaces: "Add a place to stay or a destination to get started.",
+
+    // ── ui-polish: app shell ──
   },
 
   ar: {
@@ -1006,8 +1152,8 @@ export const translations = {
     rateApp: "قيم التطبيق",
     shareFeedback: "شارك رأيك",
     appVersionInfo: "إصدار التطبيق والمعلومات",
-    appName: "هاسيو",
-    version: "الإصدار 1.0.0",
+    appName: "Hasio",
+    version: "الإصدار",
     appDescription: "رفيقك المثالي للسفر لاكتشاف الأماكن الرائعة والطعام اللذيذ والتجارب التي لا تُنسى في المنطقة الشرقية.",
 
     // Common
@@ -1029,6 +1175,10 @@ export const translations = {
     resultsFound: "نتيجة",
     error: "حدث خطأ ما",
     retry: "إعادة المحاولة",
+    discardChangesTitle: "تجاهل التغييرات؟",
+    discardChangesMessage: "ستفقد ما أدخلته في هذه الشاشة.",
+    keepEditing: "متابعة التعديل",
+    discardChanges: "تجاهل",
 
     // Empty States
     emptyLodgingTitle: "لا توجد نتائج",
@@ -1081,7 +1231,7 @@ export const translations = {
 
     // User Types
     selectAccountType: "اختر نوع الحساب",
-    accountTypeDescription: "اختر كيف تريد استخدام هاسيو",
+    accountTypeDescription: "اختر كيف تريد استخدام Hasio",
     userTypeUser: "مستخدم عادي",
     userTypeUserDesc: "تصفح واكتشف معالم المنطقة الشرقية",
     userTypeBusiness: "صاحب عمل",
@@ -1159,7 +1309,7 @@ export const translations = {
       "ارفع وثيقة نشاطك التجاري ليتمكن فريقنا من التحقق من حسابك. سيتم تفعيل النشر فور الموافقة.",
     verificationWhyTitle: "لماذا نطلب ذلك؟",
     verificationWhyBody:
-      "نراجع كل صاحب نشاط ومقدم خدمة قبل ظهور محتواه في هاسيو، حفاظاً على ثقة الزوار بالمحتوى المعروض.",
+      "نراجع كل صاحب نشاط ومقدم خدمة قبل ظهور محتواه في Hasio، حفاظاً على ثقة الزوار بالمحتوى المعروض.",
     verificationDocLabel: "وثيقة النشاط",
     verificationDocHint:
       "صورة واضحة أو نسخة PDF من السجل التجاري، أو رخصة العمل الحر، أو الهوية الرسمية.",
@@ -1172,7 +1322,7 @@ export const translations = {
     verificationSubmittedMessage:
       "يراجع فريقنا الحسابات عادةً خلال يوم إلى يومي عمل. سنفعّل النشر فور الموافقة على حسابك.",
     verificationPrivacyNote:
-      "تُحفظ وثيقتك بشكل خاص ولا يطّلع عليها سوى فريق المراجعة في هاسيو، ولا تظهر أبداً في ملفك العام.",
+      "تُحفظ وثيقتك بشكل خاص ولا يطّلع عليها سوى فريق المراجعة في Hasio، ولا تظهر أبداً في ملفك العام.",
     verificationUnverifiedTitle: "التوثيق مطلوب",
     verificationUnverifiedBody: "أضف وثيقة نشاطك لتفعيل النشر.",
     verificationUnverifiedCta: "ابدأ التوثيق",
@@ -1291,7 +1441,7 @@ export const translations = {
     deleteAccount: "حذف الحساب",
     deleteAccountSubtitle: "حذف حسابك وبياناتك نهائياً",
     deleteAccountConfirmTitle: "حذف الحساب؟",
-    deleteAccountConfirmMessage: "لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع بياناتك ولحظاتك وخططك نهائياً.",
+    deleteAccountConfirmMessage: "لا يمكن التراجع عن هذا الإجراء. سيتم حذف حسابك وجميع بياناتك نهائياً.",
     deleteAccountSuccess: "تم حذف الحساب بنجاح",
     deleteAccountError: "فشل في حذف الحساب",
     deleting: "جاري الحذف...",
@@ -1394,7 +1544,7 @@ export const translations = {
     reviewSignInFirst: "سجّل الدخول لكتابة تقييم",
 
     reportTitle: "الإبلاغ عن هذا المحتوى",
-    reportSubtitle: "ساعدنا في الحفاظ على سلامة هاسيو. بلاغك سري.",
+    reportSubtitle: "ساعدنا في الحفاظ على سلامة Hasio. بلاغك سري.",
     reportReasonSpam: "سبام أو مضلل",
     reportReasonInappropriate: "محتوى غير لائق",
     reportReasonOffensive: "مسيء أو يحض على الكراهية",
@@ -1419,7 +1569,7 @@ export const translations = {
     unblockConfirmTitle: "إلغاء حظر هذا الحساب؟",
     unblockConfirmMessage: "ستظهر إعلاناته وخدماته مرة أخرى.",
     unblockFailed: "تعذّر إلغاء الحظر. حاول مرة أخرى.",
-    blockedAccountFallbackName: "حساب هاسيو",
+    blockedAccountFallbackName: "حساب Hasio",
 
     // Permission alerts
     permissionRequired: "إذن مطلوب",
@@ -1437,6 +1587,141 @@ export const translations = {
     signOutConfirmTitle: "تسجيل الخروج",
     signOutConfirmMessage: "هل أنت متأكد من تسجيل الخروج؟",
     confirm: "تأكيد",
+
+    // ── ui-polish: discovery (Home, Stay, filters, search) ──
+    homeHeroEyebrow: "المنطقة الشرقية",
+    resultsCount_one: "نتيجة واحدة",
+    resultsCount_two: "نتيجتان",
+    resultsCount_few: "{n} نتائج",
+    resultsCount_many: "{n} نتيجة",
+    clearSearch: "مسح البحث",
+    filtersActiveCount: "عوامل التصفية النشطة: {n}",
+    filterNothingYet: "لا توجد خيارات للتصفية بعد. كل ما هو متاح معروض الآن.",
+    showMorePlaces: "عرض المزيد من الأماكن",
+    emptyKindMessage: "لا يوجد شيء من هذا النوع حالياً.",
+    emptyLodgingNoneMessage: "نضيف أماكن إقامة جديدة باستمرار. عد قريباً.",
+    loadStalledTitle: "تعذّر الاتصال",
+    loadStalledMessage: "تحقّق من اتصالك بالإنترنت، وسنواصل المحاولة.",
+
+    // ── ui-polish: listing sheet, booking, reviews ──
+    // One is a word, two the dual, 3–10 the plural, 11 and up the singular
+    // again (accusative where it shows). Digits stay Latin, as elsewhere.
+    nightsOne: "ليلة واحدة",
+    nightsTwo: "ليلتان",
+    nightsFew: "{n} ليالٍ",
+    nightsMany: "{n} ليلة",
+    guestsOne: "ضيف واحد",
+    guestsTwo: "ضيفان",
+    guestsFew: "{n} ضيوف",
+    guestsMany: "{n} ضيفًا",
+    reviewsOne: "تقييم واحد",
+    reviewsTwo: "تقييمان",
+    reviewsFew: "{n} تقييمات",
+    reviewsMany: "{n} تقييمًا",
+    starsOne: "نجمة واحدة",
+    starsTwo: "نجمتان",
+    starsFew: "{n} نجوم",
+    starsMany: "{n} نجمة",
+    decreaseGuests: "إنقاص عدد الضيوف",
+    increaseGuests: "زيادة عدد الضيوف",
+    bookingStayLabel: "الإقامة",
+    quoteIdleHint: "اختر التواريخ لمعرفة الإجمالي",
+    starsOutOfFive: "{n} من 5 نجوم",
+    noShowConfirmTitle: "تسجيل عدم الحضور؟",
+    noShowConfirmMessage: "فقط إذا لم يصل الضيف. لا يمكن التراجع عن ذلك.",
+    noUpcomingStaysHint: "إقاماتك السابقة تجدها في «السابقة».",
+    noPastStaysHint: "تظهر الإقامات هنا بعد انتهائها.",
+    day_sunday: "الأحد",
+    day_monday: "الإثنين",
+    day_tuesday: "الثلاثاء",
+    day_wednesday: "الأربعاء",
+    day_thursday: "الخميس",
+    day_friday: "الجمعة",
+    day_saturday: "السبت",
+
+    // ── ui-polish: planner, favorites ──
+    favoritesExploreStays: "استكشف أماكن الإقامة",
+    favoritesGuestHint:
+      "تُحفظ الأماكن التي تضيفها إلى المفضلة على هذا الجهاز. سجّل الدخول لتبقى معك على كل أجهزتك.",
+    plannerTyping: "Hasio يكتب…",
+    plannerPlacesTitle: "أماكن في هذه الخطة",
+    sharePlan: "مشاركة الخطة",
+
+    // ── ui-polish: account (profile, sign-in, onboarding) ──
+    // Sign-in and phone verification failures — see the English block.
+    authCodeWrong: "الرمز غير صحيح. تحقق من الرسالة النصية وحاول مرة أخرى.",
+    authCodeWrongTitle: "رمز غير صحيح",
+    authCodeExpired: "انتهت صلاحية هذا الرمز. اضغط «إعادة إرسال الرمز» للحصول على رمز جديد.",
+    authCodeExpiredTitle: "انتهت صلاحية الرمز",
+    authTooManyAttempts: "أدخلت رموزًا خاطئة كثيرة. اضغط «إعادة إرسال الرمز» للحصول على رمز جديد.",
+    authTooManyAttemptsTitle: "محاولات كثيرة",
+    authPhoneTaken: "هذا الرقم مرتبط بحساب آخر في Hasio. استخدم رقمًا مختلفًا.",
+    authPhoneTakenTitle: "الرقم مستخدم بالفعل",
+    authTooManyRequests: "طلبات كثيرة. انتظر قليلًا ثم حاول مرة أخرى.",
+    authTooManyRequestsTitle: "حاول لاحقًا",
+    authCheckNumberTitle: "تحقق من الرقم",
+    authCheckDetailsTitle: "تحقق من بياناتك",
+    authSignInFailedTitle: "تعذّر تسجيل دخولك",
+    authSessionExpiredTitle: "تم تسجيل خروجك",
+    authOfflineTitle: "لا يوجد اتصال",
+    authOk: "حسناً",
+    authShowPassword: "إظهار كلمة المرور",
+    authHidePassword: "إخفاء كلمة المرور",
+    // Profile — see the English block.
+    accountSigningOut: "جارٍ تسجيل خروجك…",
+    accountDeleting: "جارٍ حذف حسابك…",
+    profileTrips: "الرحلات",
+    profileGetStarted: "ابدأ الآن",
+    profileAddName: "أضف اسمك",
+    profileUnread: "{n} غير مقروءة",
+
+    // ── ui-polish: business and provider ──
+    fieldRequired: "هذا الحقل مطلوب",
+    chooseCity: "اختر مدينة",
+    invalidPriceRange: "أدخل رقمًا صحيحًا من 1 إلى 100,000",
+    invalidUnitCountRange: "أدخل عدد غرف أو وحدات من 1 إلى 500",
+    invalidContactPhone: "أدخل رقم هاتف صحيحًا",
+    editCannotClear: "لا يمكن حذف هذه القيمة من التطبيق حاليًا. عند الحفظ تبقى {value}.",
+    statusSuspended: "موقوف",
+    reviewNoteLabel: "ملاحظة من فريقنا",
+    editToResubmit: "عدّل واحفظ لإعادة الإرسال إلى المراجعة.",
+    uploadingPhotos: "جاري رفع الصور {done} من {total}",
+    editService: "تعديل الخدمة",
+    serviceSubmittedForReview: "تم إرسال خدمتك للمراجعة",
+    deleteListingTitle: "حذف هذا الإعلان؟",
+    deleteServiceTitle: "حذف هذه الخدمة؟",
+    deleteForGoodMessage: "الحذف من Hasio نهائي ولا يمكن التراجع عنه.",
+    deleteFailed: "تعذّر الحذف. حاول مرة أخرى.",
+    deleteBlockedTitle: "لا يمكن الحذف الآن",
+    deleteBlockedOpenBookings:
+      "لا تزال هناك حجوزات بانتظار الرد أو مؤكدة. يمكنك الحذف بعد رفضها أو إتمامها أو إلغائها.",
+    languagesCommaSeparated: "اللغات (افصل بينها بفواصل)",
+    statServices: "الخدمات",
+    statLive: "منشورة",
+    statInReview: "قيد المراجعة",
+    statAddFirstService: "أضف خدمتك الأولى",
+    editLiveConfirmTitle: "إرسال التعديلات للمراجعة؟",
+    editLiveStayMessage:
+      "لن يظهر هذا الإعلان للمسافرين ولن يمكن حجزه حتى يوافق فريقنا على التعديلات.",
+    editLivePlaceMessage: "لن يظهر هذا المكان للمسافرين حتى يوافق فريقنا على التعديلات.",
+    editLiveServiceMessage: "لن تظهر هذه الخدمة للمسافرين حتى يوافق فريقنا على التعديلات.",
+    editorNotFound: "لم نعثر على هذا العنصر",
+    editorNotFoundHint: "ربما حُذف، أو أنه ليس ضمن حسابك.",
+    coverPhoto: "الغلاف",
+    makeCover: "اجعلها صورة الغلاف",
+    photosCoverHint: "الصورة الأولى هي الغلاف. اضغط على صورة أخرى لتجعلها الغلاف.",
+    removePhoto: "إزالة الصورة",
+    verificationApprovedBody: "تمت الموافقة على حسابك، ويمكنك النشر الآن.",
+    verificationUploadFailed: "تعذّر رفع الوثيقة. تحقق من اتصالك وحاول مرة أخرى.",
+    errorDailyPostLimit: "وصلت إلى الحد اليومي. حاول مرة أخرى غدًا.",
+    hostingMode: "وضع الاستضافة",
+    travelling: "السفر",
+    backToTravelling: "العودة إلى وضع السفر",
+    statAddFirstListing: "أضف إعلانك الأول",
+    postsReviewedNote: "يراجع فريقنا كل ما تنشره قبل أن يظهر للمسافرين.",
+    startAddingPlaces: "أضف مكان إقامة أو وجهة لتبدأ.",
+
+    // ── ui-polish: app shell ──
   },
 } as const;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPhoneForDisplay, isPlaceholderEmail, normalizeKsaPhone } from "./phone";
+import { formatPhoneForDisplay, isPlaceholderEmail, ltr, normalizeKsaPhone } from "./phone";
 
 describe("normalizeKsaPhone", () => {
   it("accepts every shape a Saudi guest might type", () => {
@@ -23,6 +23,13 @@ describe("normalizeKsaPhone", () => {
     for (const prefix of ["50", "53", "54", "55", "56", "58", "59"]) {
       expect(normalizeKsaPhone(`0${prefix}1234567`)).toBe(`+966${prefix}1234567`);
     }
+  });
+
+  it("reads a number typed on an Arabic keyboard", () => {
+    // What an Arabic number pad types: the same digits, as different characters.
+    expect(normalizeKsaPhone("٠٥٠١٢٣٤٥٦٧")).toBe("+966501234567");
+    expect(normalizeKsaPhone("+٩٦٦٥٠١٢٣٤٥٦٧")).toBe("+966501234567");
+    expect(normalizeKsaPhone("۰۵۰۱۲۳۴۵۶۷")).toBe("+966501234567");
   });
 
   it("lets a visitor sign in with a foreign number", () => {
@@ -61,6 +68,21 @@ describe("formatPhoneForDisplay", () => {
     expect(formatPhoneForDisplay("+971501234567")).toBe("+971501234567");
     expect(formatPhoneForDisplay(null)).toBe("");
     expect(formatPhoneForDisplay(undefined)).toBe("");
+  });
+});
+
+describe("ltr", () => {
+  it("wraps text in a left-to-right embedding", () => {
+    expect(ltr("+966 50 123 4567")).toBe("\u202A+966 50 123 4567\u202C");
+  });
+
+  it("changes nothing a reader sees", () => {
+    const wrapped = ltr(formatPhoneForDisplay("+966501234567"));
+    expect(wrapped.replace(/[\u202A\u202C]/g, "")).toBe("+966 50 123 4567");
+  });
+
+  it("adds nothing to an empty string, so a missing number stays falsy", () => {
+    expect(ltr("")).toBe("");
   });
 });
 

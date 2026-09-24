@@ -9,6 +9,19 @@ import { pressSpring, PRESS_SCALE_CARD } from "@/constants/motion";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+/**
+ * How long a touch has to rest before a card reacts to it.
+ *
+ * Cards fill every scrolling list in the app, so most touches that land on one
+ * are the start of a scroll, not a press. Pressable reports `onPressIn` the
+ * instant a finger lands, so every scroll that began on a card shrank it and
+ * sprang it back as the list took the touch — the list twitched under the
+ * thumb on every swipe. Waiting this long lets the scroll view claim the touch
+ * first; a real tap shorter than this still gets its press-in and press-out,
+ * flushed together on release.
+ */
+export const PRESS_DELAY_MS = 90;
+
 interface PressableScaleProps extends Omit<PressableProps, "style"> {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -26,6 +39,7 @@ export function PressableScale({
   scaleTo = PRESS_SCALE_CARD,
   onPressIn,
   onPressOut,
+  unstable_pressDelay = PRESS_DELAY_MS,
   ...props
 }: PressableScaleProps) {
   const scale = useSharedValue(1);
@@ -37,6 +51,7 @@ export function PressableScale({
   return (
     <AnimatedPressable
       style={[animatedStyle, style]}
+      unstable_pressDelay={unstable_pressDelay}
       onPressIn={(e) => {
         scale.value = withSpring(scaleTo, pressSpring);
         onPressIn?.(e);

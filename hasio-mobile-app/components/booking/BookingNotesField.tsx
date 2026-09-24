@@ -7,13 +7,19 @@ import { useThemedStyles } from "@/hooks/useAppFonts";
 export interface BookingNotesFieldHandle {
   /** The trimmed draft, or undefined when empty. Read at submit time. */
   read: () => string | undefined;
-  reset: () => void;
 }
 
 interface BookingNotesFieldProps {
   label: string;
   placeholder: string;
   isRTL: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  /**
+   * Whether anything is written, reported only when that flips — the sheet
+   * needs to know there is a note to lose if it is closed, not each keystroke.
+   */
+  onWrittenChange?: (written: boolean) => void;
 }
 
 /**
@@ -23,16 +29,24 @@ interface BookingNotesFieldProps {
  * calendar above it — sixty-odd day cells — for a value the calendar never
  * reads. The parent only needs the text once, when the request is sent, so
  * it reads it through a ref at that moment instead of subscribing to it.
+ *
+ * Nothing resets it: the sheet remounts its content each time it opens.
  */
 export const BookingNotesField = forwardRef<BookingNotesFieldHandle, BookingNotesFieldProps>(
-  function BookingNotesField({ label, placeholder, isRTL }, ref) {
+  function BookingNotesField({ label, placeholder, isRTL, onFocus, onBlur, onWrittenChange }, ref) {
     const styles = useThemedStyles(makeStyles);
     const [notes, setNotes] = useState("");
 
     useImperativeHandle(ref, () => ({
       read: () => notes.trim() || undefined,
-      reset: () => setNotes(""),
     }));
+
+    const handleChange = (next: string) => {
+      const written = next.trim().length > 0;
+      const wasWritten = notes.trim().length > 0;
+      if (written !== wasWritten) onWrittenChange?.(written);
+      setNotes(next);
+    };
 
     return (
       <View>
@@ -41,7 +55,9 @@ export const BookingNotesField = forwardRef<BookingNotesFieldHandle, BookingNote
           style={[styles.input, styles.textArea]}
           isRTL={isRTL}
           value={notes}
-          onChangeText={setNotes}
+          onChangeText={handleChange}
+          onFocus={onFocus}
+          onBlur={onBlur}
           placeholder={placeholder}
           placeholderTextColor={colors.onSurface.muted}
           multiline

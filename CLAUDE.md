@@ -45,9 +45,15 @@ How to do good work here:
   actually wrong is not finished. When the cause cannot be confirmed, say which alternatives
   remain and what observation would tell them apart.
 - **Green before commit:** `npm run typecheck`, `npm run lint`, `npm run test` in
-  `hasio-mobile-app/`. Lint has existed only since 2026-09-14 — the baseline is 0 errors / ~55
-  warnings, and the warnings are real pre-existing cleanups (unused vars, dead handlers). Don't
-  add errors; burning down warnings is welcome polish.
+  `hasio-mobile-app/`. Lint has existed only since 2026-09-14; the UI audit took it from 0 errors /
+  55 warnings to **0 errors / 3 warnings** (the documented latest-ref in `useKeyboardOverlap`, two
+  effects in `BookingSheet`). Don't add errors or warnings. Tests: 171 across 11 files (`lib/**`).
+- **The 2026-09-24 UI/UX audit** — six reviewers, ~150 findings, all fixed on branch `ui-polish`
+  (merged into `sdk-57`). The accepted findings, the defaults taken, the owner's open items and
+  the **device checks still owed** are in `docs/superpowers/plans/2026-09-24-mobile-ui-polish.md`.
+  Nothing from it has been run on a phone; the web build was smoke-tested at phone size in both
+  languages (21 steps, no errors). Read *Mobile App Production Patterns* below before adding UI —
+  it lists the shared pieces the audit introduced and the iOS modal rules they exist for.
 - **JS-only changes need no rebuild** — Metro hot-reloads into the installed dev client. Rebuild
   the dev client only for a new native module or an SDK change.
 - **The release itself is gated** by the pre-flight list in *Stores, accounts & shipping*. Two of
@@ -168,10 +174,12 @@ commits stale and bundled with a separate UI redesign — do not merge it for th
 `react-hooks/immutability` is off because it flags every Reanimated shared-value write
 (`x.value = …`, which is the whole API); the other React Compiler rules are warnings, not errors.
 
-- `app/business/` — Business owner screens: `post-lodging.tsx`, `post-food.tsx`, `post-event.tsx`, `post-destination.tsx`, `my-listings.tsx`
-- `app/provider/` — Service provider screens: `post-service.tsx`, `my-services.tsx`
-- `app/(tabs)/` — Main tab navigation
-- Images uploaded via Convex storage (`lib/convexUpload.ts`), stored as URL strings
+- `app/business/` — Business owner screens: `post-lodging.tsx`, `post-destination.tsx` (both also edit, via `?id=`), `my-listings.tsx`, `bookings.tsx` (host inbox), `dashboard.tsx`, `verification.tsx`
+- `app/provider/` — Service provider screens: `post-service.tsx` (also edits), `my-services.tsx`, `dashboard.tsx`, `verification.tsx`
+- `components/hosting/` — `PhotoPickerField` (the one photo picker, with cover and limit) and `OwnerStatus` (status badge + review note), shared by those screens; `lib/listingForm.ts` holds what an edit writes (an edit must never overwrite a listing's pin, address or capacity with form defaults — see its tests)
+- `app/(tabs)/` — Main tab navigation (a PagerView shell; the route files are placeholders)
+- **Moments is gone from the client** (2026-09-24): it had no tab since Favorites replaced it. The server's `api.moments` and account deletion still handle any stored moments.
+- Images uploaded via Convex storage (`lib/convexUpload.ts`, with an `onProgress` callback), stored as URL strings
 
 **Mobile API import**: The Convex `api` object is exported from `backend/index.ts` (NOT `convex/`). All mobile app files import it as `import { api } from "@/backend"`. The directory was renamed from `convex/` to `backend/` because Metro bundler resolves `@/convex` to the `convex` npm package instead of the local directory. **Never rename `backend/` back to `convex/`** — it will break all API calls at runtime with "Cannot read property of undefined" errors.
 
@@ -360,15 +368,68 @@ EXPO_PUBLIC_CONVEX_SITE_URL=https://hearty-ram-74.eu-west-1.convex.site
 
 ## Mobile App Production Patterns
 
-The mobile app (`hasio-mobile-app/`) includes these reliability features:
+The mobile app (`hasio-mobile-app/`) is built on a few shared pieces; new code uses them rather
+than re-solving the same problems. Most were set by the 2026-09-24 UI audit
+(`docs/superpowers/plans/2026-09-24-mobile-ui-polish.md`).
 
-- **Error Boundary**: `components/ErrorBoundary.tsx` wraps root layout. Class component, reads language from Zustand outside React tree (`useAppStore.getState().language`). Bilingual fallback UI with retry button.
-- **Search Debounce**: `hooks/useDebounce.ts` (300ms default). Used in `HomeScreenContent.tsx` — raw query drives the input, debounced query drives filtering.
-- **ThemedTextInput**: `components/ui/ThemedTextInput.tsx` — wraps `TextInput` with focus state (green `#0D7A5F` border on focus, `#E5E5E5` default). Used in all business/provider form screens and auth. Exported from `components/ui/index.ts`.
-- **Image Fallbacks**: All card components (`LodgingCard`, `FoodCard`, `EventCard`, `MomentCard`, `CategoryCard`) use `backgroundColor: "#E8DFD4"` (warm sand) on image containers + safe access (`images?.[0] ? { uri: ... } : undefined`).
-- **Double-Submit Guard**: All form `handleSubmit` functions start with `if (isLoading) return;` before validation.
-- **Email Validation**: `auth.tsx` validates with `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` after empty check.
-- **Dark Mode**: Toggle replaced with "Coming Soon" subtitle in settings. Zustand `isDarkMode` state preserved for future use.
+- **The iOS modal rules** (RN 0.86 Fabric, read in `RCTModalHostViewComponentView.mm`): a `<Modal>`
+  presents from the *nearest* view controller, and UIKit refuses to present from one that is
+  already presenting or mid-dismissal — RN has already marked it presented and never retries, so
+  the sheet silently never appears (and an alert host stranded that way swallows every later
+  alert). So: (1) a sheet opened from inside another Modal is rendered **inside** that Modal —
+  `ListingDetailSheet` nests its Book/Rate/Report/phone sheets; (2) "close A, then open B / alert /
+  navigate" waits for A's dismissal (`BottomSheet onDismissed`; a native Modal's `onDismiss` on
+  iOS, immediately on Android); (3) never take down a Modal that is still presenting something —
+  iOS dismisses the child instead and strands an empty full-screen controller that eats every
+  touch (the old "Account upgraded → Done" freeze). A `pageSheet` needs `allowSwipeDismissal` or a
+  swipe-down only rubber-bands. Android is unaffected: each Modal is its own window.
+- **Bottom sheets: `components/ui/BottomSheet.tsx`**, for every sheet. The backdrop fades and the
+  panel slides on the UI thread (the native Modal never animates — a `transparent` +
+  `animationType="slide"` Modal slides the dim backdrop up as a slab); keyboard handling built in
+  (KeyboardAvoidingView on iOS, `useKeyboardOverlap` on Android); its own `AppDialogHost`; the
+  home-indicator inset; a drag handle (PanResponder — there is no `GestureHandlerRootView`);
+  `onDismissed`; and it never takes its Modal down while an alert is up inside it.
+- **Alerts: `appAlert()`** (`stores/dialogStore.ts`, drawn by `AppDialogHost`). A button's
+  `onPress` runs only after its dialog has fully left; alerts raised meanwhile queue (an immediate
+  repeat is dropped); the keyboard is dismissed on show. One host at the root and one inside every
+  Modal that raises alerts (BottomSheet has its own). Never `Alert.alert`.
+- **Arabic typography is automatic**: `useThemedStyles` builds each stylesheet twice, and in Arabic
+  it zeroes `letterSpacing` (tracking pulls joined letters apart) and raises any `lineHeight` below
+  1.4× `fontSize` (Cairo's marks clip). Don't add per-style Arabic fixes; do build text styles with
+  `useThemedStyles(makeStyles)`. Rows still mirror by hand (`isRTL`); horizontal lists use
+  `FlatList inverted={isRTL}` — never `.reverse()` inside a `row-reverse` container, the two cancel.
+  Phone numbers in Arabic lines go through `ltr()` (`lib/phone.ts`).
+- **Numbers people type** go through `toLatinDigits()` (`lib/digits.ts`) before `Number()` or a
+  `\d` regex — an Arabic keypad types ٠١٢…
+- **Unsaved forms**: `useLeaveGuard(active)` (`hooks/useLeaveGuard.ts`; `usePreventRemove` from
+  `expo-router/react-navigation`, which also blocks the iOS back swipe natively).
+- **Buttons**: `<Button loading>` shows a spinner at its resting size; every pressable gets pressed
+  feedback (`PressableScale` for cards — it has a 90ms press delay so a scroll doesn't shrink them —
+  or a `pressed` opacity) and a ≥44pt target with an `accessibilityLabel` when icon-only.
+- **Favourites**: a guest's live on the device (`appStore.favorites`), are shown by `useFavorites()`
+  and merged into the account at sign-in (`useMergeGuestFavorites`, mounted in the tab shell);
+  hearts read `useFavoriteIds()`; `useToggleFavorite` is optimistic for accounts.
+- **Listing data**: adapters in `hooks/useConvexData.ts` are exported and memoised on the query
+  result; category keys read through `constants/categories.ts`, cities through `cityLabel`;
+  `lib/listingDetail.ts` turns any listing into the detail sheet's item.
+- **Search**: `lib/searchText.ts` folds Arabic spelling variants (hamza, taa marbuta, alef maqsura,
+  tashkeel) and counts results in real plural forms (`countForm`).
+- **Tab shell** (`app/(tabs)/_layout.tsx`): the five pages are memoised elements — keep them stable,
+  or every swipe and keyboard change re-renders all five screens. A drag dismisses the keyboard; a
+  tap two or more tabs away jumps without animation.
+- **Keyboard**: `useKeyboardTransition` (`hooks/useKeyboardVisible.ts`) drives the tab bar and the
+  planner composer from Reanimated's tracked height on Android and the will-events on iOS, and
+  recovers a keyboard that vanished without animating. `useKeyboardOverlap` pads a view by exactly
+  what the keyboard covers (Android 15 edge-to-edge ignores `adjustResize`).
+- **Error Boundary**: `components/ErrorBoundary.tsx` wraps the root layout — a friendly message
+  first, the technical detail behind "Show details" for testers.
+- **ThemedTextInput**: focus border and caret in `primary.deep` (the dark lime).
+- **Image fallbacks**: image containers use the warm sand (`colors.sand`) and safe access
+  (`images?.[0] ? { uri } : undefined`).
+- **Double-submit guard**: every submit starts with a busy check (a ref where two taps can land in
+  one frame).
+- **Dark mode**: the app is light-only. Android still follows the system for the system bars until
+  `expo-system-ui` + `android.userInterfaceStyle: "light"` ship in a build (open item).
 
 ## Stores, accounts & shipping — read before any build, submit or OTA
 
@@ -409,10 +470,10 @@ map of *who owns what and what is broken*, verified live on 2026-09-14.
   -export -legacy` is mandatory). `EXPO_NO_CAPABILITY_SYNC=1` in eas.json means EAS will never add
   an Apple capability: push notifications would need the capability enabled on the App ID and the
   profile regenerated by hand first.
-- **Still open with Nabil:** (1) the **app-transfer agreement in writing** — ownership stays with
-  him otherwise; the build has no iCloud entitlement so a transfer is not blocked; (2)
-  `IOS_APP_STORE_ID` in `components/screens/SettingsScreenContent.tsx` is still `null`, which hides
-  the "Rate app" row on iOS — the id is `6800297588`, wire it.
+- **Still open with Nabil:** the **app-transfer agreement in writing** — ownership stays with
+  him otherwise; the build has no iCloud entitlement so a transfer is not blocked. (`IOS_APP_STORE_ID`
+  in `components/screens/SettingsScreenContent.tsx` is wired to `6800297588` since 2026-09-24, so
+  the "Rate app" row shows on iOS from 1.1.0.)
 - **App Review:** a pre-approved business-owner demo account is in the ASC review notes
   (credentials in `IOS_RELEASE_STATUS.md`). Business/provider features are approval-gated, so a
   review without it is rejected for incomplete access. Listing copy, territories and privacy
@@ -455,6 +516,8 @@ map of *who owns what and what is broken*, verified live on 2026-09-14.
 - **Next store release is 1.1.0 on SDK 57**, from `sdk-57`. Live binaries are 1.0.2 (iOS) and
   1.0.0 (Android). **Never publish an OTA from `sdk-57` to the 1.0.2 runtime**: RN 0.86 JS on an
   RN 0.81 binary crashes at launch. The `version` bump is the safety catch — leave it in place.
+  (It was missing on `sdk-57` until 2026-09-24, commit `a80c559`: the SDK 57 move landed with
+  `version` still 1.0.2, so an OTA from that branch would have reached the live binaries.)
 - **Release order:** `npx convex deploy --yes` → `eas build` both platforms → submit Android
   (service account or manual upload) → `eas submit -p ios` → tell Nabil → after approval update
   `IOS_RELEASE_STATUS.md`, `docs/SHIPPING.md` ("Current live versions") and this section.
@@ -463,7 +526,9 @@ map of *who owns what and what is broken*, verified live on 2026-09-14.
         sign in as any phone number. `npx convex env set SMS_PROVIDER console --prod` is the
         stopgap (phone sign-in stops; email unaffected), `infobip` once a Saudi route works.
   - [ ] `main` is not behind any feature branch; `sdk-57` merged.
-  - [ ] `version` is `1.1.0` in `app.json`; leave `buildNumber`/`versionCode` to `autoIncrement`.
+  - [x] `version` is `1.1.0` in `app.json` (since 2026-09-24); leave `buildNumber`/`versionCode` to `autoIncrement`.
+  - [ ] The device checks at the end of `docs/superpowers/plans/2026-09-24-mobile-ui-polish.md`
+        (iPhone modal flows, Android keyboard, Arabic) — none of the UI audit's fixes ran on a phone.
   - [ ] Play Data Safety, ASC App Privacy and `public/privacy-policy.html` all mention phone number.
   - [ ] `google-service-account.json` present, or the manual upload planned.
   - [ ] `eas update:list --branch production` shows no update already tagged for runtime 1.1.0
@@ -489,7 +554,7 @@ Algeria, Australia, Bahrain, Kuwait, Oman, Qatar, Saudi Arabia, United Arab Emir
 
 ### Key Decisions (v1)
 - **Voice assistant disabled** — removed `expo-av`, `RECORD_AUDIO`, `MODIFY_AUDIO_SETTINGS` permissions, VoiceAssistant component, voiceService, and ElevenLabs/Groq integrations. Text-based AI planner remains fully functional via Convex `planTravel` action.
-- **Images use Convex storage (not R2)** — `lib/convexUpload.ts` uploads via `generateUploadUrl` → `FileSystem.uploadAsync` → `getStorageUrl`. All 5 posting screens (`post-lodging`, `post-food`, `post-event`, `post-destination`, `post-service`) use `uploadMultipleToConvex()`. The old `lib/r2Upload.ts` is unused.
+- **Images use Convex storage (not R2)** — `lib/convexUpload.ts` uploads via `generateUploadUrl` → `FileSystem.uploadAsync` → `getStorageUrl`. The three posting screens (`post-lodging`, `post-destination`, `post-service`) use `uploadMultipleToConvex()` with progress. The old `lib/r2Upload.ts` is unused.
 - **Auth env var is strict** — `lib/auth.ts` throws if `EXPO_PUBLIC_CONVEX_SITE_URL` is missing (no silent fallback).
 
 ### EAS Build & Submit

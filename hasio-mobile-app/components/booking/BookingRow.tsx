@@ -5,7 +5,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { BookingStatusChip } from "./BookingStatusChip";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
-import { nightsLabel } from "@/lib/bookingDisplay";
+import type { StayTotal } from "@/lib/bookingDisplay";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { Language } from "@/types";
@@ -25,6 +25,8 @@ export interface BookingRowData {
   checkOut?: string;
   nights?: number;
   guests?: number;
+  /** Frozen at booking time; the total is `nights × pricePerNight`. */
+  pricePerNight?: number;
   totalAmount?: number | null;
   listing?: { name_en: string; name_ar: string; images?: string[] } | null;
 }
@@ -33,13 +35,15 @@ interface BookingRowProps {
   booking: BookingRowData;
   language: Language;
   isRTL: boolean;
-  /** Already-translated words the row needs; passed in so memo can compare them. */
+  /** Already-bound formatters the row needs; passed in so memo can compare them. */
   labels: {
-    night: string;
-    nights: string;
-    guests: string;
-    /** Formats a stored SAR amount in the viewer's display currency. */
-    formatPrice: (amountSar: number) => string;
+    /** "3 nights · 2 guests" — lib/bookingDisplay `nightsLabel`, bound to `t`. */
+    stay: (nights: number, guests?: number) => string;
+    /**
+     * A stay's total in the viewer's currency, agreeing with the quote the
+     * guest was shown (lib/bookingDisplay `displayTotalSar`).
+     */
+    formatTotal: (stay: StayTotal) => string;
   };
   onPress: (id: string) => void;
 }
@@ -49,7 +53,6 @@ function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingR
   const listing = booking.listing;
   const image = listing?.images?.[0];
   const isStay = booking.kind === "stay" && !!booking.checkIn && !!booking.checkOut;
-  const t = (key: "night" | "nights" | "guests") => labels[key];
 
   return (
     <PressableScale onPress={() => onPress(booking._id)} accessibilityRole="button">
@@ -79,7 +82,7 @@ function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingR
 
           {isStay && booking.nights ? (
             <Text style={[styles.meta, isRTL && styles.textRTL]}>
-              {nightsLabel(booking.nights, t, booking.guests)}
+              {labels.stay(booking.nights, booking.guests)}
             </Text>
           ) : null}
 
@@ -87,7 +90,11 @@ function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingR
             <BookingStatusChip status={booking.status} />
             {booking.totalAmount != null && (
               <Text style={styles.amount}>
-                {labels.formatPrice(booking.totalAmount)}
+                {labels.formatTotal({
+                  totalAmount: booking.totalAmount,
+                  nights: booking.nights,
+                  pricePerNight: booking.pricePerNight,
+                })}
               </Text>
             )}
           </View>

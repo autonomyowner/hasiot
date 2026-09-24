@@ -1,8 +1,9 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Language, Moment, DayPlan, ChatMessage } from "@/types";
+import type { Language, ChatMessage } from "@/types";
 import type { Currency } from "@/lib/currency";
+import { messagesToStore, settleRestoredChat } from "@/lib/plannerChat";
 
 interface AppState {
   // Language
@@ -17,26 +18,22 @@ interface AppState {
   hasCompletedOnboarding: boolean;
   setOnboardingComplete: (complete: boolean) => void;
 
-  // Favorites
+  // Favorites — a signed-out guest's only. A signed-in account's live on the
+  // server; these are merged into it at sign-in and then cleared.
   favorites: string[];
   addFavorite: (id: string) => void;
   removeFavorite: (id: string) => void;
+  clearFavorites: () => void;
   isFavorite: (id: string) => boolean;
 
-  // Moments
-  moments: Moment[];
-  addMoment: (moment: Moment) => void;
-  removeMoment: (id: string) => void;
-
-  // Day Plans
-  dayPlans: DayPlan[];
-  addDayPlan: (plan: DayPlan) => void;
-  updateDayPlan: (plan: DayPlan) => void;
-  removeDayPlan: (id: string) => void;
-
-  // Chat Messages
+  // Planner chat. Kept on the device (the newest ~40 messages) so a plan
+  // survives a restart; see `lib/plannerChat.ts` for what is kept.
   chatMessages: ChatMessage[];
   addChatMessage: (message: ChatMessage) => void;
+  /** Flag a guest turn as unanswered, or clear the flag on a retry. */
+  setChatMessageFailed: (id: string, failed: boolean) => void;
+  /** Drop unanswered turns — a new message supersedes them. */
+  removeFailedChatMessages: () => void;
   clearChatMessages: () => void;
 
   // Notifications
@@ -47,7 +44,7 @@ interface AppState {
   sessionId: string | null;
   ensureSessionId: () => string;
 
-  // Clear all user data (for account deletion)
+  // Clear all user data (sign-out and account deletion)
   clearUserData: () => void;
 }
 
@@ -69,47 +66,38 @@ export const useAppStore = create<AppState>()(
       // Favorites
       favorites: [],
       addFavorite: (id) =>
-        set((state) => ({
-          favorites: [...state.favorites, id],
-        })),
+        set((state) =>
+          state.favorites.includes(id) ? state : { favorites: [...state.favorites, id] }
+        ),
       removeFavorite: (id) =>
         set((state) => ({
           favorites: state.favorites.filter((fav) => fav !== id),
         })),
+      clearFavorites: () => set({ favorites: [] }),
       isFavorite: (id) => get().favorites.includes(id),
 
-      // Moments
-      moments: [],
-      addMoment: (moment) =>
-        set((state) => ({
-          moments: [moment, ...state.moments],
-        })),
-      removeMoment: (id) =>
-        set((state) => ({
-          moments: state.moments.filter((m) => m.id !== id),
-        })),
-
-      // Day Plans
-      dayPlans: [],
-      addDayPlan: (plan) =>
-        set((state) => ({
-          dayPlans: [...state.dayPlans, plan],
-        })),
-      updateDayPlan: (plan) =>
-        set((state) => ({
-          dayPlans: state.dayPlans.map((p) => (p.id === plan.id ? plan : p)),
-        })),
-      removeDayPlan: (id) =>
-        set((state) => ({
-          dayPlans: state.dayPlans.filter((p) => p.id !== id),
-        })),
-
-      // Chat Messages
+      // Planner chat
       chatMessages: [],
       addChatMessage: (message) =>
         set((state) => ({
           chatMessages: [...state.chatMessages, message],
         })),
+      setChatMessageFailed: (id, failed) =>
+        set((state) => ({
+          chatMessages: state.chatMessages.map((m) => {
+            if (m.id !== id) return m;
+            // Dropped rather than stored as `false`, so a retried turn is
+            // stored exactly like one that never failed.
+            const { failed: _previous, ...rest } = m;
+            return failed ? { ...rest, failed: true } : rest;
+          }),
+        })),
+      removeFailedChatMessages: () =>
+        set((state) =>
+          state.chatMessages.some((m) => m.failed)
+            ? { chatMessages: state.chatMessages.filter((m) => !m.failed) }
+            : state
+        ),
       clearChatMessages: () => set({ chatMessages: [] }),
 
       // Notifications
@@ -127,12 +115,12 @@ export const useAppStore = create<AppState>()(
         return generated;
       },
 
-      // Clear all user data (for account deletion)
+      // Clear all user data (sign-out and account deletion). The planner chat
+      // goes with it: it is kept on the device now, and the next person to use
+      // this phone should not open onto someone else's trip.
       clearUserData: () =>
         set({
           favorites: [],
-          moments: [],
-          dayPlans: [],
           chatMessages: [],
           hasCompletedOnboarding: false,
         }),
@@ -140,16 +128,32 @@ export const useAppStore = create<AppState>()(
     {
       name: "hasio-storage",
       storage: createJSONStorage(() => AsyncStorage),
+      // `moments` and `dayPlans` used to be stored here as well. Neither has
+      // a screen any more; a row written by an older build still carries them,
+      // and they drop out of it the next time the store is written, because
+      // only the keys listed here are ever written back.
       partialize: (state) => ({
         language: state.language,
         currency: state.currency,
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         favorites: state.favorites,
-        moments: state.moments,
-        dayPlans: state.dayPlans,
+        chatMessages: messagesToStore(state.chatMessages),
         notificationsEnabled: state.notificationsEnabled,
         sessionId: state.sessionId,
       }),
+      // The default shallow merge, plus two things for the chat: a stored
+      // value that is not a list of messages cannot break the planner, and a
+      // question that was still waiting when the app closed is marked failed —
+      // nothing can be in flight across a restart, so it gets a Retry instead
+      // of a reply that will never come.
+      merge: (persisted, current) => {
+        const stored = (persisted ?? {}) as Partial<AppState>;
+        return {
+          ...current,
+          ...stored,
+          chatMessages: settleRestoredChat(stored.chatMessages),
+        };
+      },
     }
   )
 );

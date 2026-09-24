@@ -1,9 +1,11 @@
-import { useMemo } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useEffect, useMemo } from "react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
-import { useConvexAuth } from "convex/react";
-import { canonicalCity } from "@/constants/cities";
+import { cityLabel } from "@/constants/cities";
+import { categoryLabel } from "@/constants/categories";
+import { useAppStore } from "@/stores/appStore";
 import type { Lodging, ListingDetails } from "@/types";
+import type { Doc, Id } from "../../convex/_generated/dataModel";
 
 // Type for Convex listing documents
 type ConvexListing = {
@@ -49,7 +51,7 @@ type ConvexListing = {
  * detail sheet can decide what to render by presence alone instead of every
  * caller re-checking for blank strings.
  */
-function toDetails(l: ConvexListing): ListingDetails {
+export function toDetails(l: ConvexListing): ListingDetails {
   return {
     address: l.address || undefined,
     phone: l.phone || undefined,
@@ -60,23 +62,42 @@ function toDetails(l: ConvexListing): ListingDetails {
   };
 }
 
+/**
+ * Which of the four stay kinds a listing's category files it under.
+ *
+ * The owner's form writes `apartment`, `camp`, `homestay` or `hotel`; the seed
+ * writes the longer hotel grades. This used to recognise only
+ * `serviced_apartment` and `desert_camp` — which nothing writes — so an owner's
+ * apartment or camp was labelled "Hotel" and the Stay tab's Apartments and
+ * Camps chips could never show anything.
+ */
+export function lodgingTypeOf(category: string): Lodging["type"] {
+  switch (category) {
+    case "apartment":
+    case "serviced_apartment":
+      return "apartment";
+    case "camp":
+    case "desert_camp":
+      return "camp";
+    case "homestay":
+      return "homestay";
+    default:
+      return "hotel";
+  }
+}
+
 // Adapters: map Convex listing → mobile app types
-function toLodging(l: ConvexListing): Lodging {
+export function toLodging(l: ConvexListing): Lodging {
   return {
     id: l._id,
     name: l.name_en,
     nameAr: l.name_ar,
-    type: (l.category === "luxury_hotel" || l.category === "budget_hotel" || l.category === "boutique_hotel"
-      ? "hotel"
-      : l.category === "serviced_apartment"
-        ? "apartment"
-        : l.category === "desert_camp"
-          ? "camp"
-          : l.category === "homestay"
-            ? "homestay"
-            : "hotel") as Lodging["type"],
-    city: l.city,
-    cityAr: l.city, // Convex doesn't have city_ar, use city
+    type: lodgingTypeOf(l.category),
+    // Folded to the city and written for each reader: stored rows still say
+    // "Hofuf", which the filter already calls Al Ahsa, and an Arabic card used
+    // to print it in Latin letters because there is no city_ar to fall back on.
+    city: cityLabel(l.city, "en"),
+    cityAr: cityLabel(l.city, "ar"),
     neighborhood: l.region || l.city,
     neighborhoodAr: l.region || l.city,
     priceRange: l.priceRange || "",
@@ -97,17 +118,56 @@ function toLodging(l: ConvexListing): Lodging {
   };
 }
 
+function toDestination(l: ConvexListing) {
+  return {
+    id: l._id,
+    name: l.name_en,
+    nameAr: l.name_ar,
+    // The category as words, not its database key: this is the chip on every
+    // Featured and grid card, and it used to read "natural_landmark".
+    subtitle: categoryLabel(l.category, "en"),
+    subtitleAr: categoryLabel(l.category, "ar", l.category_ar),
+    // Which of the three this is, so the home chips can filter locally.
+    kind: l.type as "attraction" | "tour" | "event",
+    // Folded and localised for display; `canonicalCity` of either label is
+    // still the key the home filter compares against.
+    city: cityLabel(l.city, "en"),
+    cityAr: cityLabel(l.city, "ar"),
+    image: l.images?.[0] || "",
+    // Carried so a tapped destination can open the same detail sheet as a
+    // hotel or a restaurant instead of being a dead end.
+    images: l.images || [],
+    description: l.description_en || "",
+    descriptionAr: l.description_ar || "",
+    rating: l.rating || 0,
+    // The tie-break behind `rating` when the home screen picks its
+    // featured five: 5.0 from one review is not better than 4.8 from forty.
+    reviewCount: l.reviewCount || 0,
+    owner_id: l.ownerId || null,
+    details: toDetails(l),
+  };
+}
+
+export type Destination = ReturnType<typeof toDestination>;
+
 /**
  * Hook to get lodgings from Convex
+ *
+ * The mapping is memoised on the query result. Convex hands back the same
+ * array until the data changes, so this keeps each card's props stable across
+ * renders — every screen's own `useMemo` downstream of it used to recompute on
+ * each keystroke, because this built a fresh array every time it ran.
  */
 export function useLodgings(type?: Lodging["type"]) {
   const listings = useQuery(api.listings.queries.listListings, {
     type: "hotel",
   });
 
-  const lodgings = listings
-    ? listings.map(toLodging).filter((l) => !type || l.type === type)
-    : [];
+  const all = useMemo(() => (listings ? listings.map(toLodging) : []), [listings]);
+  const lodgings = useMemo(
+    () => (type ? all.filter((l) => l.type === type) : all),
+    [all, type]
+  );
 
   return {
     lodgings,
@@ -128,36 +188,17 @@ export function useLodgings(type?: Lodging["type"]) {
 export function useDestinations() {
   const listings = useQuery(api.listings.queries.listListings, {});
 
-  const destinations = listings
-    ? listings
-        .filter(
-          (l) => l.type === "attraction" || l.type === "tour" || l.type === "event"
-        )
-        .map((l) => ({
-          id: l._id,
-          name: l.name_en,
-          nameAr: l.name_ar,
-          subtitle: l.category,
-          subtitleAr: l.category_ar || l.category,
-          // Which of the three this is, so the home chips can filter locally.
-          kind: l.type as "attraction" | "tour" | "event",
-          // Carried so the home filter can narrow destinations by place; the
-          // subtitle above is the category, not a location.
-          city: l.city,
-          image: l.images?.[0] || "",
-          // Carried so a tapped destination can open the same detail sheet as a
-          // hotel or a restaurant instead of being a dead end.
-          images: l.images || [],
-          description: l.description_en || "",
-          descriptionAr: l.description_ar || "",
-          rating: l.rating || 0,
-          // The tie-break behind `rating` when the home screen picks its
-          // featured five: 5.0 from one review is not better than 4.8 from forty.
-          reviewCount: l.reviewCount || 0,
-          owner_id: l.ownerId || null,
-          details: toDetails(l),
-        }))
-    : [];
+  const destinations = useMemo(
+    () =>
+      listings
+        ? listings
+            .filter(
+              (l) => l.type === "attraction" || l.type === "tour" || l.type === "event"
+            )
+            .map(toDestination)
+        : [],
+    [listings]
+  );
 
   return {
     destinations,
@@ -181,35 +222,6 @@ export function useHomeData() {
 }
 
 /**
- * The cities that actually have public listings, with their counts.
- *
- * Driven off the data rather than a hardcoded list on purpose: a filter that
- * offers a city with nothing in it is worse than one that does not offer it.
- *
- * Rows are folded to their canonical city first. The backend counts whatever
- * string a listing stores, and production still stores Al-Ahsa villages —
- * without this the filter offered "الأحساء" three times over, once per village,
- * each with a third of the count.
- */
-export function useCities() {
-  const cities = useQuery(api.listings.queries.getCities, {});
-
-  const grouped = useMemo(() => {
-    if (!cities) return [];
-    const totals = new Map<string, number>();
-    for (const { city, count } of cities) {
-      const key = canonicalCity(city);
-      totals.set(key, (totals.get(key) || 0) + count);
-    }
-    return Array.from(totals.entries())
-      .map(([city, count]) => ({ city, count }))
-      .sort((a, b) => b.count - a.count || a.city.localeCompare(b.city));
-  }, [cities]);
-
-  return { cities: grouped, isLoading: cities === undefined };
-}
-
-/**
  * Hook to search listings
  */
 export function useSearchListings(query: string, type?: string) {
@@ -224,35 +236,160 @@ export function useSearchListings(query: string, type?: string) {
   };
 }
 
+type Listing = Doc<"listings">;
+
 /**
- * Hook to get user's favorites from Convex
+ * Everything saved, newest first, for the Favorites tab.
+ *
+ * A signed-in account's favourites live on the server. A guest's live on the
+ * device (the heart works without an account), and used to be shown nowhere:
+ * this hook skipped the server query for a guest and returned nothing, so the
+ * tab said "No favorites yet" under a row of red hearts. A guest's ids are now
+ * resolved against the public listings — the same `listListings({})`
+ * subscription Home already holds, so it costs no extra round trip.
  */
 export function useFavorites() {
-  const { isAuthenticated } = useConvexAuth();
-  const favorites = useQuery(
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const serverFavorites = useQuery(
     api.users.queries.getFavorites,
     isAuthenticated ? {} : "skip"
   );
+  const localIds = useAppStore((state) => state.favorites);
+  const needsPublic = !authLoading && !isAuthenticated && localIds.length > 0;
+  const publicListings = useQuery(
+    api.listings.queries.listListings,
+    needsPublic ? {} : "skip"
+  );
 
-  return {
-    favorites: favorites || [],
-    isLoading: isAuthenticated && favorites === undefined,
+  const favorites = useMemo<Listing[]>(() => {
+    if (isAuthenticated) {
+      // The server keeps them in the order they were added; the newest is
+      // the one a guest is most likely looking for.
+      return (serverFavorites ?? [])
+        .filter((l): l is Listing => l != null)
+        .reverse();
+    }
+    if (!publicListings) return [];
+    const byId = new Map(publicListings.map((l) => [l._id as string, l]));
+    return localIds
+      .map((id) => byId.get(id))
+      .filter((l): l is Listing => l != null)
+      .reverse();
+  }, [isAuthenticated, serverFavorites, publicListings, localIds]);
+
+  // Loading until the answer is known, including while auth itself is still
+  // settling — otherwise "No favorites yet" flashed before a signed-in list.
+  const isLoading =
+    authLoading ||
+    (isAuthenticated ? serverFavorites === undefined : needsPublic && publicListings === undefined);
+
+  return { favorites, isLoading };
+}
+
+/**
+ * The ids of everything saved, for the hearts on the cards: the server's for
+ * an account, the device's for a guest.
+ */
+export function useFavoriteIds(): Set<string> {
+  const { isAuthenticated } = useConvexAuth();
+  const serverFavorites = useQuery(
+    api.users.queries.getFavorites,
+    isAuthenticated ? {} : "skip"
+  );
+  const localIds = useAppStore((state) => state.favorites);
+
+  return useMemo(() => {
+    if (isAuthenticated) {
+      return new Set(
+        (serverFavorites ?? []).filter((l): l is Listing => l != null).map((l) => l._id as string)
+      );
+    }
+    return new Set(localIds);
+  }, [isAuthenticated, serverFavorites, localIds]);
+}
+
+/**
+ * Save or unsave a listing.
+ *
+ * For an account the change is applied to the local query results at once,
+ * then confirmed by the server — the heart used to wait out a network round
+ * trip before it turned red, so people tapped it again and the second tap
+ * undid the first. The added listing is found in whichever cached listing
+ * query already holds it, which is every screen that shows a heart.
+ *
+ * Rejects when the server refuses (the favourites cap, a deleted listing), so
+ * the caller can say so; the optimistic change is rolled back by Convex.
+ */
+export function useToggleFavorite() {
+  const { isAuthenticated } = useConvexAuth();
+  const addLocal = useAppStore((state) => state.addFavorite);
+  const removeLocal = useAppStore((state) => state.removeFavorite);
+  const toggleOnServer = useMutation(api.users.mutations.toggleFavorite).withOptimisticUpdate(
+    (localStore, { listingId }) => {
+      const current = localStore.getQuery(api.users.queries.getFavorites, {});
+      if (current === undefined) return;
+      const saved = current.some((l) => l?._id === listingId);
+      if (saved) {
+        localStore.setQuery(
+          api.users.queries.getFavorites,
+          {},
+          current.filter((l) => l?._id !== listingId)
+        );
+        return;
+      }
+      for (const { value } of localStore.getAllQueries(api.listings.queries.listListings)) {
+        const listing = value?.find((l) => l._id === listingId);
+        if (listing) {
+          localStore.setQuery(api.users.queries.getFavorites, {}, [...current, listing]);
+          return;
+        }
+      }
+    }
+  );
+
+  return async (listingId: string, currentlySaved: boolean) => {
+    if (!isAuthenticated) {
+      if (currentlySaved) removeLocal(listingId);
+      else addLocal(listingId);
+      return;
+    }
+    await toggleOnServer({ listingId: listingId as Id<"listings"> });
   };
 }
 
 /**
- * Hook to toggle a favorite
+ * Carry a guest's hearts into the account they sign in to.
+ *
+ * Without this, signing in made every heart a guest had set disappear: the
+ * cards switch to the server's list, which knew nothing of them. Runs once the
+ * account's own list has loaded, adds only what is missing — the server's
+ * mutation toggles, so re-sending something already saved would remove it —
+ * and clears the device's list *first*, so a re-render while the additions are
+ * in flight cannot send any of them twice.
  */
-export function useToggleFavorite() {
+export function useMergeGuestFavorites() {
+  const { isAuthenticated } = useConvexAuth();
+  const serverFavorites = useQuery(
+    api.users.queries.getFavorites,
+    isAuthenticated ? {} : "skip"
+  );
+  const localIds = useAppStore((state) => state.favorites);
+  const clearLocal = useAppStore((state) => state.clearFavorites);
   const toggleFavorite = useMutation(api.users.mutations.toggleFavorite);
 
-  return async (listingId: string) => {
-    try {
-      // listingId from Convex is already the right type
-      await toggleFavorite({ listingId: listingId as any });
-    } catch (err) {
+  useEffect(() => {
+    if (!isAuthenticated || serverFavorites === undefined || localIds.length === 0) return;
+    const saved = new Set(
+      serverFavorites.filter((l): l is Listing => l != null).map((l) => l._id as string)
+    );
+    const missing = localIds.filter((id) => !saved.has(id));
+    clearLocal();
+    for (const id of missing) {
+      // Best effort: a listing deleted since, or the favourites cap, is not
+      // worth interrupting a sign-in over.
+      toggleFavorite({ listingId: id as Id<"listings"> }).catch(() => {});
     }
-  };
+  }, [isAuthenticated, serverFavorites, localIds, clearLocal, toggleFavorite]);
 }
 
 /**

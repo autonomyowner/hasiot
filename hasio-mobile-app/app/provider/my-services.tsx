@@ -1,65 +1,97 @@
-import React, { useCallback, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  Image,
-  RefreshControl,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { BackButton, SkeletonFade, SkeletonOwnerList } from "@/components/ui";
-import Animated, { FadeInDown } from "react-native-reanimated";
-import { useQuery } from "convex/react";
+import {
+  BackButton,
+  Button,
+  FilterChip,
+  SkeletonFade,
+  SkeletonOwnerList,
+} from "@/components/ui";
+import Animated from "react-native-reanimated";
+import { useRouter } from "expo-router";
+import { Feather } from "@expo/vector-icons";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
-import { ApprovalStatus } from "@/types";
-import { type AppFonts } from "@/constants/colors";
+import { useConvexUser } from "@/hooks/useConvexUser";
+import { appAlert } from "@/stores/dialogStore";
+import { OwnerStatusBadge, ReviewNote } from "@/components/hosting/OwnerStatus";
+import { ownerStatusOf } from "@/lib/listingForm";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { colors, type AppFonts } from "@/constants/colors";
+import { enterFade } from "@/constants/motion";
+import type { TranslationKey } from "@/constants/translations";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: "#D97706",
-  approved: "#059669",
-  rejected: "#DC2626",
+// Each service type's label, looked up rather than picked by an eight-deep
+// ternary.
+const SERVICE_TYPE_LABEL: Record<string, TranslationKey> = {
+  tour_guide: "tourGuide",
+  photographer: "photographer",
+  driver: "driver",
+  translator: "translator",
+  event_planner: "eventPlanner",
+  catering: "catering",
+  equipment_rental: "equipmentRental",
 };
+
+const FILTERS = ["all", "pending", "approved", "rejected"] as const;
 
 export default function MyServicesScreen() {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL, language } = useLanguage();
+  const router = useRouter();
+  const { isApproved } = useConvexUser();
+  const deleteMyService = useMutation(api.services.mutations.deleteMyService);
+  // The card being deleted, dimmed and inert until the server answers.
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | string>("all");
-  const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
-
+  // A live query: nothing for a pull-to-refresh to fetch, so the one that
+  // spun for a fixed second is gone.
   const myServices = useQuery(api.services.queries.getMyServices, {});
   const isLoading = myServices === undefined;
 
   const services = myServices ?? [];
+  const hasAny = services.length > 0;
 
   const filteredServices = filter === "all"
     ? services
-    : services.filter((s: any) => s.status === filter);
+    : services.filter((s) => ownerStatusOf(s.status) === filter);
+
+  // My Services used to be read-only: a provider could post a service but
+  // never change or remove it. Delete is permanent, so it asks first.
+  const remove = async (serviceId: string) => {
+    setDeletingId(serviceId);
+    try {
+      await deleteMyService({ serviceId: serviceId as Id<"services"> });
+    } catch {
+      appAlert(t("error"), t("deleteFailed"));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+  const confirmDelete = (serviceId: string) => {
+    appAlert(t("deleteServiceTitle"), t("deleteForGoodMessage"), [
+      { text: t("cancel"), style: "cancel" },
+      { text: t("delete"), style: "destructive", onPress: () => void remove(serviceId) },
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#4F5E10"
-            colors={["#4F5E10"]}
-          />
-        }
-      >
-        {/* Header */}
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header — the short staggered entrance, as on My Listings. */}
         <Animated.View
-          entering={FadeInDown.delay(100).duration(600)}
+          entering={enterFade(0)}
           style={[styles.header, isRTL && styles.headerRTL]}
         >
           <BackButton />
@@ -68,40 +100,26 @@ export default function MyServicesScreen() {
           </Text>
         </Animated.View>
 
-        {/* Filters */}
-        <Animated.View
-          entering={FadeInDown.delay(200).duration(600)}
-          style={styles.filterContainer}
-        >
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={[
-              styles.filterScroll,
-              isRTL && styles.filterScrollRTL,
-            ]}
+        {/* Filters: the app's ink chips, wrapping and mirrored in Arabic. */}
+        {(isLoading || hasAny) && (
+          <Animated.View
+            entering={enterFade(1)}
+            style={[styles.filterRow, isRTL && styles.rowRTL]}
           >
-            {(["all", "pending", "approved", "rejected"] as const).map((status) => (
-              <Pressable
+            {FILTERS.map((status) => (
+              <FilterChip
                 key={status}
-                style={[
-                  styles.filterButton,
-                  filter === status && styles.filterButtonActive,
-                ]}
+                label={
+                  status === "all"
+                    ? t("all")
+                    : t(`status${status.charAt(0).toUpperCase() + status.slice(1)}` as any)
+                }
+                selected={filter === status}
                 onPress={() => setFilter(status)}
-              >
-                <Text
-                  style={[
-                    styles.filterText,
-                    filter === status && styles.filterTextActive,
-                  ]}
-                >
-                  {status === "all" ? t("all") : t(`status${status.charAt(0).toUpperCase() + status.slice(1)}` as any)}
-                </Text>
-              </Pressable>
+              />
             ))}
-          </ScrollView>
-        </Animated.View>
+          </Animated.View>
+        )}
 
         {/* Services List — cross-faded in from a skeleton of the same cards. */}
         <SkeletonFade
@@ -111,35 +129,108 @@ export default function MyServicesScreen() {
         {filteredServices.length > 0 ? (
           <View style={styles.listingsContainer}>
             {filteredServices.map((service: any) => (
-              <View key={service._id} style={styles.listingCard}>
-                {service.images && service.images.length > 0 && (
+              <View
+                key={service._id}
+                style={[styles.listingCard, deletingId === service._id && styles.cardBusy]}
+                pointerEvents={deletingId === service._id ? "none" : "auto"}
+              >
+                {/* The picture's height, photo or not — see My Listings. */}
+                {service.images?.[0] ? (
                   <Image
                     source={{ uri: service.images[0] }}
                     style={styles.listingImage}
+                    contentFit="cover"
+                    transition={200}
+                    cachePolicy="memory-disk"
                   />
+                ) : (
+                  <View style={[styles.listingImage, styles.imagePlaceholder]}>
+                    <Feather name="image" size={28} color={colors.onSurface.muted} />
+                  </View>
                 )}
                 <View style={styles.listingInfo}>
-                  <Text style={[styles.listingName, isRTL && styles.textRTL]}>
+                  <Text style={[styles.listingName, isRTL && styles.textRTL]} numberOfLines={2}>
                     {language === "ar" ? (service.title_ar || service.title_en || "—") : (service.title_en || "—")}
                   </Text>
                   <Text style={[styles.listingType, isRTL && styles.textRTL]}>
-                    {service.serviceType === "tour_guide" ? t("tourGuide") : service.serviceType === "photographer" ? t("photographer") : service.serviceType === "driver" ? t("driver") : service.serviceType === "translator" ? t("translator") : service.serviceType === "event_planner" ? t("eventPlanner") : service.serviceType === "catering" ? t("catering") : service.serviceType === "equipment_rental" ? t("equipmentRental") : t("otherService")}
+                    {t(SERVICE_TYPE_LABEL[service.serviceType] ?? "otherService")}
                   </Text>
-                  <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[service.status] || "#737373" }]}>
-                    <Text style={styles.statusText}>
-                      {service.status === "pending" ? t("statusPending") : service.status === "approved" ? t("statusApproved") : t("statusRejected")}
-                    </Text>
+                  <ReviewNote
+                    status={ownerStatusOf(service.status)}
+                    reason={service.rejectionReason}
+                    canEdit
+                  />
+                  <View style={[styles.cardFoot, isRTL && styles.rowRTL]}>
+                    <OwnerStatusBadge status={ownerStatusOf(service.status)} />
+                    <View style={[styles.actions, isRTL && styles.rowRTL]}>
+                      <Pressable
+                        onPress={() =>
+                          router.push({
+                            pathname: "/provider/post-service",
+                            params: { id: service._id },
+                          })
+                        }
+                        style={({ pressed }) => [
+                          styles.editButton,
+                          isRTL && styles.rowRTL,
+                          pressed && styles.pressed,
+                        ]}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("editService")}
+                      >
+                        <Feather name="edit-2" size={13} color={colors.ink} />
+                        <Text style={styles.editText}>{t("edit")}</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => confirmDelete(service._id)}
+                        style={({ pressed }) => [
+                          styles.deleteButton,
+                          isRTL && styles.rowRTL,
+                          pressed && styles.pressed,
+                        ]}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("deleteServiceTitle")}
+                      >
+                        <Feather name="trash-2" size={13} color={colors.signOut} />
+                        <Text style={styles.deleteText}>{t("delete")}</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 </View>
               </View>
             ))}
           </View>
-        ) : (
-          /* Empty State */
+        ) : hasAny ? (
+          /* Services exist, just none under this filter. */
           <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, isRTL && styles.textRTL]}>
-              {t("noListingsYet" as any)}
-            </Text>
+            <Text style={styles.emptyTitle}>{t("filterNoMatch")}</Text>
+            <Button
+              title={t("seeAll")}
+              variant="outline"
+              size="sm"
+              onPress={() => setFilter("all")}
+              style={styles.emptyButton}
+            />
+          </View>
+        ) : (
+          /* Nothing posted yet. It said "No listings yet" here — the
+             listings screen's words on the services screen. */
+          <View style={styles.emptyContainer}>
+            <Feather name="briefcase" size={30} color={colors.onSurface.muted} />
+            <Text style={styles.emptyTitle}>{t("noServicesYet")}</Text>
+            <Text style={styles.emptyBody}>{t("startAddingServices")}</Text>
+            {isApproved ? (
+              <Button
+                title={t("addFirstService")}
+                size="sm"
+                onPress={() => router.push("/provider/post-service")}
+                style={styles.emptyButton}
+              />
+            ) : (
+              <Text style={styles.emptyBody}>{t("verificationLocked")}</Text>
+            )}
           </View>
         )}
         </SkeletonFade>
@@ -172,35 +263,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   textRTL: {
     textAlign: "right",
   },
-  filterContainer: {
+  filterRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    paddingHorizontal: 24,
     paddingVertical: 16,
-  },
-  filterScroll: {
-    paddingHorizontal: 20,
-    gap: 8,
-  },
-  filterScrollRTL: {
-    flexDirection: "row-reverse",
-  },
-  filterButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-  },
-  filterButtonActive: {
-    backgroundColor: "#CCE745",
-    borderColor: "#CCE745",
-  },
-  filterText: {
-    fontSize: 14,
-    color: "#737373",
-    fontFamily: fonts.medium,
-  },
-  filterTextActive: {
-    color: "#1F1D17",
   },
   listingsContainer: {
     paddingHorizontal: 24,
@@ -216,9 +284,17 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
+  cardBusy: {
+    opacity: 0.5,
+  },
   listingImage: {
     width: "100%",
     height: 140,
+  },
+  imagePlaceholder: {
+    backgroundColor: colors.sand,
+    alignItems: "center",
+    justifyContent: "center",
   },
   listingInfo: {
     padding: 16,
@@ -231,31 +307,80 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   listingType: {
     fontSize: 13,
-    color: "#737373",
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
     marginBottom: 8,
-    textTransform: "capitalize",
   },
-  statusBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  cardFoot: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginTop: 8,
   },
-  statusText: {
-    fontSize: 12,
-    color: "#FFFFFF",
+  rowRTL: {
+    flexDirection: "row-reverse",
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: colors.primary.DEFAULT,
+  },
+  editText: {
+    fontSize: 12.5,
     fontFamily: fonts.semibold,
-    textTransform: "capitalize",
+    color: colors.ink,
+  },
+  // Outlined rather than filled: it is the action nobody should hit by
+  // accident, so it does not compete with Edit.
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 11,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(176, 73, 63, 0.35)",
+  },
+  deleteText: {
+    fontSize: 12.5,
+    fontFamily: fonts.semibold,
+    color: colors.signOut,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   emptyContainer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: 32,
     paddingTop: 40,
     alignItems: "center",
+    gap: 8,
   },
-  emptyText: {
-    fontSize: 16,
-    color: "#737373",
+  emptyTitle: {
+    fontSize: 17,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
     textAlign: "center",
+  },
+  emptyBody: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  emptyButton: {
+    marginTop: 8,
   },
   bottomSpacing: {
     height: 32,

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { View, Text, FlatList, StyleSheet } from "react-native";
 import Animated from "react-native-reanimated";
 import { useRouter } from "expo-router";
@@ -13,6 +13,12 @@ import { BookingRow, type BookingRowData } from "@/components/booking/BookingRow
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { todayRiyadhISO } from "@/lib/dates";
+import {
+  displayTotalSar,
+  nightsLabel,
+  partitionGuestBookings,
+  type StayTotal,
+} from "@/lib/bookingDisplay";
 import { haptic } from "@/lib/haptics";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
 import { colors, type AppFonts } from "@/constants/colors";
@@ -20,6 +26,10 @@ import { useThemedStyles } from "@/hooks/useAppFonts";
 import { ScreenGradient } from "@/components/ui/Gradients";
 
 type Tab = "upcoming" | "past";
+
+// Longer than a push takes to cover the list, shorter than a deliberate
+// second visit.
+const OPEN_GUARD_MS = 800;
 
 /**
  * The guest's own bookings.
@@ -33,36 +43,52 @@ export default function MyBookingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
-  const { format } = useCurrency();
+  const { format, currency } = useCurrency();
   const [tab, setTab] = useState<Tab>("upcoming");
 
   const bookings = useQuery(api.bookings.queries.getUserBookings, {});
   const today = todayRiyadhISO();
 
-  const { upcoming, past } = useMemo(() => {
-    const up: BookingRowData[] = [];
-    const old: BookingRowData[] = [];
-
-    for (const booking of bookings ?? []) {
-      const stillOpen = booking.status === "pending" || booking.status === "confirmed";
-      // A stay stays "upcoming" until the guest checks out, not until they
-      // check in — they are still living it on the middle night.
-      const endsAfterToday = (booking.checkOut ?? booking.date) >= today;
-      (stillOpen && endsAfterToday ? up : old).push(booking);
-    }
-    return { upcoming: up, past: old };
-  }, [bookings, today]);
+  // Soonest arrival first; see partitionGuestBookings.
+  const { upcoming, past } = useMemo(
+    () => partitionGuestBookings<BookingRowData>(bookings ?? [], today),
+    [bookings, today]
+  );
 
   const shown = tab === "upcoming" ? upcoming : past;
+
+  // Each tab says what it is missing. Both used to say "No bookings yet" —
+  // on Past too, right after the guest had just seen their stays under
+  // Upcoming.
+  const empty =
+    upcoming.length === 0 && past.length === 0
+      ? { title: t("noBookings"), hint: t("noBookingsHint") }
+      : tab === "upcoming"
+        ? { title: t("noUpcomingStays"), hint: t("noUpcomingStaysHint") }
+        : { title: t("noPastStays"), hint: t("noPastStaysHint") };
 
   // Stable identities so the memoised row is not handed a new callback or
   // a new labels object on every render of this screen. `t` is a useCallback
   // keyed on language, so these recompute once per language switch.
   const labels = useMemo(
-    () => ({ night: t("night"), nights: t("nights"), guests: t("guests"), formatPrice: format }),
-    [t, format]
+    () => ({
+      stay: (nights: number, guests?: number) => nightsLabel(nights, t, guests),
+      formatTotal: (stay: StayTotal) => format(displayTotalSar(stay, currency)),
+    }),
+    [t, format, currency]
   );
-  const openBooking = useCallback((id: string) => router.push(`/bookings/${id}`), [router]);
+  // One push per tap. A second tap before the detail screen had come up
+  // pushed it again — two identical screens to back out of.
+  const lastOpened = useRef(0);
+  const openBooking = useCallback(
+    (id: string) => {
+      const now = Date.now();
+      if (now - lastOpened.current < OPEN_GUARD_MS) return;
+      lastOpened.current = now;
+      router.push(`/bookings/${id}`);
+    },
+    [router]
+  );
   const renderItem = useCallback(
     ({ item }: { item: BookingRowData }) => (
       <BookingRow booking={item} language={language} isRTL={isRTL} labels={labels} onPress={openBooking} />
@@ -98,8 +124,8 @@ export default function MyBookingsScreen() {
           {shown.length === 0 ? (
             <View style={styles.empty}>
               <Feather name="calendar" size={40} color={colors.onSurface.muted} />
-              <Text style={styles.emptyTitle}>{t("noBookings")}</Text>
-              <Text style={styles.emptyHint}>{t("noBookingsHint")}</Text>
+              <Text style={styles.emptyTitle}>{empty.title}</Text>
+              <Text style={styles.emptyHint}>{empty.hint}</Text>
             </View>
           ) : (
             <FlatList

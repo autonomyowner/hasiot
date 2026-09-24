@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { I18nManager } from "react-native";
 import { useAppStore } from "@/stores/appStore";
 import { translations, type TranslationKey } from "@/constants/translations";
 import type { Language } from "@/types";
@@ -20,8 +19,9 @@ export function useLanguage() {
   const changeLanguage = useCallback(
     (newLang: Language) => {
       setLanguage(newLang);
-      // Note: In a real app, you might need to reload the app for RTL changes
-      // I18nManager.forceRTL(newLang === "ar");
+      // Deliberately no I18nManager.forceRTL: that only takes effect after a
+      // restart. Native layout stays left-to-right, and every screen mirrors
+      // itself from `isRTL`, so the switch is instant.
     },
     [setLanguage]
   );

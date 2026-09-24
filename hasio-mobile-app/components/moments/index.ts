@@ -1,1 +1,0 @@
-export { MomentCard } from "./MomentCard";

@@ -6,7 +6,7 @@ import { Feather } from "@expo/vector-icons";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
 import { BackButton } from "@/components/ui/BackButton";
-import { SkeletonList } from "@/components/ui/SkeletonScreens";
+import { SkeletonGroup, SkeletonLine, sweepPhase } from "@/components/ui/Skeleton";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { useLanguage } from "@/hooks/useLanguage";
 import { relativeTime } from "@/lib/dates";
@@ -14,6 +14,8 @@ import { routeForNotificationData } from "@/lib/bookingDisplay";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { ScreenGradient } from "@/components/ui/Gradients";
+
+const SKELETON_ROWS = 5;
 
 /**
  * The in-app notification inbox.
@@ -41,11 +43,14 @@ export default function NotificationsScreen() {
       <ScreenGradient />
       <View style={[styles.header, isRTL && styles.rowRTL]}>
         <BackButton />
-        <Text style={styles.title}>{t("notifications")}</Text>
+        {/* Right-aligned in Arabic, so it stays beside Back (which the row
+            moves to the right) instead of drifting to the far side. */}
+        <Text style={[styles.title, isRTL && styles.textRTL]}>{t("notifications")}</Text>
         {hasUnread ? (
           <Pressable
             onPress={() => markAllRead({}).catch(() => {})}
-            style={styles.markAll}
+            hitSlop={{ left: 8, right: 8 }}
+            style={({ pressed }) => [styles.markAll, pressed && styles.pressed]}
             accessibilityRole="button"
             accessibilityLabel={t("markAllRead")}
           >
@@ -55,7 +60,7 @@ export default function NotificationsScreen() {
       </View>
 
       {notifications === undefined ? (
-        <SkeletonList variant="lodging" isRTL={isRTL} count={4} />
+        <NotificationsSkeleton isRTL={isRTL} />
       ) : notifications.length === 0 ? (
         <View style={styles.empty}>
           <Feather name="bell" size={40} color={colors.onSurface.muted} />
@@ -75,7 +80,12 @@ export default function NotificationsScreen() {
                   if (unread) markRead({ notificationId: item._id }).catch(() => {});
                   router.push(routeForNotificationData(item.data, isBusinessOwner) as never);
                 }}
-                style={[styles.row, unread && styles.rowUnread, isRTL && styles.rowRTL]}
+                style={({ pressed }) => [
+                  styles.row,
+                  unread && styles.rowUnread,
+                  isRTL && styles.rowRTL,
+                  pressed && styles.pressed,
+                ]}
                 accessibilityRole="button"
               >
                 <View style={[styles.dot, !unread && styles.dotRead]} />
@@ -96,6 +106,50 @@ export default function NotificationsScreen() {
         />
       )}
     </View>
+  );
+}
+
+/**
+ * The inbox's own rows, in outline. It used to borrow the Stay tab's
+ * photo-card skeleton, so the page showed tall picture cards and then
+ * swapped them for thin text rows.
+ */
+function NotificationsSkeleton({ isRTL }: { isRTL: boolean }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useLanguage();
+
+  return (
+    <SkeletonGroup>
+      <View
+        style={styles.list}
+        accessible
+        accessibilityRole="progressbar"
+        accessibilityLabel={t("loading")}
+      >
+        {Array.from({ length: SKELETON_ROWS }, (_, i) => (
+          <View key={i} style={[styles.row, isRTL && styles.rowRTL]}>
+            <View style={[styles.dot, styles.dotRead]} />
+            <View style={styles.rowBody}>
+              <SkeletonLine width="55%" box={20} isRTL={isRTL} phase={sweepPhase(i)} />
+              <SkeletonLine
+                width="88%"
+                box={20}
+                isRTL={isRTL}
+                phase={sweepPhase(i)}
+                style={styles.skeletonBody}
+              />
+              <SkeletonLine
+                width="16%"
+                box={16}
+                isRTL={isRTL}
+                phase={sweepPhase(i)}
+                style={styles.skeletonTime}
+              />
+            </View>
+          </View>
+        ))}
+      </View>
+    </SkeletonGroup>
   );
 }
 
@@ -120,13 +174,19 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontFamily: fonts.serif,
     color: colors.ink,
   },
+  // 44pt tall: the text link it replaces was a 31pt target.
   markAll: {
-    paddingVertical: 6,
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: 4,
   },
   markAllText: {
     fontSize: 14,
     fontFamily: fonts.semibold,
     color: colors.primary.deep,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   list: {
     paddingHorizontal: 20,
@@ -146,11 +206,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   rowUnread: {
     backgroundColor: colors.mint,
   },
+  // The dark lime. The lime fill it used to be is 1.23:1 on the mint band
+  // behind an unread row — the one mark that says "unread" was near invisible.
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: colors.primary.DEFAULT,
+    backgroundColor: colors.primary.deep,
     marginTop: 6,
   },
   dotRead: {
@@ -175,6 +237,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.regular,
     color: colors.onSurface.muted,
+    marginTop: 6,
+  },
+  skeletonBody: {
+    marginTop: 3,
+  },
+  skeletonTime: {
     marginTop: 6,
   },
   textRTL: {

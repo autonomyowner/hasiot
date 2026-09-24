@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useRef, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useMutation } from "convex/react";
 import { api } from "@/backend";
 import { appAlert } from "@/stores/dialogStore";
 import { getReviewErrorKey } from "@/lib/reviewError";
 import { colors, type AppFonts } from "@/constants/colors";
+import type { TranslationKey } from "@/constants/translations";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import { ThemedTextInput } from "@/components/ui";
-import { AppDialogHost } from "@/components/ui/AppDialog";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { StarRating } from "./StarRating";
 
 const MAX_TEXT = 500;
@@ -42,26 +42,46 @@ export function ReviewSheet({
   onDone,
 }: ReviewSheetProps) {
   const styles = useThemedStyles(makeStyles);
-  const insets = useSafeAreaInsets();
   const { t, isRTL } = useLanguage();
 
   const [rating, setRating] = useState(existing?.rating ?? 0);
   const [content, setContent] = useState(existing?.content ?? "");
   const [anonymous, setAnonymous] = useState(existing?.isAnonymous ?? false);
   const [saving, setSaving] = useState(false);
+  // What to confirm once the sheet has gone. Raised while it was still
+  // leaving, the alert was carried off with it and reappeared underneath.
+  const notice = useRef<TranslationKey | null>(null);
 
   const addReview = useMutation(api.reviews.mutations.addReview);
   const updateReview = useMutation(api.reviews.mutations.updateMyReview);
   const deleteReview = useMutation(api.reviews.mutations.deleteMyReview);
 
   // Reopening the sheet on a different listing must not show the last one's
-  // text, and opening it to edit must show what is already there.
-  useEffect(() => {
-    if (!visible) return;
-    setRating(existing?.rating ?? 0);
-    setContent(existing?.content ?? "");
-    setAnonymous(existing?.isAnonymous ?? false);
-  }, [visible, existing]);
+  // text, and opening it to edit must show what is already there — including
+  // when the guest's own review only arrives after the sheet has opened.
+  const syncKey = visible ? (existing?._id ?? "new") : null;
+  const [prevSyncKey, setPrevSyncKey] = useState(syncKey);
+  if (syncKey !== prevSyncKey) {
+    setPrevSyncKey(syncKey);
+    if (syncKey !== null) {
+      setRating(existing?.rating ?? 0);
+      setContent(existing?.content ?? "");
+      setAnonymous(existing?.isAnonymous ?? false);
+    }
+  }
+
+  const finish = (key: TranslationKey) => {
+    notice.current = key;
+    onDone?.();
+    onClose();
+  };
+
+  const handleDismissed = () => {
+    const key = notice.current;
+    if (!key) return;
+    notice.current = null;
+    appAlert(t(key));
+  };
 
   const submit = async () => {
     if (saving) return;
@@ -79,7 +99,7 @@ export function ReviewSheet({
           content: text,
           isAnonymous: anonymous,
         });
-        appAlert(t("reviewUpdated"));
+        finish("reviewUpdated");
       } else {
         await addReview({
           listingId: listingId as never,
@@ -88,10 +108,8 @@ export function ReviewSheet({
           isAnonymous: anonymous,
           bookingId: bookingId as never,
         });
-        appAlert(t("reviewSaved"));
+        finish("reviewSaved");
       }
-      onDone?.();
-      onClose();
     } catch (error) {
       // Not the server's string: half of it is in the wrong language, and a
       // production deployment redacts anything that is not a ConvexError, so
@@ -107,9 +125,7 @@ export function ReviewSheet({
     setSaving(true);
     try {
       await deleteReview({ reviewId: existing._id as never });
-      appAlert(t("reviewDeleted"));
-      onDone?.();
-      onClose();
+      finish("reviewDeleted");
     } catch (error) {
       appAlert(t("error"), t(getReviewErrorKey(error)));
     } finally {
@@ -129,107 +145,112 @@ export function ReviewSheet({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      onDismissed={handleDismissed}
+      header={
         <View style={[styles.head, isRTL && styles.rowRTL]}>
           <Text style={styles.title}>
             {existing ? t("editYourReview") : t("rateThisPlace")}
           </Text>
-          <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button">
+          <Pressable
+            onPress={onClose}
+            hitSlop={12}
+            style={({ pressed }) => pressed && styles.pressed}
+            accessibilityRole="button"
+            accessibilityLabel={t("close")}
+          >
             <Feather name="x" size={22} color={colors.ink} />
           </Pressable>
         </View>
-
-        <View style={[styles.starsRow, isRTL && styles.starsRowRTL]}>
-          <StarRating
-            value={rating}
-            size={34}
-            onChange={setRating}
-            label={t("rateThisPlace")}
-          />
-        </View>
-
-        <ThemedTextInput
-          value={content}
-          onChangeText={(next: string) => setContent(next.slice(0, MAX_TEXT))}
-          placeholder={t("reviewPlaceholder")}
-          multiline
-          numberOfLines={4}
-          style={styles.input}
-          textAlign={isRTL ? "right" : "left"}
+      }
+    >
+      <View style={styles.starsRow}>
+        <StarRating
+          value={rating}
+          size={34}
+          onChange={setRating}
+          label={t("rateThisPlace")}
         />
-        <Text style={[styles.counter, isRTL && styles.textRTL]}>
-          {content.length}/{MAX_TEXT}
-        </Text>
+      </View>
 
-        <Pressable
-          style={[styles.anonRow, isRTL && styles.rowRTL]}
-          onPress={() => setAnonymous((v) => !v)}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: anonymous }}
-        >
-          <Feather
-            name={anonymous ? "check-square" : "square"}
-            size={19}
-            color={anonymous ? colors.primary.deep : colors.onSurface.muted}
-          />
-          <Text style={styles.anonText}>{t("reviewAnonymous")}</Text>
-        </Pressable>
+      <ThemedTextInput
+        value={content}
+        onChangeText={setContent}
+        // The field stops at the limit itself. Trimming in onChangeText handed
+        // the input a value it had not typed, and the cursor jumped to the end.
+        maxLength={MAX_TEXT}
+        placeholder={t("reviewPlaceholder")}
+        multiline
+        numberOfLines={4}
+        style={styles.input}
+        textAlign={isRTL ? "right" : "left"}
+      />
+      {/* The counter sits at the field's trailing end: right in English,
+          left in Arabic, where the typing starts on the right. */}
+      <Text style={[styles.counter, isRTL && styles.counterRTL]}>
+        {content.length}/{MAX_TEXT}
+      </Text>
 
+      <Pressable
+        style={({ pressed }) => [
+          styles.anonRow,
+          isRTL && styles.rowRTL,
+          pressed && styles.pressed,
+        ]}
+        onPress={() => setAnonymous((v) => !v)}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: anonymous }}
+      >
+        <Feather
+          name={anonymous ? "check-square" : "square"}
+          size={19}
+          color={anonymous ? colors.primary.deep : colors.onSurface.muted}
+        />
+        <Text style={styles.anonText}>{t("reviewAnonymous")}</Text>
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.submit,
+          saving && styles.submitDisabled,
+          pressed && !saving && styles.pressed,
+        ]}
+        onPress={submit}
+        disabled={saving}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: saving, busy: saving }}
+      >
+        {saving ? (
+          <ActivityIndicator color={colors.ink} />
+        ) : (
+          <Text style={styles.submitText}>
+            {existing ? t("reviewUpdate") : t("reviewSubmit")}
+          </Text>
+        )}
+      </Pressable>
+
+      {existing && (
         <Pressable
-          style={[styles.submit, saving && styles.submitDisabled]}
-          onPress={submit}
+          style={({ pressed }) => [styles.delete, pressed && styles.pressed]}
+          onPress={remove}
           disabled={saving}
           accessibilityRole="button"
         >
-          {saving ? (
-            <ActivityIndicator color={colors.ink} />
-          ) : (
-            <Text style={styles.submitText}>
-              {existing ? t("reviewUpdate") : t("reviewSubmit")}
-            </Text>
-          )}
+          <Text style={styles.deleteText}>{t("reviewDelete")}</Text>
         </Pressable>
-
-        {existing && (
-          <Pressable
-            style={styles.delete}
-            onPress={remove}
-            disabled={saving}
-            accessibilityRole="button"
-          >
-            <Text style={styles.deleteText}>{t("reviewDelete")}</Text>
-          </Pressable>
-        )}
-      </View>
-      {/* Alerts fired while this modal is open render above it. Without a host
-          inside the Modal every appAlert here would draw behind the sheet. */}
-      <AppDialogHost />
-    </Modal>
+      )}
+    </BottomSheet>
   );
 }
 
 const makeStyles = (fonts: AppFonts) =>
   StyleSheet.create({
-    backdrop: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(31, 29, 23, 0.35)" },
-    sheet: {
-      position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: colors.surface.DEFAULT,
-      borderTopLeftRadius: 28,
-      borderTopRightRadius: 28,
-      paddingHorizontal: 24,
-      paddingTop: 20,
-    },
     head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     rowRTL: { flexDirection: "row-reverse" },
-    textRTL: { textAlign: "right" },
     title: { fontFamily: fonts.serif, fontSize: 24, color: colors.ink },
     starsRow: { alignItems: "center", paddingVertical: 20 },
-    starsRowRTL: { alignItems: "center" },
     input: { minHeight: 96, textAlignVertical: "top", paddingTop: 12 },
     counter: {
       fontFamily: fonts.regular,
@@ -238,6 +259,7 @@ const makeStyles = (fonts: AppFonts) =>
       marginTop: 4,
       textAlign: "right",
     },
+    counterRTL: { textAlign: "left" },
     anonRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 14 },
     anonText: { fontFamily: fonts.medium, fontSize: 14, color: colors.onSurface.variant },
     // Lime is a fill, so its label is ink: white on it is 1.4:1.
@@ -252,4 +274,5 @@ const makeStyles = (fonts: AppFonts) =>
     submitText: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
     delete: { alignItems: "center", paddingVertical: 14, marginTop: 4 },
     deleteText: { fontFamily: fonts.medium, fontSize: 15, color: colors.signOut },
+    pressed: { opacity: 0.7 },
   });

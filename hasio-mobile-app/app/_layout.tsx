@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
@@ -26,11 +26,36 @@ import { ConvexProviderWithAuth } from "convex/react";
 import { convex, useAuthFromSecureStore } from "@/lib/convex";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AppDialogHost } from "@/components/ui/AppDialog";
+import { useLanguage } from "@/hooks/useLanguage";
+import { useAppStore } from "@/stores/appStore";
 
 import "../global.css";
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
+
+/**
+ * True once the persisted settings (language, onboarding, currency) are back.
+ *
+ * The splash waits for this as well as for the fonts. It used to lift as soon
+ * as the fonts were in, and the index route then showed a spinner while the
+ * settings loaded — splash, spinner, fade, entrance — and an Arabic user saw
+ * the first frame in English until their language arrived. A watchdog keeps a
+ * wedged storage read from holding the splash up forever.
+ */
+function useSettingsHydrated() {
+  const [hydrated, setHydrated] = useState(() => useAppStore.persist.hasHydrated());
+  useEffect(() => {
+    if (hydrated) return;
+    const unsubscribe = useAppStore.persist.onFinishHydration(() => setHydrated(true));
+    const watchdog = setTimeout(() => setHydrated(true), 3000);
+    return () => {
+      unsubscribe();
+      clearTimeout(watchdog);
+    };
+  }, [hydrated]);
+  return hydrated;
+}
 
 function InnerLayout() {
   // Both families load up front rather than on demand: the language toggle is
@@ -53,16 +78,33 @@ function InnerLayout() {
   // Fall through on error too — a failed font download must not leave the
   // splash screen up forever. System fonts are an acceptable fallback.
   const fontsReady = fontsLoaded || !!fontError;
+  const settingsReady = useSettingsHydrated();
+  const ready = fontsReady && settingsReady;
+  const { isRTL } = useLanguage();
 
   useEffect(() => {
-    if (fontsReady) {
+    if (ready) {
       SplashScreen.hideAsync();
     }
-  }, [fontsReady]);
+  }, [ready]);
 
-  if (!fontsReady) {
+  if (!ready) {
     return null;
   }
+
+  // Screens you drill into from a tab slide in, as a pushed screen does
+  // everywhere else; only the top-level hand-offs (launch, onboarding,
+  // sign-in, the tabs themselves) cross-fade. Every root screen used to fade,
+  // so opening My bookings dissolved in while the screens inside it slid.
+  // From the left in Arabic, where the reading — and the Back button — starts
+  // on the right. There the iOS back swipe only follows the finger with
+  // `animationMatchesGesture`; without it the custom animation pops the screen
+  // at once, sliding it away from the finger. Same pairing as every nested
+  // stack's layout.
+  const push = {
+    animation: isRTL ? "slide_from_left" : "slide_from_right",
+    animationMatchesGesture: isRTL,
+  } as const;
 
   return (
     <>
@@ -77,12 +119,12 @@ function InnerLayout() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="auth" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="business" />
-        <Stack.Screen name="provider" />
-        <Stack.Screen name="blocked-accounts" />
-        <Stack.Screen name="bookings" />
-        <Stack.Screen name="notifications" />
-        <Stack.Screen name="reviews" />
+        <Stack.Screen name="business" options={push} />
+        <Stack.Screen name="provider" options={push} />
+        <Stack.Screen name="blocked-accounts" options={push} />
+        <Stack.Screen name="bookings" options={push} />
+        <Stack.Screen name="notifications" options={push} />
+        <Stack.Screen name="reviews" options={push} />
       </Stack>
       <StatusBar style="dark" />
       {/* Branded alert dialog (appAlert). Native Modals that fire alerts while

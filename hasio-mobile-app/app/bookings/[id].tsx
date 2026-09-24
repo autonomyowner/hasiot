@@ -1,6 +1,15 @@
 import { appAlert } from "@/stores/dialogStore";
 import React, { useState } from "react";
-import { View, Text, ScrollView, StyleSheet, Pressable, Linking, Platform } from "react-native";
+import {
+  ActivityIndicator,
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Pressable,
+  Linking,
+  Platform,
+} from "react-native";
 import { Image } from "expo-image";
 import { useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,10 +23,10 @@ import { ReviewSheet } from "@/components/review";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-import { formatDateRange, formatISODate, todayRiyadhISO } from "@/lib/dates";
+import { formatISODate, todayRiyadhISO } from "@/lib/dates";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { SkeletonBookingDetail } from "@/components/ui/SkeletonScreens";
-import { nightsLabel } from "@/lib/bookingDisplay";
+import { displayTotalSar, nightsLabel, telUrl } from "@/lib/bookingDisplay";
 import { haptic } from "@/lib/haptics";
 import { colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient, SurfaceGradient } from "@/components/ui/Gradients";
@@ -26,7 +35,7 @@ export default function BookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
-  const { format } = useCurrency();
+  const { format, currency } = useCurrency();
   // Above the loading and not-found returns below, so the hook order holds.
   const styles = useThemedStyles(makeStyles);
   const promptStyles = useThemedStyles(makePromptStyles);
@@ -52,8 +61,12 @@ export default function BookingDetailScreen() {
   // Cancelling is only offered while it can still be honoured cleanly: before
   // arrival, and while the booking is still open. After check-in the room was
   // held and the night may be owed, so that is a conversation with the host.
+  // And only to the guest: cancelBooking refuses anyone else, and a host or
+  // an admin viewing the booking here was offered a button that could only
+  // fail.
   const canCancel =
     !!booking &&
+    booking.viewerRole === "guest" &&
     (booking.status === "pending" || booking.status === "confirmed") &&
     (booking.checkIn ?? booking.date) > todayRiyadhISO();
 
@@ -79,6 +92,18 @@ export default function BookingDetailScreen() {
         },
       },
     ]);
+  };
+
+  // Straight to openURL, as in the listing sheet — no canOpenURL first, which
+  // says no on Android 11+ for `tel:` because the manifest does not declare
+  // it. The stored number keeps its spaces, which some Android dialers
+  // reject; telUrl keeps only the digits. The call used to have no catch at
+  // all, so a failure was an unhandled rejection and a button that did nothing.
+  const callListing = () => {
+    if (!listing?.phone) return;
+    Linking.openURL(telUrl(listing.phone)).catch(() =>
+      appAlert(t("error"), t("detailCallFailed"))
+    );
   };
 
   const openDirections = () => {
@@ -137,8 +162,11 @@ export default function BookingDetailScreen() {
           <BookingStatusChip status={booking.status} />
           {booking.confirmationCode ? (
             <>
-              <Text style={styles.codeLabel}>{t("confirmationCode")}</Text>
-              <Text style={styles.code} selectable>
+              {/* To the right in Arabic, under the chip, which already is. */}
+              <Text style={[styles.codeLabel, isRTL && styles.textRTL]}>
+                {t("confirmationCode")}
+              </Text>
+              <Text style={[styles.code, isRTL && styles.textRTL]} selectable>
                 {booking.confirmationCode}
               </Text>
             </>
@@ -164,8 +192,12 @@ export default function BookingDetailScreen() {
             <View style={[styles.actions, isRTL && styles.rowRTL]}>
               {listing.phone ? (
                 <Pressable
-                  onPress={() => Linking.openURL(`tel:${listing.phone}`)}
-                  style={styles.actionButton}
+                  onPress={callListing}
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    isRTL && styles.rowRTL,
+                    pressed && styles.pressed,
+                  ]}
                   accessibilityRole="button"
                   accessibilityLabel={t("detailCall")}
                 >
@@ -176,7 +208,11 @@ export default function BookingDetailScreen() {
               {listing.coordinates ? (
                 <Pressable
                   onPress={openDirections}
-                  style={styles.actionButton}
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    isRTL && styles.rowRTL,
+                    pressed && styles.pressed,
+                  ]}
                   accessibilityRole="button"
                   accessibilityLabel={t("detailDirections")}
                 >
@@ -210,16 +246,29 @@ export default function BookingDetailScreen() {
             />
           ) : null}
           {booking.nights ? (
+            // Labelled "Stay": the value carries the guests as well, and the
+            // old label was the bare plural "nights" — "ليالٍ" in Arabic.
             <Row
-              label={t("nights")}
+              label={t("bookingStayLabel")}
               value={nightsLabel(booking.nights, t, booking.guests)}
               isRTL={isRTL}
             />
           ) : null}
           {booking.totalAmount != null ? (
+            // The same total the quote showed, in dollars too — see
+            // displayTotalSar for why it is not simply converted.
             <Row
               label={t("total")}
-              value={format(booking.totalAmount)}
+              value={format(
+                displayTotalSar(
+                  {
+                    totalAmount: booking.totalAmount,
+                    nights: booking.nights,
+                    pricePerNight: booking.pricePerNight,
+                  },
+                  currency
+                )
+              )}
               isRTL={isRTL}
               emphasis
             />
@@ -245,13 +294,17 @@ export default function BookingDetailScreen() {
         ) : null}
 
         {booking.status === "pending" ? (
-          <Text style={styles.pendingNote}>{t("bookingPendingNote")}</Text>
+          <Text style={[styles.pendingNote, isRTL && styles.textRTL]}>
+            {t("bookingPendingNote")}
+          </Text>
         ) : null}
 
         {/* The stay is over and this guest has not rated it yet. `viewerRole`
             keeps it off a host's or an admin's view of the same booking —
-            neither of them stayed here. */}
-        {booking.status === "completed" && booking.viewerRole === "guest" && !myReview ? (
+            neither of them stayed here. `=== null`, not falsy: `undefined`
+            is the review still loading, and the card used to flash up for
+            guests who had already rated the stay. */}
+        {booking.status === "completed" && booking.viewerRole === "guest" && myReview === null ? (
           <View style={promptStyles.ratePrompt}>
             <Text style={[promptStyles.ratePromptTitle, isRTL && styles.textRTL]}>
               {t("rateYourStay")}
@@ -260,7 +313,11 @@ export default function BookingDetailScreen() {
               {t("rateYourStayBody")}
             </Text>
             <Pressable
-              style={[promptStyles.ratePromptButton, isRTL && promptStyles.alignEnd]}
+              style={({ pressed }) => [
+                promptStyles.ratePromptButton,
+                isRTL && promptStyles.alignEnd,
+                pressed && styles.pressed,
+              ]}
               onPress={() => setReviewOpen(true)}
               accessibilityRole="button"
               accessibilityLabel={t("rateThisPlace")}
@@ -274,12 +331,22 @@ export default function BookingDetailScreen() {
           <Pressable
             onPress={handleCancel}
             disabled={cancelling}
-            style={[styles.cancelButton, cancelling && styles.cancelButtonDisabled]}
+            style={({ pressed }) => [
+              styles.cancelButton,
+              cancelling && styles.cancelButtonDisabled,
+              pressed && styles.pressed,
+            ]}
             accessibilityRole="button"
             accessibilityLabel={t("cancelBooking")}
             accessibilityState={{ disabled: cancelling, busy: cancelling }}
           >
-            <Text style={styles.cancelButtonText}>{t("cancelBooking")}</Text>
+            {/* A spinner while the cancellation is on its way: the button
+                used to just dim, which read as disabled, not as working. */}
+            {cancelling ? (
+              <ActivityIndicator color={colors.signOut} />
+            ) : (
+              <Text style={styles.cancelButtonText}>{t("cancelBooking")}</Text>
+            )}
           </Pressable>
         ) : null}
       </ScrollView>
@@ -418,10 +485,15 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
+    // 44pt tall; the padding alone made them 38.
+    minHeight: 44,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 999,
     backgroundColor: colors.mint,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   actionText: {
     fontSize: 14,
