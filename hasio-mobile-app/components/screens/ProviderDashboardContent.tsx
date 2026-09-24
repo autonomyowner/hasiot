@@ -15,6 +15,8 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { useQuery } from "convex/react";
+import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { VerificationBanner } from "@/components/VerificationBanner";
@@ -30,10 +32,20 @@ export default function ProviderDashboardContent() {
   const router = useRouter();
   const isFocused = useIsFocused();
   const { t, isRTL } = useLanguage();
-  const { verificationStatus, isApproved } = useConvexUser();
+  const { verificationStatus, isApproved, isSignedIn } = useConvexUser();
 
-  // NOTE: requests / views figures in the stat cards below are static
-  // placeholders — no backend metrics are bound in this screen yet.
+  // Real counts of the provider's own services. The cards used to show a
+  // fixed "—" beside "0 · demo" requests and views: nothing counts either,
+  // and a dashboard of placeholders reads as a product that does not work.
+  // The same subscription My Services holds, so opening it costs nothing.
+  const myServices = useQuery(api.services.queries.getMyServices, isSignedIn ? {} : "skip");
+  const counts = myServices
+    ? {
+        total: myServices.length,
+        live: myServices.filter((service) => service.status === "approved").length,
+        inReview: myServices.filter((service) => service.status === "pending").length,
+      }
+    : null;
 
   return (
     <View style={styles.container}>
@@ -71,19 +83,19 @@ export default function ProviderDashboardContent() {
           {/* Stat cards over the ink band */}
           <View style={styles.statsRow}>
             <StatCard
-              value="—"
-              label={isRTL ? "الخدمات" : "Services"}
-              delta={isRTL ? "أضف خدمتك الأولى" : "Add your first service"}
+              value={counts ? String(counts.total) : "—"}
+              label={t("statServices")}
+              delta={counts && counts.total === 0 ? t("statAddFirstService") : ""}
             />
             <StatCard
-              value="0"
-              label={isRTL ? "الطلبات" : "Requests"}
-              delta={isRTL ? "تجريبي" : "demo"}
+              value={counts ? String(counts.live) : "—"}
+              label={t("statLive")}
+              delta=""
             />
             <StatCard
-              value="0"
-              label={isRTL ? "المشاهدات" : "Views"}
-              delta={isRTL ? "تجريبي" : "demo"}
+              value={counts ? String(counts.inReview) : "—"}
+              label={t("statInReview")}
+              delta=""
             />
           </View>
         </Animated.View>
