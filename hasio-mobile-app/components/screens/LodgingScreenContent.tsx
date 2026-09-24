@@ -219,6 +219,7 @@ export function LodgingScreenContent() {
                   variant="outline"
                   size="sm"
                   onPress={showAll}
+                  hitSlop={6}
                   style={styles.emptyAction}
                 />
               )}

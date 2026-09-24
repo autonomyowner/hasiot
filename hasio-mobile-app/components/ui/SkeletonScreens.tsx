@@ -2,6 +2,15 @@ import React from "react";
 import { StyleSheet, View } from "react-native";
 import { colors } from "@/constants/colors";
 import {
+  CHIP_GAP,
+  chipHeight,
+  HOME_CHIP_ROW_MARGIN_TOP,
+  HOME_GRID_CARD_HEIGHT,
+  HOME_GRID_CARD_TALL_HEIGHT,
+  HOME_SECTION_EYEBROW,
+  HOME_SECTION_MARGIN_BOTTOM,
+  HOME_SECTION_MARGIN_TOP,
+  HOME_SECTION_TITLE,
   LODGING_CARD_CHIP_PADDING_VERTICAL,
   LODGING_CARD_CHIP_TEXT,
   LODGING_CARD_HEIGHT,
@@ -156,19 +165,24 @@ function SkeletonSectionHeader({
 }) {
   // A column, not a row: the eyebrow stacks over the title. SkeletonLine
   // aligns its own bar, so the block needs no RTL variant of its own.
+  //
+  // The boxes are the line heights the Home heads are set in, raised for
+  // Arabic the way the heads themselves are (an RTL layout is always the
+  // Arabic one here). They used to be 12 and 26 — short of the real lines even
+  // in English, and ~30pt short in Arabic, so the page jumped as data landed.
   return (
     <View style={styles.sectionHeader}>
       {eyebrow && (
         <SkeletonLine
           width={110}
-          box={12}
+          box={lineHeightFor(HOME_SECTION_EYEBROW, isRTL)}
           isRTL={isRTL}
           phase={sweepPhase(seed)}
         />
       )}
       <SkeletonLine
         width={210}
-        box={26}
+        box={lineHeightFor(HOME_SECTION_TITLE, isRTL)}
         isRTL={isRTL}
         phase={sweepPhase(seed + 1)}
       />
@@ -198,19 +212,22 @@ function SkeletonDestinationGrid({
 
 /**
  * The home screen below its search bar: the kind chips, the featured rail, the
- * stay banner, then the "more" grid. `DestinationGridCard` alternates a tall
- * card in on every third position, which is why the heights below are uneven.
+ * stay banner, then the "more" grid. The grid's first row is a short card
+ * beside a tall one — see `isTallGridCard` on the Home screen — which is why
+ * the heights below are uneven.
  */
 export function SkeletonHomeSections({ isRTL = false }: { isRTL?: boolean }) {
   return (
     <View>
-      {/* Kind chips — "All" plus whichever kinds the data holds. */}
+      {/* Kind chips — "All" plus whichever kinds the data holds. As tall as
+          a FilterChip in the language being shown: the label's line height is
+          raised in Arabic, and the pills used to stay at the English 36pt. */}
       <View style={[styles.chipRow, isRTL && styles.rowReverse]}>
         {[56, 72, 64, 68].map((width, index) => (
           <SkeletonPill
             key={index}
             width={width}
-            height={36}
+            height={chipHeight(isRTL)}
             phase={sweepPhase(index)}
           />
         ))}
@@ -235,9 +252,13 @@ export function SkeletonHomeSections({ isRTL = false }: { isRTL?: boolean }) {
         <Skeleton radius={24} phase={sweepPhase(8)} style={styles.cardFill} />
       </View>
 
-      {/* More destinations — tall card at index % 3 === 1. */}
+      {/* More destinations — the first row of the two columns. */}
       <SkeletonSectionHeader seed={9} isRTL={isRTL} />
-      <SkeletonDestinationGrid heights={[210, 260]} seed={11} isRTL={isRTL} />
+      <SkeletonDestinationGrid
+        heights={[HOME_GRID_CARD_HEIGHT, HOME_GRID_CARD_TALL_HEIGHT]}
+        seed={11}
+        isRTL={isRTL}
+      />
     </View>
   );
 }
@@ -383,14 +404,14 @@ const styles = StyleSheet.create({
   // The chip rail, at the gutter and stride the real FilterChip row uses.
   chipRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: CHIP_GAP,
     paddingHorizontal: HOME_CONTAINER_PADDING,
-    marginTop: 18,
+    marginTop: HOME_CHIP_ROW_MARGIN_TOP,
   },
   sectionHeader: {
     paddingHorizontal: HOME_CONTAINER_PADDING,
-    marginTop: 24,
-    marginBottom: 14,
+    marginTop: HOME_SECTION_MARGIN_TOP,
+    marginBottom: HOME_SECTION_MARGIN_BOTTOM,
   },
   rail: {
     flexDirection: "row",
@@ -444,8 +465,10 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  // The home screen flips these three rows in Arabic rather than relying on
-  // I18nManager, which the app deliberately leaves off.
+  // In Arabic these three rows start at the right edge, as the real ones do:
+  // the chips and the rail are inverted FlatLists there, and the grid's first
+  // column is the right-hand one. (The app leaves I18nManager off, so nothing
+  // mirrors by itself.)
   rowReverse: {
     flexDirection: "row-reverse",
   },

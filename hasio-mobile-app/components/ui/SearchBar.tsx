@@ -3,6 +3,7 @@ import { View, TextInput, Pressable, StyleSheet, Text } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
+import { useLanguage } from "@/hooks/useLanguage";
 
 interface SearchBarProps {
   placeholder: string;
@@ -31,6 +32,7 @@ export function SearchBar({
   filterCount = 0,
 }: SearchBarProps) {
   const styles = useThemedStyles(makeStyles);
+  const { t } = useLanguage();
   const inputRef = useRef<TextInput>(null);
 
   return (
@@ -57,6 +59,10 @@ export function SearchBar({
             {label}
           </Text>
         ) : null}
+        {/* A search box, not a sentence: the keyboard offers Search rather
+            than Return, and autocorrect no longer gets to rewrite a place
+            name it does not know into a word it does before the search
+            ever sees it. */}
         <TextInput
           ref={inputRef}
           style={[label ? styles.inputCaptioned : styles.input, isRTL && styles.inputRTL]}
@@ -65,25 +71,38 @@ export function SearchBar({
           value={value}
           onChangeText={onChangeText}
           textAlign={isRTL ? "right" : "left"}
+          returnKeyType="search"
+          enablesReturnKeyAutomatically
+          autoCorrect={false}
+          autoCapitalize="none"
         />
       </View>
 
       {value.length > 0 ? (
+        // A full 44pt square with a name: it was an 18pt icon with 8pt of
+        // slop and nothing for a screen reader to call it.
         <Pressable
           onPress={() => onChangeText("")}
-          style={styles.clearButton}
-          hitSlop={8}
+          style={({ pressed }) => [styles.clearButton, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={t("clearSearch")}
         >
           <Feather name="x-circle" size={18} color={colors.onSurface.muted} />
         </Pressable>
       ) : onFilterPress ? (
         <Pressable
           onPress={onFilterPress}
-          style={styles.filterButton}
+          style={({ pressed }) => [styles.filterButton, pressed && styles.pressed]}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Filters"
-          accessibilityState={{ expanded: filterCount > 0 }}
+          // The count in words. It was a hard-coded English "Filters" with
+          // the count reported as `expanded`, which tells a screen reader a
+          // menu is open rather than that filters are on.
+          accessibilityLabel={
+            filterCount > 0
+              ? t("filtersActiveCount").replace("{n}", String(filterCount))
+              : t("filters")
+          }
         >
           {filterCount > 0 ? (
             <Text style={styles.filterCount}>{filterCount}</Text>
@@ -158,10 +177,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontFamily: fonts.regular,
   },
   // Pinned to its line box: under a caption, the platform's own vertical
-  // padding is what pushes the pair off-centre in the pill.
+  // padding is what pushes the pair off-centre in the pill. A minimum rather
+  // than a fixed height, though: at 22pt, large accessibility text sizes (and
+  // Cairo's taller line) were cut off inside the field.
   inputCaptioned: {
     fontSize: 15,
-    height: 22,
+    minHeight: 22,
     color: colors.ink,
     paddingVertical: 0,
     includeFontPadding: false,
@@ -171,7 +192,10 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     writingDirection: "rtl",
   },
   clearButton: {
-    paddingHorizontal: 10,
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
   filterButton: {
     width: 38,
@@ -180,5 +204,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     backgroundColor: colors.primary.DEFAULT,
     alignItems: "center",
     justifyContent: "center",
+  },
+  pressed: {
+    opacity: 0.7,
   },
 });

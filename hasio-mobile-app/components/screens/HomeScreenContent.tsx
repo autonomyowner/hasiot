@@ -1,12 +1,13 @@
-import React, { useState, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   RefreshControl,
   Pressable,
+  FlatList,
+  type ListRenderItem,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
@@ -16,15 +17,15 @@ import Animated, {
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
   interpolate,
   Extrapolation,
 } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useHomeData } from "@/hooks/useConvexData";
+import { useHomeData, type Destination } from "@/hooks/useConvexData";
 import {
+  Button,
   SearchBar,
   FilterChip,
   FilterSheet,
@@ -37,6 +38,7 @@ import {
 } from "@/components/ui";
 import { canonicalCity } from "@/constants/cities";
 import { categoryColors, colors, type AppFonts } from "@/constants/colors";
+import { enterFade } from "@/constants/motion";
 import { CaptionScrim, ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
@@ -44,10 +46,17 @@ import {
   CHIP_GAP,
   HOME_CARD_GAP,
   HOME_CARD_WIDTH,
+  HOME_CHIP_ROW_MARGIN_TOP,
   HOME_CONTAINER_PADDING,
+  HOME_GRID_CARD_HEIGHT,
+  HOME_GRID_CARD_TALL_HEIGHT,
   HOME_RAIL_CARD_HEIGHT,
   HOME_RAIL_CARD_WIDTH,
   HOME_RAIL_GAP,
+  HOME_SECTION_EYEBROW,
+  HOME_SECTION_MARGIN_BOTTOM,
+  HOME_SECTION_MARGIN_TOP,
+  HOME_SECTION_TITLE,
   HOME_STAY_BANNER_HEIGHT,
 } from "@/constants/layout";
 import { generatedImages } from "@/assets/images/generated";
@@ -55,20 +64,35 @@ import {
   ListingDetailSheet,
   type DetailItem,
 } from "@/components/listing/ListingDetailSheet";
-import type { TranslationKey } from "@/constants/translations";
-import type { Lodging } from "@/types";
+import { translations, type TranslationKey } from "@/constants/translations";
+import {
+  countForm,
+  matchesQuery,
+  normalizeForSearch,
+  searchableText,
+} from "@/lib/searchText";
+import type { Language, Lodging } from "@/types";
 import type { TabKey } from "@/app/(tabs)/_layout";
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 // Shared with the skeleton that stands in for this screen while it loads.
 const CARD_GAP = HOME_CARD_GAP;
 const CONTAINER_PADDING = HOME_CONTAINER_PADDING;
 const CARD_WIDTH = HOME_CARD_WIDTH;
 
+// Home's photo cards give a little more under the finger than the app's
+// default: they are larger, and 0.98 of a 300pt card barely registers.
+const CARD_PRESS_SCALE = 0.96;
+
+// The hero is a fixed 190pt box over a photograph. At the largest text sizes
+// its three lines outgrew it and were cut off by its rounded corners; they
+// still grow, up to this, and everything else on the screen scales freely.
+const HERO_MAX_FONT_SCALE = 1.3;
+
 // What the destination chips filter on. "all" is not a kind any row carries,
 // which is why it lives in the chip union and not in this one.
 type DestinationKind = "attraction" | "tour" | "event";
 type KindChip = "all" | DestinationKind;
+type KindChipItem = { key: KindChip; labelKey: TranslationKey };
 
 // Chip order, and the key each kind reads under — "Places" rather than
 // "Attractions" is a decision that belongs in the translations, not here.
@@ -78,9 +102,33 @@ const KIND_CHIPS: { key: DestinationKind; labelKey: TranslationKey }[] = [
   { key: "event", labelKey: "events" },
 ];
 
+const ALL_KINDS: KindChipItem = { key: "all", labelKey: "all" };
+
 // How many cards the featured rail holds. Small on purpose: past five the rail
 // stops being a selection and becomes the grid again, sideways.
 const FEATURED_COUNT = 5;
+
+// How many places the grid shows before "Show more", and how many each press
+// adds. The grid is not virtualised, so every card in it is built at once.
+const GRID_PAGE = 24;
+
+const kindChipKey = (chip: KindChipItem) => chip.key;
+const destinationKey = (dest: Destination) => dest.id;
+
+/**
+ * Whether the grid card at `index` is the tall one.
+ *
+ * The grid is two columns filled alternately, and each column alternates
+ * short and tall from opposite ends: the first row is short beside tall (as
+ * the skeleton draws it), and the two columns never drift more than one step
+ * apart. It used to be one wrapping row with a tall card at every third index,
+ * and a row is as tall as its tallest card — so each short card beside a tall
+ * one left a 50pt hole under it.
+ */
+function isTallGridCard(index: number): boolean {
+  const row = Math.floor(index / 2);
+  return index % 2 === 0 ? row % 2 === 1 : row % 2 === 0;
+}
 
 interface HomeScreenContentProps {
   onNavigateToTab?: (key: TabKey) => void;
@@ -135,6 +183,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
   const [filterOpen, setFilterOpen] = useState(false);
   const filterCount = activeFilterCount(filters);
   const [kind, setKind] = useState<KindChip>("all");
+  const [gridLimit, setGridLimit] = useState(GRID_PAGE);
 
   // The cheapest and dearest night on offer, snapped outwards to the slider's
   // step so its ends are round numbers. Derived from the data rather than
@@ -198,14 +247,17 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
   );
 
   // Same rule for the kind chips, off the unfiltered pool: which kinds exist
-  // is a fact about the data, not about what is currently selected.
-  const kindChips = useMemo<{ key: KindChip; labelKey: TranslationKey }[]>(() => {
+  // is a fact about the data, not about what is currently selected. The one
+  // exception is the selected kind itself, which keeps its chip if its last
+  // place goes, so the selection stays visible and the empty state can offer
+  // the way back.
+  const kindChips = useMemo<KindChipItem[]>(() => {
     const present = new Set(allDestinations.map((item) => item.kind));
     return [
-      { key: "all", labelKey: "all" },
-      ...KIND_CHIPS.filter((chip) => present.has(chip.key)),
+      ALL_KINDS,
+      ...KIND_CHIPS.filter((chip) => present.has(chip.key) || chip.key === kind),
     ];
-  }, [allDestinations]);
+  }, [allDestinations, kind]);
 
   // Featured is the best of what is on screen, not a flag on the row. It used
   // to be `rating >= 4.5`, and those ratings are seed data due to be cleared —
@@ -231,31 +283,70 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
     };
   }, [destinations]);
 
+  const gridItems = useMemo(() => rest.slice(0, gridLimit), [rest, gridLimit]);
+
+  // The debounce is for typing, not for clearing: emptying the box brings the
+  // browse view back at once, where it used to keep showing results for a
+  // query that was no longer there for another 300ms.
+  const query = searchQuery.trim() ? debouncedQuery : "";
+  const searchTerm = useMemo(() => normalizeForSearch(query), [query]);
+
+  // What each row can be found by, folded once per data change rather than on
+  // every keystroke: both names and both city labels, plus the kind of stay in
+  // both languages for a stay, and the category for a place. A place could not
+  // be found by its city at all before, and none of it matched Arabic typed
+  // without the hamza — see lib/searchText.ts.
+  const lodgingText = useMemo(
+    () =>
+      new Map(
+        lodgings.map((item) => [
+          item.id,
+          searchableText(
+            item.name,
+            item.nameAr,
+            item.city,
+            item.cityAr,
+            translations.en[`cat_${item.type}` as const],
+            translations.ar[`cat_${item.type}` as const]
+          ),
+        ])
+      ),
+    [lodgings]
+  );
+  const destinationText = useMemo(
+    () =>
+      new Map(
+        allDestinations.map((item) => [
+          item.id,
+          searchableText(
+            item.name,
+            item.nameAr,
+            item.subtitle,
+            item.subtitleAr,
+            item.city,
+            item.cityAr
+          ),
+        ])
+      ),
+    [allDestinations]
+  );
+
   // One results view for a query, for a set of filters, or for both. The
   // lists arriving here are already filtered, so this only applies the text
   // match — and when there is no query it applies nothing, which is what makes
   // filters alone able to drive the results view.
   const searchResults = useMemo(() => {
-    const query = debouncedQuery.trim().toLowerCase();
-    if (!query && filterCount === 0) return null;
+    if (!searchTerm && filterCount === 0) return null;
 
-    const lodgingResults = query
-      ? allLodging.filter(
-          (item) =>
-            item.name.toLowerCase().includes(query) ||
-            item.nameAr.includes(query) ||
-            item.city.toLowerCase().includes(query) ||
-            item.cityAr.includes(query)
+    const lodgingResults = searchTerm
+      ? allLodging.filter((item) =>
+          matchesQuery(lodgingText.get(item.id) ?? "", searchTerm)
         )
       : allLodging;
 
-    const destinationResults = query
-      ? destinations.filter(
-          (item) =>
-            item.name.toLowerCase().includes(query) ||
-            item.nameAr.includes(query) ||
-            item.subtitle.toLowerCase().includes(query) ||
-            item.subtitleAr.includes(query)
+    const destinationResults = searchTerm
+      ? destinations.filter((item) =>
+          matchesQuery(destinationText.get(item.id) ?? "", searchTerm)
         )
       : destinations;
 
@@ -264,51 +355,107 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
       destinations: destinationResults,
       total: lodgingResults.length + destinationResults.length,
     };
-  }, [debouncedQuery, filterCount, allLodging, destinations]);
+  }, [searchTerm, filterCount, allLodging, destinations, lodgingText, destinationText]);
 
   const [selected, setSelected] = useState<DetailItem | null>(null);
 
   // Home shows stays and destinations side by side, so each gets its own
   // mapping into the shared sheet's shape. Same normalising the list screens
   // do — done here so the sheet never has to know what it is showing.
-  const lodgingDetail = (item: Lodging): DetailItem => ({
-    id: item.id,
-    title: getLocalizedText(item.name, item.nameAr, language),
-    subtitle: getLocalizedText(item.city, item.cityAr, language),
-    badge: t(`cat_${item.type}` as const),
-    badgeColor: categoryColors[item.type],
-    rating: item.rating,
-    // A real nightly rate wins over the "$$$" band — see LodgingScreenContent.
-    priceLine: item.pricePerNight
-      ? `${format(item.pricePerNight)} ${t("perNight")}`
-      : item.priceRange
-        ? `${item.priceRange} ${t("perNight")}`
-        : undefined,
-    // Only a listing the host has actually priced can be booked — see the same
-    // note in LodgingScreenContent.
-    bookable: item.pricePerNight != null,
-    maxGuests: item.maxGuests,
-    images: item.images,
-    description: getLocalizedText(item.description, item.descriptionAr, language),
-    amenities: language === "ar" ? item.amenitiesAr : item.amenities,
-    details: item.details,
-    ownerId: item.owner_id,
-  });
+  const lodgingDetail = useCallback(
+    (item: Lodging): DetailItem => ({
+      id: item.id,
+      title: getLocalizedText(item.name, item.nameAr, language),
+      subtitle: getLocalizedText(item.city, item.cityAr, language),
+      badge: t(`cat_${item.type}` as const),
+      badgeColor: categoryColors[item.type],
+      rating: item.rating,
+      // A real nightly rate wins over the "$$$" band, and a band alone is not
+      // a nightly price — see LodgingScreenContent.
+      priceLine:
+        item.pricePerNight != null
+          ? `${format(item.pricePerNight)} ${t("perNight")}`
+          : item.priceRange || undefined,
+      // Only a listing the host has actually priced can be booked — see the same
+      // note in LodgingScreenContent.
+      bookable: item.pricePerNight != null,
+      maxGuests: item.maxGuests,
+      images: item.images,
+      description: getLocalizedText(item.description, item.descriptionAr, language),
+      amenities: language === "ar" ? item.amenitiesAr : item.amenities,
+      details: item.details,
+      ownerId: item.owner_id,
+    }),
+    [language, t, format]
+  );
 
-  // Destinations come straight off `useDestinations` rather than from a shared
-  // type, so this one is structural.
-  const destinationDetail = (
-    item: (typeof destinations)[number]
-  ): DetailItem => ({
-    id: item.id,
-    title: getLocalizedText(item.name, item.nameAr, language),
-    subtitle: getLocalizedText(item.subtitle, item.subtitleAr, language),
-    rating: item.rating,
-    images: item.images?.length ? item.images : item.image ? [item.image] : [],
-    description: getLocalizedText(item.description, item.descriptionAr, language),
-    details: item.details,
-    ownerId: item.owner_id,
-  });
+  const destinationDetail = useCallback(
+    (item: Destination): DetailItem => ({
+      id: item.id,
+      title: getLocalizedText(item.name, item.nameAr, language),
+      subtitle: getLocalizedText(item.subtitle, item.subtitleAr, language),
+      rating: item.rating,
+      images: item.images?.length ? item.images : item.image ? [item.image] : [],
+      description: getLocalizedText(item.description, item.descriptionAr, language),
+      details: item.details,
+      ownerId: item.owner_id,
+    }),
+    [language]
+  );
+
+  // Stable callbacks, handed the row they belong to, so the memoised cards
+  // below can sit out the renders that do not concern them — every keystroke
+  // in the search box used to rebuild every card on the screen.
+  const openLodging = useCallback(
+    (item: Lodging) => setSelected(lodgingDetail(item)),
+    [lodgingDetail]
+  );
+  const openDestination = useCallback(
+    (item: Destination) => setSelected(destinationDetail(item)),
+    [destinationDetail]
+  );
+  const closeDetail = useCallback(() => setSelected(null), []);
+  const openFilters = useCallback(() => setFilterOpen(true), []);
+  const closeFilters = useCallback(() => setFilterOpen(false), []);
+  const showAllKinds = useCallback(() => setKind("all"), []);
+  const showMore = useCallback(() => setGridLimit((limit) => limit + GRID_PAGE), []);
+
+  const renderKindChip = useCallback<ListRenderItem<KindChipItem>>(
+    ({ item }) => (
+      <FilterChip
+        label={t(item.labelKey)}
+        selected={kind === item.key}
+        onPress={() => setKind(item.key)}
+      />
+    ),
+    [t, kind]
+  );
+
+  const renderFeatured = useCallback<ListRenderItem<Destination>>(
+    ({ item }) => (
+      <FeaturedCard
+        dest={item}
+        language={language}
+        isRTL={isRTL}
+        onOpen={openDestination}
+      />
+    ),
+    [language, isRTL, openDestination]
+  );
+
+  const ratingLabel = t("rating");
+  const resultsLabel = searchResults
+    ? t(`resultsCount_${countForm(searchResults.total, language)}` as const).replace(
+        "{n}",
+        String(searchResults.total)
+      )
+    : "";
+  // The count in words for a screen reader. It was reported as `expanded`,
+  // which says a menu is open rather than that two filters are on.
+  const filterLabel =
+    filterCount > 0
+      ? t("filtersActiveCount").replace("{n}", String(filterCount))
+      : t("filters");
 
   // Runs on the UI thread — the JS thread being busy (queries resolving,
   // screens mounting) can no longer make the hero fade stutter.
@@ -338,16 +485,27 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <ScreenGradient />
+      {/* The keyboard used to swallow the first tap on a search result — it
+          only closed the keyboard, and the result needed a second tap.
+          "handled" lets a tap on anything that takes taps land at once, and
+          a drag of the page puts the keyboard away. The rows nested in here
+          say the same for themselves: each scroll view decides on its own. */}
       <Animated.ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
+            // `tintColor` is iOS only; Android draws its spinner in `colors`,
+            // which was left at the platform default.
             tintColor={colors.primary.deep}
+            colors={[colors.primary.deep]}
+            progressBackgroundColor={colors.surface.DEFAULT}
           />
         }
       >
@@ -370,15 +528,15 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
               over the whole screen rather than over the query. Active, it
               carries the count instead of the icon — ink on lime, never white. */}
           <Pressable
-            onPress={() => setFilterOpen(true)}
-            style={[
+            onPress={openFilters}
+            style={({ pressed }) => [
               styles.filterToggle,
               filterCount > 0 && styles.filterToggleActive,
+              pressed && styles.pressed,
             ]}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel={t("filters")}
-            accessibilityState={{ expanded: filterCount > 0 }}
+            accessibilityLabel={filterLabel}
           >
             {filterCount > 0 ? (
               <Text style={styles.filterToggleCount}>{filterCount}</Text>
@@ -407,14 +565,25 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           <View style={[styles.heroContent, isRTL && styles.heroContentRTL]}>
             <View style={[styles.eyebrowRow, isRTL && styles.eyebrowRowRTL]}>
               <Feather name="map-pin" size={12} color="#FFFFFF" />
-              <Text style={[styles.eyebrowText, isRTL && styles.textRTL]}>
-                EASTERN PROVINCE
+              {/* Translated: it was a hard-coded English "EASTERN PROVINCE"
+                  sitting over an otherwise Arabic hero. */}
+              <Text
+                style={[styles.eyebrowText, isRTL && styles.textRTL]}
+                maxFontSizeMultiplier={HERO_MAX_FONT_SCALE}
+              >
+                {t("homeHeroEyebrow")}
               </Text>
             </View>
-            <Text style={[styles.appName, isRTL && styles.textRTL]}>
+            <Text
+              style={[styles.appName, isRTL && styles.textRTL]}
+              maxFontSizeMultiplier={HERO_MAX_FONT_SCALE}
+            >
               Hasio
             </Text>
-            <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
+            <Text
+              style={[styles.subtitle, isRTL && styles.textRTL]}
+              maxFontSizeMultiplier={HERO_MAX_FONT_SCALE}
+            >
               {t("heroTagline")}
             </Text>
           </View>
@@ -443,24 +612,30 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
           skeleton={<SkeletonHomeSections isRTL={isRTL} />}
         >
         {/* Above the fork, so the same chips narrow the browse view and the
-            destination half of the results. */}
-        <ScrollView
+            destination half of the results.
+
+            This row and the rail below are FlatLists with `inverted` in
+            Arabic, which mirrors the order, the edge they start from, the
+            direction they scroll and (for the rail) the snapping, all in one
+            place. They used to reverse their arrays *and* lay them out
+            row-reverse; the two cancelled, and a content container is only as
+            wide as its content, so in Arabic both rows started on the left in
+            English order — while the skeleton, a full-width row-reverse View,
+            started on the right, and the content jumped sideways as it
+            landed. `alwaysBounceHorizontal={false}`: a row that fits has
+            nothing to scroll, and a swipe there should change tabs on iOS. */}
+        <FlatList
           horizontal
+          inverted={isRTL}
+          data={kindChips}
+          keyExtractor={kindChipKey}
+          renderItem={renderKindChip}
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.kindChips,
-            isRTL && styles.kindChipsRTL,
-          ]}
-        >
-          {(isRTL ? [...kindChips].reverse() : kindChips).map((chip) => (
-            <FilterChip
-              key={chip.key}
-              label={t(chip.labelKey)}
-              selected={kind === chip.key}
-              onPress={() => setKind(chip.key)}
-            />
-          ))}
-        </ScrollView>
+          alwaysBounceHorizontal={false}
+          keyboardShouldPersistTaps="handled"
+          style={styles.kindChipList}
+          contentContainerStyle={styles.kindChips}
+        />
 
         {searchResults ? (
           <View style={styles.searchResultsContainer}>
@@ -472,18 +647,18 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                   contentFit="contain"
                   transition={200}
                 />
-                <Text style={[styles.noResultsText, isRTL && styles.textRTL]}>
+                <Text style={styles.noResultsText}>
                   {/* An empty result from filters alone is a different problem
                       from an empty result for a search term, and needs a
                       different sentence — otherwise "no results for" hangs
                       with nothing after it. */}
-                  {debouncedQuery.trim() ? t("noResults") : t("filterNoMatch")}
+                  {searchTerm ? t("noResults") : t("filterNoMatch")}
                 </Text>
               </View>
             ) : (
               <>
                 <Text style={[styles.resultsCount, isRTL && styles.textRTL]}>
-                  {searchResults.total} {t("resultsFound")}
+                  {resultsLabel}
                 </Text>
 
                 {searchResults.lodging.length > 0 && (
@@ -492,18 +667,15 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                       {t("lodging")} ({searchResults.lodging.length})
                     </Text>
                     {searchResults.lodging.map((item, index) => (
-                      <SearchResultItem
+                      <LodgingResult
                         key={item.id}
-                        name={getLocalizedText(item.name, item.nameAr, language)}
-                        subtitle={`${getLocalizedText(item.city, item.cityAr, language)} • ${
-                          item.pricePerNight != null
-                            ? format(item.pricePerNight)
-                            : item.priceRange
-                        }`}
-                        image={item.images?.[0]}
+                        lodging={item}
+                        language={language}
                         isRTL={isRTL}
                         index={index}
-                        onPress={() => setSelected(lodgingDetail(item))}
+                        format={format}
+                        ratingLabel={ratingLabel}
+                        onOpen={openLodging}
                       />
                     ))}
                   </View>
@@ -515,14 +687,14 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                       {t("destinations")} ({searchResults.destinations.length})
                     </Text>
                     {searchResults.destinations.map((item, index) => (
-                      <SearchResultItem
+                      <DestinationResult
                         key={item.id}
-                        name={getLocalizedText(item.name, item.nameAr, language)}
-                        subtitle={getLocalizedText(item.subtitle, item.subtitleAr, language)}
-                        image={item.image}
+                        dest={item}
+                        language={language}
                         isRTL={isRTL}
                         index={index}
-                        onPress={() => setSelected(destinationDetail(item))}
+                        ratingLabel={ratingLabel}
+                        onOpen={openDestination}
                       />
                     ))}
                   </View>
@@ -533,7 +705,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
         ) : (
           <>
             {/* Featured. Hidden outright when the pool is empty rather than
-                headed over nothing — the grid below owns the empty state. */}
+                headed over nothing — the empty state below speaks for it. */}
             {featured.length > 0 && (
               <>
                 <View style={styles.sectionHead}>
@@ -545,30 +717,22 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                   </Text>
                 </View>
 
-                <ScrollView
+                {/* Snaps a card at a time from whichever edge the row starts
+                    at: the card, the gap and the 20pt inset line up with the
+                    stride in either direction. */}
+                <FlatList
                   horizontal
+                  inverted={isRTL}
+                  data={featured}
+                  keyExtractor={destinationKey}
+                  renderItem={renderFeatured}
                   showsHorizontalScrollIndicator={false}
+                  alwaysBounceHorizontal={false}
+                  keyboardShouldPersistTaps="handled"
                   snapToInterval={HOME_RAIL_CARD_WIDTH + HOME_RAIL_GAP}
                   decelerationRate="fast"
-                  contentContainerStyle={[styles.rail, isRTL && styles.railRTL]}
-                >
-                  {(isRTL ? [...featured].reverse() : featured).map((dest) => (
-                    <FeaturedCard
-                      key={dest.id}
-                      name={getLocalizedText(dest.name, dest.nameAr, language)}
-                      subtitle={getLocalizedText(
-                        dest.subtitle,
-                        dest.subtitleAr,
-                        language
-                      )}
-                      city={dest.city}
-                      image={dest.image}
-                      rating={dest.rating}
-                      isRTL={isRTL}
-                      onPress={() => setSelected(destinationDetail(dest))}
-                    />
-                  ))}
-                </ScrollView>
+                  contentContainerStyle={styles.rail}
+                />
               </>
             )}
 
@@ -627,40 +791,73 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
               </View>
             )}
 
-            {/* Everything the rail did not take. */}
-            <View style={styles.sectionHead}>
-              <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>
-                {t("moreDestinations")}
-              </Text>
-            </View>
+            {/* Everything the rail did not take — headed only when there is
+                something under the heading. A pool of five or fewer used to
+                show "More Destinations" and then "No destinations found"
+                directly under a full rail. */}
+            {rest.length > 0 && (
+              <>
+                <View style={styles.sectionHead}>
+                  <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>
+                    {t("moreDestinations")}
+                  </Text>
+                </View>
 
-            {rest.length > 0 ? (
-              <View style={[styles.gridContainer, isRTL && styles.gridContainerRTL]}>
-                {rest.map((dest, index) => (
-                  <DestinationGridCard
-                    key={dest.id}
-                    name={getLocalizedText(dest.name, dest.nameAr, language)}
-                    subtitle={getLocalizedText(
-                      dest.subtitle,
-                      dest.subtitleAr,
-                      language
-                    )}
-                    image={dest.image}
-                    rating={dest.rating}
-                    isRTL={isRTL}
-                    isTall={index % 3 === 1}
-                    onPress={() => setSelected(destinationDetail(dest))}
+                <View style={[styles.grid, isRTL && styles.gridRTL]}>
+                  {[0, 1].map((column) => (
+                    <View key={column} style={styles.gridColumn}>
+                      {gridItems.map((dest, index) =>
+                        index % 2 === column ? (
+                          <DestinationGridCard
+                            key={dest.id}
+                            dest={dest}
+                            language={language}
+                            isRTL={isRTL}
+                            tall={isTallGridCard(index)}
+                            onOpen={openDestination}
+                          />
+                        ) : null
+                      )}
+                    </View>
+                  ))}
+                </View>
+
+                {rest.length > gridItems.length && (
+                  <Button
+                    title={t("showMorePlaces")}
+                    variant="outline"
+                    size="sm"
+                    onPress={showMore}
+                    hitSlop={6}
+                    style={styles.showMore}
                   />
-                ))}
-              </View>
-            ) : (
+                )}
+              </>
+            )}
+
+            {/* Nothing at all to show. Under a kind chip that has emptied —
+                its last place delisted while it was selected — the way back
+                is right here rather than up in the chip row. */}
+            {featured.length === 0 && rest.length === 0 && (
               <View style={styles.emptyStateContainer}>
-                <Text style={[styles.emptyStateTitle, isRTL && styles.textRTL]}>
+                <Text style={styles.emptyStateTitle}>
                   {t("emptyDestinationsTitle")}
                 </Text>
-                <Text style={[styles.emptyStateMessage, isRTL && styles.textRTL]}>
-                  {t("emptyDestinationsMessage")}
+                <Text style={styles.emptyStateMessage}>
+                  {kind === "all"
+                    ? t("emptyDestinationsMessage")
+                    : t("emptyKindMessage")}
                 </Text>
+                {kind !== "all" && (
+                  <Button
+                    title={t("seeAll")}
+                    variant="outline"
+                    size="sm"
+                    onPress={showAllKinds}
+                    hitSlop={6}
+                    style={styles.emptyAction}
+                  />
+                )}
               </View>
             )}
           </>
@@ -673,7 +870,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
         </SkeletonFade>
       </Animated.ScrollView>
 
-      <ListingDetailSheet item={selected} onClose={() => setSelected(null)} />
+      <ListingDetailSheet item={selected} onClose={closeDetail} />
 
       <FilterSheet
         visible={filterOpen}
@@ -682,46 +879,54 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
         types={lodgingTypes}
         priceBounds={priceBounds}
         onChange={setFilters}
-        onClose={() => setFilterOpen(false)}
+        onClose={closeFilters}
       />
     </View>
   );
 }
 
-interface SearchResultItemProps {
+interface ResultRowProps {
   name: string;
-  subtitle: string;
-  image: string;
+  /** What reads under the name — city, price, category — without blanks. */
+  details: string[];
+  image?: string;
+  rating: number;
+  ratingLabel: string;
   isRTL: boolean;
   index: number;
-  onPress?: () => void;
+  onPress: () => void;
 }
 
-function SearchResultItem({ name, subtitle, image, isRTL, index, onPress }: SearchResultItemProps) {
+/** One search result. The memoised rows below decide when it re-renders. */
+function ResultRow({
+  name,
+  details,
+  image,
+  rating,
+  ratingLabel,
+  isRTL,
+  index,
+  onPress,
+}: ResultRowProps) {
   const styles = useThemedStyles(makeStyles);
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.98, { damping: 15, stiffness: 400 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-  };
+  const rated = rating > 0;
 
   return (
-    <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
-      <AnimatedPressable
-        style={[styles.searchResultItem, isRTL && styles.searchResultItemRTL, animatedStyle]}
+    // The shared entrance, capped at the seventh row. The delay used to grow
+    // with the index, so the fiftieth result of a one-letter search waited
+    // two and a half seconds to appear.
+    <Animated.View entering={enterFade(index)}>
+      <PressableScale
+        style={[styles.searchResultItem, isRTL && styles.searchResultItemRTL]}
         onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
         accessibilityRole="button"
-        accessibilityLabel={`${name}, ${subtitle}`}
+        accessibilityLabel={[
+          name,
+          ...details,
+          rated ? `${ratingLabel} ${rating.toFixed(1)}` : "",
+        ]
+          .filter(Boolean)
+          .join(", ")}
       >
         <Image
           source={image ? { uri: image } : undefined}
@@ -734,65 +939,135 @@ function SearchResultItem({ name, subtitle, image, isRTL, index, onPress }: Sear
             {name}
           </Text>
           <View style={[styles.searchResultMetaRow, isRTL && styles.searchResultMetaRowRTL]}>
-            <Feather name="star" size={12} color={colors.warm} />
-            <Text style={[styles.searchResultSubtitle, isRTL && styles.textRTL]} numberOfLines={1}>
-              {subtitle}
-            </Text>
+            {/* The star only beside a rating. It used to lead every line —
+                a city and a price — as if that were the score. */}
+            {rated && (
+              <View style={[styles.searchResultRatingGroup, isRTL && styles.searchResultMetaRowRTL]}>
+                <Feather name="star" size={12} color={colors.warm} />
+                <Text style={styles.searchResultRating}>{rating.toFixed(1)}</Text>
+              </View>
+            )}
+            {details.length > 0 && (
+              <Text
+                style={[styles.searchResultSubtitle, isRTL && styles.textRTL]}
+                numberOfLines={1}
+              >
+                {details.join(" • ")}
+              </Text>
+            )}
           </View>
         </View>
-      </AnimatedPressable>
+      </PressableScale>
     </Animated.View>
   );
 }
 
-interface FeaturedCardProps {
-  name: string;
-  subtitle: string;
-  city: string;
-  image: string;
-  rating?: number;
+interface LodgingResultProps {
+  lodging: Lodging;
+  language: Language;
   isRTL: boolean;
-  onPress?: () => void;
+  index: number;
+  format: (amountSar: number) => string;
+  ratingLabel: string;
+  onOpen: (lodging: Lodging) => void;
+}
+
+const LodgingResult = React.memo(function LodgingResult({
+  lodging,
+  language,
+  isRTL,
+  index,
+  format,
+  ratingLabel,
+  onOpen,
+}: LodgingResultProps) {
+  // A real nightly rate, else the host's band, else nothing at all — the line
+  // used to end in a dangling "•" when there was no price.
+  const price =
+    lodging.pricePerNight != null ? format(lodging.pricePerNight) : lodging.priceRange;
+  return (
+    <ResultRow
+      name={getLocalizedText(lodging.name, lodging.nameAr, language)}
+      details={[getLocalizedText(lodging.city, lodging.cityAr, language), price].filter(
+        Boolean
+      )}
+      image={lodging.images?.[0]}
+      rating={lodging.rating}
+      ratingLabel={ratingLabel}
+      isRTL={isRTL}
+      index={index}
+      onPress={() => onOpen(lodging)}
+    />
+  );
+});
+
+interface DestinationResultProps {
+  dest: Destination;
+  language: Language;
+  isRTL: boolean;
+  index: number;
+  ratingLabel: string;
+  onOpen: (dest: Destination) => void;
+}
+
+const DestinationResult = React.memo(function DestinationResult({
+  dest,
+  language,
+  isRTL,
+  index,
+  ratingLabel,
+  onOpen,
+}: DestinationResultProps) {
+  return (
+    <ResultRow
+      name={getLocalizedText(dest.name, dest.nameAr, language)}
+      details={[
+        getLocalizedText(dest.subtitle, dest.subtitleAr, language),
+        getLocalizedText(dest.city, dest.cityAr, language),
+      ].filter(Boolean)}
+      image={dest.image}
+      rating={dest.rating}
+      ratingLabel={ratingLabel}
+      isRTL={isRTL}
+      index={index}
+      onPress={() => onOpen(dest)}
+    />
+  );
+});
+
+interface DestinationCardProps {
+  dest: Destination;
+  language: Language;
+  isRTL: boolean;
+  onOpen: (dest: Destination) => void;
 }
 
 /** The rail card: the grid card's caption grammar, one size up, plus a place. */
-function FeaturedCard({
-  name,
-  subtitle,
-  city,
-  image,
-  rating,
+const FeaturedCard = React.memo(function FeaturedCard({
+  dest,
+  language,
   isRTL,
-  onPress,
-}: FeaturedCardProps) {
+  onOpen,
+}: DestinationCardProps) {
   const styles = useThemedStyles(makeStyles);
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-  };
+  const name = getLocalizedText(dest.name, dest.nameAr, language);
+  const subtitle = getLocalizedText(dest.subtitle, dest.subtitleAr, language);
+  // Folded and in the reader's language: the rail printed the stored English
+  // city — a village name, often — on an otherwise Arabic card.
+  const city = getLocalizedText(dest.city, dest.cityAr, language);
 
   return (
     // Same wrapper/card split as the grid — see the note on `gridCardWrapper`.
     <View style={styles.railCardWrapper}>
-      <AnimatedPressable
-        style={[styles.railCard, animatedStyle]}
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
+      <PressableScale
+        style={styles.railCard}
+        scaleTo={CARD_PRESS_SCALE}
+        onPress={() => onOpen(dest)}
         accessibilityRole="button"
-        accessibilityLabel={`${name}, ${subtitle}, ${city}`}
+        accessibilityLabel={[name, subtitle, city].filter(Boolean).join(", ")}
       >
         <Image
-          source={image ? { uri: image } : undefined}
+          source={dest.image ? { uri: dest.image } : undefined}
           style={styles.railCardImage}
           contentFit="cover"
           transition={300}
@@ -800,10 +1075,10 @@ function FeaturedCard({
         <CaptionScrim tall />
 
         {/* No pill rather than "0.0": an unreviewed place is not a bad one. */}
-        {rating != null && rating > 0 && (
+        {dest.rating > 0 && (
           <View style={[styles.gridCardRating, isRTL && styles.gridCardRatingRTL]}>
             <Feather name="star" size={11} color={colors.warm} />
-            <Text style={styles.gridCardRatingText}>{rating.toFixed(1)}</Text>
+            <Text style={styles.gridCardRatingText}>{dest.rating.toFixed(1)}</Text>
           </View>
         )}
 
@@ -829,60 +1104,42 @@ function FeaturedCard({
             </Text>
           </View>
         </View>
-      </AnimatedPressable>
+      </PressableScale>
     </View>
   );
-}
+});
 
-interface DestinationGridCardProps {
-  name: string;
-  subtitle: string;
-  image: string;
-  rating?: number;
-  isRTL: boolean;
-  isTall?: boolean;
-  onPress?: () => void;
-}
-
-function DestinationGridCard({
-  name,
-  subtitle,
-  image,
-  rating,
+const DestinationGridCard = React.memo(function DestinationGridCard({
+  dest,
+  language,
   isRTL,
-  isTall = false,
-  onPress,
-}: DestinationGridCardProps) {
+  tall,
+  onOpen,
+}: DestinationCardProps & { tall: boolean }) {
   const styles = useThemedStyles(makeStyles);
-  const scale = useSharedValue(1);
-  const cardHeight = isTall ? 260 : 210;
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePressIn = () => {
-    scale.value = withSpring(0.96, { damping: 15, stiffness: 400 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(1, { damping: 15, stiffness: 400 });
-  };
+  const name = getLocalizedText(dest.name, dest.nameAr, language);
+  const subtitle = getLocalizedText(dest.subtitle, dest.subtitleAr, language);
 
   return (
     // Plain View: the grid arrives with the rest of the screen through
     // SkeletonFade, so a per-card entrance would animate on top of that.
-    <View style={[styles.gridCardWrapper, { height: cardHeight }]}>
-      <AnimatedPressable
-        style={[styles.gridCard, animatedStyle]}
-        onPress={onPress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
+    <View
+      style={[
+        styles.gridCardWrapper,
+        { height: tall ? HOME_GRID_CARD_TALL_HEIGHT : HOME_GRID_CARD_HEIGHT },
+      ]}
+    >
+      <PressableScale
+        style={styles.gridCard}
+        scaleTo={CARD_PRESS_SCALE}
+        onPress={() => onOpen(dest)}
         accessibilityRole="button"
-        accessibilityLabel={`${name}, ${subtitle}`}
+        accessibilityLabel={[name, subtitle].filter(Boolean).join(", ")}
       >
+        {/* No `{ uri: "" }` for a place without a photo: that is a request
+            for nothing, where `undefined` simply leaves the sand showing. */}
         <Image
-          source={{ uri: image }}
+          source={dest.image ? { uri: dest.image } : undefined}
           style={styles.gridCardImage}
           contentFit="cover"
           transition={300}
@@ -892,11 +1149,12 @@ function DestinationGridCard({
         <CaptionScrim tall />
 
         {/* Rating reads top-left, the same place and the same pill the lodging
-            cards use, so the two card families scan alike. */}
-        {rating != null && (
+            cards use, so the two card families scan alike — and, like them,
+            not at all until someone has rated the place. */}
+        {dest.rating > 0 && (
           <View style={[styles.gridCardRating, isRTL && styles.gridCardRatingRTL]}>
             <Feather name="star" size={11} color={colors.warm} />
-            <Text style={styles.gridCardRatingText}>{rating.toFixed(1)}</Text>
+            <Text style={styles.gridCardRatingText}>{dest.rating.toFixed(1)}</Text>
           </View>
         )}
 
@@ -913,10 +1171,10 @@ function DestinationGridCard({
             {name}
           </Text>
         </View>
-      </AnimatedPressable>
+      </PressableScale>
     </View>
   );
-}
+});
 
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   container: {
@@ -925,6 +1183,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   topBar: {
     flexDirection: "row",
@@ -1042,29 +1303,34 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     paddingHorizontal: CONTAINER_PADDING + 12,
     marginTop: -30,
   },
+  kindChipList: {
+    marginTop: HOME_CHIP_ROW_MARGIN_TOP,
+  },
   kindChips: {
     paddingHorizontal: CONTAINER_PADDING,
-    marginTop: 18,
     gap: CHIP_GAP,
   },
-  kindChipsRTL: {
-    flexDirection: "row-reverse",
-  },
   // Every section opens the same way: an optional eyebrow, then a serif title.
+  // The line heights are set, and shared with the skeleton, rather than left
+  // to the font: Cairo's natural line is nearly twice its size, so in Arabic
+  // the Featured head stood ~30pt taller than the placeholder that preceded
+  // it, and everything below jumped down as the data landed.
   sectionHead: {
     paddingHorizontal: CONTAINER_PADDING,
-    marginTop: 24,
-    marginBottom: 14,
+    marginTop: HOME_SECTION_MARGIN_TOP,
+    marginBottom: HOME_SECTION_MARGIN_BOTTOM,
   },
   sectionEyebrow: {
-    fontSize: 11,
+    fontSize: HOME_SECTION_EYEBROW.fontSize,
+    lineHeight: HOME_SECTION_EYEBROW.lineHeight,
     fontFamily: fonts.semibold,
     color: colors.primary.deep,
     letterSpacing: 2,
     textTransform: "uppercase",
   },
   sectionTitle: {
-    fontSize: 26,
+    fontSize: HOME_SECTION_TITLE.fontSize,
+    lineHeight: HOME_SECTION_TITLE.lineHeight,
     fontFamily: fonts.serif,
     color: colors.ink,
     letterSpacing: -0.3,
@@ -1072,9 +1338,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   rail: {
     paddingHorizontal: CONTAINER_PADDING,
     gap: HOME_RAIL_GAP,
-  },
-  railRTL: {
-    flexDirection: "row-reverse",
   },
   railCardWrapper: {
     width: HOME_RAIL_CARD_WIDTH,
@@ -1202,14 +1465,24 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     justifyContent: "center",
     backgroundColor: colors.primary.DEFAULT,
   },
-  gridContainer: {
+  // Two columns side by side, each a stack of cards. The first column holds
+  // the first card, so in Arabic it is the right-hand one.
+  grid: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "flex-start",
     paddingHorizontal: CONTAINER_PADDING,
     gap: CARD_GAP,
   },
-  gridContainerRTL: {
+  gridRTL: {
     flexDirection: "row-reverse",
+  },
+  gridColumn: {
+    width: CARD_WIDTH,
+    gap: CARD_GAP,
+  },
+  showMore: {
+    alignSelf: "center",
+    marginTop: 20,
   },
   // The shadow lives here, on a wrapper that does not clip. Putting it on the
   // same view as `overflow: "hidden"` drops it entirely on iOS, and on Android
@@ -1219,7 +1492,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   // repeated so Android shapes the shadow to the rounded card.
   gridCardWrapper: {
     width: CARD_WIDTH,
-    marginBottom: 0,
     borderRadius: 24,
     shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 6 },
@@ -1321,6 +1593,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 16,
     fontFamily: fonts.regular,
     color: colors.onSurface.muted,
+    textAlign: "center",
   },
   resultSection: {
     marginBottom: 24,
@@ -1367,19 +1640,35 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: colors.ink,
     marginBottom: 4,
   },
+  // `gap` rather than a margin on either piece: the same on whichever side
+  // the row runs.
   searchResultMetaRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 8,
   },
   searchResultMetaRowRTL: {
     flexDirection: "row-reverse",
   },
+  searchResultRatingGroup: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  searchResultRating: {
+    fontSize: 13,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
+  },
+  // Shrinks rather than pushing the row out of the card on a long line.
   searchResultSubtitle: {
+    flexShrink: 1,
     fontSize: 13,
     fontFamily: fonts.regular,
     color: colors.onSurface.muted,
   },
+  // Centred in either language, so its text is centred too — it used to be
+  // pushed right in Arabic inside a centred block.
   emptyStateContainer: {
     paddingHorizontal: 24,
     paddingTop: 40,
@@ -1397,5 +1686,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontFamily: fonts.regular,
     color: colors.onSurface.muted,
     textAlign: "center",
+  },
+  emptyAction: {
+    marginTop: 18,
   },
 });
