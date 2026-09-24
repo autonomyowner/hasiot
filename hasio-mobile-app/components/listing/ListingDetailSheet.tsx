@@ -289,9 +289,20 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     <Modal
       visible={!!item}
       animationType="slide"
-      // pageSheet gives iOS its native card presentation and the swipe-down
-      // dismiss users expect; Android ignores it and presents full screen.
+      // pageSheet gives iOS its native card presentation; Android ignores it
+      // and presents full screen.
       presentationStyle={Platform.OS === "ios" ? "pageSheet" : "fullScreen"}
+      // The swipe down users expect of a page sheet. Without this prop RN 0.86
+      // presents every Modal with `modalInPresentation` on, so the sheet
+      // resisted the swipe and sprang back — iOS reported it as an attempt,
+      // `onRequestClose` closed the sheet anyway, and it went a beat later by
+      // itself. Now iOS dismisses it under the finger and reports that through
+      // `onRequestClose`, which brings `item` — and so `visible` — back in
+      // line. RN marks the Modal unpresented as `visible` drops, so the next
+      // listing presents normally; the page kept for the exit (`shown`) is let
+      // go by `handleDismiss`, or replaced by the next listing if iOS never
+      // reports a dismissal it did not start.
+      allowSwipeDismissal
       onRequestClose={onClose}
       onDismiss={handleDismiss}
     >
