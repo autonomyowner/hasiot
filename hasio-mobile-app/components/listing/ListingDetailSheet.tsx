@@ -8,7 +8,6 @@ import {
   Modal,
   Pressable,
   ScrollView,
-  Alert,
   Linking,
   Platform,
   useWindowDimensions,
@@ -31,6 +30,7 @@ import { BookingSheet } from "@/components/booking/BookingSheet";
 import { VerifyPhoneSheet } from "@/components/auth/VerifyPhoneSheet";
 import { RatingSummary, ReviewCard, ReviewSheet } from "@/components/review";
 import { resolveAmenity } from "@/constants/amenities";
+import { telUrl } from "@/lib/bookingDisplay";
 import type { ListingDetails } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -216,13 +216,15 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   const images = shown?.images?.length ? shown.images : [];
   const detail = shown?.details;
 
+  // Straight to `openURL`, with no `canOpenURL` asked first. That check is
+  // answered from what the app declares, not from what the phone can do: on
+  // Android 11+ it is false for any scheme missing from the manifest's
+  // <queries> — tel:, geo: and mailto: all are — and on iOS for any scheme
+  // missing from LSApplicationQueriesSchemes. So Call, Directions and Email
+  // told phones with a dialer, maps and mail that they could not. `openURL`
+  // rejects when nothing can take the link, which is the answer that matters.
   const openUrl = async (url: string, failureKey: "detailCallFailed" | "detailLinkFailed") => {
     try {
-      const supported = await Linking.canOpenURL(url);
-      if (!supported) {
-        appAlert(t("error"), t(failureKey));
-        return;
-      }
       await Linking.openURL(url);
     } catch {
       appAlert(t("error"), t(failureKey));
@@ -231,9 +233,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
 
   const handleCall = () => {
     if (!detail?.phone) return;
-    // Strip spaces and dashes: `tel:` is tolerant on iOS but not on every
-    // Android dialer.
-    openUrl(`tel:${detail.phone.replace(/[\s-]/g, "")}`, "detailCallFailed");
+    openUrl(telUrl(detail.phone), "detailCallFailed");
   };
 
   const handleWebsite = () => {

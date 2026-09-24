@@ -6,6 +6,7 @@ import {
   nightsLabel,
   pluralForm,
   quoteFooterState,
+  telUrl,
   type CountKey,
 } from "./bookingDisplay";
 
@@ -75,6 +76,18 @@ describe("nightsLabel", () => {
   it("omits guests when zero or undefined", () => {
     expect(nightsLabel(3, en, 0)).toBe("3 nights");
     expect(nightsLabel(3, en, undefined)).toBe("3 nights");
+  });
+});
+
+describe("telUrl", () => {
+  it("keeps only what a dialer reads", () => {
+    expect(telUrl("+966 50 123 4567")).toBe("tel:+966501234567");
+    expect(telUrl("050-123-4567")).toBe("tel:0501234567");
+    expect(telUrl("(013) 587 1234")).toBe("tel:0135871234");
+  });
+
+  it("reads a number typed on an Arabic keypad", () => {
+    expect(telUrl("٠٥٠١٢٣٤٥٦٧")).toBe("tel:0501234567");
   });
 });
 

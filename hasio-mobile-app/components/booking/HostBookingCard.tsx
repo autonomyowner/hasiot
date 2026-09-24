@@ -1,5 +1,5 @@
 import React, { memo } from "react";
-import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Image } from "expo-image";
 import { Feather } from "@expo/vector-icons";
 import { BookingStatusChip } from "./BookingStatusChip";
@@ -51,6 +51,11 @@ interface HostBookingCardProps {
     complete: string;
   };
   onAction: (id: string, action: HostAction) => void;
+  /**
+   * Call the guest. The screen places the call so it can say so when the
+   * phone cannot; from here a failed `openURL` was an unhandled rejection.
+   */
+  onCall: (phone: string) => void;
 }
 
 function HostBookingCardInner({
@@ -61,12 +66,14 @@ function HostBookingCardInner({
   busy,
   labels,
   onAction,
+  onCall,
 }: HostBookingCardProps) {
   const styles = useThemedStyles(makeStyles);
   const listing = booking.listing;
   const guest = booking.tourist;
   const guestName =
     [guest?.firstName, guest?.lastName].filter(Boolean).join(" ").trim() || labels.guest;
+  const phone = guest?.phone;
   const isStay = booking.kind === "stay" && !!booking.checkIn && !!booking.checkOut;
   const actions = hostActionsFor(booking, today);
   const anyBusy = busy !== null;
@@ -116,18 +123,20 @@ function HostBookingCardInner({
       {/* The guest's number, one tap from a call. A host reaching a late
           arrival is the main reason a verified phone is required to book. */}
       <View style={[styles.guestRow, isRTL && styles.rowRTL]}>
-        <View>
-          <Text style={[styles.guestName, isRTL && styles.textRTL]}>{guestName}</Text>
-          {guest?.phone ? (
+        <View style={styles.guestText}>
+          <Text style={[styles.guestName, isRTL && styles.textRTL]} numberOfLines={1}>
+            {guestName}
+          </Text>
+          {phone ? (
             <Text style={[styles.meta, isRTL && styles.textRTL]}>
-              {formatPhoneForDisplay(guest.phone)}
+              {formatPhoneForDisplay(phone)}
             </Text>
           ) : null}
         </View>
-        {guest?.phone ? (
+        {phone ? (
           <Pressable
-            onPress={() => Linking.openURL(`tel:${guest.phone}`)}
-            style={styles.callButton}
+            onPress={() => onCall(phone)}
+            style={({ pressed }) => [styles.callButton, pressed && styles.pressed]}
             accessibilityRole="button"
             accessibilityLabel={labels.callGuest}
           >
@@ -280,6 +289,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 12,
     borderTopWidth: 1,
     borderTopColor: colors.divider,
     paddingTop: 12,
@@ -289,13 +299,20 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontFamily: fonts.semibold,
     color: colors.ink,
   },
+  guestText: {
+    flex: 1,
+  },
+  // 44pt, the smallest target a thumb is sure of; it was 40.
   callButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.mint,
     alignItems: "center",
     justifyContent: "center",
+  },
+  pressed: {
+    opacity: 0.7,
   },
   notes: {
     fontSize: 14,

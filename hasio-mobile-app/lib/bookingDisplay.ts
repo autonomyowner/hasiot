@@ -6,6 +6,8 @@
  * where the language hook does not exist.
  */
 
+import { toLatinDigits } from "./digits";
+
 /** What the app counts in words. */
 export type CountUnit = "nights" | "guests" | "reviews" | "stars";
 
@@ -46,6 +48,18 @@ export function countLabel(n: number, unit: CountUnit, t: CountTranslate): strin
 export function nightsLabel(nights: number, t: CountTranslate, guests?: number): string {
   const stay = countLabel(nights, "nights", t);
   return guests ? `${stay} · ${countLabel(guests, "guests", t)}` : stay;
+}
+
+/**
+ * A `tel:` link any dialer will take, for a listing's or a guest's number.
+ *
+ * Stored numbers carry spaces, dashes and brackets ("+966 50 123 4567"),
+ * which iOS forgives inside a `tel:` URL and some Android dialers do not; and a
+ * number typed on an Arabic keypad arrives in Arabic-Indic digits, which no
+ * dialer reads. Only the digits and a leading plus are kept.
+ */
+export function telUrl(phone: string): string {
+  return `tel:${toLatinDigits(phone).replace(/[^\d+]/g, "")}`;
 }
 
 export type QuoteResult =

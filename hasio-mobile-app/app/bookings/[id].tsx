@@ -17,7 +17,7 @@ import { useThemedStyles } from "@/hooks/useAppFonts";
 import { formatDateRange, formatISODate, todayRiyadhISO } from "@/lib/dates";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { SkeletonBookingDetail } from "@/components/ui/SkeletonScreens";
-import { nightsLabel } from "@/lib/bookingDisplay";
+import { nightsLabel, telUrl } from "@/lib/bookingDisplay";
 import { haptic } from "@/lib/haptics";
 import { colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient, SurfaceGradient } from "@/components/ui/Gradients";
@@ -79,6 +79,18 @@ export default function BookingDetailScreen() {
         },
       },
     ]);
+  };
+
+  // Straight to openURL, as in the listing sheet — no canOpenURL first, which
+  // says no on Android 11+ for `tel:` because the manifest does not declare
+  // it. The stored number keeps its spaces, which some Android dialers
+  // reject; telUrl keeps only the digits. The call used to have no catch at
+  // all, so a failure was an unhandled rejection and a button that did nothing.
+  const callListing = () => {
+    if (!listing?.phone) return;
+    Linking.openURL(telUrl(listing.phone)).catch(() =>
+      appAlert(t("error"), t("detailCallFailed"))
+    );
   };
 
   const openDirections = () => {
@@ -164,7 +176,7 @@ export default function BookingDetailScreen() {
             <View style={[styles.actions, isRTL && styles.rowRTL]}>
               {listing.phone ? (
                 <Pressable
-                  onPress={() => Linking.openURL(`tel:${listing.phone}`)}
+                  onPress={callListing}
                   style={styles.actionButton}
                   accessibilityRole="button"
                   accessibilityLabel={t("detailCall")}

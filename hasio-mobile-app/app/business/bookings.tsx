@@ -1,6 +1,6 @@
 import { appAlert } from "@/stores/dialogStore";
 import React, { useCallback, useMemo, useState } from "react";
-import { View, Text, FlatList, StyleSheet } from "react-native";
+import { View, Text, FlatList, Linking, StyleSheet } from "react-native";
 import Animated, { FadeInDown, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -19,7 +19,7 @@ import {
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { todayRiyadhISO } from "@/lib/dates";
-import { nightsLabel } from "@/lib/bookingDisplay";
+import { nightsLabel, telUrl } from "@/lib/bookingDisplay";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { haptic } from "@/lib/haptics";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
@@ -132,6 +132,15 @@ export default function OwnerBookingsScreen() {
     [t, format]
   );
 
+  // No canOpenURL first: on Android 11+ it says no for `tel:`, which the
+  // manifest does not declare. openURL rejects when nothing can dial.
+  const callGuest = useCallback(
+    (phone: string) => {
+      Linking.openURL(telUrl(phone)).catch(() => appAlert(t("error"), t("detailCallFailed")));
+    },
+    [t]
+  );
+
   const renderItem = useCallback(
     ({ item }: { item: HostBookingData }) => (
       <HostBookingCard
@@ -142,9 +151,10 @@ export default function OwnerBookingsScreen() {
         busy={busy?.id === item._id ? busy.action : null}
         labels={labels}
         onAction={onAction}
+        onCall={callGuest}
       />
     ),
-    [today, language, isRTL, busy, labels, onAction]
+    [today, language, isRTL, busy, labels, onAction, callGuest]
   );
 
   const switchTab = (next: Tab) => {
