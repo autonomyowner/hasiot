@@ -577,7 +577,7 @@ export const translations = {
     deleteAccount: "Delete Account",
     deleteAccountSubtitle: "Permanently delete your account and data",
     deleteAccountConfirmTitle: "Delete Account?",
-    deleteAccountConfirmMessage: "This action cannot be undone. All your data, moments, and plans will be permanently deleted.",
+    deleteAccountConfirmMessage: "This action cannot be undone. Your account and all your data will be permanently deleted.",
     deleteAccountSuccess: "Account deleted successfully",
     deleteAccountError: "Failed to delete account",
     deleting: "Deleting...",
@@ -1231,7 +1231,7 @@ export const translations = {
 
     // User Types
     selectAccountType: "اختر نوع الحساب",
-    accountTypeDescription: "اختر كيف تريد استخدام هاسيو",
+    accountTypeDescription: "اختر كيف تريد استخدام Hasio",
     userTypeUser: "مستخدم عادي",
     userTypeUserDesc: "تصفح واكتشف معالم المنطقة الشرقية",
     userTypeBusiness: "صاحب عمل",
@@ -1309,7 +1309,7 @@ export const translations = {
       "ارفع وثيقة نشاطك التجاري ليتمكن فريقنا من التحقق من حسابك. سيتم تفعيل النشر فور الموافقة.",
     verificationWhyTitle: "لماذا نطلب ذلك؟",
     verificationWhyBody:
-      "نراجع كل صاحب نشاط ومقدم خدمة قبل ظهور محتواه في هاسيو، حفاظاً على ثقة الزوار بالمحتوى المعروض.",
+      "نراجع كل صاحب نشاط ومقدم خدمة قبل ظهور محتواه في Hasio، حفاظاً على ثقة الزوار بالمحتوى المعروض.",
     verificationDocLabel: "وثيقة النشاط",
     verificationDocHint:
       "صورة واضحة أو نسخة PDF من السجل التجاري، أو رخصة العمل الحر، أو الهوية الرسمية.",
@@ -1322,7 +1322,7 @@ export const translations = {
     verificationSubmittedMessage:
       "يراجع فريقنا الحسابات عادةً خلال يوم إلى يومي عمل. سنفعّل النشر فور الموافقة على حسابك.",
     verificationPrivacyNote:
-      "تُحفظ وثيقتك بشكل خاص ولا يطّلع عليها سوى فريق المراجعة في هاسيو، ولا تظهر أبداً في ملفك العام.",
+      "تُحفظ وثيقتك بشكل خاص ولا يطّلع عليها سوى فريق المراجعة في Hasio، ولا تظهر أبداً في ملفك العام.",
     verificationUnverifiedTitle: "التوثيق مطلوب",
     verificationUnverifiedBody: "أضف وثيقة نشاطك لتفعيل النشر.",
     verificationUnverifiedCta: "ابدأ التوثيق",
@@ -1441,7 +1441,7 @@ export const translations = {
     deleteAccount: "حذف الحساب",
     deleteAccountSubtitle: "حذف حسابك وبياناتك نهائياً",
     deleteAccountConfirmTitle: "حذف الحساب؟",
-    deleteAccountConfirmMessage: "لا يمكن التراجع عن هذا الإجراء. سيتم حذف جميع بياناتك ولحظاتك وخططك نهائياً.",
+    deleteAccountConfirmMessage: "لا يمكن التراجع عن هذا الإجراء. سيتم حذف حسابك وجميع بياناتك نهائياً.",
     deleteAccountSuccess: "تم حذف الحساب بنجاح",
     deleteAccountError: "فشل في حذف الحساب",
     deleting: "جاري الحذف...",
