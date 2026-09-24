@@ -750,6 +750,7 @@ export const translations = {
     increaseGuests: "More guests",
     bookingStayLabel: "Stay",
     quoteIdleHint: "Choose your dates to see the total",
+    starsOutOfFive: "{n} out of 5 stars",
     // Opening hours. The stored day is the key — lib/dates.ts weekdayLabelKey.
     day_sunday: "Sunday",
     day_monday: "Monday",
@@ -1514,6 +1515,7 @@ export const translations = {
     increaseGuests: "زيادة عدد الضيوف",
     bookingStayLabel: "الإقامة",
     quoteIdleHint: "اختر التواريخ لمعرفة الإجمالي",
+    starsOutOfFive: "{n} من 5 نجوم",
     day_sunday: "الأحد",
     day_monday: "الإثنين",
     day_tuesday: "الثلاثاء",

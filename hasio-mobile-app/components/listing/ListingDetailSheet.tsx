@@ -1,6 +1,6 @@
 import { appAlert } from "@/stores/dialogStore";
 import { AppDialogHost } from "@/components/ui/AppDialog";
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   View,
@@ -75,6 +75,13 @@ interface ListingDetailSheetProps {
   onClose: () => void;
 }
 
+type ReportTarget = {
+  type: "listing" | "review";
+  id: string;
+  /** Whoever posted it, so the sheet can offer to block them. Listings only. */
+  ownerId: Id<"users"> | null;
+};
+
 const IMAGE_HEIGHT = 380;
 // Roughly the bar's own height: 14 top padding + the two-line price block +
 // 16 minimum bottom padding. Used to pad the scroll so the last row of content
@@ -95,6 +102,9 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   const { width } = useWindowDimensions();
   const [imageIndex, setImageIndex] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
+  // What the one report sheet is about: this listing, or one of its reviews.
+  // Each review card used to carry a report sheet of its own.
+  const [reportTarget, setReportTarget] = useState<ReportTarget | null>(null);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -127,6 +137,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   if (itemId !== openedId) {
     setOpenedId(itemId);
     setReportOpen(false);
+    setReportTarget(null);
     setBookingOpen(false);
     setVerifyOpen(false);
     setReviewOpen(false);
@@ -240,6 +251,22 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     onClose();
     router.push("/bookings");
   };
+
+  const reportListing = () => {
+    if (!shown) return;
+    setReportTarget({
+      type: "listing",
+      id: shown.id,
+      ownerId: shown.ownerId ? (shown.ownerId as Id<"users">) : null,
+    });
+    setReportOpen(true);
+  };
+
+  // Stable, so the memoised review cards are not re-rendered for it.
+  const reportReview = useCallback((reviewId: string) => {
+    setReportTarget({ type: "review", id: reviewId, ownerId: null });
+    setReportOpen(true);
+  }, []);
 
   const scrollGalleryTo = (index: number) => {
     galleryRef.current?.scrollTo({ x: index * width, animated: true });
@@ -637,7 +664,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                   </Pressable>
 
                   {reviews?.map((review) => (
-                    <ReviewCard key={review._id} review={review} />
+                    <ReviewCard key={review._id} review={review} onReport={reportReview} />
                   ))}
 
                   {!!summary && summary.count > 3 && (
@@ -660,7 +687,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
 
                 {/* Report */}
                 <Pressable
-                  onPress={() => setReportOpen(true)}
+                  onPress={reportListing}
                   style={({ pressed }) => [
                     styles.reportRow,
                     isRTL && styles.rowRTL,
@@ -756,9 +783,9 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
           <ReportSheet
             visible={reportOpen}
             onClose={() => setReportOpen(false)}
-            targetType="listing"
-            targetId={item.id}
-            ownerId={item.ownerId ? (item.ownerId as Id<"users">) : null}
+            targetType={reportTarget?.type ?? "listing"}
+            targetId={reportTarget?.id ?? item.id}
+            ownerId={reportTarget?.ownerId ?? null}
           />
 
           <BookingSheet

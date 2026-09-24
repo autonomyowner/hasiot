@@ -177,7 +177,10 @@ export function ReviewSheet({
 
       <ThemedTextInput
         value={content}
-        onChangeText={(next: string) => setContent(next.slice(0, MAX_TEXT))}
+        onChangeText={setContent}
+        // The field stops at the limit itself. Trimming in onChangeText handed
+        // the input a value it had not typed, and the cursor jumped to the end.
+        maxLength={MAX_TEXT}
         placeholder={t("reviewPlaceholder")}
         multiline
         numberOfLines={4}

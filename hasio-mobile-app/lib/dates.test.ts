@@ -3,6 +3,8 @@ import {
   addDays,
   datesBetween,
   formatDateRange,
+  formatISODate,
+  formatMonthYear,
   nightsBetween,
   relativeTime,
   todayRiyadhISO,
@@ -59,6 +61,35 @@ describe("formatDateRange", () => {
     // Latin; Arabic-Indic numerals mid-line read as a different alphabet.
     const formatted = formatDateRange("2026-09-10", "2026-09-13", "ar");
     expect(formatted).toMatch(/10/);
+    expect(formatted).not.toMatch(/[٠-٩]/);
+  });
+});
+
+describe("formatISODate", () => {
+  it("writes Arabic dates on the Gregorian calendar the date picker uses", () => {
+    // `ar-SA` on its own is the Umm al-Qura calendar in ICU's locale data: a
+    // stay picked as 10 September on the (Gregorian) calendar came back in
+    // the range card as a date in Rabi' al-Awwal.
+    const formatted = formatISODate("2026-09-10", "ar");
+    expect(formatted).toContain("سبتمبر");
+    expect(formatted).toMatch(/10/);
+    expect(formatted).not.toMatch(/[٠-٩]/);
+  });
+});
+
+describe("formatMonthYear", () => {
+  // Mid-month, so no machine's time zone can move it into another month.
+  const ts = Date.UTC(2026, 8, 15, 12);
+
+  it("names the month and the year", () => {
+    expect(formatMonthYear(ts, "en")).toMatch(/Sep/);
+    expect(formatMonthYear(ts, "en")).toContain("2026");
+  });
+
+  it("is Gregorian with Latin digits in Arabic", () => {
+    const formatted = formatMonthYear(ts, "ar");
+    expect(formatted).toContain("سبتمبر");
+    expect(formatted).toContain("2026");
     expect(formatted).not.toMatch(/[٠-٩]/);
   });
 });

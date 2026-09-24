@@ -1,10 +1,10 @@
-import React, { useState } from "react";
+import React, { memo } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
-import { ReportSheet } from "@/components/ReportSheet";
+import { formatMonthYear } from "@/lib/dates";
 import { StarRating } from "./StarRating";
 
 export interface ReviewItem {
@@ -18,22 +18,30 @@ export interface ReviewItem {
   user?: { firstName?: string; lastName?: string } | null;
 }
 
+interface ReviewCardProps {
+  review: ReviewItem;
+  /**
+   * Report this review. The screen holds the one report sheet: each card
+   * used to carry its own, which on a list of forty reviews was forty idle
+   * Modals mounted under it.
+   */
+  onReport: (reviewId: string) => void;
+}
+
 function authorName(review: ReviewItem, anonymousLabel: string): string {
   if (review.isAnonymous || !review.user) return anonymousLabel;
   const name = [review.user.firstName, review.user.lastName].filter(Boolean).join(" ").trim();
   return name || anonymousLabel;
 }
 
-export function ReviewCard({ review }: { review: ReviewItem }) {
+function ReviewCardInner({ review, onReport }: ReviewCardProps) {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL, language } = useLanguage();
-  const [reportOpen, setReportOpen] = useState(false);
 
   const name = authorName(review, t("reviewAnonymousAuthor"));
-  const date = new Date(review.createdAt).toLocaleDateString(
-    language === "ar" ? "ar-SA" : "en-GB",
-    { year: "numeric", month: "short" }
-  );
+  // Gregorian with Latin digits in Arabic, like every other date in the app.
+  // Plain `ar-SA` gave the Hijri month in Arabic-Indic digits.
+  const date = formatMonthYear(review.createdAt, language);
 
   return (
     <View style={styles.card}>
@@ -53,9 +61,10 @@ export function ReviewCard({ review }: { review: ReviewItem }) {
           </View>
         </View>
 
+        {/* 44pt: the icon alone, with its old hitSlop, was a 38pt target. */}
         <Pressable
-          onPress={() => setReportOpen(true)}
-          hitSlop={10}
+          onPress={() => onReport(review._id)}
+          style={({ pressed }) => [styles.more, pressed && styles.pressed]}
           accessibilityRole="button"
           accessibilityLabel={t("reportTitle")}
         >
@@ -76,16 +85,16 @@ export function ReviewCard({ review }: { review: ReviewItem }) {
       {!!review.content && (
         <Text style={[styles.body, isRTL && styles.textRTL]}>{review.content}</Text>
       )}
-
-      <ReportSheet
-        visible={reportOpen}
-        onClose={() => setReportOpen(false)}
-        targetType="review"
-        targetId={review._id}
-      />
     </View>
   );
 }
+
+/**
+ * Memoised on the review object and a stable `onReport`: Convex reuses the
+ * objects of reviews that did not change, so one new review re-renders one
+ * card, not the page.
+ */
+export const ReviewCard = memo(ReviewCardInner);
 
 const makeStyles = (fonts: AppFonts) =>
   StyleSheet.create({
@@ -112,6 +121,15 @@ const makeStyles = (fonts: AppFonts) =>
     name: { fontFamily: fonts.semibold, fontSize: 14, color: colors.ink },
     metaRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     date: { fontFamily: fonts.regular, fontSize: 11, color: colors.onSurface.muted },
+    // Centred on the avatar beside it (36pt tall) rather than hanging below.
+    more: {
+      width: 44,
+      height: 44,
+      marginTop: -4,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    pressed: { opacity: 0.7 },
     verified: {
       alignSelf: "flex-start",
       flexDirection: "row",
