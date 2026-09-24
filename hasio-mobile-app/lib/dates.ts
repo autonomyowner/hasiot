@@ -40,16 +40,28 @@ export function datesBetween(checkIn: string, checkOut: string): string[] {
 }
 
 /**
- * "2026-09-10" → "10 Sep".
+ * The locale Arabic dates are written in: Saudi Arabic, on the Gregorian
+ * calendar, with Latin digits.
  *
- * Arabic uses Latin digits (ar-SA-u-nu-latn) deliberately: the app mixes dates
- * with prices, confirmation codes and phone numbers, all of which are Latin,
- * and Arabic-Indic numerals next to them read as a different alphabet mid-line.
- * `timeZone: "UTC"` keeps the parsed midnight from drifting back a day.
+ * Gregorian, because `ar-SA` on its own is the Umm al-Qura (Hijri) calendar in
+ * ICU's locale data, while the booking calendar the guest picks from is
+ * Gregorian ("سبتمبر") and so are the server's dates — a stay picked as 10–13
+ * September came back in the range card as its Hijri dates. Latin digits,
+ * because the app sets dates beside prices, confirmation codes and phone
+ * numbers, all Latin, and Arabic-Indic numerals next to them read as a
+ * different alphabet mid-line.
+ */
+const AR_DATE_LOCALE = "ar-SA-u-ca-gregory-nu-latn";
+
+const dateLocale = (language: Language) => (language === "ar" ? AR_DATE_LOCALE : "en-GB");
+
+/**
+ * "2026-09-10" → "10 Sep". `timeZone: "UTC"` keeps the parsed midnight from
+ * drifting back a day.
  */
 export function formatISODate(iso: string, language: Language): string {
   try {
-    return new Intl.DateTimeFormat(language === "ar" ? "ar-SA-u-nu-latn" : "en-GB", {
+    return new Intl.DateTimeFormat(dateLocale(language), {
       day: "numeric",
       month: "short",
       timeZone: "UTC",
@@ -60,8 +72,46 @@ export function formatISODate(iso: string, language: Language): string {
   }
 }
 
+/** A moment as its month and year — "Sep 2026", "سبتمبر 2026" — for reviews. */
+export function formatMonthYear(ts: number, language: Language): string {
+  try {
+    return new Intl.DateTimeFormat(dateLocale(language), {
+      year: "numeric",
+      month: "short",
+    }).format(new Date(ts));
+  } catch {
+    return new Date(ts).toISOString().slice(0, 7);
+  }
+}
+
 export function formatDateRange(checkIn: string, checkOut: string, language: Language): string {
   return `${formatISODate(checkIn, language)} – ${formatISODate(checkOut, language)}`;
+}
+
+/** The days opening hours are stored under, in the order the week runs. */
+const WEEKDAYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+] as const;
+
+export type WeekdayKey = `day_${(typeof WEEKDAYS)[number]}`;
+
+/**
+ * The translation key for a day of opening hours, or null for anything else.
+ *
+ * Hours store the day as its lowercase English name because that is what
+ * convex/bookings/queries.ts matches against getDay() when it builds booking
+ * slots — an identifier, not a label. The listing sheet printed it as it was:
+ * "sunday", in both languages. Older rows may be capitalised.
+ */
+export function weekdayLabelKey(day: string): WeekdayKey | null {
+  const key = day.trim().toLowerCase();
+  return (WEEKDAYS as readonly string[]).includes(key) ? (`day_${key}` as WeekdayKey) : null;
 }
 
 /** Relative time for the notification inbox: "3h", "2d". */

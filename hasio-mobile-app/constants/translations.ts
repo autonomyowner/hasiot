@@ -742,6 +742,42 @@ export const translations = {
     loadStalledMessage: "Check your internet connection. We'll keep trying.",
 
     // ── ui-polish: listing sheet, booking, reviews ──
+    // Counts in words, one key per form — lib/bookingDisplay.ts `countLabel`
+    // picks the form. English only needs two, but every unit has all four so
+    // both languages share one set of keys.
+    nightsOne: "1 night",
+    nightsTwo: "2 nights",
+    nightsFew: "{n} nights",
+    nightsMany: "{n} nights",
+    guestsOne: "1 guest",
+    guestsTwo: "2 guests",
+    guestsFew: "{n} guests",
+    guestsMany: "{n} guests",
+    reviewsOne: "1 review",
+    reviewsTwo: "2 reviews",
+    reviewsFew: "{n} reviews",
+    reviewsMany: "{n} reviews",
+    starsOne: "1 star",
+    starsTwo: "2 stars",
+    starsFew: "{n} stars",
+    starsMany: "{n} stars",
+    decreaseGuests: "Fewer guests",
+    increaseGuests: "More guests",
+    bookingStayLabel: "Stay",
+    quoteIdleHint: "Choose your dates to see the total",
+    starsOutOfFive: "{n} out of 5 stars",
+    noShowConfirmTitle: "Mark as a no-show?",
+    noShowConfirmMessage: "Only if the guest never arrived. This can't be undone.",
+    noUpcomingStaysHint: "Your earlier stays are under Past.",
+    noPastStaysHint: "Stays appear here once they're over.",
+    // Opening hours. The stored day is the key — lib/dates.ts weekdayLabelKey.
+    day_sunday: "Sunday",
+    day_monday: "Monday",
+    day_tuesday: "Tuesday",
+    day_wednesday: "Wednesday",
+    day_thursday: "Thursday",
+    day_friday: "Friday",
+    day_saturday: "Saturday",
 
     // ── ui-polish: planner, favorites ──
     favoritesExploreStays: "Explore stays",
@@ -1523,6 +1559,40 @@ export const translations = {
     loadStalledMessage: "تحقّق من اتصالك بالإنترنت، وسنواصل المحاولة.",
 
     // ── ui-polish: listing sheet, booking, reviews ──
+    // One is a word, two the dual, 3–10 the plural, 11 and up the singular
+    // again (accusative where it shows). Digits stay Latin, as elsewhere.
+    nightsOne: "ليلة واحدة",
+    nightsTwo: "ليلتان",
+    nightsFew: "{n} ليالٍ",
+    nightsMany: "{n} ليلة",
+    guestsOne: "ضيف واحد",
+    guestsTwo: "ضيفان",
+    guestsFew: "{n} ضيوف",
+    guestsMany: "{n} ضيفًا",
+    reviewsOne: "تقييم واحد",
+    reviewsTwo: "تقييمان",
+    reviewsFew: "{n} تقييمات",
+    reviewsMany: "{n} تقييمًا",
+    starsOne: "نجمة واحدة",
+    starsTwo: "نجمتان",
+    starsFew: "{n} نجوم",
+    starsMany: "{n} نجمة",
+    decreaseGuests: "إنقاص عدد الضيوف",
+    increaseGuests: "زيادة عدد الضيوف",
+    bookingStayLabel: "الإقامة",
+    quoteIdleHint: "اختر التواريخ لمعرفة الإجمالي",
+    starsOutOfFive: "{n} من 5 نجوم",
+    noShowConfirmTitle: "تسجيل عدم الحضور؟",
+    noShowConfirmMessage: "فقط إذا لم يصل الضيف. لا يمكن التراجع عن ذلك.",
+    noUpcomingStaysHint: "إقاماتك السابقة تجدها في «السابقة».",
+    noPastStaysHint: "تظهر الإقامات هنا بعد انتهائها.",
+    day_sunday: "الأحد",
+    day_monday: "الإثنين",
+    day_tuesday: "الثلاثاء",
+    day_wednesday: "الأربعاء",
+    day_thursday: "الخميس",
+    day_friday: "الجمعة",
+    day_saturday: "السبت",
 
     // ── ui-polish: planner, favorites ──
     favoritesExploreStays: "استكشف أماكن الإقامة",

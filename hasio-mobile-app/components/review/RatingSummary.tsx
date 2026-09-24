@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
+import { countLabel } from "@/lib/bookingDisplay";
 import { StarRating } from "./StarRating";
 
 export interface RatingSummaryValue {
@@ -48,11 +49,9 @@ export function RatingSummary({ value }: { value: RatingSummaryValue }) {
       <View style={styles.scoreBlock}>
         <Text style={styles.score}>{value.average.toFixed(1)}</Text>
         <StarRating value={value.average} size={14} />
-        <Text style={styles.count}>
-          {value.count === 1
-            ? t("reviewsCountOne")
-            : t("reviewsCountMany").replace("{n}", String(value.count))}
-        </Text>
+        {/* In the form the count takes — "تقييمان", "7 تقييمات" — where
+            it used to be "{n} تقييم" for every count above one. */}
+        <Text style={styles.count}>{countLabel(value.count, "reviews", t)}</Text>
       </View>
 
       <View style={styles.bars}>
