@@ -80,6 +80,11 @@ const IMAGE_HEIGHT = 380;
 const BOOK_BAR_HEIGHT = 84;
 // The body sheet pulls up over the hero by this much.
 const SHEET_OVERLAP = 28;
+// The body's side padding; the thumbnail rail is sized to what it leaves.
+const BODY_PADDING = 24;
+const MAX_THUMBS = 6;
+const THUMB_SIZE = 52;
+const THUMB_GAP = 8;
 
 export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   const styles = useThemedStyles(makeStyles);
@@ -269,10 +274,26 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     openUrl(url, "detailLinkFailed");
   };
 
+  // Follows the finger. It used to run on momentum end, so the dots moved only
+  // once a swipe had settled, a beat behind the photo above them.
   const handleImageScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const next = Math.round(e.nativeEvent.contentOffset.x / width);
+    const raw = Math.round(e.nativeEvent.contentOffset.x / width);
+    // Clamped: the bounce at either end reports offsets past the photos.
+    const next = Math.min(Math.max(raw, 0), Math.max(images.length - 1, 0));
     setImageIndex((current) => (current === next ? current : next));
   };
+
+  // Sized to fit the body's width, never grown: six 52pt thumbnails and their
+  // gaps are 352pt, and the body is 327pt wide on a 375pt phone — the sixth
+  // ran off the edge of the page.
+  const thumbCount = Math.min(images.length, MAX_THUMBS);
+  const thumbSize =
+    thumbCount > 0
+      ? Math.min(
+          THUMB_SIZE,
+          Math.floor((width - BODY_PADDING * 2 - THUMB_GAP * (thumbCount - 1)) / thumbCount)
+        )
+      : THUMB_SIZE;
 
   // The bar needs something to say on both halves; a price with no CTA, or a
   // CTA with no price, is not worth pinning to the bottom of the screen.
@@ -323,18 +344,30 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
               {/* Gallery */}
               <View style={styles.gallery}>
                 {images.length > 0 ? (
+                  // One direction for the photos, the dots and the thumbnails.
+                  // Only the thumbnails used to mirror in Arabic, so the one on
+                  // the right opened the photo on the left. Now all three run
+                  // from the right, like the app's other rails: the gallery is
+                  // flipped and each photo flipped back, which mirrors the
+                  // order, the starting edge and the swipe while the offsets
+                  // stay logical — the page index and scrollTo still count
+                  // from the first photo. (FlatList's `inverted` does the same.)
                   <ScrollView
                     ref={galleryRef}
                     horizontal
                     pagingEnabled
                     showsHorizontalScrollIndicator={false}
-                    onMomentumScrollEnd={handleImageScroll}
+                    onScroll={handleImageScroll}
+                    scrollEventThrottle={16}
+                    style={isRTL ? styles.mirrored : undefined}
                   >
                     {images.map((uri, i) => (
                       <Image
                         key={`${uri}-${i}`}
                         source={{ uri }}
-                        style={{ width, height: IMAGE_HEIGHT }}
+                        // Sand while it loads, as on the cards, rather than
+                        // the page's cream showing through an empty frame.
+                        style={[styles.galleryImage, { width }, isRTL && styles.mirrored]}
                         contentFit="cover"
                         transition={200}
                         accessibilityLabel={t("detailImageCount")
@@ -359,7 +392,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                 />
 
                 {images.length > 1 && (
-                  <View style={styles.dots}>
+                  <View style={[styles.dots, isRTL && styles.rowRTL]}>
                     {images.map((_, i) => (
                       <View
                         key={i}
@@ -374,11 +407,13 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                 {/* Thumbnail rail — jumps the gallery to the tapped image. */}
                 {images.length > 1 && (
                   <View style={[styles.thumbRail, isRTL && styles.rowRTL]}>
-                    {images.slice(0, 6).map((uri, i) => (
+                    {images.slice(0, MAX_THUMBS).map((uri, i) => (
                       <Pressable
                         key={`thumb-${uri}-${i}`}
                         onPress={() => scrollGalleryTo(i)}
+                        style={({ pressed }) => pressed && styles.pressed}
                         accessibilityRole="button"
+                        accessibilityState={{ selected: i === imageIndex }}
                         accessibilityLabel={t("detailImageCount")
                           .replace("{current}", String(i + 1))
                           .replace("{total}", String(images.length))}
@@ -387,6 +422,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                           source={{ uri }}
                           style={[
                             styles.thumb,
+                            { width: thumbSize, height: thumbSize },
                             i === imageIndex && styles.thumbActive,
                           ]}
                           contentFit="cover"
@@ -791,6 +827,16 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   gallery: {
     position: "relative",
   },
+  galleryImage: {
+    height: IMAGE_HEIGHT,
+    backgroundColor: colors.sand,
+  },
+  mirrored: {
+    transform: [{ scaleX: -1 }],
+  },
+  pressed: {
+    opacity: 0.7,
+  },
   galleryEmpty: {
     backgroundColor: colors.sand,
     alignItems: "center",
@@ -842,17 +888,17 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderTopLeftRadius: SHEET_OVERLAP,
     borderTopRightRadius: SHEET_OVERLAP,
     backgroundColor: colors.background,
-    padding: 24,
+    padding: BODY_PADDING,
     gap: 4,
   },
   thumbRail: {
     flexDirection: "row",
-    gap: 8,
+    gap: THUMB_GAP,
     marginBottom: 16,
   },
   thumb: {
-    width: 52,
-    height: 52,
+    width: THUMB_SIZE,
+    height: THUMB_SIZE,
     borderRadius: 14,
     backgroundColor: colors.sand,
     borderWidth: 2,
