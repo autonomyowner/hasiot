@@ -7,16 +7,14 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  Image,
   KeyboardAvoidingView,
   Platform,
-  Linking,
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown } from "react-native-reanimated";
+import { PhotoPickerField } from "@/components/hosting/PhotoPickerField";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -117,42 +115,6 @@ export default function PostServiceScreen() {
   // one may be resubmitted as it is.
   const canResubmit = ownerStatusOf(existing?.status) === "rejected";
   const saveDisabled = isEditing && !dirty && !canResubmit;
-
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      appAlert(
-        t("permissionRequired"),
-        t("photoPermissionMessage"),
-        [
-          { text: t("cancel"), style: "cancel" },
-          { text: t("openSettings"), onPress: () => Linking.openSettings() },
-        ]
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsMultipleSelection: true,
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      const newImages = result.assets.map((asset) => asset.uri);
-      setForm((current) => ({
-        ...current,
-        images: [...current.images, ...newImages].slice(0, 5),
-      }));
-    }
-  };
-
-  const removeImage = (index: number) => {
-    setForm((current) => ({
-      ...current,
-      images: current.images.filter((_, i) => i !== index),
-    }));
-  };
 
   const handleSubmit = () => {
     if (isLoading) return;
@@ -494,27 +456,10 @@ export default function PostServiceScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("addImages")}
           </Text>
-          <Pressable style={styles.imagePickerButton} onPress={pickImage}>
-            <Text style={styles.imagePickerText}>
-              {t("selectPhoto")} ({form.images.length}/5)
-            </Text>
-          </Pressable>
-
-          {form.images.length > 0 && (
-            <View style={styles.imagesContainer}>
-              {form.images.map((uri, index) => (
-                <View key={index} style={styles.imageWrapper}>
-                  <Image source={{ uri }} style={styles.imagePreview} />
-                  <Pressable
-                    style={styles.removeImageButton}
-                    onPress={() => removeImage(index)}
-                  >
-                    <Text style={styles.removeImageText}>X</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          )}
+          <PhotoPickerField
+            images={form.images}
+            onChange={(images) => set("images", images)}
+          />
 
           {/* Submit: a spinner inside the button at its own size, and what
               is happening underneath it. */}
@@ -625,50 +570,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   typeButtonTextSelected: {
     color: "#1F1D17",
-  },
-  imagePickerButton: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    borderStyle: "dashed",
-  },
-  imagePickerText: {
-    fontSize: 15,
-    color: "#4F5E10",
-    fontFamily: fonts.medium,
-  },
-  imagesContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 12,
-  },
-  imageWrapper: {
-    position: "relative",
-  },
-  imagePreview: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-  },
-  removeImageButton: {
-    position: "absolute",
-    top: -8,
-    right: -8,
-    backgroundColor: "#DC6B5A",
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  removeImageText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontFamily: fonts.bold,
   },
   submitButton: {
     marginTop: 24,

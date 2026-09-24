@@ -764,6 +764,10 @@ export const translations = {
     editLiveServiceMessage: "Until our team approves them, travellers won't see this service.",
     editorNotFound: "We couldn't find this",
     editorNotFoundHint: "It may have been deleted, or it isn't on your account.",
+    coverPhoto: "Cover",
+    makeCover: "Make this the cover photo",
+    photosCoverHint: "The first photo is the cover. Tap another photo to make it the cover.",
+    removePhoto: "Remove photo",
 
     // ── ui-polish: app shell ──
   },
@@ -1529,6 +1533,10 @@ export const translations = {
     editLiveServiceMessage: "لن تظهر هذه الخدمة للمسافرين حتى يوافق فريقنا على التعديلات.",
     editorNotFound: "لم نعثر على هذا العنصر",
     editorNotFoundHint: "ربما حُذف، أو أنه ليس ضمن حسابك.",
+    coverPhoto: "الغلاف",
+    makeCover: "اجعلها صورة الغلاف",
+    photosCoverHint: "الصورة الأولى هي الغلاف. اضغط على صورة أخرى لتجعلها الغلاف.",
+    removePhoto: "إزالة الصورة",
 
     // ── ui-polish: app shell ──
   },
