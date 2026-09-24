@@ -299,6 +299,15 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
     if (notesFocused.current) scrollRef.current?.scrollToEnd({ animated: true });
   };
 
+  // "Send booking request" pressed before there is a stay to send. Every
+  // reason the footer can give (no dates yet, none free, a quote that failed)
+  // is answered on the calendar, which may be scrolled away under the notes
+  // box with the keyboard up. So: keyboard down, calendar back in view.
+  const showCalendar = () => {
+    Keyboard.dismiss();
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
   // What to do once the sheet is off the screen. This sheet is presented from
   // the listing sheet's view controller, and on iOS that controller cannot be
   // dismissed while it still has this sheet up — asked to, it takes this sheet
@@ -534,6 +543,7 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
               state={footerState}
               submitting={submitting}
               onSubmit={handleSubmit}
+              onNotReady={showCalendar}
               keyboardOpen={keyboardOverlap > 0}
             />
           </View>
@@ -703,9 +713,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-  },
-  primaryButtonDisabled: {
-    opacity: 0.45,
   },
   primaryButtonText: {
     fontSize: 16,

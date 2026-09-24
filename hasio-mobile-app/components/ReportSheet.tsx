@@ -9,10 +9,12 @@ import {
   ScrollView,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import Animated from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useNudge } from "@/hooks/useNudge";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -121,12 +123,20 @@ export function ReportSheet({
     appAlert(t(key));
   };
 
+  const { style: nudgeStyle, nudge } = useNudge();
+
   const handleSubmit = async () => {
     if (!isAuthenticated) {
       appAlert(t("reportSignInRequired"));
       return;
     }
-    if (!selectedReason || submitting) return;
+    if (submitting) return;
+    // Submit stays lime before a reason is picked (faded, it read as text on
+    // Android — see useNudge), so point at the reasons instead.
+    if (!selectedReason) {
+      nudge(t("reportChooseReason"));
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -165,8 +175,6 @@ export function ReportSheet({
       ]
     );
   };
-
-  const canSubmit = !!selectedReason && !submitting;
 
   return (
     <BottomSheet
@@ -222,7 +230,7 @@ export function ReportSheet({
           {t("reportSubtitle")}
         </Text>
 
-        <View accessibilityRole="radiogroup">
+        <Animated.View accessibilityRole="radiogroup" style={nudgeStyle}>
           {REASONS.map((reason) => {
             const active = selectedReason === reason.key;
             return (
@@ -254,7 +262,7 @@ export function ReportSheet({
               </Pressable>
             );
           })}
-        </View>
+        </Animated.View>
 
         <ThemedTextInput
           value={details}
@@ -269,16 +277,13 @@ export function ReportSheet({
         />
 
         <Pressable
-          disabled={!canSubmit}
+          disabled={submitting}
           onPress={handleSubmit}
-          style={({ pressed }) => [
-            styles.submitBtn,
-            !canSubmit && styles.submitBtnDisabled,
-            pressed && canSubmit && styles.pressed,
-          ]}
+          style={({ pressed }) => [styles.submitBtn, pressed && styles.pressed]}
           accessibilityRole="button"
           accessibilityLabel={t("reportSubmit")}
-          accessibilityState={{ disabled: !canSubmit, busy: submitting }}
+          accessibilityHint={selectedReason ? undefined : t("reportChooseReason")}
+          accessibilityState={{ disabled: submitting, busy: submitting }}
         >
           {submitting ? (
             <ActivityIndicator color={colors.ink} />
@@ -416,9 +421,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-  },
-  submitBtnDisabled: {
-    opacity: 0.45,
   },
   submitText: {
     color: colors.ink,

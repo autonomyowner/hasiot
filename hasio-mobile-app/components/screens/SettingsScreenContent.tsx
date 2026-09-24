@@ -27,6 +27,7 @@ import { ScreenGradient } from "@/components/ui/Gradients";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Skeleton, SkeletonGroup, SkeletonLine } from "@/components/ui/Skeleton";
 import { EditNameSheet } from "@/components/settings/EditNameSheet";
+import { UpgradeSheet, type HostingType } from "@/components/settings/UpgradeSheet";
 import { formatPhoneForDisplay, isPlaceholderEmail, ltr } from "@/lib/phone";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { LIST_CONTAINER_PADDING } from "@/constants/layout";
@@ -76,8 +77,6 @@ function whenSheetGone(gone: Promise<void>): Promise<void> {
     new Promise<void>((resolve) => setTimeout(resolve, SHEET_GONE_FALLBACK_MS)),
   ]);
 }
-
-type HostingType = "business" | "provider";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -363,61 +362,13 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
   // finish its exit.
   const sheets = (
     <>
-      <BottomSheet
+      <UpgradeSheet
         visible={upgradeOpen}
+        upgrading={upgrading}
+        onChoose={handleUpgrade}
         onClose={() => setUpgradeOpen(false)}
         onDismissed={handleUpgradeDismissed}
-        header={
-          <Text style={[styles.sheetTitle, isRTL && styles.textRTL]}>
-            {t("upgradeAccount")}
-          </Text>
-        }
-      >
-        <Text style={[styles.sheetSubtitle, isRTL && styles.textRTL]}>
-          {t("upgradeWarning")}
-        </Text>
-
-        {(["business", "provider"] as const).map((type) => {
-          const busy = upgrading === type;
-          const locked = upgrading !== null;
-          const title = type === "business" ? t("userTypeBusiness") : t("userTypeProvider");
-          return (
-            <Pressable
-              key={type}
-              style={({ pressed }) => [
-                styles.upgradeOption,
-                isRTL && styles.rowRTL,
-                locked && !busy && styles.upgradeOptionIdle,
-                pressed && !locked && styles.pressed,
-              ]}
-              onPress={() => handleUpgrade(type)}
-              disabled={locked}
-              accessibilityRole="button"
-              accessibilityLabel={title}
-              accessibilityState={{ disabled: locked, busy }}
-            >
-              <View style={[styles.upgradeOptionText, isRTL && styles.alignEnd]}>
-                <Text style={[styles.upgradeOptionTitle, isRTL && styles.textRTL]}>
-                  {title}
-                </Text>
-                <Text style={[styles.upgradeOptionDesc, isRTL && styles.textRTL]}>
-                  {type === "business" ? t("userTypeBusinessDesc") : t("userTypeProviderDesc")}
-                </Text>
-              </View>
-              {busy ? <ActivityIndicator color={colors.primary.deep} /> : null}
-            </Pressable>
-          );
-        })}
-
-        <Pressable
-          style={({ pressed }) => [styles.cancelButton, pressed && styles.pressed]}
-          onPress={() => setUpgradeOpen(false)}
-          accessibilityRole="button"
-          accessibilityLabel={t("cancel")}
-        >
-          <Text style={styles.cancelButtonText}>{t("cancel")}</Text>
-        </Pressable>
-      </BottomSheet>
+      />
 
       <EditNameSheet
         visible={nameOpen}
@@ -1538,8 +1489,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 16,
     color: colors.ink,
   },
-  // Sheets (upgrade, delete). The title sits in the sheet's drag zone, so it
-  // can be grabbed as well as the handle.
+  // The delete sheet (the upgrade one is components/settings/UpgradeSheet).
+  // The title sits in the sheet's drag zone, so it can be grabbed as well as
+  // the handle.
   sheetTitle: {
     fontFamily: fonts.serif,
     fontSize: 24,
@@ -1552,35 +1504,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: colors.onSurface.muted,
     marginTop: 4,
     marginBottom: 20,
-  },
-  upgradeOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  // The option not being applied while the other one is.
-  upgradeOptionIdle: {
-    opacity: 0.5,
-  },
-  upgradeOptionText: {
-    flex: 1,
-  },
-  upgradeOptionTitle: {
-    fontFamily: fonts.semibold,
-    fontSize: 16,
-    color: colors.ink,
-    marginBottom: 4,
-  },
-  upgradeOptionDesc: {
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    color: colors.onSurface.muted,
   },
   cancelButton: {
     marginTop: 4,

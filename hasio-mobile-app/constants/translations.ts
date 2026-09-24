@@ -564,6 +564,7 @@ export const translations = {
     upgradeToBusiness: "Upgrade to Business",
     upgradeToProvider: "Upgrade to Provider",
     upgradeWarning: "This action cannot be undone",
+    upgradeChoose: "Pick the account that fits what you offer.",
     confirmUpgrade: "Confirm Upgrade",
     becomeBusinessOrProvider: "Become a business or provider",
     upgradeSuccess: "Account upgraded successfully",
@@ -681,6 +682,7 @@ export const translations = {
 
     reportTitle: "Report this content",
     reportSubtitle: "Help us keep Hasio safe. Your report is confidential.",
+    reportChooseReason: "Choose a reason first",
     reportReasonSpam: "Spam or misleading",
     reportReasonInappropriate: "Inappropriate content",
     reportReasonOffensive: "Offensive or hateful",
@@ -1428,6 +1430,7 @@ export const translations = {
     upgradeToBusiness: "ترقية إلى صاحب عمل",
     upgradeToProvider: "ترقية إلى مقدم خدمات",
     upgradeWarning: "لا يمكن التراجع عن هذا الإجراء",
+    upgradeChoose: "اختر الحساب الذي يناسب ما تقدّمه.",
     confirmUpgrade: "تأكيد الترقية",
     becomeBusinessOrProvider: "كن صاحب عمل أو مقدم خدمات",
     upgradeSuccess: "تمت ترقية الحساب بنجاح",
@@ -1545,6 +1548,7 @@ export const translations = {
 
     reportTitle: "الإبلاغ عن هذا المحتوى",
     reportSubtitle: "ساعدنا في الحفاظ على سلامة Hasio. بلاغك سري.",
+    reportChooseReason: "اختر سببًا أولاً",
     reportReasonSpam: "سبام أو مضلل",
     reportReasonInappropriate: "محتوى غير لائق",
     reportReasonOffensive: "مسيء أو يحض على الكراهية",

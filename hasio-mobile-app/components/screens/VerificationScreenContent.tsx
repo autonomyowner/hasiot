@@ -24,6 +24,7 @@ import { colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useNudge } from "@/hooks/useNudge";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { uploadDocumentToConvex } from "@/lib/convexUpload";
 import { getSubmitErrorKey } from "@/lib/submitError";
@@ -105,11 +106,15 @@ export default function VerificationScreenContent() {
     }
   };
 
+  const { style: nudgeStyle, nudge } = useNudge();
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
+    // The button stays lime with nothing picked (faded, it read as text on
+    // Android — see useNudge), so this is reachable: point at the pickers.
     if (!docUri) {
-      appAlert(t("error"), t("verificationNoDocSelected"));
+      nudge(t("verificationNoDocSelected"));
       return;
     }
 
@@ -266,7 +271,7 @@ export default function VerificationScreenContent() {
                     </Pressable>
                   </View>
                 ) : (
-                  <View style={[styles.pickerRow, isRTL && styles.rowRTL]}>
+                  <Animated.View style={[styles.pickerRow, isRTL && styles.rowRTL, nudgeStyle]}>
                     <Pressable
                       style={({ pressed }) => [styles.pickerCard, pressed && styles.pressed]}
                       onPress={pickPhoto}
@@ -287,7 +292,7 @@ export default function VerificationScreenContent() {
                       <Feather name="file-text" size={22} color={colors.primary.deep} />
                       <Text style={styles.pickerText}>{t("verificationChooseFile")}</Text>
                     </Pressable>
-                  </View>
+                  </Animated.View>
                 )}
 
                 <View style={[styles.privacyRow, isRTL && styles.rowRTL]}>
@@ -298,16 +303,13 @@ export default function VerificationScreenContent() {
                 </View>
 
                 <Pressable
-                  style={({ pressed }) => [
-                    styles.submitButton,
-                    (isSubmitting || !docUri) && styles.submitButtonDisabled,
-                    pressed && styles.pressed,
-                  ]}
+                  style={({ pressed }) => [styles.submitButton, pressed && styles.pressed]}
                   onPress={handleSubmit}
-                  disabled={isSubmitting || !docUri}
+                  disabled={isSubmitting}
                   accessibilityRole="button"
                   accessibilityLabel={t("verificationSubmit")}
-                  accessibilityState={{ disabled: isSubmitting || !docUri, busy: isSubmitting }}
+                  accessibilityHint={docUri ? undefined : t("verificationNoDocSelected")}
+                  accessibilityState={{ disabled: isSubmitting, busy: isSubmitting }}
                 >
                   {isSubmitting ? (
                     // Ink on the lime fill, like the label it stands in for;
@@ -512,7 +514,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  submitButtonDisabled: { opacity: 0.5 },
   submitButtonText: {
     fontFamily: fonts.semibold,
     fontSize: 16,

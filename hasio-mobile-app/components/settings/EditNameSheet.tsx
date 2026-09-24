@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import { useMutation } from "convex/react";
 import { api } from "@/backend";
@@ -10,6 +11,7 @@ import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useNudge } from "@/hooks/useNudge";
 
 interface EditNameSheetProps {
   visible: boolean;
@@ -58,15 +60,20 @@ export function EditNameSheet({ visible, initialName, onClose }: EditNameSheetPr
 
   const tidy = (value: string) => value.trim().replace(/\s+/g, " ");
   const trimmed = tidy(name);
-  // Save with nothing in the field used to close the sheet as if it had
-  // worked, leaving the name as it was without a word. Now the button waits
-  // for a name.
-  const canSave = trimmed.length > 0 && !saving;
   // `saving` is a render late; this stops a double tap sending twice.
   const busy = useRef(false);
+  const { style: nudgeStyle, nudge } = useNudge();
 
   const save = async () => {
-    if (!canSave || busy.current) return;
+    if (saving || busy.current) return;
+    // Save with nothing in the field used to close the sheet as if it had
+    // worked, leaving the name as it was without a word. Then the button sat
+    // faded out until a name was typed, which on Android read as text (see
+    // useNudge). Now it stays a button and points at the empty field.
+    if (!trimmed) {
+      nudge(t("fullNamePlaceholder"));
+      return;
+    }
     // Nothing changed: closing is all Save has to do, and "Name saved" would
     // claim a change that did not happen.
     if (trimmed === tidy(initialName)) {
@@ -125,30 +132,29 @@ export function EditNameSheet({ visible, initialName, onClose }: EditNameSheetPr
     >
       <Text style={[styles.hint, isRTL && styles.textRTL]}>{t("editNameHint")}</Text>
 
-      <ThemedTextInput
-        value={name}
-        onChangeText={setName}
-        placeholder={t("fullNamePlaceholder")}
-        autoFocus
-        autoCapitalize="words"
-        autoComplete="name"
-        textContentType="name"
-        returnKeyType="done"
-        onSubmitEditing={save}
-        textAlign={isRTL ? "right" : "left"}
-      />
+      <Animated.View style={nudgeStyle}>
+        <ThemedTextInput
+          value={name}
+          onChangeText={setName}
+          placeholder={t("fullNamePlaceholder")}
+          autoFocus
+          autoCapitalize="words"
+          autoComplete="name"
+          textContentType="name"
+          returnKeyType="done"
+          onSubmitEditing={save}
+          textAlign={isRTL ? "right" : "left"}
+        />
+      </Animated.View>
 
       <Pressable
-        style={({ pressed }) => [
-          styles.submit,
-          !canSave && styles.submitDisabled,
-          pressed && canSave && styles.pressed,
-        ]}
+        style={({ pressed }) => [styles.submit, pressed && styles.pressed]}
         onPress={save}
-        disabled={!canSave}
+        disabled={saving}
         accessibilityRole="button"
         accessibilityLabel={t("save")}
-        accessibilityState={{ disabled: !canSave, busy: saving }}
+        accessibilityHint={trimmed ? undefined : t("fullNamePlaceholder")}
+        accessibilityState={{ disabled: saving, busy: saving }}
       >
         {saving ? (
           <ActivityIndicator color={colors.ink} />
@@ -177,7 +183,6 @@ const makeStyles = (fonts: AppFonts) =>
       borderRadius: 14,
       backgroundColor: colors.primary.DEFAULT,
     },
-    submitDisabled: { opacity: 0.6 },
     submitText: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
     pressed: { opacity: 0.7 },
   });

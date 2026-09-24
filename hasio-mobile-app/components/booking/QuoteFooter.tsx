@@ -1,9 +1,11 @@
 import React from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useNudge } from "@/hooks/useNudge";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { displayTotalSar, type QuoteFooterState } from "@/lib/bookingDisplay";
 import { colors, type AppFonts } from "@/constants/colors";
@@ -17,6 +19,12 @@ interface QuoteFooterProps {
   state: QuoteFooterState;
   submitting: boolean;
   onSubmit: () => void;
+  /**
+   * The button was pressed with nothing it can send yet: no dates, or dates
+   * the place cannot take. The footer shakes its reason; the sheet brings the
+   * calendar back into view, which is where every such reason is fixed.
+   */
+  onNotReady?: () => void;
   /**
    * The Android keyboard is up and the form has been lifted above it. The
    * keyboard covers the navigation bar then, so its inset is not added again.
@@ -36,21 +44,48 @@ export function QuoteFooter({
   state,
   submitting,
   onSubmit,
+  onNotReady,
   keyboardOpen = false,
 }: QuoteFooterProps) {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
   const { format, currency } = useCurrency();
   const insets = useSafeAreaInsets();
+  const { style: nudgeStyle, nudge } = useNudge();
 
   const canSubmit = state.kind === "total" && !state.stale && !submitting;
+  // A total on its way. It is a moment off, and there is nothing to point
+  // the guest at meanwhile, so a press then does nothing.
+  const waiting = state.kind === "loading" || (state.kind === "total" && state.stale);
+  const errorText =
+    state.kind === "error" ? t(getBookingErrorKey(new Error(state.message))) : null;
+  // What stands between the guest and sending, in the words the slot shows.
+  const blocker =
+    state.kind === "idle"
+      ? t("quoteIdleHint")
+      : state.kind === "unavailable"
+        ? t("noAvailability")
+        : errorText;
   // The rows mirror as rows; single lines of text have to be told. They sat
   // at the left edge under a right-to-left page.
   const alignText = isRTL && styles.textRTL;
 
+  // The button is never faded out. At 45% opacity until the dates were in, it
+  // read on an Android phone as a caption, not a button (see useNudge). So it
+  // is always the lime fill, and pressed too early it says what is missing.
+  const handlePress = () => {
+    if (canSubmit) {
+      onSubmit();
+      return;
+    }
+    if (submitting || waiting) return;
+    nudge(blocker ?? undefined);
+    onNotReady?.();
+  };
+
   return (
     <View style={[styles.footer, { paddingBottom: keyboardOpen ? 16 : insets.bottom + 16 }]}>
-      <View style={styles.slot} accessibilityLiveRegion="polite">
+      <Animated.View style={[styles.slot, nudgeStyle]} accessibilityLiveRegion="polite">
         {/* Not "tap your arrival, then your departure" again — that already
             sits under "Select your dates" at the top of the page, and the
             footer repeated it word for word. Here: what the total waits on. */}
@@ -67,7 +102,7 @@ export function QuoteFooter({
 
         {state.kind === "error" && (
           <Text style={[styles.errorText, alignText]} numberOfLines={2}>
-            {t(getBookingErrorKey(new Error(state.message)))}
+            {errorText}
           </Text>
         )}
 
@@ -89,21 +124,18 @@ export function QuoteFooter({
             </Text>
           </View>
         )}
-      </View>
+      </Animated.View>
 
       <Text style={[styles.pendingNote, alignText]}>{t("bookingPendingNote")}</Text>
 
       <Pressable
-        onPress={onSubmit}
-        disabled={!canSubmit}
-        style={({ pressed }) => [
-          styles.primaryButton,
-          !canSubmit && styles.primaryButtonDisabled,
-          pressed && styles.pressed,
-        ]}
+        onPress={handlePress}
+        disabled={submitting}
+        style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
         accessibilityRole="button"
         accessibilityLabel={t("requestBooking")}
-        accessibilityState={{ disabled: !canSubmit, busy: submitting }}
+        accessibilityHint={canSubmit ? undefined : (blocker ?? undefined)}
+        accessibilityState={{ disabled: submitting, busy: submitting || waiting }}
       >
         {submitting ? (
           <ActivityIndicator color={colors.ink} />
@@ -182,9 +214,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-  },
-  primaryButtonDisabled: {
-    opacity: 0.45,
   },
   pressed: {
     opacity: 0.7,
