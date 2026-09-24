@@ -159,16 +159,51 @@ export interface AuthState {
   user: AuthUser | null;
 }
 
-// Chat Message Type
+// Chat Message Types
+
+/** A place the planner named in a finished plan, as it named it. */
+export interface PlanDestination {
+  /** The English name, which the planner is told to copy exactly from the listing. */
+  name: string;
+  nameAr?: string;
+  /** "hotel" | "restaurant" | "attraction" | "event" | "tour", as the planner says. */
+  type?: string;
+}
+
+/**
+ * A finished plan, in the parts the card shows.
+ *
+ * `destinations` and `disclaimer` used to be dropped on arrival: the card could
+ * not open any of the places the plan was built around, and the "check opening
+ * hours before you go" the server attaches to every plan never reached anyone.
+ */
+export interface ChatPlan {
+  itinerary: string;
+  tips?: string;
+  budget?: string;
+  destinations?: PlanDestination[];
+  disclaimer?: string;
+}
+
 export interface ChatMessage {
   id: string;
+  /**
+   * What the bubble says. Empty on a plan, whose words live in `plan` — the
+   * history sent back to the AI is rebuilt from the parts (see
+   * `lib/plannerChat.ts`), so the device does not store every plan twice.
+   */
   text: string;
   isUser: boolean;
   timestamp: string;
-  /** Set only on a finished plan, and rendered as a PlanCard. `text` keeps the
-   *  flattened copy because the conversation history sent back to the AI is
-   *  plain text. */
-  plan?: { itinerary: string; tips?: string; budget?: string };
+  /** Set only on a finished plan, and rendered as a PlanCard. */
+  plan?: ChatPlan;
+  /** The stored plan's server id, for when a plan can be saved as a trip. */
+  planId?: string;
+  /**
+   * A guest's turn that never got an answer. Shown with a Retry, and left out
+   * of the history sent to the AI, which never saw it.
+   */
+  failed?: boolean;
 }
 
 // Filter Types

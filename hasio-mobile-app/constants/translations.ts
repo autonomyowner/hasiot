@@ -732,6 +732,9 @@ export const translations = {
     favoritesExploreStays: "Explore stays",
     favoritesGuestHint:
       "Places you heart are saved on this phone. Sign in to keep them on every device.",
+    plannerTyping: "Hasio is typing…",
+    plannerPlacesTitle: "Places in this plan",
+    sharePlan: "Share plan",
 
     // ── ui-polish: account (profile, sign-in, onboarding) ──
 
@@ -1469,6 +1472,9 @@ export const translations = {
     favoritesExploreStays: "استكشف أماكن الإقامة",
     favoritesGuestHint:
       "تُحفظ الأماكن التي تضيفها إلى المفضلة على هذا الجهاز. سجّل الدخول لتبقى معك على كل أجهزتك.",
+    plannerTyping: "Hasio يكتب…",
+    plannerPlacesTitle: "أماكن في هذه الخطة",
+    sharePlan: "مشاركة الخطة",
 
     // ── ui-polish: account (profile, sign-in, onboarding) ──
 
