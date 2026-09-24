@@ -749,6 +749,8 @@ export const translations = {
     authSessionExpiredTitle: "Signed out",
     authOfflineTitle: "No connection",
     authOk: "OK",
+    authShowPassword: "Show password",
+    authHidePassword: "Hide password",
     // Profile — shown in place of the page while the account is going away.
     accountSigningOut: "Signing you out…",
     accountDeleting: "Deleting your account…",
@@ -1503,6 +1505,8 @@ export const translations = {
     authSessionExpiredTitle: "تم تسجيل خروجك",
     authOfflineTitle: "لا يوجد اتصال",
     authOk: "حسناً",
+    authShowPassword: "إظهار كلمة المرور",
+    authHidePassword: "إخفاء كلمة المرور",
     // Profile — see the English block.
     accountSigningOut: "جارٍ تسجيل خروجك…",
     accountDeleting: "جارٍ حذف حسابك…",

@@ -116,11 +116,15 @@ export default function OnboardingScreen() {
             entering={FadeInUp.delay(600).duration(800)}
             style={styles.authSection}
           >
+            {/* Replace, not push: signing in goes back to whatever asked for
+                it, and with onboarding still underneath that was onboarding
+                again. With this screen gone, sign-in finds nothing to go back
+                to and opens the app; its back arrow returns here. */}
             <Button
               title={t("continueWithPhone")}
               variant="secondary"
               fullWidth
-              onPress={() => router.push("/auth")}
+              onPress={() => router.replace("/auth")}
               style={styles.authButton}
             />
             <Pressable onPress={handleSkip} style={styles.skipButton}>
