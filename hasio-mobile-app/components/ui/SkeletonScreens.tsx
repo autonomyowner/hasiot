@@ -568,26 +568,36 @@ export function SkeletonHostBookingList({
   );
 }
 
-/** Mirrors app/bookings/[id].tsx: status card, listing card with hero, facts card. */
+/**
+ * Mirrors app/bookings/[id].tsx: the one raised card (status chip, code
+ * label, the code), then the listing — hero, name, address, the two action
+ * pills — and the facts, as content on the page divided by hairlines. It drew
+ * three white cards, the screen's look before it was flattened, so the page
+ * jumped when the booking arrived.
+ */
 export function SkeletonBookingDetail({ isRTL = false }: { isRTL?: boolean }) {
   const edge = isRTL ? bookingStyles.selfEnd : undefined;
   return (
     <View style={bookingStyles.detail}>
-      <View style={bookingStyles.card}>
+      <View style={bookingStyles.summary}>
         <SkeletonPill width={88} height={22} phase={sweepPhase(0)} style={edge} />
-        <SkeletonLine width={110} box={18} isRTL={isRTL} phase={sweepPhase(1)} style={bookingStyles.gap8} />
-        <SkeletonLine width={160} box={32} bar={26} isRTL={isRTL} phase={sweepPhase(2)} />
+        <SkeletonLine width={130} box={17} isRTL={isRTL} phase={sweepPhase(1)} style={bookingStyles.gap4} />
+        <SkeletonLine width={160} box={36} bar={28} isRTL={isRTL} phase={sweepPhase(2)} />
       </View>
-      <View style={bookingStyles.card}>
-        <Skeleton radius={12} phase={sweepPhase(3)} style={bookingStyles.hero} />
-        <SkeletonLine width="65%" box={23} isRTL={isRTL} phase={sweepPhase(4)} style={bookingStyles.gap8} />
+      <View style={bookingStyles.section}>
+        <Skeleton radius={20} phase={sweepPhase(3)} style={bookingStyles.hero} />
+        <SkeletonLine width="65%" box={26} isRTL={isRTL} phase={sweepPhase(4)} />
         <SkeletonLine width="45%" box={19} isRTL={isRTL} phase={sweepPhase(5)} />
+        <View style={[bookingStyles.pills, isRTL && bookingStyles.rowRTL]}>
+          <SkeletonPill width={96} height={44} phase={sweepPhase(6)} />
+          <SkeletonPill width={128} height={44} phase={sweepPhase(7)} />
+        </View>
       </View>
-      <View style={bookingStyles.card}>
+      <View style={bookingStyles.section}>
         {[0, 1, 2, 3].map((i) => (
           <View key={i} style={[bookingStyles.factRow, isRTL && bookingStyles.rowRTL]}>
-            <Skeleton radius={4} phase={sweepPhase(6 + i)} style={bookingStyles.factLabel} />
-            <Skeleton radius={4} phase={sweepPhase(6 + i)} style={bookingStyles.factValue} />
+            <Skeleton radius={4} phase={sweepPhase(8 + i)} style={bookingStyles.factLabel} />
+            <Skeleton radius={4} phase={sweepPhase(8 + i)} style={bookingStyles.factValue} />
           </View>
         ))}
       </View>
@@ -638,16 +648,25 @@ const bookingStyles = StyleSheet.create({
   },
   hostActions: { flexDirection: "row", gap: 10 },
   hostAction: { flex: 1, height: 50 },
-  detail: { paddingHorizontal: 20, gap: 12 },
-  card: {
+  // The booking detail: one raised summary card, then hairline sections.
+  detail: { paddingHorizontal: 20 },
+  summary: {
     backgroundColor: colors.surface.DEFAULT,
-    borderRadius: 16,
-    padding: 16,
+    borderRadius: 24,
+    padding: 18,
+    gap: 8,
+    marginBottom: 4,
+  },
+  section: {
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
     gap: 8,
   },
   selfEnd: { alignSelf: "flex-end" },
-  gap8: { marginTop: 8 },
-  hero: { width: "100%", height: 140 },
+  gap4: { marginTop: 4 },
+  hero: { width: "100%", height: 160 },
+  pills: { flexDirection: "row", gap: 10, marginTop: 4 },
   factRow: {
     flexDirection: "row",
     alignItems: "center",
