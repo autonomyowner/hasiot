@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { addDays, datesBetween, formatDateRange, nightsBetween, relativeTime, todayRiyadhISO } from "./dates";
+import {
+  addDays,
+  datesBetween,
+  formatDateRange,
+  nightsBetween,
+  relativeTime,
+  todayRiyadhISO,
+  weekdayLabelKey,
+} from "./dates";
 
 describe("todayRiyadhISO", () => {
   it("matches what the server calls today", () => {
@@ -52,6 +60,23 @@ describe("formatDateRange", () => {
     const formatted = formatDateRange("2026-09-10", "2026-09-13", "ar");
     expect(formatted).toMatch(/10/);
     expect(formatted).not.toMatch(/[٠-٩]/);
+  });
+});
+
+describe("weekdayLabelKey", () => {
+  it("maps a stored day to its label's key", () => {
+    expect(weekdayLabelKey("sunday")).toBe("day_sunday");
+    expect(weekdayLabelKey("saturday")).toBe("day_saturday");
+  });
+
+  it("accepts the capitalised days older rows carry", () => {
+    expect(weekdayLabelKey("Friday")).toBe("day_friday");
+    expect(weekdayLabelKey(" MONDAY ")).toBe("day_monday");
+  });
+
+  it("returns null for anything that is not a day, so it is shown as it is", () => {
+    expect(weekdayLabelKey("holidays")).toBeNull();
+    expect(weekdayLabelKey("")).toBeNull();
   });
 });
 

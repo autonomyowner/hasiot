@@ -750,6 +750,14 @@ export const translations = {
     increaseGuests: "More guests",
     bookingStayLabel: "Stay",
     quoteIdleHint: "Choose your dates to see the total",
+    // Opening hours. The stored day is the key — lib/dates.ts weekdayLabelKey.
+    day_sunday: "Sunday",
+    day_monday: "Monday",
+    day_tuesday: "Tuesday",
+    day_wednesday: "Wednesday",
+    day_thursday: "Thursday",
+    day_friday: "Friday",
+    day_saturday: "Saturday",
 
     // ── ui-polish: planner, favorites ──
 
@@ -1506,6 +1514,13 @@ export const translations = {
     increaseGuests: "زيادة عدد الضيوف",
     bookingStayLabel: "الإقامة",
     quoteIdleHint: "اختر التواريخ لمعرفة الإجمالي",
+    day_sunday: "الأحد",
+    day_monday: "الإثنين",
+    day_tuesday: "الثلاثاء",
+    day_wednesday: "الأربعاء",
+    day_thursday: "الخميس",
+    day_friday: "الجمعة",
+    day_saturday: "السبت",
 
     // ── ui-polish: planner, favorites ──
 

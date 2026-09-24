@@ -31,6 +31,7 @@ import { VerifyPhoneSheet } from "@/components/auth/VerifyPhoneSheet";
 import { RatingSummary, ReviewCard, ReviewSheet } from "@/components/review";
 import { resolveAmenity } from "@/constants/amenities";
 import { telUrl } from "@/lib/bookingDisplay";
+import { weekdayLabelKey } from "@/lib/dates";
 import type { ListingDetails } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -491,17 +492,22 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                 {/* Hours */}
                 {detail?.workingHours && detail.workingHours.length > 0 && (
                   <Section title={t("detailHours")} isRTL={isRTL}>
-                    {detail.workingHours.map((h) => (
-                      <View
-                        key={h.day}
-                        style={[styles.hoursRow, isRTL && styles.rowRTL]}
-                      >
-                        <Text style={styles.hoursDay}>{h.day}</Text>
-                        <Text style={styles.hoursTime}>
-                          {h.isClosed ? t("detailClosed") : `${h.open} – ${h.close}`}
-                        </Text>
-                      </View>
-                    ))}
+                    {detail.workingHours.map((h) => {
+                      // The stored day is a key ("sunday"); show its name,
+                      // or the value itself if it is not one.
+                      const dayKey = weekdayLabelKey(h.day);
+                      return (
+                        <View
+                          key={h.day}
+                          style={[styles.hoursRow, isRTL && styles.rowRTL]}
+                        >
+                          <Text style={styles.hoursDay}>{dayKey ? t(dayKey) : h.day}</Text>
+                          <Text style={styles.hoursTime}>
+                            {h.isClosed ? t("detailClosed") : `${h.open} – ${h.close}`}
+                          </Text>
+                        </View>
+                      );
+                    })}
                   </Section>
                 )}
 

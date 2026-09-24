@@ -64,6 +64,32 @@ export function formatDateRange(checkIn: string, checkOut: string, language: Lan
   return `${formatISODate(checkIn, language)} – ${formatISODate(checkOut, language)}`;
 }
 
+/** The days opening hours are stored under, in the order the week runs. */
+const WEEKDAYS = [
+  "sunday",
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+] as const;
+
+export type WeekdayKey = `day_${(typeof WEEKDAYS)[number]}`;
+
+/**
+ * The translation key for a day of opening hours, or null for anything else.
+ *
+ * Hours store the day as its lowercase English name because that is what
+ * convex/bookings/queries.ts matches against getDay() when it builds booking
+ * slots — an identifier, not a label. The listing sheet printed it as it was:
+ * "sunday", in both languages. Older rows may be capitalised.
+ */
+export function weekdayLabelKey(day: string): WeekdayKey | null {
+  const key = day.trim().toLowerCase();
+  return (WEEKDAYS as readonly string[]).includes(key) ? (`day_${key}` as WeekdayKey) : null;
+}
+
 /** Relative time for the notification inbox: "3h", "2d". */
 export function relativeTime(ts: number, language: Language, now: number = Date.now()): string {
   const seconds = Math.max(0, Math.floor((now - ts) / 1000));
