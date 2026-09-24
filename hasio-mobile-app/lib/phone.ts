@@ -1,3 +1,5 @@
+import { toLatinDigits } from "./digits";
+
 /**
  * Saudi phone numbers, in the shapes people actually type them.
  *
@@ -19,7 +21,8 @@ const E164 = /^\+[1-9]\d{7,14}$/;
  * with a Gulf number can still sign in.
  */
 export function normalizeKsaPhone(input: string): string | null {
-  const raw = input.trim();
+  // An Arabic keyboard types ٠٥٠…, which the `\D` below would strip to nothing.
+  const raw = toLatinDigits(input).trim();
   if (!raw) return null;
 
   // Strip the separators people use for readability.

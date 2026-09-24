@@ -25,6 +25,13 @@ describe("normalizeKsaPhone", () => {
     }
   });
 
+  it("reads a number typed on an Arabic keyboard", () => {
+    // What an Arabic number pad types: the same digits, as different characters.
+    expect(normalizeKsaPhone("٠٥٠١٢٣٤٥٦٧")).toBe("+966501234567");
+    expect(normalizeKsaPhone("+٩٦٦٥٠١٢٣٤٥٦٧")).toBe("+966501234567");
+    expect(normalizeKsaPhone("۰۵۰۱۲۳۴۵۶۷")).toBe("+966501234567");
+  });
+
   it("lets a visitor sign in with a foreign number", () => {
     expect(normalizeKsaPhone("+971501234567")).toBe("+971501234567");
     expect(normalizeKsaPhone("+14155552671")).toBe("+14155552671");
