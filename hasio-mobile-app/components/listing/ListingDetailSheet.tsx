@@ -90,10 +90,27 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   const [bookingOpen, setBookingOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
+  // A number verified on the way to booking. The booking sheet opens once the
+  // verify sheet has gone, not when it is told to go — see handleVerified.
+  const [bookAfterVerify, setBookAfterVerify] = useState(false);
   const galleryRef = React.useRef<ScrollView>(null);
   const router = useRouter();
   const { isAuthenticated } = useConvexAuth();
   const { user } = useConvexUser();
+
+  // The flags above belong to one opening of the sheet. Closed, or moved on to
+  // another listing, none of them may carry over: a flag still set from last
+  // time would present its sheet the moment this one opened again.
+  const itemId = item?.id ?? null;
+  const [openedId, setOpenedId] = useState(itemId);
+  if (itemId !== openedId) {
+    setOpenedId(itemId);
+    setReportOpen(false);
+    setBookingOpen(false);
+    setVerifyOpen(false);
+    setReviewOpen(false);
+    setBookAfterVerify(false);
+  }
 
   // Three reads, all skipped until there is a listing to read them for. The
   // summary and the first few reviews are public; `getMine` returns null for a
@@ -138,6 +155,32 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
       return;
     }
     setReviewOpen(true);
+  };
+
+  // Straight on to booking once the number is verified — the guest asked to
+  // book, and the verification was only ever in the way. But not on this
+  // tick: the verify sheet is only now starting to leave, and iOS will not
+  // present another sheet until it has gone. So remember, and open the booking
+  // sheet from the verify sheet's `onDismissed`.
+  const handleVerified = () => {
+    setBookAfterVerify(true);
+    setVerifyOpen(false);
+  };
+
+  const handleVerifyDismissed = () => {
+    if (!bookAfterVerify) return;
+    setBookAfterVerify(false);
+    setBookingOpen(true);
+  };
+
+  // "View my bookings" on the booking sheet's success screen. The booking
+  // sheet calls this only once it has left the screen: closing it and this
+  // sheet on the same tick asks this sheet's view controller to dismiss while
+  // it still has the booking sheet up, and iOS then takes the booking sheet
+  // down instead of this one — which stayed standing over /bookings.
+  const viewBookings = () => {
+    onClose();
+    router.push("/bookings");
   };
 
   const scrollGalleryTo = (index: number) => {
@@ -220,7 +263,6 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   );
 
   return (
-    <>
     <Modal
       visible={!!item}
       animationType="slide"
@@ -546,55 +588,70 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
           </>
         )}
       </View>
-      {/* Alerts fired while this modal is open render above it. */}
-      <AppDialogHost />
+
+      {/* The sheets this one opens live inside its Modal, not beside it.
+
+          On iOS a Modal presents from the nearest view controller above it
+          in the view tree. Beside this Modal, all four resolved to the
+          screen's controller — which is already presenting this listing — and
+          UIKit refuses a second presentation from a controller busy with one
+          ("Attempt to present … which is already presenting …"). React Native
+          has marked the sheet presented by then and never tries again: its
+          flag stayed "open", its button stayed dead, and a stranded
+          VerifyPhoneSheet's dialog host went on to swallow every later alert.
+          In here they present from this sheet's own controller. A transparent
+          sheet still covers the whole screen from there — the old comment
+          said it would be clipped to the page sheet, which was never tested
+          and is not so: ReviewCard's report sheet has always been nested like
+          this and covers the screen. Android is unaffected either way; every
+          Modal there is its own window.
+
+          Two more iOS rules shape the handlers above. Nothing can be
+          presented while another Modal is still dismissing, so each hand-off
+          waits for the closing sheet's dismissal. And a controller asked to
+          dismiss while it still has a sheet up dismisses that sheet instead of
+          itself, so this sheet is never closed while one of these is open.
+
+          Mounted only while a listing is open, so none of them — nor their
+          dialog hosts — can outlive this sheet. */}
+      {item && (
+        <>
+          <ReportSheet
+            visible={reportOpen}
+            onClose={() => setReportOpen(false)}
+            targetType="listing"
+            targetId={item.id}
+            ownerId={item.ownerId ? (item.ownerId as Id<"users">) : null}
+          />
+
+          <BookingSheet
+            visible={bookingOpen}
+            item={item}
+            onClose={() => setBookingOpen(false)}
+            onViewBookings={viewBookings}
+          />
+
+          <ReviewSheet
+            visible={reviewOpen}
+            listingId={item.id}
+            existing={myReview}
+            onClose={() => setReviewOpen(false)}
+          />
+
+          <VerifyPhoneSheet
+            visible={verifyOpen}
+            onClose={() => setVerifyOpen(false)}
+            onVerified={handleVerified}
+            onDismissed={handleVerifyDismissed}
+          />
+
+          {/* Alerts fired while this sheet is up render above it. It mounts
+              with the sheet, before any of the sheets above can be opened, so
+              the host each of those brings stacks on top of this one. */}
+          <AppDialogHost />
+        </>
+      )}
     </Modal>
-
-    {/* Sibling of the detail modal, not a child of it. A transparent modal
-        nested inside a `pageSheet` is clipped to the sheet's own frame on iOS;
-        presented from here it covers the screen the way it does from a card. */}
-    {item && (
-      <ReportSheet
-        visible={reportOpen}
-        onClose={() => setReportOpen(false)}
-        targetType="listing"
-        targetId={item.id}
-        ownerId={item.ownerId ? (item.ownerId as Id<"users">) : null}
-      />
-    )}
-
-    {/* Same reason as the report sheet: presented as a sibling so it covers the
-        screen instead of being clipped to the iOS pageSheet's frame. */}
-    {item && (
-      <BookingSheet
-        visible={bookingOpen}
-        item={item}
-        onClose={() => setBookingOpen(false)}
-      />
-    )}
-
-    {/* Same reason again: a sibling, so the rating sheet is not clipped to the
-        iOS pageSheet's frame. */}
-    {item && (
-      <ReviewSheet
-        visible={reviewOpen}
-        listingId={item.id}
-        existing={myReview}
-        onClose={() => setReviewOpen(false)}
-      />
-    )}
-
-    {/* Straight into booking once the number is verified — the guest asked to
-        book, and the verification was only ever in the way. */}
-    <VerifyPhoneSheet
-      visible={verifyOpen}
-      onClose={() => setVerifyOpen(false)}
-      onVerified={() => {
-        setVerifyOpen(false);
-        setBookingOpen(true);
-      }}
-    />
-    </>
   );
 }
 

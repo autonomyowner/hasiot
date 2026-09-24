@@ -11,7 +11,6 @@ import {
   Platform,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
-import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
@@ -64,6 +63,13 @@ interface BookingSheetProps {
   visible: boolean;
   onClose: () => void;
   item: DetailItem | null;
+  /**
+   * "View my bookings", pressed on the success screen. Called only once this
+   * sheet has finished leaving — on iOS when its Modal reports the dismissal,
+   * on Android straight away — so the caller can close whatever this sheet
+   * sits in, and navigate, without racing that dismissal.
+   */
+  onViewBookings: () => void;
 }
 
 /**
@@ -73,11 +79,10 @@ interface BookingSheetProps {
  * here, so the number the guest agrees to is computed by the same function
  * that will charge it. The sheet never invents a price.
  */
-export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
+export function BookingSheet({ visible, onClose, item, onViewBookings }: BookingSheetProps) {
   const styles = useThemedStyles(makeStyles);
   const calendarTheme = useThemedStyles(makeCalendarTheme);
   const { t, isRTL, language } = useLanguage();
-  const router = useRouter();
 
   const [checkIn, setCheckIn] = useState<string | null>(null);
   const [checkOut, setCheckOut] = useState<string | null>(null);
@@ -187,6 +192,31 @@ export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
     onClose();
   };
 
+  // What to do once the sheet is off the screen. This sheet is presented from
+  // the listing sheet's view controller, and on iOS that controller cannot be
+  // dismissed while it still has this sheet up — asked to, it takes this sheet
+  // down instead and stays where it is. So "view my bookings" closes this
+  // sheet first and hands over only when the Modal says it has gone.
+  const afterDismiss = useRef<(() => void) | null>(null);
+
+  const handleViewBookings = () => {
+    if (Platform.OS === "ios") {
+      afterDismiss.current = onViewBookings;
+      handleClose();
+      return;
+    }
+    // Every Android Modal is its own window; there is nothing to wait for.
+    handleClose();
+    onViewBookings();
+  };
+
+  // iOS only — Modal never calls onDismiss on Android.
+  const handleDismiss = () => {
+    const next = afterDismiss.current;
+    afterDismiss.current = null;
+    next?.();
+  };
+
   const handleSubmit = async () => {
     if (!item || !checkIn || !checkOut || submitting) return;
 
@@ -214,6 +244,7 @@ export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
       animationType="slide"
       presentationStyle={Platform.OS === "ios" ? "pageSheet" : "fullScreen"}
       onRequestClose={handleClose}
+      onDismiss={handleDismiss}
     >
       <View style={styles.container}>
         <ScreenGradient />
@@ -254,10 +285,7 @@ export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
 
             <Animated.View entering={enterFade(2)} style={styles.successActions}>
               <Pressable
-                onPress={() => {
-                  handleClose();
-                  router.push("/bookings");
-                }}
+                onPress={handleViewBookings}
                 style={styles.primaryButton}
                 accessibilityRole="button"
                 accessibilityLabel={t("viewMyBookings")}
@@ -362,8 +390,12 @@ export function BookingSheet({ visible, onClose, item }: BookingSheetProps) {
       </View>
 
       {/* A native Modal needs its own dialog host, or an alert fired from in
-          here renders behind the sheet. */}
-      <AppDialogHost />
+          here renders behind the sheet. Only while the sheet is meant to be
+          up: iOS keeps a Modal's content mounted until it reports the
+          dismissal, and a host left registered on top by a dismissal that is
+          slow to report — or never reports, after a swipe — would take every
+          later alert into a sheet that is no longer on screen. */}
+      {visible && <AppDialogHost />}
     </Modal>
   );
 }
