@@ -25,14 +25,22 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import {
   EMPTY_STAY_FORM,
+  MAX_GUESTS,
+  MAX_PRICE_PER_NIGHT,
+  MAX_UNITS,
   editedStayLocation,
+  isHHMM,
   isLocalPhoto,
+  isWholeInRange,
   newStayLocation,
+  normaliseTime,
+  parseWholeNumber,
   sameValues,
   stayFormFromListing,
   withUploadedPhotos,
   type StayFormValues,
 } from "@/lib/listingForm";
+import { toLatinDigits } from "@/lib/digits";
 import { BackButton, Button } from "@/components/ui";
 import { LodgingType } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -87,9 +95,13 @@ export default function PostLodgingScreen() {
   // What the form held when it opened: the empty form, or the listing as it is
   // stored. An edit writes the location only where the host moved away from it.
   const [saved, setSaved] = useState<StayFormValues>(EMPTY_STAY_FORM);
-  const [neighborhoodAr, setNeighborhoodAr] = useState("");
   const set = <K extends keyof StayFormValues>(key: K, value: StayFormValues[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
+  // Numbers and times are kept in Latin digits as they are typed: an Arabic
+  // keypad types ٤٥٠, which `Number()` reads as NaN, so a price typed the
+  // natural way in Arabic was turned away as invalid.
+  const setDigits = (key: "pricePerNight" | "maxGuests" | "unitCount" | "checkInTime" | "checkOutTime") =>
+    (value: string) => set(key, toLatinDigits(value));
   const toggleAmenity = (key: string) =>
     setForm((current) => ({
       ...current,
@@ -184,27 +196,31 @@ export default function PostLodgingScreen() {
 
     // The booking fields are optional as a group, but each one that is filled
     // in has to be usable — the server rejects the rest, and finding that out
-    // after an image upload is a poor trade.
-    const nightly = form.pricePerNight.trim() ? Number(form.pricePerNight.trim()) : undefined;
-    if (nightly !== undefined && (!Number.isInteger(nightly) || nightly <= 0 || nightly > 100000)) {
-      appAlert(t("error"), t("invalidPrice"));
+    // after an image upload is a poor trade. Parsed through toLatinDigits (in
+    // parseWholeNumber / normaliseTime), so Arabic-Indic digits count, and
+    // held to the server's own limits: the unit message used to say "at
+    // least 1" and let 501 through to be refused after the upload.
+    const nightly = parseWholeNumber(form.pricePerNight);
+    if (nightly !== undefined && !isWholeInRange(nightly, 1, MAX_PRICE_PER_NIGHT)) {
+      appAlert(t("error"), t("invalidPriceRange"));
       return;
     }
 
-    const guests = form.maxGuests.trim() ? Number(form.maxGuests.trim()) : undefined;
-    if (guests !== undefined && (!Number.isInteger(guests) || guests < 1 || guests > 20)) {
+    const guests = parseWholeNumber(form.maxGuests);
+    if (guests !== undefined && !isWholeInRange(guests, 1, MAX_GUESTS)) {
       appAlert(t("error"), t("invalidGuestCount"));
       return;
     }
 
-    const units = form.unitCount.trim() ? Number(form.unitCount.trim()) : undefined;
-    if (units !== undefined && (!Number.isInteger(units) || units < 1 || units > 500)) {
-      appAlert(t("error"), t("invalidUnitCount"));
+    const units = parseWholeNumber(form.unitCount);
+    if (units !== undefined && !isWholeInRange(units, 1, MAX_UNITS)) {
+      appAlert(t("error"), t("invalidUnitCountRange"));
       return;
     }
 
-    const isHHMM = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
-    if (!isHHMM(form.checkInTime.trim()) || !isHHMM(form.checkOutTime.trim())) {
+    const checkInTime = normaliseTime(form.checkInTime);
+    const checkOutTime = normaliseTime(form.checkOutTime);
+    if (!isHHMM(checkInTime) || !isHHMM(checkOutTime)) {
       appAlert(t("error"), t("invalidTime"));
       return;
     }
@@ -237,8 +253,8 @@ export default function PostLodgingScreen() {
         currency: nightly !== undefined ? "SAR" : undefined,
         maxGuests: guests,
         unitCount: units,
-        checkInTime: form.checkInTime.trim(),
-        checkOutTime: form.checkOutTime.trim(),
+        checkInTime,
+        checkOutTime,
       };
 
       if (isEditing && id) {
@@ -430,7 +446,8 @@ export default function PostLodgingScreen() {
             })}
           </View>
 
-          {/* Neighborhood */}
+          {/* Neighborhood. One box: an Arabic one sat under it for years and
+              was never sent anywhere, so what a host typed there vanished. */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("neighborhood")}
           </Text>
@@ -441,16 +458,6 @@ export default function PostLodgingScreen() {
             onChangeText={(value) => set("neighborhood", value)}
             placeholder={t("placeholderNeighborhoodEn")}
             placeholderTextColor="#A3A3A3"
-          />
-
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={true}
-            value={neighborhoodAr}
-            onChangeText={setNeighborhoodAr}
-            placeholder={t("placeholderNeighborhoodAr")}
-            placeholderTextColor="#A3A3A3"
-            textAlign="right"
           />
 
           {/* Price Range */}
@@ -483,7 +490,7 @@ export default function PostLodgingScreen() {
             style={[styles.input]}
             isRTL={isRTL}
             value={form.pricePerNight}
-            onChangeText={(value) => set("pricePerNight", value)}
+            onChangeText={setDigits("pricePerNight")}
             placeholder={t("placeholderPricePerNight")}
             placeholderTextColor="#A3A3A3"
             keyboardType="number-pad"
@@ -499,7 +506,7 @@ export default function PostLodgingScreen() {
             style={[styles.input]}
             isRTL={isRTL}
             value={form.maxGuests}
-            onChangeText={(value) => set("maxGuests", value)}
+            onChangeText={setDigits("maxGuests")}
             keyboardType="number-pad"
           />
           {cannotClear("maxGuests") && (
@@ -513,7 +520,7 @@ export default function PostLodgingScreen() {
             style={[styles.input]}
             isRTL={isRTL}
             value={form.unitCount}
-            onChangeText={(value) => set("unitCount", value)}
+            onChangeText={setDigits("unitCount")}
             keyboardType="number-pad"
           />
           {cannotClear("unitCount") && (
@@ -529,7 +536,7 @@ export default function PostLodgingScreen() {
             style={[styles.input]}
             isRTL={false}
             value={form.checkInTime}
-            onChangeText={(value) => set("checkInTime", value)}
+            onChangeText={setDigits("checkInTime")}
             placeholder="15:00"
             placeholderTextColor="#A3A3A3"
             keyboardType="numbers-and-punctuation"
@@ -541,7 +548,7 @@ export default function PostLodgingScreen() {
             style={[styles.input]}
             isRTL={false}
             value={form.checkOutTime}
-            onChangeText={(value) => set("checkOutTime", value)}
+            onChangeText={setDigits("checkOutTime")}
             placeholder="12:00"
             placeholderTextColor="#A3A3A3"
             keyboardType="numbers-and-punctuation"

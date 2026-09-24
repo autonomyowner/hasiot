@@ -28,9 +28,11 @@ import {
   isLocalPhoto,
   sameValues,
   serviceFormFromService,
+  splitList,
   withUploadedPhotos,
   type ServiceFormValues,
 } from "@/lib/listingForm";
+import { toLatinDigits } from "@/lib/digits";
 import { BackButton, Button } from "@/components/ui";
 import { ServiceType, PriceUnit } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -163,9 +165,9 @@ export default function PostServiceScreen() {
             })
           : [];
       const images = withUploadedPhotos(form.images, uploaded);
-      const languages = form.languages.trim()
-        ? form.languages.split(",").map((l) => l.trim()).filter(Boolean)
-        : [];
+      // Split on both commas: an Arabic keyboard types "،", which a split on
+      // "," alone left inside one long "language".
+      const languages = splitList(form.languages);
 
       if (isEditing && id) {
         // Every field, with "" and [] for an emptied one: the server skips
@@ -408,7 +410,8 @@ export default function PostServiceScreen() {
             style={[styles.input]}
             isRTL={isRTL}
             value={form.contactPhone}
-            onChangeText={(value) => set("contactPhone", value)}
+            // Latin digits as typed, as everywhere else a number is stored.
+            onChangeText={(value) => set("contactPhone", toLatinDigits(value))}
             placeholder={t("placeholderPhone")}
             placeholderTextColor="#A3A3A3"
             keyboardType="phone-pad"
@@ -428,9 +431,10 @@ export default function PostServiceScreen() {
             autoCapitalize="none"
           />
 
-          {/* Languages */}
+          {/* Languages. The hint used to be English glued onto the label, in
+              Arabic too. */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("languages")} (comma separated)
+            {t("languagesCommaSeparated")}
           </Text>
           <ThemedTextInput
             style={[styles.input]}

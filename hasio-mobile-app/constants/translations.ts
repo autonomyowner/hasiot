@@ -752,6 +752,7 @@ export const translations = {
     deleteBlockedTitle: "Can't delete this yet",
     deleteBlockedOpenBookings:
       "It still has bookings that are waiting or confirmed. Once they are declined, completed or cancelled, you can delete it.",
+    languagesCommaSeparated: "Languages (separate with commas)",
 
     // ── ui-polish: app shell ──
   },
@@ -1505,6 +1506,7 @@ export const translations = {
     deleteBlockedTitle: "لا يمكن الحذف الآن",
     deleteBlockedOpenBookings:
       "لا تزال هناك حجوزات بانتظار الرد أو مؤكدة. يمكنك الحذف بعد رفضها أو إتمامها أو إلغائها.",
+    languagesCommaSeparated: "اللغات (افصل بينها بفواصل)",
 
     // ── ui-polish: app shell ──
   },

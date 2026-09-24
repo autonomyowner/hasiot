@@ -91,8 +91,7 @@ export default function PostDestinationScreen() {
   // One object, and a copy of what it opened with — see post-lodging.tsx.
   const [form, setForm] = useState<PlaceFormValues>(EMPTY_PLACE_FORM);
   const [saved, setSaved] = useState<PlaceFormValues>(EMPTY_PLACE_FORM);
-  const [addressAr, setAddressAr] = useState("");
-  const set = <K extends keyof PlaceFormValues>(key: K, value: PlaceFormValues[K]) =>
+  const set =<K extends keyof PlaceFormValues>(key: K, value: PlaceFormValues[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
   // Once per listing, when it lands, and during render rather than in an
@@ -368,7 +367,8 @@ export default function PostDestinationScreen() {
             })}
           </View>
 
-          {/* Address */}
+          {/* Address. One box: the Arabic one under it was never sent
+              anywhere, so what a host typed there vanished. */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("address")}
           </Text>
@@ -379,16 +379,6 @@ export default function PostDestinationScreen() {
             onChangeText={(value) => set("address", value)}
             placeholder={t("placeholderAddressEn")}
             placeholderTextColor="#A3A3A3"
-          />
-
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={true}
-            value={addressAr}
-            onChangeText={setAddressAr}
-            placeholder={t("placeholderAddressAr")}
-            placeholderTextColor="#A3A3A3"
-            textAlign="right"
           />
 
           {/* Description */}
