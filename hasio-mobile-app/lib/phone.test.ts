@@ -73,12 +73,12 @@ describe("formatPhoneForDisplay", () => {
 
 describe("ltr", () => {
   it("wraps text in a left-to-right embedding", () => {
-    expect(ltr("+966 50 123 4567")).toBe("‪+966 50 123 4567‬");
+    expect(ltr("+966 50 123 4567")).toBe("\u202A+966 50 123 4567\u202C");
   });
 
   it("changes nothing a reader sees", () => {
     const wrapped = ltr(formatPhoneForDisplay("+966501234567"));
-    expect(wrapped.replace(/[‪‬]/g, "")).toBe("+966 50 123 4567");
+    expect(wrapped.replace(/[\u202A\u202C]/g, "")).toBe("+966 50 123 4567");
   });
 
   it("adds nothing to an empty string, so a missing number stays falsy", () => {

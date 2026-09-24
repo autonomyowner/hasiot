@@ -78,7 +78,7 @@ export function formatPhoneForDisplay(phone?: string | null): string {
  * Display only: never send or store the result, it is no longer a number.
  */
 export function ltr(text: string): string {
-  return text ? `‪${text}‬` : text;
+  return text ? `\u202A${text}\u202C` : text;
 }
 
 /**

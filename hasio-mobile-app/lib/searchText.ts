@@ -21,9 +21,9 @@ import { toLatinDigits } from "./digits";
 // The short vowels, tanween, shadda and sukun (U+064B–U+065F), the dagger alef
 // (U+0670), and the Quranic annotation marks either side of them. Invisible to
 // a reader, and each one enough to make `includes` fail.
-const ARABIC_MARKS = /[ؐ-ًؚ-ٰٟۖ-ۭ]/g;
+const ARABIC_MARKS = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g;
 // Tatweel: the stretching stroke some names are typed with ("الـقـطـيف").
-const TATWEEL = /ـ/g;
+const TATWEEL = /\u0640/g;
 // آ أ إ ٱ — every alef that carries something — read as a plain alef.
 const ALEF_FORMS = /[آأإٱ]/g;
 const TAA_MARBUTA = /ة/g; // ة → ه

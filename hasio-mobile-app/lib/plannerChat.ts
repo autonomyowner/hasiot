@@ -144,7 +144,7 @@ export function normalisePlaceName(name: string): string {
     name
       .toLowerCase()
       // Tashkeel and tatweel: vowel marks and the stretching stroke.
-      .replace(/[ؐ-ًؚ-ٰٟـ]/g, "")
+      .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u0640]/g, "")
       // Alef with madda, hamza above, hamza below, wasla: a bare alef.
       .replace(/[آأإٱ]/g, "ا")
       // Taa marbuta as haa, alif maqsura as yaa.
