@@ -723,6 +723,18 @@ export const translations = {
     signOutConfirmTitle: "Sign Out",
     signOutConfirmMessage: "Are you sure you want to sign out?",
     confirm: "Confirm",
+
+    // ── ui-polish: discovery (Home, Stay, filters, search) ──
+
+    // ── ui-polish: listing sheet, booking, reviews ──
+
+    // ── ui-polish: planner, favorites ──
+
+    // ── ui-polish: account (profile, sign-in, onboarding) ──
+
+    // ── ui-polish: business and provider ──
+
+    // ── ui-polish: app shell ──
   },
 
   ar: {
@@ -1445,6 +1457,18 @@ export const translations = {
     signOutConfirmTitle: "تسجيل الخروج",
     signOutConfirmMessage: "هل أنت متأكد من تسجيل الخروج؟",
     confirm: "تأكيد",
+
+    // ── ui-polish: discovery (Home, Stay, filters, search) ──
+
+    // ── ui-polish: listing sheet, booking, reviews ──
+
+    // ── ui-polish: planner, favorites ──
+
+    // ── ui-polish: account (profile, sign-in, onboarding) ──
+
+    // ── ui-polish: business and provider ──
+
+    // ── ui-polish: app shell ──
   },
 } as const;
 
