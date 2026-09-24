@@ -48,10 +48,6 @@ export const HOME_RAIL_GAP = 12;
 // The "find your stay" banner that closes the featured rail.
 export const HOME_STAY_BANNER_HEIGHT = 120;
 
-// Home screen category rail card (shared with SkeletonHomeSections).
-export const CATEGORY_CARD_WIDTH = 300;
-export const CATEGORY_CARD_HEIGHT = 180;
-
 // Moments — 2-column grid, wider gap than the home grid.
 export const MOMENT_CARD_GAP = 12;
 export const MOMENT_CARD_WIDTH =
