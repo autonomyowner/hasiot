@@ -7,8 +7,9 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
+  type TextInput,
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -24,13 +25,17 @@ import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import {
   EMPTY_SERVICE_FORM,
+  firstError,
   isLive,
   isLocalPhoto,
   ownerStatusOf,
   sameValues,
   serviceFormFromService,
   splitList,
+  validateServiceForm,
   withUploadedPhotos,
+  type FieldErrors,
+  type ServiceField,
   type ServiceFormValues,
 } from "@/lib/listingForm";
 import { toLatinDigits } from "@/lib/digits";
@@ -58,6 +63,16 @@ const PRICE_UNITS: { value: PriceUnit; labelKey: string }[] = [
   { value: "fixed", labelKey: "priceFixed" },
 ];
 
+/** The fields that can be wrong, top to bottom as they appear on screen. */
+const FIELD_ORDER: readonly ServiceField[] = [
+  "title",
+  "titleAr",
+  "description",
+  "descriptionAr",
+  "contactPhone",
+  "contactEmail",
+];
+
 export default function PostServiceScreen() {
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
@@ -67,6 +82,7 @@ export default function PostServiceScreen() {
     ref: keyboardRef,
     overlap: keyboardOverlap,
     onLayout: keyboardOnLayout,
+    prepare: prepareKeyboard,
   } = useKeyboardOverlap();
   const submitService = useMutation(api.services.mutations.submitService);
   const updateMyService = useMutation(api.services.mutations.updateMyService);
@@ -84,8 +100,17 @@ export default function PostServiceScreen() {
   // One object, compared with what it opened with — see post-lodging.tsx.
   const [form, setForm] = useState<ServiceFormValues>(EMPTY_SERVICE_FORM);
   const [saved, setSaved] = useState<ServiceFormValues>(EMPTY_SERVICE_FORM);
-  const set = <K extends keyof ServiceFormValues>(key: K, value: ServiceFormValues[K]) =>
+  // Each broken field says so under itself, and clears when it is edited.
+  const [errors, setErrors] = useState<FieldErrors<ServiceField>>({});
+  const set = <K extends keyof ServiceFormValues>(key: K, value: ServiceFormValues[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
+    setErrors((current) => {
+      if (!(key in current)) return current;
+      const next = { ...current };
+      delete next[key as ServiceField];
+      return next;
+    });
+  };
 
   // Filled once per service, during render, when it lands.
   const [prefilledId, setPrefilledId] = useState<string | null>(null);
@@ -103,6 +128,30 @@ export default function PostServiceScreen() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const attempt = useRef(0);
 
+  // Where each field sits, for going to the first one with an error, and the
+  // inputs of the return-key chain.
+  const scrollRef = useRef<ScrollView>(null);
+  const formY = useRef(0);
+  const fieldY = useRef<Partial<Record<ServiceField, number>>>({});
+  const titleRef = useRef<TextInput>(null);
+  const titleArRef = useRef<TextInput>(null);
+  const descriptionRef = useRef<TextInput>(null);
+  const descriptionArRef = useRef<TextInput>(null);
+  const priceRangeRef = useRef<TextInput>(null);
+  const availabilityRef = useRef<TextInput>(null);
+  const availabilityArRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const languagesRef = useRef<TextInput>(null);
+  const inputFor: Record<ServiceField, React.RefObject<TextInput | null>> = {
+    title: titleRef,
+    titleAr: titleArRef,
+    description: descriptionRef,
+    descriptionAr: descriptionArRef,
+    contactPhone: phoneRef,
+    contactEmail: emailRef,
+  };
+
   // Wait for the service, or say there is none — see post-lodging.tsx.
   const editorState: "ready" | "loading" | "missing" = !isEditing
     ? "ready"
@@ -116,16 +165,25 @@ export default function PostServiceScreen() {
   const canResubmit = ownerStatusOf(existing?.status) === "rejected";
   const saveDisabled = isEditing && !dirty && !canResubmit;
 
+  const revealField = (field: ServiceField) => {
+    const y = formY.current + (fieldY.current[field] ?? 0);
+    scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
+    const input = inputFor[field].current;
+    if (input) input.focus();
+    else Keyboard.dismiss();
+  };
+
   const handleSubmit = () => {
     if (isLoading) return;
 
-    if (
-      !form.title.trim() ||
-      !form.titleAr.trim() ||
-      !form.description.trim() ||
-      !form.descriptionAr.trim()
-    ) {
-      appAlert(t("error"), t("fillRequiredFields"));
+    // Both descriptions are required, and the contact details are checked
+    // when given — a mistyped email used to be stored as it was, and the
+    // provider never heard from the travellers it was for.
+    const found = validateServiceForm(form);
+    setErrors(found);
+    const first = firstError(found, FIELD_ORDER);
+    if (first) {
+      revealField(first);
       return;
     }
 
@@ -219,19 +277,19 @@ export default function PostServiceScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={0}
-      >
+      {/* Android pads by what the keyboard covers; iOS insets the scroll view
+          — see post-lodging.tsx. */}
       <View
         ref={keyboardRef}
         onLayout={keyboardOnLayout}
         style={{ flex: 1, paddingBottom: keyboardOverlap }}
       >
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        automaticallyAdjustKeyboardInsets
       >
         {/* Header */}
         <Animated.View
@@ -270,173 +328,288 @@ export default function PostServiceScreen() {
           entering={FadeInDown.delay(200).duration(600)}
           style={styles.form}
           pointerEvents={isLoading ? "none" : "auto"}
+          onLayout={(e) => {
+            formY.current = e.nativeEvent.layout.y;
+          }}
         >
           {/* Service Type Selection */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("selectType")} *
           </Text>
           <View style={[styles.typeContainer, isRTL && styles.typeContainerRTL]}>
-            {SERVICE_TYPES.map((item) => (
-              <Pressable
-                key={item.value}
-                style={[
-                  styles.typeButton,
-                  form.serviceType === item.value && styles.typeButtonSelected,
-                ]}
-                onPress={() => set("serviceType", item.value)}
-              >
-                <Text
-                  style={[
-                    styles.typeButtonText,
-                    form.serviceType === item.value && styles.typeButtonTextSelected,
+            {SERVICE_TYPES.map((item) => {
+              const on = form.serviceType === item.value;
+              return (
+                <Pressable
+                  key={item.value}
+                  style={({ pressed }) => [
+                    styles.typeButton,
+                    on && styles.typeButtonSelected,
+                    pressed && styles.pressed,
                   ]}
+                  onPress={() => set("serviceType", item.value)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
                 >
-                  {t(item.labelKey as any)}
-                </Text>
-              </Pressable>
-            ))}
+                  <Text style={[styles.typeButtonText, on && styles.typeButtonTextSelected]}>
+                    {t(item.labelKey as any)}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           {/* Title */}
-          <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("listingName")} *
-          </Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={isRTL}
-            value={form.title}
-            onChangeText={(value) => set("title", value)}
-            placeholder={t("placeholderServiceTitleEn")}
-            placeholderTextColor="#A3A3A3"
-          />
+          <View
+            onLayout={(e) => {
+              fieldY.current.title = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("listingName")} *
+            </Text>
+            <ThemedTextInput
+              ref={titleRef}
+              style={[styles.input, errors.title && styles.inputError]}
+              isRTL={isRTL}
+              value={form.title}
+              onChangeText={(value) => set("title", value)}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => titleArRef.current?.focus()}
+              placeholder={t("placeholderServiceTitleEn")}
+              placeholderTextColor="#A3A3A3"
+            />
+            {errors.title && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>{t(errors.title)}</Text>
+            )}
+          </View>
 
-          <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("listingNameAr")} *
-          </Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={true}
-            value={form.titleAr}
-            onChangeText={(value) => set("titleAr", value)}
-            placeholder={t("placeholderServiceTitleAr")}
-            placeholderTextColor="#A3A3A3"
-            textAlign="right"
-          />
+          <View
+            onLayout={(e) => {
+              fieldY.current.titleAr = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("listingNameAr")} *
+            </Text>
+            <ThemedTextInput
+              ref={titleArRef}
+              style={[styles.input, errors.titleAr && styles.inputError]}
+              isRTL={true}
+              value={form.titleAr}
+              onChangeText={(value) => set("titleAr", value)}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => descriptionRef.current?.focus()}
+              placeholder={t("placeholderServiceTitleAr")}
+              placeholderTextColor="#A3A3A3"
+              textAlign="right"
+            />
+            {errors.titleAr && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>{t(errors.titleAr)}</Text>
+            )}
+          </View>
 
-          {/* Description */}
-          <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("listingDescription")} *
-          </Text>
-          <ThemedTextInput
-            style={[styles.input, styles.textArea]}
-            isRTL={isRTL}
-            value={form.description}
-            onChangeText={(value) => set("description", value)}
-            placeholder={t("placeholderServiceDescEn")}
-            placeholderTextColor="#A3A3A3"
-            multiline
-            numberOfLines={4}
-          />
+          {/* Description — both are required, so the Arabic one has a label
+              of its own and its asterisk; it used to sit under the English
+              one's with neither. */}
+          <View
+            onLayout={(e) => {
+              fieldY.current.description = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("listingDescription")} *
+            </Text>
+            <ThemedTextInput
+              ref={descriptionRef}
+              style={[styles.input, styles.textArea, errors.description && styles.inputError]}
+              isRTL={isRTL}
+              value={form.description}
+              onChangeText={(value) => set("description", value)}
+              onFocus={prepareKeyboard}
+              placeholder={t("placeholderServiceDescEn")}
+              placeholderTextColor="#A3A3A3"
+              multiline
+              numberOfLines={4}
+            />
+            {errors.description && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>
+                {t(errors.description)}
+              </Text>
+            )}
+          </View>
 
-          <ThemedTextInput
-            style={[styles.input, styles.textArea]}
-            isRTL={true}
-            value={form.descriptionAr}
-            onChangeText={(value) => set("descriptionAr", value)}
-            placeholder={t("placeholderServiceDescAr")}
-            placeholderTextColor="#A3A3A3"
-            multiline
-            numberOfLines={4}
-            textAlign="right"
-          />
+          <View
+            onLayout={(e) => {
+              fieldY.current.descriptionAr = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("listingDescriptionAr")} *
+            </Text>
+            <ThemedTextInput
+              ref={descriptionArRef}
+              style={[styles.input, styles.textArea, errors.descriptionAr && styles.inputError]}
+              isRTL={true}
+              value={form.descriptionAr}
+              onChangeText={(value) => set("descriptionAr", value)}
+              onFocus={prepareKeyboard}
+              placeholder={t("placeholderServiceDescAr")}
+              placeholderTextColor="#A3A3A3"
+              multiline
+              numberOfLines={4}
+              textAlign="right"
+            />
+            {errors.descriptionAr && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>
+                {t(errors.descriptionAr)}
+              </Text>
+            )}
+          </View>
 
           {/* Price */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("priceRange")}
           </Text>
           <ThemedTextInput
+            ref={priceRangeRef}
             style={[styles.input]}
             isRTL={isRTL}
             value={form.priceRange}
             onChangeText={(value) => set("priceRange", value)}
+            onFocus={prepareKeyboard}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => availabilityRef.current?.focus()}
             placeholder={t("placeholderPriceService")}
             placeholderTextColor="#A3A3A3"
           />
 
           {/* Price Unit */}
           <View style={[styles.typeContainer, isRTL && styles.typeContainerRTL]}>
-            {PRICE_UNITS.map((item) => (
-              <Pressable
-                key={item.value}
-                style={[
-                  styles.typeButton,
-                  form.priceUnit === item.value && styles.typeButtonSelected,
-                ]}
-                onPress={() => set("priceUnit", item.value)}
-              >
-                <Text
-                  style={[
-                    styles.typeButtonText,
-                    form.priceUnit === item.value && styles.typeButtonTextSelected,
+            {PRICE_UNITS.map((item) => {
+              const on = form.priceUnit === item.value;
+              return (
+                <Pressable
+                  key={item.value}
+                  style={({ pressed }) => [
+                    styles.typeButton,
+                    on && styles.typeButtonSelected,
+                    pressed && styles.pressed,
                   ]}
+                  onPress={() => set("priceUnit", item.value)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: on }}
                 >
-                  {t(item.labelKey as any)}
-                </Text>
-              </Pressable>
-            ))}
+                  <Text style={[styles.typeButtonText, on && styles.typeButtonTextSelected]}>
+                    {t(item.labelKey as any)}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
 
-          {/* Availability */}
+          {/* Availability, each language under its own label */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("availability")}
           </Text>
           <ThemedTextInput
+            ref={availabilityRef}
             style={[styles.input]}
             isRTL={isRTL}
             value={form.availability}
             onChangeText={(value) => set("availability", value)}
+            onFocus={prepareKeyboard}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => availabilityArRef.current?.focus()}
             placeholder={t("placeholderAvailabilityEn")}
             placeholderTextColor="#A3A3A3"
           />
 
+          <Text style={[styles.label, isRTL && styles.textRTL]}>
+            {t("availabilityAr")}
+          </Text>
           <ThemedTextInput
+            ref={availabilityArRef}
             style={[styles.input]}
             isRTL={true}
             value={form.availabilityAr}
             onChangeText={(value) => set("availabilityAr", value)}
+            onFocus={prepareKeyboard}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => phoneRef.current?.focus()}
             placeholder={t("placeholderAvailabilityAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
           />
 
           {/* Contact Info */}
-          <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("contactPhone")}
-          </Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={isRTL}
-            value={form.contactPhone}
-            // Latin digits as typed, as everywhere else a number is stored.
-            onChangeText={(value) => set("contactPhone", toLatinDigits(value))}
-            placeholder={t("placeholderPhone")}
-            placeholderTextColor="#A3A3A3"
-            keyboardType="phone-pad"
-          />
+          <View
+            onLayout={(e) => {
+              fieldY.current.contactPhone = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("contactPhone")}
+            </Text>
+            <ThemedTextInput
+              ref={phoneRef}
+              style={[styles.input, errors.contactPhone && styles.inputError]}
+              isRTL={isRTL}
+              value={form.contactPhone}
+              // Latin digits as typed, as everywhere else a number is stored.
+              onChangeText={(value) => set("contactPhone", toLatinDigits(value))}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => emailRef.current?.focus()}
+              placeholder={t("placeholderPhone")}
+              placeholderTextColor="#A3A3A3"
+              keyboardType="phone-pad"
+            />
+            {errors.contactPhone && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>
+                {t(errors.contactPhone)}
+              </Text>
+            )}
+          </View>
 
-          <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("contactEmail")}
-          </Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={isRTL}
-            value={form.contactEmail}
-            onChangeText={(value) => set("contactEmail", value)}
-            placeholder={t("placeholderEmail")}
-            placeholderTextColor="#A3A3A3"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
+          <View
+            onLayout={(e) => {
+              fieldY.current.contactEmail = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("contactEmail")}
+            </Text>
+            <ThemedTextInput
+              ref={emailRef}
+              style={[styles.input, errors.contactEmail && styles.inputError]}
+              isRTL={isRTL}
+              value={form.contactEmail}
+              onChangeText={(value) => set("contactEmail", value)}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => languagesRef.current?.focus()}
+              placeholder={t("placeholderEmail")}
+              placeholderTextColor="#A3A3A3"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            {errors.contactEmail && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>
+                {t(errors.contactEmail)}
+              </Text>
+            )}
+          </View>
 
           {/* Languages. The hint used to be English glued onto the label, in
               Arabic too. */}
@@ -444,10 +617,13 @@ export default function PostServiceScreen() {
             {t("languagesCommaSeparated")}
           </Text>
           <ThemedTextInput
+            ref={languagesRef}
             style={[styles.input]}
             isRTL={isRTL}
             value={form.languages}
             onChangeText={(value) => set("languages", value)}
+            onFocus={prepareKeyboard}
+            returnKeyType="done"
             placeholder={t("placeholderLanguages")}
             placeholderTextColor="#A3A3A3"
           />
@@ -487,7 +663,6 @@ export default function PostServiceScreen() {
         <View style={styles.bottomSpacing} />
       </ScrollView>
       </View>
-      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -525,6 +700,14 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     marginBottom: 8,
     marginTop: 16,
   },
+  // The destructive text token: 5.2:1 on the cream page.
+  fieldError: {
+    fontSize: 12.5,
+    fontFamily: fonts.medium,
+    color: colors.signOut,
+    lineHeight: 18,
+    marginTop: 6,
+  },
   input: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -535,8 +718,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E5E5",
   },
-  inputRTL: {
-    textAlign: "right",
+  inputError: {
+    borderColor: colors.signOut,
   },
   textArea: {
     minHeight: 100,
@@ -570,6 +753,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   typeButtonTextSelected: {
     color: "#1F1D17",
+  },
+  pressed: {
+    opacity: 0.7,
   },
   submitButton: {
     marginTop: 24,

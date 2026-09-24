@@ -7,8 +7,9 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
+  type TextInput,
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -25,13 +26,17 @@ import { uploadMultipleToConvex } from "@/lib/convexUpload";
 import {
   EMPTY_PLACE_FORM,
   editedPlaceLocation,
+  firstError,
   isLive,
   isLocalPhoto,
   newPlaceLocation,
   ownerStatusOf,
   placeFormFromListing,
   sameValues,
+  validatePlaceForm,
   withUploadedPhotos,
+  type FieldErrors,
+  type PlaceField,
   type PlaceFormValues,
 } from "@/lib/listingForm";
 import { BackButton, Button } from "@/components/ui";
@@ -63,6 +68,9 @@ const CHIP_FOR_SEEDED: Record<string, DestinationCategory> = {
   entertainment: "recreational",
 };
 
+/** The fields that can be wrong, top to bottom as they appear on screen. */
+const FIELD_ORDER: readonly PlaceField[] = ["name", "nameAr", "city"];
+
 export default function PostDestinationScreen() {
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
@@ -72,6 +80,7 @@ export default function PostDestinationScreen() {
     ref: keyboardRef,
     overlap: keyboardOverlap,
     onLayout: keyboardOnLayout,
+    prepare: prepareKeyboard,
   } = useKeyboardOverlap();
   const submitListing = useMutation(api.listings.mutations.submitListing);
   const updateMyListing = useMutation(api.listings.mutations.updateMyListing);
@@ -92,8 +101,17 @@ export default function PostDestinationScreen() {
   // One object, and a copy of what it opened with — see post-lodging.tsx.
   const [form, setForm] = useState<PlaceFormValues>(EMPTY_PLACE_FORM);
   const [saved, setSaved] = useState<PlaceFormValues>(EMPTY_PLACE_FORM);
-  const set =<K extends keyof PlaceFormValues>(key: K, value: PlaceFormValues[K]) =>
+  // Each broken field says so under itself, and clears when it is edited.
+  const [errors, setErrors] = useState<FieldErrors<PlaceField>>({});
+  const set = <K extends keyof PlaceFormValues>(key: K, value: PlaceFormValues[K]) => {
     setForm((current) => ({ ...current, [key]: value }));
+    setErrors((current) => {
+      if (!(key in current)) return current;
+      const next = { ...current };
+      delete next[key as PlaceField];
+      return next;
+    });
+  };
 
   // Once per listing, when it lands, and during render rather than in an
   // effect: re-filling on every tick of a live query would overwrite whatever
@@ -114,6 +132,21 @@ export default function PostDestinationScreen() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const attempt = useRef(0);
 
+  // Where each field sits, for going to the first one with an error, and the
+  // inputs of the return-key chain.
+  const scrollRef = useRef<ScrollView>(null);
+  const formY = useRef(0);
+  const fieldY = useRef<Partial<Record<PlaceField, number>>>({});
+  const nameRef = useRef<TextInput>(null);
+  const nameArRef = useRef<TextInput>(null);
+  const addressRef = useRef<TextInput>(null);
+  const descriptionRef = useRef<TextInput>(null);
+  const descriptionArRef = useRef<TextInput>(null);
+  const inputFor: Partial<Record<PlaceField, React.RefObject<TextInput | null>>> = {
+    name: nameRef,
+    nameAr: nameArRef,
+  };
+
   const shownCategory = DESTINATION_CATEGORIES.some((item) => item.value === form.category)
     ? form.category
     : CHIP_FOR_SEEDED[form.category];
@@ -132,18 +165,25 @@ export default function PostDestinationScreen() {
   const canResubmit = status === "rejected" || status === "suspended";
   const saveDisabled = isEditing && !dirty && !canResubmit;
 
+  const revealField = (field: PlaceField) => {
+    const y = formY.current + (fieldY.current[field] ?? 0);
+    scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
+    const input = inputFor[field]?.current;
+    if (input) input.focus();
+    else Keyboard.dismiss();
+  };
+
   const handleSubmit = () => {
     if (isLoading) return;
 
-    if (!form.name.trim() || !form.nameAr.trim()) {
-      appAlert(t("error"), t("fillRequiredFields"));
-      return;
-    }
-    // Required, not defaulted: the label has always said "City *", but a
-    // place with none chosen was filed under Al Ahsa without a word,
-    // wherever it actually was — and pinned there too.
-    if (!form.city.trim()) {
-      appAlert(t("error"), t("chooseCity"));
+    // Required, not defaulted, in lib/listingForm.ts: the label has always
+    // said "City *", but a place with none chosen was filed under Al Ahsa
+    // without a word, wherever it actually was — and pinned there too.
+    const found = validatePlaceForm(form);
+    setErrors(found);
+    const first = firstError(found, FIELD_ORDER);
+    if (first) {
+      revealField(first);
       return;
     }
 
@@ -243,19 +283,19 @@ export default function PostDestinationScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={0}
-      >
+      {/* Android pads by what the keyboard covers; iOS insets the scroll view
+          — see post-lodging.tsx. */}
       <View
         ref={keyboardRef}
         onLayout={keyboardOnLayout}
         style={{ flex: 1, paddingBottom: keyboardOverlap }}
       >
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        automaticallyAdjustKeyboardInsets
       >
         {/* Header */}
         <Animated.View
@@ -294,85 +334,130 @@ export default function PostDestinationScreen() {
           entering={FadeInDown.delay(200).duration(600)}
           style={styles.form}
           pointerEvents={isLoading ? "none" : "auto"}
+          onLayout={(e) => {
+            formY.current = e.nativeEvent.layout.y;
+          }}
         >
           {/* Category Selection */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("selectCategory")} *
           </Text>
           <View style={[styles.typeContainer, isRTL && styles.typeContainerRTL]}>
-            {DESTINATION_CATEGORIES.map((item) => (
-              <Pressable
-                key={item.value}
-                style={[
-                  styles.typeButton,
-                  shownCategory === item.value && styles.typeButtonSelected,
-                ]}
-                onPress={() => {
-                  if (item.value !== shownCategory) set("category", item.value);
-                }}
-              >
-                <Text
-                  style={[
-                    styles.typeButtonText,
-                    shownCategory === item.value && styles.typeButtonTextSelected,
-                  ]}
-                >
-                  {t(item.labelKey as any)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {/* Name */}
-          <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("listingName")} *
-          </Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={isRTL}
-            value={form.name}
-            onChangeText={(value) => set("name", value)}
-            placeholder={t("placeholderNameEn")}
-            placeholderTextColor="#A3A3A3"
-          />
-
-          <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("listingNameAr")} *
-          </Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={true}
-            value={form.nameAr}
-            onChangeText={(value) => set("nameAr", value)}
-            placeholder={t("placeholderNameAr")}
-            placeholderTextColor="#A3A3A3"
-            textAlign="right"
-          />
-
-          {/* City. Picked, not typed — a typed city is a new city as far as the
-              filter is concerned. The Arabic box beside it was never sent
-              anywhere; the label now comes from the key. */}
-          <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("city")} *
-          </Text>
-          <View style={[styles.optionGrid, isRTL && styles.optionGridRTL]}>
-            {CITIES.map((option) => {
-              const on = form.city === option.key;
+            {DESTINATION_CATEGORIES.map((item) => {
+              const on = shownCategory === item.value;
               return (
                 <Pressable
-                  key={option.key}
-                  onPress={() => set("city", option.key)}
-                  style={[styles.optionChip, on && styles.optionChipOn]}
+                  key={item.value}
+                  style={({ pressed }) => [
+                    styles.typeButton,
+                    on && styles.typeButtonSelected,
+                    pressed && styles.pressed,
+                  ]}
+                  onPress={() => {
+                    if (!on) set("category", item.value);
+                  }}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: on }}
-                  accessibilityLabel={language === "ar" ? option.ar : option.en}
                 >
-                  <Text style={[styles.optionLabel, on && styles.optionLabelOn]}>
-                    {language === "ar" ? option.ar : option.en}
+                  <Text style={[styles.typeButtonText, on && styles.typeButtonTextSelected]}>
+                    {t(item.labelKey as any)}
                   </Text>
                 </Pressable>
               );
             })}
+          </View>
+
+          {/* Name */}
+          <View
+            onLayout={(e) => {
+              fieldY.current.name = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("listingName")} *
+            </Text>
+            <ThemedTextInput
+              ref={nameRef}
+              style={[styles.input, errors.name && styles.inputError]}
+              isRTL={isRTL}
+              value={form.name}
+              onChangeText={(value) => set("name", value)}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => nameArRef.current?.focus()}
+              placeholder={t("placeholderNameEn")}
+              placeholderTextColor="#A3A3A3"
+            />
+            {errors.name && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>{t(errors.name)}</Text>
+            )}
+          </View>
+
+          <View
+            onLayout={(e) => {
+              fieldY.current.nameAr = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("listingNameAr")} *
+            </Text>
+            <ThemedTextInput
+              ref={nameArRef}
+              style={[styles.input, errors.nameAr && styles.inputError]}
+              isRTL={true}
+              value={form.nameAr}
+              onChangeText={(value) => set("nameAr", value)}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => addressRef.current?.focus()}
+              placeholder={t("placeholderNameAr")}
+              placeholderTextColor="#A3A3A3"
+              textAlign="right"
+            />
+            {errors.nameAr && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>{t(errors.nameAr)}</Text>
+            )}
+          </View>
+
+          {/* City. Picked, not typed — a typed city is a new city as far as the
+              filter is concerned. The Arabic box beside it was never sent
+              anywhere; the label now comes from the key. */}
+          <View
+            onLayout={(e) => {
+              fieldY.current.city = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("city")} *
+            </Text>
+            <View style={[styles.optionGrid, isRTL && styles.optionGridRTL]}>
+              {CITIES.map((option) => {
+                const on = form.city === option.key;
+                return (
+                  <Pressable
+                    key={option.key}
+                    onPress={() => set("city", option.key)}
+                    style={({ pressed }) => [
+                      styles.optionChip,
+                      on && styles.optionChipOn,
+                      pressed && styles.pressed,
+                    ]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={language === "ar" ? option.ar : option.en}
+                  >
+                    <Text style={[styles.optionLabel, on && styles.optionLabelOn]}>
+                      {language === "ar" ? option.ar : option.en}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {errors.city && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>{t(errors.city)}</Text>
+            )}
           </View>
 
           {/* Address. One box: the Arabic one under it was never sent
@@ -381,34 +466,46 @@ export default function PostDestinationScreen() {
             {t("address")}
           </Text>
           <ThemedTextInput
+            ref={addressRef}
             style={[styles.input]}
             isRTL={isRTL}
             value={form.address}
             onChangeText={(value) => set("address", value)}
+            onFocus={prepareKeyboard}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => descriptionRef.current?.focus()}
             placeholder={t("placeholderAddressEn")}
             placeholderTextColor="#A3A3A3"
           />
 
-          {/* Description */}
+          {/* Description, in each language under its own label. */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingDescription")}
           </Text>
           <ThemedTextInput
+            ref={descriptionRef}
             style={[styles.input, styles.textArea]}
             isRTL={isRTL}
             value={form.description}
             onChangeText={(value) => set("description", value)}
+            onFocus={prepareKeyboard}
             placeholder={t("placeholderDescriptionEn")}
             placeholderTextColor="#A3A3A3"
             multiline
             numberOfLines={4}
           />
 
+          <Text style={[styles.label, isRTL && styles.textRTL]}>
+            {t("listingDescriptionAr")}
+          </Text>
           <ThemedTextInput
+            ref={descriptionArRef}
             style={[styles.input, styles.textArea]}
             isRTL={true}
             value={form.descriptionAr}
             onChangeText={(value) => set("descriptionAr", value)}
+            onFocus={prepareKeyboard}
             placeholder={t("placeholderDescriptionAr")}
             placeholderTextColor="#A3A3A3"
             multiline
@@ -451,7 +548,6 @@ export default function PostDestinationScreen() {
         <View style={styles.bottomSpacing} />
       </ScrollView>
       </View>
-      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -513,6 +609,14 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     marginBottom: 8,
     marginTop: 16,
   },
+  // The destructive text token: 5.2:1 on the cream page.
+  fieldError: {
+    fontSize: 12.5,
+    fontFamily: fonts.medium,
+    color: colors.signOut,
+    lineHeight: 18,
+    marginTop: 6,
+  },
   input: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -523,8 +627,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E5E5",
   },
-  inputRTL: {
-    textAlign: "right",
+  inputError: {
+    borderColor: colors.signOut,
   },
   textArea: {
     minHeight: 100,
@@ -557,6 +661,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   typeButtonTextSelected: {
     color: "#1F1D17",
+  },
+  pressed: {
+    opacity: 0.7,
   },
   submitButton: {
     marginTop: 24,
