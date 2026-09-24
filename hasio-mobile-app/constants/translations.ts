@@ -739,6 +739,9 @@ export const translations = {
     invalidUnitCountRange: "Enter a number of rooms or units from 1 to 500",
     invalidContactPhone: "Enter a valid phone number",
     editCannotClear: "This can't be removed in the app yet. Saving keeps {value}.",
+    statusSuspended: "Suspended",
+    reviewNoteLabel: "Note from our team",
+    editToResubmit: "Edit and save to send it back for review.",
 
     // ── ui-polish: app shell ──
   },
@@ -1479,6 +1482,9 @@ export const translations = {
     invalidUnitCountRange: "أدخل عدد غرف أو وحدات من 1 إلى 500",
     invalidContactPhone: "أدخل رقم هاتف صحيحًا",
     editCannotClear: "لا يمكن حذف هذه القيمة من التطبيق حاليًا. عند الحفظ تبقى {value}.",
+    statusSuspended: "موقوف",
+    reviewNoteLabel: "ملاحظة من فريقنا",
+    editToResubmit: "عدّل واحفظ لإعادة الإرسال إلى المراجعة.",
 
     // ── ui-polish: app shell ──
   },

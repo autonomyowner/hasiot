@@ -14,15 +14,10 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
-import { ApprovalStatus } from "@/types";
+import { OwnerStatusBadge, ReviewNote } from "@/components/hosting/OwnerStatus";
+import { ownerStatusOf } from "@/lib/listingForm";
 import { type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: "#D97706",
-  approved: "#059669",
-  rejected: "#DC2626",
-};
 
 export default function MyServicesScreen() {
   const styles = useThemedStyles(makeStyles);
@@ -42,7 +37,7 @@ export default function MyServicesScreen() {
 
   const filteredServices = filter === "all"
     ? services
-    : services.filter((s: any) => s.status === filter);
+    : services.filter((s) => ownerStatusOf(s.status) === filter);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -125,10 +120,15 @@ export default function MyServicesScreen() {
                   <Text style={[styles.listingType, isRTL && styles.textRTL]}>
                     {service.serviceType === "tour_guide" ? t("tourGuide") : service.serviceType === "photographer" ? t("photographer") : service.serviceType === "driver" ? t("driver") : service.serviceType === "translator" ? t("translator") : service.serviceType === "event_planner" ? t("eventPlanner") : service.serviceType === "catering" ? t("catering") : service.serviceType === "equipment_rental" ? t("equipmentRental") : t("otherService")}
                   </Text>
-                  <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[service.status] || "#737373" }]}>
-                    <Text style={styles.statusText}>
-                      {service.status === "pending" ? t("statusPending") : service.status === "approved" ? t("statusApproved") : t("statusRejected")}
-                    </Text>
+                  {/* Services have no editor yet, so the note carries the
+                      admin's reason without an "edit to resubmit" hint. */}
+                  <ReviewNote
+                    status={ownerStatusOf(service.status)}
+                    reason={service.rejectionReason}
+                    canEdit={false}
+                  />
+                  <View style={[styles.cardFoot, isRTL && styles.rowRTL]}>
+                    <OwnerStatusBadge status={ownerStatusOf(service.status)} />
                   </View>
                 </View>
               </View>
@@ -235,17 +235,15 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     marginBottom: 8,
     textTransform: "capitalize",
   },
-  statusBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  cardFoot: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    marginTop: 8,
   },
-  statusText: {
-    fontSize: 12,
-    color: "#FFFFFF",
-    fontFamily: fonts.semibold,
-    textTransform: "capitalize",
+  rowRTL: {
+    flexDirection: "row-reverse",
   },
   emptyContainer: {
     paddingHorizontal: 24,

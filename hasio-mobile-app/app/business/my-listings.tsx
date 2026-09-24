@@ -16,15 +16,10 @@ import { Feather } from "@expo/vector-icons";
 import { useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
-import { ApprovalStatus } from "@/types";
+import { OwnerStatusBadge, ReviewNote } from "@/components/hosting/OwnerStatus";
+import { ownerStatusOf } from "@/lib/listingForm";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: "#D97706",
-  approved: "#059669",
-  rejected: "#DC2626",
-};
 
 export default function MyListingsScreen() {
   const styles = useThemedStyles(makeStyles);
@@ -50,9 +45,17 @@ export default function MyListingsScreen() {
   const allListings = useQuery(api.listings.queries.getMyListings, {});
   const isLoading = allListings === undefined;
 
+  // Filtered on the normalised status: a listing with none is live, and used
+  // to fall out of every filter but "All".
   const filteredListings = filter === "all"
     ? (allListings ?? [])
-    : (allListings ?? []).filter((l: any) => l.status === filter);
+    : (allListings ?? []).filter((l) => ownerStatusOf(l.status) === filter);
+
+  // Suspended is rare, so it is offered only when there is something under
+  // it (or it is the filter already chosen).
+  const hasSuspended = (allListings ?? []).some((l) => l.status === "suspended");
+  const filters = ["all", "pending", "approved", "rejected"];
+  if (hasSuspended || filter === "suspended") filters.push("suspended");
 
   return (
     <SafeAreaView style={styles.container}>
@@ -91,7 +94,7 @@ export default function MyListingsScreen() {
               isRTL && styles.filterScrollRTL,
             ]}
           >
-            {(["all", "pending", "approved", "rejected"] as const).map((status) => (
+            {filters.map((status) => (
               <Pressable
                 key={status}
                 style={[
@@ -135,12 +138,17 @@ export default function MyListingsScreen() {
                   <Text style={[styles.listingType, isRTL && styles.textRTL]}>
                     {listing.type === "hotel" ? t("lodging") : listing.type === "restaurant" ? t("food") : listing.type === "attraction" ? t("destination") : t("event")} • {listing.city}
                   </Text>
+                  <ReviewNote
+                    status={ownerStatusOf(listing.status)}
+                    reason={
+                      listing.status === "suspended"
+                        ? listing.suspendedReason
+                        : listing.rejectionReason
+                    }
+                    canEdit={editorFor(listing.type) !== null}
+                  />
                   <View style={[styles.cardFoot, isRTL && styles.rowRTL]}>
-                    <View style={[styles.statusBadge, { backgroundColor: STATUS_COLORS[listing.status] || "#737373" }]}>
-                      <Text style={styles.statusText}>
-                        {listing.status === "pending" ? t("statusPending") : listing.status === "approved" ? t("statusApproved") : t("statusRejected")}
-                      </Text>
-                    </View>
+                    <OwnerStatusBadge status={ownerStatusOf(listing.status)} />
 
                     {/* Editable in every state, approved included: a price or a
                         phone number that has gone stale is worse live than it
@@ -291,18 +299,6 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 12.5,
     fontFamily: fonts.semibold,
     color: colors.ink,
-  },
-  statusBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    color: "#FFFFFF",
-    fontFamily: fonts.semibold,
-    textTransform: "capitalize",
   },
   emptyContainer: {
     paddingHorizontal: 24,
