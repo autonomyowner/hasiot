@@ -161,6 +161,13 @@ export default function PostDestinationScreen() {
       appAlert(t("error"), t("fillRequiredFields"));
       return;
     }
+    // Required, not defaulted: the label has always said "City *", but a
+    // place with none chosen was filed under Al Ahsa without a word,
+    // wherever it actually was — and pinned there too.
+    if (!form.city.trim()) {
+      appAlert(t("error"), t("chooseCity"));
+      return;
+    }
 
     setIsLoading(true);
     const thisAttempt = ++attempt.current;
@@ -180,10 +187,10 @@ export default function PostDestinationScreen() {
       const images = withUploadedPhotos(form.images, uploaded);
 
       // A canonical key, never free text: the filter groups on this exact
-      // string. The old fallback wrote "Al-Ahsa", which is not one of them.
-      // The coordinate is derived from the same value so the pin and the label
-      // can never disagree.
-      const cityKey = form.city.trim() || "Al Ahsa";
+      // string. The coordinate is derived from the same value so the pin and
+      // the label can never disagree, and a blank address falls back to the
+      // city rather than to the place's own name.
+      const cityKey = form.city.trim();
       const located = { city: cityKey, address: form.address };
 
       if (isEditing && id) {
