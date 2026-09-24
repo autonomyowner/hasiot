@@ -1,6 +1,10 @@
-import React from "react";
-import { StyleSheet, View } from "react-native";
-import { colors } from "@/constants/colors";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { colors, type AppFonts } from "@/constants/colors";
+import { Feather } from "@expo/vector-icons";
+import { useConvexConnectionState } from "convex/react";
+import { useThemedStyles } from "@/hooks/useAppFonts";
+import { useLanguage } from "@/hooks/useLanguage";
 import {
   CHIP_GAP,
   chipHeight,
@@ -139,6 +143,9 @@ export function SkeletonList({
   isRTL = false,
   count = 3,
 }: SkeletonListProps) {
+  const stalled = useStalledConnection();
+  if (stalled) return <StalledNotice />;
+
   return (
     <View style={styles.listContent}>
       {Array.from({ length: count }).map((_, index) => (
@@ -217,6 +224,9 @@ function SkeletonDestinationGrid({
  * the heights below are uneven.
  */
 export function SkeletonHomeSections({ isRTL = false }: { isRTL?: boolean }) {
+  const stalled = useStalledConnection();
+  if (stalled) return <StalledNotice />;
+
   return (
     <View>
       {/* Kind chips — "All" plus whichever kinds the data holds. As tall as
@@ -262,6 +272,72 @@ export function SkeletonHomeSections({ isRTL = false }: { isRTL?: boolean }) {
     </View>
   );
 }
+
+/** How long a placeholder may shimmer with the connection down before it says so. */
+const STALLED_AFTER_MS = 6000;
+
+/**
+ * True once this placeholder has been up for `STALLED_AFTER_MS` while the
+ * connection to the backend is down.
+ *
+ * A skeleton promises "a moment". Offline — flight mode, a dead zone on the
+ * road between cities — the shimmer used to run for as long as anyone
+ * watched, with nothing to say it never would finish. The clock starts when
+ * the skeleton mounts, which is when the loading started, and the answer
+ * follows the connection: once it is back the shimmer returns until the data
+ * lands, and Convex resubscribes by itself, so there is nothing to retry.
+ */
+function useStalledConnection(): boolean {
+  const { isWebSocketConnected } = useConvexConnectionState();
+  const [waited, setWaited] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setWaited(true), STALLED_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  return waited && !isWebSocketConnected;
+}
+
+/**
+ * Stands in for a skeleton that has been waiting on a connection that is not
+ * there. Centred, so it reads the same in either language; TalkBack announces
+ * it when it appears (the live region is Android's alone).
+ */
+function StalledNotice() {
+  const noticeStyles = useThemedStyles(makeNoticeStyles);
+  const { t } = useLanguage();
+  return (
+    <View style={noticeStyles.notice} accessibilityLiveRegion="polite">
+      <Feather name="wifi-off" size={28} color={colors.onSurface.muted} />
+      <Text style={noticeStyles.title}>{t("loadStalledTitle")}</Text>
+      <Text style={noticeStyles.message}>{t("loadStalledMessage")}</Text>
+    </View>
+  );
+}
+
+const makeNoticeStyles = (fonts: AppFonts) =>
+  StyleSheet.create({
+    notice: {
+      alignItems: "center",
+      paddingHorizontal: 32,
+      paddingTop: 48,
+      paddingBottom: 24,
+      gap: 8,
+    },
+    title: {
+      fontFamily: fonts.semibold,
+      fontSize: 17,
+      color: colors.ink,
+      textAlign: "center",
+      marginTop: 4,
+    },
+    message: {
+      fontFamily: fonts.regular,
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.onSurface.variant,
+      textAlign: "center",
+    },
+  });
 
 /**
  * Stands in for the owner's own listings and services (`business/my-listings`,
