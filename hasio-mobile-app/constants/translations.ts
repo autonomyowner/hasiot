@@ -731,6 +731,24 @@ export const translations = {
     // ── ui-polish: planner, favorites ──
 
     // ── ui-polish: account (profile, sign-in, onboarding) ──
+    // Sign-in and phone verification failures (lib/authErrors.ts). Each title
+    // is paired with a different message, never the same line twice.
+    authCodeWrong: "That code isn't right. Check the text message and try again.",
+    authCodeWrongTitle: "Wrong code",
+    authCodeExpired: "This code has expired. Tap “Resend code” to get a new one.",
+    authCodeExpiredTitle: "Code expired",
+    authTooManyAttempts: "Too many wrong codes. Tap “Resend code” to get a new one.",
+    authTooManyAttemptsTitle: "Too many tries",
+    authPhoneTaken: "This number already belongs to another Hasio account. Use a different number.",
+    authPhoneTakenTitle: "Number already in use",
+    authTooManyRequests: "Too many requests. Wait a little, then try again.",
+    authTooManyRequestsTitle: "Try again later",
+    authCheckNumberTitle: "Check the number",
+    authCheckDetailsTitle: "Check your details",
+    authSignInFailedTitle: "Couldn't sign you in",
+    authSessionExpiredTitle: "Signed out",
+    authOfflineTitle: "No connection",
+    authOk: "OK",
 
     // ── ui-polish: business and provider ──
 
@@ -1465,6 +1483,23 @@ export const translations = {
     // ── ui-polish: planner, favorites ──
 
     // ── ui-polish: account (profile, sign-in, onboarding) ──
+    // Sign-in and phone verification failures — see the English block.
+    authCodeWrong: "الرمز غير صحيح. تحقق من الرسالة النصية وحاول مرة أخرى.",
+    authCodeWrongTitle: "رمز غير صحيح",
+    authCodeExpired: "انتهت صلاحية هذا الرمز. اضغط «إعادة إرسال الرمز» للحصول على رمز جديد.",
+    authCodeExpiredTitle: "انتهت صلاحية الرمز",
+    authTooManyAttempts: "أدخلت رموزًا خاطئة كثيرة. اضغط «إعادة إرسال الرمز» للحصول على رمز جديد.",
+    authTooManyAttemptsTitle: "محاولات كثيرة",
+    authPhoneTaken: "هذا الرقم مرتبط بحساب آخر في Hasio. استخدم رقمًا مختلفًا.",
+    authPhoneTakenTitle: "الرقم مستخدم بالفعل",
+    authTooManyRequests: "طلبات كثيرة. انتظر قليلًا ثم حاول مرة أخرى.",
+    authTooManyRequestsTitle: "حاول لاحقًا",
+    authCheckNumberTitle: "تحقق من الرقم",
+    authCheckDetailsTitle: "تحقق من بياناتك",
+    authSignInFailedTitle: "تعذّر تسجيل دخولك",
+    authSessionExpiredTitle: "تم تسجيل خروجك",
+    authOfflineTitle: "لا يوجد اتصال",
+    authOk: "حسناً",
 
     // ── ui-polish: business and provider ──
 
