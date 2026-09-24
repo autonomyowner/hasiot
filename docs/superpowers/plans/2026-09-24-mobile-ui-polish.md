@@ -414,18 +414,84 @@ Files: `app/business/{_layout,dashboard,my-listings,post-lodging,post-destinatio
 - `node` translation parity check (en/ar key sets identical, no "هاسيو").
 - Read every diff; follow the error paths.
 
+## Outcome (2026-09-24)
+
+All six slices landed on `ui-polish` and were merged into `sdk-57`: five fixer branches merged
+`--no-ff` (slices 1–5; 11 + 18 + 4 + 14 + 17 commits), the shell done directly, then the seams
+between slices (the nested report sheet's sign-in, the host card's phone number, the root drill-ins'
+Arabic back swipe, the Favorites "Explore stays" wiring) and a lint cleanup.
+
+- `npm run typecheck`: clean. `npm run lint`: 0 errors, 3 warnings (was 55). `npm run test`: 171
+  passed in 11 files (was 39 in 4). Translation parity: 733 keys in each language, no "هاسيو".
+- Web build (`expo start --web --no-dev`) driven in headless Chrome at 390×844, as a guest: onboarding,
+  all five tabs in English and Arabic, the filter sheet, a place's sheet and its report sheet, a heart
+  on Stay appearing in Favorites, a stay's sheet and Book → sign-in — 21 steps, no console errors, no
+  page errors. Web is not native: gestures, native Modals, keyboards and iOS presentation are what the
+  device checks below are for.
+- One web-only fix: the tab icons get a static colour on web (the animated tint threw there).
+
+**New open items found while fixing** (not done — backend or owner decisions):
+- `deleteMyListing` deletes a listing even with pending/confirmed bookings; the app now refuses on the
+  phone, the server should too.
+- Any edit takes a live listing offline until re-approved (the app now warns before saving).
+- Reports on AI planner messages are still recorded nowhere.
+- The tab bar keeps Stay on the left in Arabic: it follows the pager's swipe order, which is not
+  mirrored. Mirroring both (`PagerView layoutDirection`) is a design decision.
+- The `appAlert`/BottomSheet sequencing makes iOS modal flows correct by construction, but none of it
+  has been exercised on an iPhone.
+
 ## Device checks (for the owner — none of this was run on a phone)
 
-- **iPhone**: open a priced hotel → Book (unverified number → verify → booking sheet must open),
-  Rate, Report — each must appear. Cancel a booking, then Sign out — both alerts must show. Upgrade a
-  tourist account → Done → the app must still respond to touch. Swipe the listing sheet down.
-- **Android**: open/close the Plan keyboard three times — the composer rides with it both ways. Type a
-  nightly price with an Arabic keyboard. Filter sheet: drag the budget thumbs diagonally.
-- **Both, in Arabic**: Home chip rows and Featured rail start on the right; no clipped letters in the
-  Home title or card prices; phone numbers read "+966 50 123 4567".
+Dev client on a real phone (`npx expo start --dev-client`); the `.env` points at production Convex,
+so use throwaway accounts for anything destructive.
+
+**iPhone — the modal flows (these were broken on iOS):**
+1. Open a priced hotel with an **unverified** number → Book → the phone sheet appears → enter the
+   code → it slides away, then the booking sheet appears on top. Pick dates → Request → "View my
+   bookings": the booking sheet leaves, then the listing sheet, then My bookings shows; the app still
+   responds to touch.
+2. On a listing: Rate and Report each open. As a guest, Report shows "Sign in", which leaves the
+   listing sheet and opens sign-in.
+3. Cancel a booking → the "Booking cancelled" alert shows → then Sign out → its alert shows too.
+4. Profile → Upgrade Account → Business Owner → the sheet slides away → "Account upgraded" → "Start
+   verification" opens verification → go back → the app still responds to touch.
+5. Swipe the listing sheet down: it follows the finger and keeps its content while leaving; reopen →
+   first photo. A booking sheet with dates chosen asks "Discard changes?" instead.
+6. Delete account (throwaway account): the sheet leaves, "Deleting your account…" shows — never the
+   guest card — then onboarding.
+
+**Android:**
+7. Plan tab: open and close the keyboard three or more times (tap the field; back / drag to close):
+   the composer rides up and down with it every time, no jump; sending keeps the keyboard open.
+8. Background the app with the keyboard up, return: within ~⅓s the tab bar eases back.
+9. The booking sheet's title clears the status bar; typing a note lifts the form above the keyboard.
+10. Call, Directions and Email on a listing open the dialer, maps and mail.
+11. Back on the sign-in code step returns to the phone step; the app never closes from there.
+
+**Both, in Arabic:**
+12. Home and Stay chip rows and the Featured rail start at the right edge and swipe right-to-left;
+    nothing jumps sideways when data lands.
+13. No clipped letters in the Home title or card prices; "صباح الخير" / "مختارة لك" letters join.
+14. Phone numbers read "+966 50 123 4567"; counts read "ليلة واحدة، ليلتان، 3 ليالٍ"; dates are
+    Gregorian ("10 سبتمبر").
+15. Type a nightly price "٤٥٠" in the listing editor → saves as 450; type "الاحساء" in Home search →
+    finds الأحساء places.
+16. Drill into My bookings / Notifications: the screen enters from the left, and the right-edge swipe
+    takes it back following the finger.
+
+**Hosting:**
+17. Edit a hosted seeded hotel, change only the price, save, confirm: after approval its Directions
+    still open the hotel's real spot and its address is unchanged.
+18. Leave a half-filled posting form with Back / swipe / Android back → "Discard changes?".
+19. Pick five photos → the picker stops at 5, a tapped photo becomes the cover, upload shows
+    "Uploading photos 2/5".
+
+**Filters and favourites:**
+20. Tap a budget thumb without moving it → the filter count stays 0 and places still show.
+21. As a guest, heart a stay → it appears in Favorites → sign in → it is still a favourite.
 
 ## Summary
 
-We looked through every screen of the app and listed about 150 things that feel broken, slow or unfinished.
-The biggest ones are fixed already, and five helpers are now fixing the rest area by area in parallel.
-When they are done, everything is checked together and the phone checks are handed to the owner.
+We looked through every screen of the app and listed about 150 things that felt broken, slow or unfinished.
+All of them are fixed, checked together, and the app was tried in a browser in both languages without errors.
+What is left is trying it on a real iPhone and Android phone with the list above, and a few owner decisions.
