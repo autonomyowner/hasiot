@@ -1,12 +1,11 @@
 import { appAlert } from "@/stores/dialogStore";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -14,7 +13,8 @@ import {
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation, useQuery } from "convex/react";
@@ -29,6 +29,7 @@ import {
   isLocalPhoto,
   newPlaceLocation,
   placeFormFromListing,
+  sameValues,
   withUploadedPhotos,
   type PlaceFormValues,
 } from "@/lib/listingForm";
@@ -64,6 +65,7 @@ const CHIP_FOR_SEEDED: Record<string, DestinationCategory> = {
 export default function PostDestinationScreen() {
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
+  const navigation = useNavigation();
   const { t, isRTL, language } = useLanguage();
   const {
     ref: keyboardRef,
@@ -103,6 +105,14 @@ export default function PostDestinationScreen() {
     setForm(values);
     setSaved(values);
   }
+
+  // Ask before unsaved work is dropped; off once the save has gone through.
+  // The reasons are spelled out in post-lodging.tsx.
+  const [submitted, setSubmitted] = useState(false);
+  const dirty = !sameValues(form, saved);
+  useLeaveGuard(dirty && !submitted);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const attempt = useRef(0);
 
   const shownCategory = DESTINATION_CATEGORIES.some((item) => item.value === form.category)
     ? form.category
@@ -153,13 +163,20 @@ export default function PostDestinationScreen() {
     }
 
     setIsLoading(true);
+    const thisAttempt = ++attempt.current;
 
     try {
       // Stored photos are https URLs and are not re-uploaded; local picks are
       // swapped for their uploads in place, so the cover stays the cover.
       const localPhotos = form.images.filter(isLocalPhoto);
       const uploaded =
-        localPhotos.length > 0 ? await uploadMultipleToConvex(localPhotos) : [];
+        localPhotos.length > 0
+          ? await uploadMultipleToConvex(localPhotos, {
+              onProgress: (done, total) => {
+                if (attempt.current === thisAttempt) setProgress({ done, total });
+              },
+            })
+          : [];
       const images = withUploadedPhotos(form.images, uploaded);
 
       // A canonical key, never free text: the filter groups on this exact
@@ -203,15 +220,26 @@ export default function PostDestinationScreen() {
         });
       }
 
+      setSubmitted(true);
       appAlert(
         t("success"),
         isEditing ? t("listingUpdated") : t("listingSubmittedForReview"),
-        [{ text: t("done"), onPress: () => router.back() }]
+        [
+          {
+            text: t("done"),
+            // Only from this screen: a host who left mid-upload is elsewhere
+            // by now, and back from there popped an unrelated screen.
+            onPress: () => {
+              if (navigation.isFocused()) router.back();
+            },
+          },
+        ]
       );
     } catch (error) {
       appAlert(t("error"), t(getSubmitErrorKey(error)));
     } finally {
       setIsLoading(false);
+      setProgress(null);
     }
   };
 
@@ -247,10 +275,11 @@ export default function PostDestinationScreen() {
           )}
         </Animated.View>
 
-        {/* Form */}
+        {/* Form, locked while it submits. */}
         <Animated.View
           entering={FadeInDown.delay(200).duration(600)}
           style={styles.form}
+          pointerEvents={isLoading ? "none" : "auto"}
         >
           {/* Category Selection */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
@@ -408,21 +437,24 @@ export default function PostDestinationScreen() {
             </View>
           )}
 
-          {/* Submit Button */}
+          {/* Submit: a spinner inside the button at its own size, and what
+              is happening underneath it. */}
           <Button
-            title={isLoading ? "" : isEditing ? t("saveChanges") : t("submitForReview")}
+            title={isEditing ? t("saveChanges") : t("submitForReview")}
             onPress={handleSubmit}
             fullWidth
-            disabled={isLoading}
+            loading={isLoading}
             style={styles.submitButton}
           />
 
           {isLoading && (
-            <ActivityIndicator
-              size="small"
-              color="#4F5E10"
-              style={styles.loadingIndicator}
-            />
+            <Text style={styles.progressText} accessibilityLiveRegion="polite">
+              {progress && progress.done < progress.total
+                ? t("uploadingPhotos")
+                    .replace("{done}", String(progress.done))
+                    .replace("{total}", String(progress.total))
+                : t("saving")}
+            </Text>
           )}
         </Animated.View>
 
@@ -559,8 +591,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   submitButton: {
     marginTop: 24,
   },
-  loadingIndicator: {
-    marginTop: 16,
+  progressText: {
+    marginTop: 12,
+    fontSize: 13,
+    fontFamily: fonts.medium,
+    color: colors.onSurface.variant,
+    textAlign: "center",
   },
   editNotice: {
     fontSize: 12.5,

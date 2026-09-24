@@ -742,6 +742,7 @@ export const translations = {
     statusSuspended: "Suspended",
     reviewNoteLabel: "Note from our team",
     editToResubmit: "Edit and save to send it back for review.",
+    uploadingPhotos: "Uploading photos {done}/{total}",
 
     // ── ui-polish: app shell ──
   },
@@ -1485,6 +1486,7 @@ export const translations = {
     statusSuspended: "موقوف",
     reviewNoteLabel: "ملاحظة من فريقنا",
     editToResubmit: "عدّل واحفظ لإعادة الإرسال إلى المراجعة.",
+    uploadingPhotos: "جاري رفع الصور {done} من {total}",
 
     // ── ui-polish: app shell ──
   },

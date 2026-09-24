@@ -1,12 +1,11 @@
 import { appAlert } from "@/stores/dialogStore";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -14,7 +13,8 @@ import {
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation, useQuery } from "convex/react";
@@ -28,6 +28,7 @@ import {
   editedStayLocation,
   isLocalPhoto,
   newStayLocation,
+  sameValues,
   stayFormFromListing,
   withUploadedPhotos,
   type StayFormValues,
@@ -52,6 +53,7 @@ const LODGING_TYPES: { value: LodgingType; labelKey: string }[] = [
 export default function PostLodgingScreen() {
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
+  const navigation = useNavigation();
   const { t, isRTL, language } = useLanguage();
   const {
     ref: keyboardRef,
@@ -107,6 +109,20 @@ export default function PostLodgingScreen() {
     setForm(values);
     setSaved(values);
   }
+
+  // Leaving with unsaved work asks first — back button, Android back, iOS
+  // swipe — instead of silently dropping a half-filled listing and its
+  // photos. Off once the save has gone through, so the success alert's own
+  // navigation is not intercepted.
+  const [submitted, setSubmitted] = useState(false);
+  const dirty = !sameValues(form, saved);
+  useLeaveGuard(dirty && !submitted);
+
+  // "Uploading photos 2/5" under the busy button. Stamped per attempt: a
+  // failed attempt's other uploads keep finishing in the background, and
+  // without the stamp they would move the count of the retry.
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const attempt = useRef(0);
 
   // A seeded stay's finer category ("luxury_hotel") lights the chip it files
   // under; it is only rewritten if the host picks a different chip.
@@ -194,6 +210,7 @@ export default function PostLodgingScreen() {
     }
 
     setIsLoading(true);
+    const thisAttempt = ++attempt.current;
 
     try {
       // Anything already stored is an https URL and must not be re-uploaded;
@@ -202,7 +219,13 @@ export default function PostLodgingScreen() {
       // with it the cover — survives the save.
       const localPhotos = form.images.filter(isLocalPhoto);
       const uploaded =
-        localPhotos.length > 0 ? await uploadMultipleToConvex(localPhotos) : [];
+        localPhotos.length > 0
+          ? await uploadMultipleToConvex(localPhotos, {
+              onProgress: (done, total) => {
+                if (attempt.current === thisAttempt) setProgress({ done, total });
+              },
+            })
+          : [];
       const images = withUploadedPhotos(form.images, uploaded);
 
       const city = form.city.trim();
@@ -260,15 +283,28 @@ export default function PostLodgingScreen() {
         });
       }
 
+      setSubmitted(true);
       appAlert(
         t("success"),
         isEditing ? t("listingUpdated") : t("listingSubmittedForReview"),
-        [{ text: t("done"), onPress: () => router.back() }]
+        [
+          {
+            text: t("done"),
+            // Only from this screen. The upload can outlast it — a host who
+            // left mid-upload is somewhere else by the time this appears,
+            // and going back from there popped a screen that had nothing to
+            // do with the form.
+            onPress: () => {
+              if (navigation.isFocused()) router.back();
+            },
+          },
+        ]
       );
     } catch (error) {
       appAlert(t("error"), t(getSubmitErrorKey(error)));
     } finally {
       setIsLoading(false);
+      setProgress(null);
     }
   };
 
@@ -304,10 +340,12 @@ export default function PostLodgingScreen() {
           )}
         </Animated.View>
 
-        {/* Form */}
+        {/* Form. Locked while it submits: a chip tapped mid-upload changed
+            the form under a save that had already read it. */}
         <Animated.View
           entering={FadeInDown.delay(200).duration(600)}
           style={styles.form}
+          pointerEvents={isLoading ? "none" : "auto"}
         >
           {/* Type Selection */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
@@ -603,21 +641,25 @@ export default function PostLodgingScreen() {
             </View>
           )}
 
-          {/* Submit Button */}
+          {/* Submit. `loading` keeps the button's size with a spinner in
+              it; the old blank label over a spinner hung below read as a
+              broken button. */}
           <Button
-            title={isLoading ? "" : isEditing ? t("saveChanges") : t("submitForReview")}
+            title={isEditing ? t("saveChanges") : t("submitForReview")}
             onPress={handleSubmit}
             fullWidth
-            disabled={isLoading}
+            loading={isLoading}
             style={styles.submitButton}
           />
 
           {isLoading && (
-            <ActivityIndicator
-              size="small"
-              color="#4F5E10"
-              style={styles.loadingIndicator}
-            />
+            <Text style={styles.progressText} accessibilityLiveRegion="polite">
+              {progress && progress.done < progress.total
+                ? t("uploadingPhotos")
+                    .replace("{done}", String(progress.done))
+                    .replace("{total}", String(progress.total))
+                : t("saving")}
+            </Text>
           )}
         </Animated.View>
 
@@ -778,8 +820,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   submitButton: {
     marginTop: 24,
   },
-  loadingIndicator: {
-    marginTop: 16,
+  progressText: {
+    marginTop: 12,
+    fontSize: 13,
+    fontFamily: fonts.medium,
+    color: colors.onSurface.variant,
+    textAlign: "center",
   },
   editNotice: {
     fontSize: 12.5,

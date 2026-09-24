@@ -1,13 +1,11 @@
 import { appAlert } from "@/stores/dialogStore";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  Alert,
-  ActivityIndicator,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -15,18 +13,26 @@ import {
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useMutation } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
 import { getSubmitErrorKey } from "@/lib/submitError";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
+import {
+  EMPTY_SERVICE_FORM,
+  isLocalPhoto,
+  sameValues,
+  withUploadedPhotos,
+  type ServiceFormValues,
+} from "@/lib/listingForm";
 import { BackButton, Button } from "@/components/ui";
 import { ServiceType, PriceUnit } from "@/types";
-import { type AppFonts } from "@/constants/colors";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const SERVICE_TYPES: { value: ServiceType; labelKey: string }[] = [
@@ -50,6 +56,7 @@ const PRICE_UNITS: { value: PriceUnit; labelKey: string }[] = [
 export default function PostServiceScreen() {
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
+  const navigation = useNavigation();
   const { t, isRTL } = useLanguage();
   const {
     ref: keyboardRef,
@@ -59,19 +66,18 @@ export default function PostServiceScreen() {
   const submitService = useMutation(api.services.mutations.submitService);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [title, setTitle] = useState("");
-  const [titleAr, setTitleAr] = useState("");
-  const [serviceType, setServiceType] = useState<ServiceType>("tour_guide");
-  const [description, setDescription] = useState("");
-  const [descriptionAr, setDescriptionAr] = useState("");
-  const [priceRange, setPriceRange] = useState("");
-  const [priceUnit, setPriceUnit] = useState<PriceUnit>("per_hour");
-  const [availability, setAvailability] = useState("");
-  const [availabilityAr, setAvailabilityAr] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [languages, setLanguages] = useState("");
-  const [images, setImages] = useState<string[]>([]);
+  // One object, compared with what it opened with — see post-lodging.tsx.
+  const [form, setForm] = useState<ServiceFormValues>(EMPTY_SERVICE_FORM);
+  const [saved] = useState<ServiceFormValues>(EMPTY_SERVICE_FORM);
+  const set = <K extends keyof ServiceFormValues>(key: K, value: ServiceFormValues[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+
+  // Ask before unsaved work is dropped; off once the save has gone through.
+  const [submitted, setSubmitted] = useState(false);
+  const dirty = !sameValues(form, saved);
+  useLeaveGuard(dirty && !submitted);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const attempt = useRef(0);
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -95,54 +101,82 @@ export default function PostServiceScreen() {
 
     if (!result.canceled) {
       const newImages = result.assets.map((asset) => asset.uri);
-      setImages([...images, ...newImages].slice(0, 5));
+      setForm((current) => ({
+        ...current,
+        images: [...current.images, ...newImages].slice(0, 5),
+      }));
     }
   };
 
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+    setForm((current) => ({
+      ...current,
+      images: current.images.filter((_, i) => i !== index),
+    }));
   };
 
   const handleSubmit = async () => {
     if (isLoading) return;
 
-    if (!title.trim() || !titleAr.trim() || !description.trim() || !descriptionAr.trim()) {
+    if (
+      !form.title.trim() ||
+      !form.titleAr.trim() ||
+      !form.description.trim() ||
+      !form.descriptionAr.trim()
+    ) {
       appAlert(t("error"), t("fillRequiredFields"));
       return;
     }
 
     setIsLoading(true);
+    const thisAttempt = ++attempt.current;
 
     try {
-      const uploadedImages = images.length > 0
-        ? await uploadMultipleToConvex(images)
-        : [];
+      const localPhotos = form.images.filter(isLocalPhoto);
+      const uploaded =
+        localPhotos.length > 0
+          ? await uploadMultipleToConvex(localPhotos, {
+              onProgress: (done, total) => {
+                if (attempt.current === thisAttempt) setProgress({ done, total });
+              },
+            })
+          : [];
+      const images = withUploadedPhotos(form.images, uploaded);
 
       await submitService({
-        serviceType,
-        title_en: title.trim(),
-        title_ar: titleAr.trim(),
-        description_en: description.trim() || undefined,
-        description_ar: descriptionAr.trim() || undefined,
-        priceRange: priceRange.trim() || undefined,
-        priceUnit: priceUnit,
-        availability_en: availability.trim() || undefined,
-        availability_ar: availabilityAr.trim() || undefined,
-        contactPhone: contactPhone.trim() || undefined,
-        contactEmail: contactEmail.trim() || undefined,
-        languages: languages.trim() ? languages.split(",").map((l) => l.trim()).filter(Boolean) : undefined,
-        images: uploadedImages.length > 0 ? uploadedImages : undefined,
+        serviceType: form.serviceType,
+        title_en: form.title.trim(),
+        title_ar: form.titleAr.trim(),
+        description_en: form.description.trim() || undefined,
+        description_ar: form.descriptionAr.trim() || undefined,
+        priceRange: form.priceRange.trim() || undefined,
+        priceUnit: form.priceUnit,
+        availability_en: form.availability.trim() || undefined,
+        availability_ar: form.availabilityAr.trim() || undefined,
+        contactPhone: form.contactPhone.trim() || undefined,
+        contactEmail: form.contactEmail.trim() || undefined,
+        languages: form.languages.trim()
+          ? form.languages.split(",").map((l) => l.trim()).filter(Boolean)
+          : undefined,
+        images: images.length > 0 ? images : undefined,
       });
 
-      appAlert(
-        t("success"),
-        t("listingSubmittedForReview"),
-        [{ text: t("done"), onPress: () => router.back() }]
-      );
+      setSubmitted(true);
+      appAlert(t("success"), t("listingSubmittedForReview"), [
+        {
+          text: t("done"),
+          // Only from this screen: a provider who left mid-upload is
+          // elsewhere by now, and back from there popped an unrelated screen.
+          onPress: () => {
+            if (navigation.isFocused()) router.back();
+          },
+        },
+      ]);
     } catch (error) {
       appAlert(t("error"), t(getSubmitErrorKey(error)));
     } finally {
       setIsLoading(false);
+      setProgress(null);
     }
   };
 
@@ -173,10 +207,11 @@ export default function PostServiceScreen() {
           </Text>
         </Animated.View>
 
-        {/* Form */}
+        {/* Form, locked while it submits. */}
         <Animated.View
           entering={FadeInDown.delay(200).duration(600)}
           style={styles.form}
+          pointerEvents={isLoading ? "none" : "auto"}
         >
           {/* Service Type Selection */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
@@ -188,14 +223,14 @@ export default function PostServiceScreen() {
                 key={item.value}
                 style={[
                   styles.typeButton,
-                  serviceType === item.value && styles.typeButtonSelected,
+                  form.serviceType === item.value && styles.typeButtonSelected,
                 ]}
-                onPress={() => setServiceType(item.value)}
+                onPress={() => set("serviceType", item.value)}
               >
                 <Text
                   style={[
                     styles.typeButtonText,
-                    serviceType === item.value && styles.typeButtonTextSelected,
+                    form.serviceType === item.value && styles.typeButtonTextSelected,
                   ]}
                 >
                   {t(item.labelKey as any)}
@@ -211,8 +246,8 @@ export default function PostServiceScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={title}
-            onChangeText={setTitle}
+            value={form.title}
+            onChangeText={(value) => set("title", value)}
             placeholder={t("placeholderServiceTitleEn")}
             placeholderTextColor="#A3A3A3"
           />
@@ -223,8 +258,8 @@ export default function PostServiceScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={true}
-            value={titleAr}
-            onChangeText={setTitleAr}
+            value={form.titleAr}
+            onChangeText={(value) => set("titleAr", value)}
             placeholder={t("placeholderServiceTitleAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
@@ -237,8 +272,8 @@ export default function PostServiceScreen() {
           <ThemedTextInput
             style={[styles.input, styles.textArea]}
             isRTL={isRTL}
-            value={description}
-            onChangeText={setDescription}
+            value={form.description}
+            onChangeText={(value) => set("description", value)}
             placeholder={t("placeholderServiceDescEn")}
             placeholderTextColor="#A3A3A3"
             multiline
@@ -248,8 +283,8 @@ export default function PostServiceScreen() {
           <ThemedTextInput
             style={[styles.input, styles.textArea]}
             isRTL={true}
-            value={descriptionAr}
-            onChangeText={setDescriptionAr}
+            value={form.descriptionAr}
+            onChangeText={(value) => set("descriptionAr", value)}
             placeholder={t("placeholderServiceDescAr")}
             placeholderTextColor="#A3A3A3"
             multiline
@@ -264,8 +299,8 @@ export default function PostServiceScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={priceRange}
-            onChangeText={setPriceRange}
+            value={form.priceRange}
+            onChangeText={(value) => set("priceRange", value)}
             placeholder={t("placeholderPriceService")}
             placeholderTextColor="#A3A3A3"
           />
@@ -277,14 +312,14 @@ export default function PostServiceScreen() {
                 key={item.value}
                 style={[
                   styles.typeButton,
-                  priceUnit === item.value && styles.typeButtonSelected,
+                  form.priceUnit === item.value && styles.typeButtonSelected,
                 ]}
-                onPress={() => setPriceUnit(item.value)}
+                onPress={() => set("priceUnit", item.value)}
               >
                 <Text
                   style={[
                     styles.typeButtonText,
-                    priceUnit === item.value && styles.typeButtonTextSelected,
+                    form.priceUnit === item.value && styles.typeButtonTextSelected,
                   ]}
                 >
                   {t(item.labelKey as any)}
@@ -300,8 +335,8 @@ export default function PostServiceScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={availability}
-            onChangeText={setAvailability}
+            value={form.availability}
+            onChangeText={(value) => set("availability", value)}
             placeholder={t("placeholderAvailabilityEn")}
             placeholderTextColor="#A3A3A3"
           />
@@ -309,8 +344,8 @@ export default function PostServiceScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={true}
-            value={availabilityAr}
-            onChangeText={setAvailabilityAr}
+            value={form.availabilityAr}
+            onChangeText={(value) => set("availabilityAr", value)}
             placeholder={t("placeholderAvailabilityAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
@@ -323,8 +358,8 @@ export default function PostServiceScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={contactPhone}
-            onChangeText={setContactPhone}
+            value={form.contactPhone}
+            onChangeText={(value) => set("contactPhone", value)}
             placeholder={t("placeholderPhone")}
             placeholderTextColor="#A3A3A3"
             keyboardType="phone-pad"
@@ -336,8 +371,8 @@ export default function PostServiceScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={contactEmail}
-            onChangeText={setContactEmail}
+            value={form.contactEmail}
+            onChangeText={(value) => set("contactEmail", value)}
             placeholder={t("placeholderEmail")}
             placeholderTextColor="#A3A3A3"
             keyboardType="email-address"
@@ -351,8 +386,8 @@ export default function PostServiceScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={languages}
-            onChangeText={setLanguages}
+            value={form.languages}
+            onChangeText={(value) => set("languages", value)}
             placeholder={t("placeholderLanguages")}
             placeholderTextColor="#A3A3A3"
           />
@@ -363,13 +398,13 @@ export default function PostServiceScreen() {
           </Text>
           <Pressable style={styles.imagePickerButton} onPress={pickImage}>
             <Text style={styles.imagePickerText}>
-              {t("selectPhoto")} ({images.length}/5)
+              {t("selectPhoto")} ({form.images.length}/5)
             </Text>
           </Pressable>
 
-          {images.length > 0 && (
+          {form.images.length > 0 && (
             <View style={styles.imagesContainer}>
-              {images.map((uri, index) => (
+              {form.images.map((uri, index) => (
                 <View key={index} style={styles.imageWrapper}>
                   <Image source={{ uri }} style={styles.imagePreview} />
                   <Pressable
@@ -383,21 +418,24 @@ export default function PostServiceScreen() {
             </View>
           )}
 
-          {/* Submit Button */}
+          {/* Submit: a spinner inside the button at its own size, and what
+              is happening underneath it. */}
           <Button
-            title={isLoading ? "" : t("submitForReview")}
+            title={t("submitForReview")}
             onPress={handleSubmit}
             fullWidth
-            disabled={isLoading}
+            loading={isLoading}
             style={styles.submitButton}
           />
 
           {isLoading && (
-            <ActivityIndicator
-              size="small"
-              color="#4F5E10"
-              style={styles.loadingIndicator}
-            />
+            <Text style={styles.progressText} accessibilityLiveRegion="polite">
+              {progress && progress.done < progress.total
+                ? t("uploadingPhotos")
+                    .replace("{done}", String(progress.done))
+                    .replace("{total}", String(progress.total))
+                : t("saving")}
+            </Text>
           )}
         </Animated.View>
 
@@ -535,8 +573,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   submitButton: {
     marginTop: 24,
   },
-  loadingIndicator: {
-    marginTop: 16,
+  progressText: {
+    marginTop: 12,
+    fontSize: 13,
+    fontFamily: fonts.medium,
+    color: colors.onSurface.variant,
+    textAlign: "center",
   },
   bottomSpacing: {
     height: 32,
