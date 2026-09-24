@@ -11,6 +11,7 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { categoryColors, colors, type AppFonts } from "@/constants/colors";
+import { CHIP_GAP } from "@/constants/layout";
 import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
@@ -196,6 +197,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   filtersContainer: {
     paddingHorizontal: 24,
     paddingVertical: 12,
+    gap: CHIP_GAP,
   },
   filtersContainerRTL: {
     flexDirection: "row-reverse",

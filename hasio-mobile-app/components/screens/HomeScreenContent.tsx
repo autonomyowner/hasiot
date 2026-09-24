@@ -41,6 +41,7 @@ import { CaptionScrim, ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import {
+  CHIP_GAP,
   HOME_CARD_GAP,
   HOME_CARD_WIDTH,
   HOME_CONTAINER_PADDING,
@@ -1030,6 +1031,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   kindChips: {
     paddingHorizontal: CONTAINER_PADDING,
     marginTop: 18,
+    gap: CHIP_GAP,
   },
   kindChipsRTL: {
     flexDirection: "row-reverse",
