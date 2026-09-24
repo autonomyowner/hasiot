@@ -1,36 +1,56 @@
 import { appAlert } from "@/stores/dialogStore";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  Alert,
   ActivityIndicator,
-  Image,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
-  Linking,
+  type TextInput,
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import * as ImagePicker from "expo-image-picker";
-import Animated, { FadeInDown } from "react-native-reanimated";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
+import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import Animated from "react-native-reanimated";
+import { enterFade } from "@/constants/motion";
+import { PhotoPickerField } from "@/components/hosting/PhotoPickerField";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { getSubmitErrorKey } from "@/lib/submitError";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
+import {
+  EMPTY_STAY_FORM,
+  editedStayLocation,
+  firstError,
+  isLive,
+  isLocalPhoto,
+  newStayLocation,
+  normaliseTime,
+  ownerStatusOf,
+  parseWholeNumber,
+  sameValues,
+  stayFormFromListing,
+  validateStayForm,
+  withUploadedPhotos,
+  type FieldErrors,
+  type StayField,
+  type StayFormValues,
+} from "@/lib/listingForm";
+import { toLatinDigits } from "@/lib/digits";
 import { BackButton, Button } from "@/components/ui";
 import { LodgingType } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Feather } from "@expo/vector-icons";
-import { AMENITIES, type AmenityKey } from "@/constants/amenities";
-import { CITIES, canonicalCity, cityCoordinates } from "@/constants/cities";
+import { AMENITIES } from "@/constants/amenities";
+import { CITIES } from "@/constants/cities";
 import { colors, type AppFonts } from "@/constants/colors";
+import { lodgingTypeOf } from "@/hooks/useConvexData";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const LODGING_TYPES: { value: LodgingType; labelKey: string }[] = [
@@ -40,14 +60,38 @@ const LODGING_TYPES: { value: LodgingType; labelKey: string }[] = [
   { value: "homestay", labelKey: "homestays" },
 ];
 
+/** The fields that can be wrong, top to bottom as they appear on screen. */
+const FIELD_ORDER: readonly StayField[] = [
+  "name",
+  "nameAr",
+  "city",
+  "pricePerNight",
+  "maxGuests",
+  "unitCount",
+  "checkInTime",
+  "checkOutTime",
+];
+
+/** The booking fields as sent: parsed and checked, `undefined` = not sent. */
+type Pricing = {
+  pricePerNight?: number;
+  currency?: string;
+  maxGuests?: number;
+  unitCount?: number;
+  checkInTime: string;
+  checkOutTime: string;
+};
+
 export default function PostLodgingScreen() {
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
+  const navigation = useNavigation();
   const { t, isRTL, language } = useLanguage();
   const {
     ref: keyboardRef,
     overlap: keyboardOverlap,
     onLayout: keyboardOnLayout,
+    prepare: prepareKeyboard,
   } = useKeyboardOverlap();
   const submitListing = useMutation(api.listings.mutations.submitListing);
   const updateMyListing = useMutation(api.listings.mutations.updateMyListing);
@@ -67,316 +111,473 @@ export default function PostLodgingScreen() {
   const isEditing = Boolean(id);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [name, setName] = useState("");
-  const [nameAr, setNameAr] = useState("");
-  const [type, setType] = useState<LodgingType>("hotel");
-  const [city, setCity] = useState("");
-  const [neighborhood, setNeighborhood] = useState("");
-  const [neighborhoodAr, setNeighborhoodAr] = useState("");
-  const [priceRange, setPriceRange] = useState("");
-  // Booking fields. Without a nightly price the listing still appears in the
-  // directory, it just cannot be booked — so these are optional, not required.
-  const [pricePerNight, setPricePerNight] = useState("");
-  const [maxGuests, setMaxGuests] = useState("2");
-  const [unitCount, setUnitCount] = useState("1");
-  const [checkInTime, setCheckInTime] = useState("15:00");
-  const [checkOutTime, setCheckOutTime] = useState("12:00");
-  const [description, setDescription] = useState("");
-  const [descriptionAr, setDescriptionAr] = useState("");
-  // Canonical keys, not typed words — see `constants/amenities.ts`. The old
-  // pair of comma-separated fields also collected an Arabic line that was
-  // never sent anywhere, so a host's Arabic amenities were silently dropped.
-  const [selectedAmenities, setSelectedAmenities] = useState<AmenityKey[]>([]);
-  const toggleAmenity = (key: AmenityKey) =>
-    setSelectedAmenities((current) =>
-      current.includes(key)
-        ? current.filter((item) => item !== key)
-        : [...current, key]
-    );
-  const [images, setImages] = useState<string[]>([]);
-
-  // Fill the form the first time the listing lands, and only then: re-running
-  // this on every render of a live query would overwrite whatever is being
-  // typed each time anything else on the account changes.
-  const prefilled = useRef(false);
-  useEffect(() => {
-    if (!existing || prefilled.current) return;
-    prefilled.current = true;
-    setName(existing.name_en ?? "");
-    setNameAr(existing.name_ar ?? "");
-    setType((existing.category as LodgingType) ?? "hotel");
-    setCity(canonicalCity(existing.city ?? ""));
-    setNeighborhood(existing.region ?? "");
-    setPriceRange(existing.priceRange ?? "");
-    setPricePerNight(existing.pricePerNight != null ? String(existing.pricePerNight) : "");
-    setMaxGuests(existing.maxGuests != null ? String(existing.maxGuests) : "2");
-    setUnitCount(existing.unitCount != null ? String(existing.unitCount) : "1");
-    setCheckInTime(existing.checkInTime ?? "15:00");
-    setCheckOutTime(existing.checkOutTime ?? "12:00");
-    setDescription(existing.description_en ?? "");
-    setDescriptionAr(existing.description_ar ?? "");
-    setSelectedAmenities((existing.amenities ?? []) as AmenityKey[]);
-    setImages(existing.images ?? []);
-  }, [existing]);
-
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      appAlert(
-        t("permissionRequired"),
-        t("photoPermissionMessage"),
-        [
-          { text: t("cancel"), style: "cancel" },
-          { text: t("openSettings"), onPress: () => Linking.openSettings() },
-        ]
-      );
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsMultipleSelection: true,
-      quality: 0.8,
+  // Every field in one object: an edit needs the whole form to compare with
+  // what it opened with, which a dozen separate states made impossible.
+  // Amenities are canonical keys, not typed words — see
+  // `constants/amenities.ts` — but a legacy free-text amenity is carried as it
+  // is, so an edit never drops it.
+  const [form, setForm] = useState<StayFormValues>(EMPTY_STAY_FORM);
+  // What the form held when it opened: the empty form, or the listing as it is
+  // stored. An edit writes the location only where the host moved away from it.
+  const [saved, setSaved] = useState<StayFormValues>(EMPTY_STAY_FORM);
+  // Each broken field says so under itself. A single "please fill in all
+  // required fields" alert used to leave the host hunting a long form for
+  // which one, and the range errors said nothing about the range.
+  const [errors, setErrors] = useState<FieldErrors<StayField>>({});
+  const set = <K extends keyof StayFormValues>(key: K, value: StayFormValues[K]) => {
+    setForm((current) => ({ ...current, [key]: value }));
+    // An error goes as soon as its field is touched, not on the next submit.
+    setErrors((current) => {
+      if (!(key in current)) return current;
+      const next = { ...current };
+      delete next[key as StayField];
+      return next;
     });
+  };
+  // Numbers and times are kept in Latin digits as they are typed: an Arabic
+  // keypad types ٤٥٠, which `Number()` reads as NaN, so a price typed the
+  // natural way in Arabic was turned away as invalid.
+  const setDigits = (key: "pricePerNight" | "maxGuests" | "unitCount" | "checkInTime" | "checkOutTime") =>
+    (value: string) => set(key, toLatinDigits(value));
+  const toggleAmenity = (key: string) =>
+    setForm((current) => ({
+      ...current,
+      amenities: current.amenities.includes(key)
+        ? current.amenities.filter((item) => item !== key)
+        : [...current.amenities, key],
+    }));
 
-    if (!result.canceled) {
-      const newImages = result.assets.map((asset) => asset.uri);
-      setImages([...images, ...newImages].slice(0, 5));
-    }
+  // Fill the form when the listing lands, once per listing: re-filling on
+  // every tick of a live query would overwrite whatever is being typed each
+  // time anything else on the account changes. Done during render rather than
+  // in an effect, so the first frame of the editor is already the listing.
+  const [prefilledId, setPrefilledId] = useState<string | null>(null);
+  if (existing && prefilledId !== existing._id) {
+    const values = stayFormFromListing(existing);
+    setPrefilledId(existing._id);
+    setForm(values);
+    setSaved(values);
+  }
+
+  // Leaving with unsaved work asks first — back button, Android back, iOS
+  // swipe — instead of silently dropping a half-filled listing and its
+  // photos. Off once the save has gone through, so the success alert's own
+  // navigation is not intercepted.
+  const [submitted, setSubmitted] = useState(false);
+  const dirty = !sameValues(form, saved);
+  useLeaveGuard(dirty && !submitted);
+
+  // "Uploading photos 2/5" under the busy button. Stamped per attempt: a
+  // failed attempt's other uploads keep finishing in the background, and
+  // without the stamp they would move the count of the retry.
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const attempt = useRef(0);
+
+  // For taking the host to the first field with an error: where each field
+  // sits in the form, where the form sits in the scroll view, and the inputs
+  // that can take focus. Also the return-key chain, field to field.
+  const scrollRef = useRef<ScrollView>(null);
+  const formY = useRef(0);
+  const fieldY = useRef<Partial<Record<StayField, number>>>({});
+  const nameRef = useRef<TextInput>(null);
+  const nameArRef = useRef<TextInput>(null);
+  const neighborhoodRef = useRef<TextInput>(null);
+  const priceRangeRef = useRef<TextInput>(null);
+  const priceRef = useRef<TextInput>(null);
+  const guestsRef = useRef<TextInput>(null);
+  const unitsRef = useRef<TextInput>(null);
+  const checkInRef = useRef<TextInput>(null);
+  const checkOutRef = useRef<TextInput>(null);
+  const descriptionRef = useRef<TextInput>(null);
+  const descriptionArRef = useRef<TextInput>(null);
+  const inputFor: Partial<Record<StayField, React.RefObject<TextInput | null>>> = {
+    name: nameRef,
+    nameAr: nameArRef,
+    pricePerNight: priceRef,
+    maxGuests: guestsRef,
+    unitCount: unitsRef,
+    checkInTime: checkInRef,
+    checkOutTime: checkOutRef,
   };
 
-  const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+  // A seeded stay's finer category ("luxury_hotel") lights the chip it files
+  // under; it is only rewritten if the host picks a different chip.
+  const shownType = LODGING_TYPES.some((item) => item.value === form.type)
+    ? form.type
+    : lodgingTypeOf(form.type);
+
+  // The server skips an undefined number and its validator rejects null, so a
+  // stored nightly price, guest cap or unit count cannot be cleared from here
+  // (open item: a backend change). When the host empties one, the form says
+  // it will be kept rather than pretending the save removed it.
+  const cannotClear = (key: "pricePerNight" | "maxGuests" | "unitCount") =>
+    isEditing && saved[key] !== "" && form[key].trim() === "";
+
+  // The editor used to open as an empty "new listing" form that filled in a
+  // moment later — or never, for a listing that had been deleted, leaving a
+  // blank form whose Save failed. Now it waits, or says there is nothing.
+  const editorState: "ready" | "loading" | "missing" = !isEditing
+    ? "ready"
+    : myListings === undefined
+      ? "loading"
+      : existing
+        ? "ready"
+        : "missing";
+
+  // Saving an unchanged listing would only send it back to review. A rejected
+  // or suspended one may be resubmitted as it is — that is how a host asks
+  // for a second look.
+  const status = ownerStatusOf(existing?.status);
+  const canResubmit = status === "rejected" || status === "suspended";
+  const saveDisabled = isEditing && !dirty && !canResubmit;
+
+  const revealField = (field: StayField) => {
+    const y = formY.current + (fieldY.current[field] ?? 0);
+    scrollRef.current?.scrollTo({ y: Math.max(0, y - 16), animated: true });
+    // A text field takes the focus, which brings the keyboard for the fix; the
+    // city is chips, so the keyboard goes instead.
+    const input = inputFor[field]?.current;
+    if (input) input.focus();
+    else Keyboard.dismiss();
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (isLoading) return;
 
-    // Validation
-    if (!name.trim() || !nameAr.trim() || !city.trim()) {
-      appAlert(t("error"), t("fillRequiredFields"));
+    // Checked here, before any photo uploads: the server enforces the same
+    // limits (lib/listingForm.ts mirrors convex/listings/pricing.ts), and
+    // hearing about them after a minute of uploading is a poor trade.
+    const found = validateStayForm(form);
+    setErrors(found);
+    const first = firstError(found, FIELD_ORDER);
+    if (first) {
+      revealField(first);
       return;
     }
 
-    // The booking fields are optional as a group, but each one that is filled
-    // in has to be usable — the server rejects the rest, and finding that out
-    // after an image upload is a poor trade.
-    const nightly = pricePerNight.trim() ? Number(pricePerNight.trim()) : undefined;
-    if (nightly !== undefined && (!Number.isInteger(nightly) || nightly <= 0 || nightly > 100000)) {
-      appAlert(t("error"), t("invalidPrice"));
+    // Undefined is "leave as stored" to the server, so an empty booking
+    // field is simply not sent. The price cannot be cleared that way; the
+    // form says so under the field instead of pretending it was.
+    const nightly = parseWholeNumber(form.pricePerNight);
+    const pricing: Pricing = {
+      pricePerNight: nightly,
+      currency: nightly !== undefined ? "SAR" : undefined,
+      maxGuests: parseWholeNumber(form.maxGuests),
+      unitCount: parseWholeNumber(form.unitCount),
+      checkInTime: normaliseTime(form.checkInTime),
+      checkOutTime: normaliseTime(form.checkOutTime),
+    };
+
+    // Any edit sends the listing back to review, and a listing under review
+    // is hidden: fixing a price used to take a bookable hotel off the app
+    // without a word. A live one asks first.
+    if (isEditing && isLive(existing?.status)) {
+      appAlert(t("editLiveConfirmTitle"), t("editLiveStayMessage"), [
+        { text: t("cancel"), style: "cancel" },
+        { text: t("submitForReview"), onPress: () => void save(pricing) },
+      ]);
       return;
     }
+    void save(pricing);
+  };
 
-    const guests = maxGuests.trim() ? Number(maxGuests.trim()) : undefined;
-    if (guests !== undefined && (!Number.isInteger(guests) || guests < 1 || guests > 20)) {
-      appAlert(t("error"), t("invalidGuestCount"));
-      return;
-    }
-
-    const units = unitCount.trim() ? Number(unitCount.trim()) : undefined;
-    if (units !== undefined && (!Number.isInteger(units) || units < 1 || units > 500)) {
-      appAlert(t("error"), t("invalidUnitCount"));
-      return;
-    }
-
-    const isHHMM = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
-    if (!isHHMM(checkInTime.trim()) || !isHHMM(checkOutTime.trim())) {
-      appAlert(t("error"), t("invalidTime"));
-      return;
-    }
-
+  const save = async (pricing: Pricing) => {
     setIsLoading(true);
+    const thisAttempt = ++attempt.current;
 
     try {
       // Anything already stored is an https URL and must not be re-uploaded;
-      // only what the picker just handed us is a local file.
-      const alreadyStored = images.filter((uri) => /^https?:/.test(uri));
-      const freshPicks = images.filter((uri) => !/^https?:/.test(uri));
-      const uploadedImages = [
-        ...alreadyStored,
-        ...(freshPicks.length > 0 ? await uploadMultipleToConvex(freshPicks) : []),
-      ];
+      // only what the picker just handed us is a local file. The uploads go
+      // back in the places their local files held, so the host's order — and
+      // with it the cover — survives the save.
+      const localPhotos = form.images.filter(isLocalPhoto);
+      const uploaded =
+        localPhotos.length > 0
+          ? await uploadMultipleToConvex(localPhotos, {
+              onProgress: (done, total) => {
+                if (attempt.current === thisAttempt) setProgress({ done, total });
+              },
+            })
+          : [];
+      const images = withUploadedPhotos(form.images, uploaded);
 
-      const payload = {
-        type: "hotel",
-        name_en: name.trim(),
-        name_ar: nameAr.trim(),
-        category: type,
-        description_en: description.trim() || undefined,
-        description_ar: descriptionAr.trim() || undefined,
-        address: neighborhood.trim() || city.trim(),
-        city: city.trim(),
-        region: neighborhood.trim() || undefined,
-        // The city centre, not the oasis: this listing may be on the coast.
-        coordinates: cityCoordinates(city),
-        priceRange: priceRange.trim() || undefined,
-        pricePerNight: nightly,
-        currency: nightly !== undefined ? "SAR" : undefined,
-        maxGuests: guests,
-        unitCount: units,
-        checkInTime: checkInTime.trim(),
-        checkOutTime: checkOutTime.trim(),
-        amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
-        images: uploadedImages.length > 0 ? uploadedImages : undefined,
-      } as const;
+      const city = form.city.trim();
 
       if (isEditing && id) {
         // The server resets the listing to pending on any edit, which is why
         // the confirmation says "sent for review" rather than "saved".
-        await updateMyListing({ listingId: id as Id<"listings">, ...payload });
+        await updateMyListing({
+          listingId: id as Id<"listings">,
+          type: "hotel",
+          name_en: form.name.trim(),
+          name_ar: form.nameAr.trim(),
+          category: form.type,
+          // A seeded stay's stored Arabic label names its old category, and
+          // the cards prefer it; once the category changes it is wrong.
+          category_ar: form.type !== saved.type ? "" : undefined,
+          city,
+          // Only what the host changed: the stored pin and address used to
+          // be replaced by a city centre and "Eastern Province" on any save.
+          ...editedStayLocation(saved, form),
+          // "" and [] rather than undefined: the server skips undefined, so
+          // an emptied description or a removed last photo was silently kept.
+          description_en: form.description.trim(),
+          description_ar: form.descriptionAr.trim(),
+          priceRange: form.priceRange.trim(),
+          amenities: form.amenities,
+          images,
+          ...pricing,
+        });
       } else {
-        await submitListing(payload);
+        await submitListing({
+          type: "hotel",
+          name_en: form.name.trim(),
+          name_ar: form.nameAr.trim(),
+          category: form.type,
+          city,
+          ...newStayLocation(form),
+          description_en: form.description.trim() || undefined,
+          description_ar: form.descriptionAr.trim() || undefined,
+          priceRange: form.priceRange.trim() || undefined,
+          amenities: form.amenities.length > 0 ? form.amenities : undefined,
+          images: images.length > 0 ? images : undefined,
+          ...pricing,
+        });
       }
 
+      setSubmitted(true);
       appAlert(
         t("success"),
         isEditing ? t("listingUpdated") : t("listingSubmittedForReview"),
-        [{ text: t("done"), onPress: () => router.back() }]
+        [
+          {
+            text: t("done"),
+            // Only from this screen. The upload can outlast it — a host who
+            // left mid-upload is somewhere else by the time this appears,
+            // and going back from there popped a screen that had nothing to
+            // do with the form.
+            onPress: () => {
+              if (navigation.isFocused()) router.back();
+            },
+          },
+        ]
       );
     } catch (error) {
       appAlert(t("error"), t(getSubmitErrorKey(error)));
     } finally {
       setIsLoading(false);
+      setProgress(null);
     }
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        keyboardVerticalOffset={0}
-      >
+      {/* Android: padded by what the keyboard covers (useKeyboardOverlap;
+          edge-to-edge Android 15 no longer resizes the window). iOS: the
+          scroll view insets itself below. */}
       <View
         ref={keyboardRef}
         onLayout={keyboardOnLayout}
         style={{ flex: 1, paddingBottom: keyboardOverlap }}
       >
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        // Drag the form to put the keyboard away: following the finger on
+        // iOS, on the drag on Android, which has nothing interactive.
+        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+        // iOS: inset by the keyboard and scrolled to the focused field. The
+        // KeyboardAvoidingView it replaces shrank the whole screen instead,
+        // and a field low in the form stayed under the keyboard.
+        automaticallyAdjustKeyboardInsets
       >
-        {/* Header */}
+        {/* Header. The entrances are the app's short staggered fade
+            (constants/motion): the form took most of a second to settle
+            before it could be filled in. */}
         <Animated.View
-          entering={FadeInDown.delay(100).duration(600)}
+          entering={enterFade(0)}
           style={[styles.header, isRTL && styles.headerRTL]}
         >
           <BackButton />
           <Text style={[styles.title, isRTL && styles.textRTL]}>
             {isEditing ? t("editListing") : t("postLodging")}
           </Text>
-          {isEditing && (
+          {isEditing && editorState === "ready" && (
             <Text style={[styles.editNotice, isRTL && styles.textRTL]}>
               {t("editReviewNotice")}
             </Text>
           )}
         </Animated.View>
 
-        {/* Form */}
+        {editorState === "loading" ? (
+          <View style={styles.stateBox}>
+            <ActivityIndicator color={colors.primary.deep} />
+          </View>
+        ) : editorState === "missing" ? (
+          <View style={styles.stateBox}>
+            <Text style={styles.stateTitle}>{t("editorNotFound")}</Text>
+            <Text style={styles.stateBody}>{t("editorNotFoundHint")}</Text>
+            <Button
+              title={t("back")}
+              variant="outline"
+              onPress={() => router.back()}
+              style={styles.stateButton}
+            />
+          </View>
+        ) : (
+        /* Form. Locked while it submits: a chip tapped mid-upload changed
+           the form under a save that had already read it. */
         <Animated.View
-          entering={FadeInDown.delay(200).duration(600)}
+          entering={enterFade(1)}
           style={styles.form}
+          pointerEvents={isLoading ? "none" : "auto"}
+          onLayout={(e) => {
+            formY.current = e.nativeEvent.layout.y;
+          }}
         >
           {/* Type Selection */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("selectType")} *
           </Text>
           <View style={[styles.typeContainer, isRTL && styles.typeContainerRTL]}>
-            {LODGING_TYPES.map((item) => (
-              <Pressable
-                key={item.value}
-                style={[
-                  styles.typeButton,
-                  type === item.value && styles.typeButtonSelected,
-                ]}
-                onPress={() => setType(item.value)}
-              >
-                <Text
-                  style={[
-                    styles.typeButtonText,
-                    type === item.value && styles.typeButtonTextSelected,
-                  ]}
-                >
-                  {t(item.labelKey as any)}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          {/* Name */}
-          <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("listingName")} *
-          </Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={isRTL}
-            value={name}
-            onChangeText={setName}
-            placeholder={t("placeholderNameEn")}
-            placeholderTextColor="#A3A3A3"
-          />
-
-          <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("listingNameAr")} *
-          </Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={true}
-            value={nameAr}
-            onChangeText={setNameAr}
-            placeholder={t("placeholderNameAr")}
-            placeholderTextColor="#A3A3A3"
-            textAlign="right"
-          />
-
-          {/* City. Picked, not typed: a typed city is a new city as far as the
-              filter is concerned, and "Hofuf" / "hofuf" / "الهفوف" were three
-              of them. The Arabic box next to it was never sent anywhere — the
-              label now comes from the key. */}
-          <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("city")} *
-          </Text>
-          <View style={[styles.optionGrid, isRTL && styles.optionGridRTL]}>
-            {CITIES.map((option) => {
-              const on = city === option.key;
+            {LODGING_TYPES.map((item) => {
+              const on = shownType === item.value;
               return (
                 <Pressable
-                  key={option.key}
-                  onPress={() => setCity(option.key)}
-                  style={[styles.optionChip, on && styles.optionChipOn]}
+                  key={item.value}
+                  style={({ pressed }) => [
+                    styles.typeButton,
+                    on && styles.typeButtonSelected,
+                    pressed && styles.pressed,
+                  ]}
+                  // Tapping the chip that is already lit changes nothing, so a
+                  // seeded "luxury_hotel" is not flattened to "hotel" by a tap.
+                  onPress={() => {
+                    if (!on) set("type", item.value);
+                  }}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: on }}
-                  accessibilityLabel={language === "ar" ? option.ar : option.en}
                 >
-                  <Text style={[styles.optionLabel, on && styles.optionLabelOn]}>
-                    {language === "ar" ? option.ar : option.en}
+                  <Text style={[styles.typeButtonText, on && styles.typeButtonTextSelected]}>
+                    {t(item.labelKey as any)}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
 
-          {/* Neighborhood */}
+          {/* Name */}
+          <View
+            onLayout={(e) => {
+              fieldY.current.name = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("listingName")} *
+            </Text>
+            <ThemedTextInput
+              ref={nameRef}
+              style={[styles.input, errors.name && styles.inputError]}
+              isRTL={isRTL}
+              value={form.name}
+              onChangeText={(value) => set("name", value)}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => nameArRef.current?.focus()}
+              placeholder={t("placeholderNameEn")}
+              placeholderTextColor="#A3A3A3"
+            />
+            {errors.name && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>{t(errors.name)}</Text>
+            )}
+          </View>
+
+          <View
+            onLayout={(e) => {
+              fieldY.current.nameAr = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("listingNameAr")} *
+            </Text>
+            <ThemedTextInput
+              ref={nameArRef}
+              style={[styles.input, errors.nameAr && styles.inputError]}
+              isRTL={true}
+              value={form.nameAr}
+              onChangeText={(value) => set("nameAr", value)}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => neighborhoodRef.current?.focus()}
+              placeholder={t("placeholderNameAr")}
+              placeholderTextColor="#A3A3A3"
+              textAlign="right"
+            />
+            {errors.nameAr && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>{t(errors.nameAr)}</Text>
+            )}
+          </View>
+
+          {/* City. Picked, not typed: a typed city is a new city as far as the
+              filter is concerned, and "Hofuf" / "hofuf" / "الهفوف" were three
+              of them. The Arabic box next to it was never sent anywhere — the
+              label now comes from the key. */}
+          <View
+            onLayout={(e) => {
+              fieldY.current.city = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("city")} *
+            </Text>
+            <View style={[styles.optionGrid, isRTL && styles.optionGridRTL]}>
+              {CITIES.map((option) => {
+                const on = form.city === option.key;
+                return (
+                  <Pressable
+                    key={option.key}
+                    onPress={() => set("city", option.key)}
+                    style={({ pressed }) => [
+                      styles.optionChip,
+                      on && styles.optionChipOn,
+                      pressed && styles.pressed,
+                    ]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: on }}
+                    accessibilityLabel={language === "ar" ? option.ar : option.en}
+                  >
+                    <Text style={[styles.optionLabel, on && styles.optionLabelOn]}>
+                      {language === "ar" ? option.ar : option.en}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {errors.city && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>{t(errors.city)}</Text>
+            )}
+          </View>
+
+          {/* Neighborhood. One box: an Arabic one sat under it for years and
+              was never sent anywhere, so what a host typed there vanished. */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("neighborhood")}
           </Text>
           <ThemedTextInput
+            ref={neighborhoodRef}
             style={[styles.input]}
             isRTL={isRTL}
-            value={neighborhood}
-            onChangeText={setNeighborhood}
+            value={form.neighborhood}
+            onChangeText={(value) => set("neighborhood", value)}
+            onFocus={prepareKeyboard}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => priceRangeRef.current?.focus()}
             placeholder={t("placeholderNeighborhoodEn")}
             placeholderTextColor="#A3A3A3"
-          />
-
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={true}
-            value={neighborhoodAr}
-            onChangeText={setNeighborhoodAr}
-            placeholder={t("placeholderNeighborhoodAr")}
-            placeholderTextColor="#A3A3A3"
-            textAlign="right"
           />
 
           {/* Price Range */}
@@ -384,10 +585,15 @@ export default function PostLodgingScreen() {
             {t("priceRange")}
           </Text>
           <ThemedTextInput
+            ref={priceRangeRef}
             style={[styles.input]}
             isRTL={isRTL}
-            value={priceRange}
-            onChangeText={setPriceRange}
+            value={form.priceRange}
+            onChangeText={(value) => set("priceRange", value)}
+            onFocus={prepareKeyboard}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={() => priceRef.current?.focus()}
             placeholder={t("placeholderPriceLodging")}
             placeholderTextColor="#A3A3A3"
           />
@@ -402,83 +608,183 @@ export default function PostLodgingScreen() {
             {t("pricingSectionHint")}
           </Text>
 
-          <Text style={[styles.label, isRTL && styles.textRTL]}>
-            {t("pricePerNightLabel")}
-          </Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={isRTL}
-            value={pricePerNight}
-            onChangeText={setPricePerNight}
-            placeholder={t("placeholderPricePerNight")}
-            placeholderTextColor="#A3A3A3"
-            keyboardType="number-pad"
-          />
+          <View
+            onLayout={(e) => {
+              fieldY.current.pricePerNight = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>
+              {t("pricePerNightLabel")}
+            </Text>
+            <ThemedTextInput
+              ref={priceRef}
+              style={[styles.input, errors.pricePerNight && styles.inputError]}
+              isRTL={isRTL}
+              value={form.pricePerNight}
+              onChangeText={setDigits("pricePerNight")}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => guestsRef.current?.focus()}
+              placeholder={t("placeholderPricePerNight")}
+              placeholderTextColor="#A3A3A3"
+              keyboardType="number-pad"
+            />
+            {errors.pricePerNight ? (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>
+                {t(errors.pricePerNight)}
+              </Text>
+            ) : cannotClear("pricePerNight") ? (
+              <Text style={[styles.clearNote, isRTL && styles.textRTL]}>
+                {t("editCannotClear").replace("{value}", `${saved.pricePerNight} ${t("sar")}`)}
+              </Text>
+            ) : null}
+          </View>
 
-          <Text style={[styles.label, isRTL && styles.textRTL]}>{t("maxGuestsLabel")}</Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={isRTL}
-            value={maxGuests}
-            onChangeText={setMaxGuests}
-            keyboardType="number-pad"
-          />
+          <View
+            onLayout={(e) => {
+              fieldY.current.maxGuests = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>{t("maxGuestsLabel")}</Text>
+            <ThemedTextInput
+              ref={guestsRef}
+              style={[styles.input, errors.maxGuests && styles.inputError]}
+              isRTL={isRTL}
+              value={form.maxGuests}
+              onChangeText={setDigits("maxGuests")}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => unitsRef.current?.focus()}
+              keyboardType="number-pad"
+            />
+            {errors.maxGuests ? (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>
+                {t(errors.maxGuests)}
+              </Text>
+            ) : cannotClear("maxGuests") ? (
+              <Text style={[styles.clearNote, isRTL && styles.textRTL]}>
+                {t("editCannotClear").replace("{value}", saved.maxGuests)}
+              </Text>
+            ) : null}
+          </View>
 
-          <Text style={[styles.label, isRTL && styles.textRTL]}>{t("unitCountLabel")}</Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={isRTL}
-            value={unitCount}
-            onChangeText={setUnitCount}
-            keyboardType="number-pad"
-          />
+          <View
+            onLayout={(e) => {
+              fieldY.current.unitCount = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>{t("unitCountLabel")}</Text>
+            <ThemedTextInput
+              ref={unitsRef}
+              style={[styles.input, errors.unitCount && styles.inputError]}
+              isRTL={isRTL}
+              value={form.unitCount}
+              onChangeText={setDigits("unitCount")}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => checkInRef.current?.focus()}
+              keyboardType="number-pad"
+            />
+            {errors.unitCount ? (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>
+                {t(errors.unitCount)}
+              </Text>
+            ) : cannotClear("unitCount") ? (
+              <Text style={[styles.clearNote, isRTL && styles.textRTL]}>
+                {t("editCannotClear").replace("{value}", saved.unitCount)}
+              </Text>
+            ) : null}
+          </View>
 
           {/* Times stay left-aligned in both languages: "15:00" is a fixed
               pattern, and mirroring it puts the minutes before the hour. */}
-          <Text style={[styles.label, isRTL && styles.textRTL]}>{t("checkInTimeLabel")}</Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={false}
-            value={checkInTime}
-            onChangeText={setCheckInTime}
-            placeholder="15:00"
-            placeholderTextColor="#A3A3A3"
-            keyboardType="numbers-and-punctuation"
-            textAlign="left"
-          />
+          <View
+            onLayout={(e) => {
+              fieldY.current.checkInTime = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>{t("checkInTimeLabel")}</Text>
+            <ThemedTextInput
+              ref={checkInRef}
+              style={[styles.input, errors.checkInTime && styles.inputError]}
+              isRTL={false}
+              value={form.checkInTime}
+              onChangeText={setDigits("checkInTime")}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => checkOutRef.current?.focus()}
+              placeholder="15:00"
+              placeholderTextColor="#A3A3A3"
+              keyboardType="numbers-and-punctuation"
+              textAlign="left"
+            />
+            {errors.checkInTime && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>
+                {t(errors.checkInTime)}
+              </Text>
+            )}
+          </View>
 
-          <Text style={[styles.label, isRTL && styles.textRTL]}>{t("checkOutTimeLabel")}</Text>
-          <ThemedTextInput
-            style={[styles.input]}
-            isRTL={false}
-            value={checkOutTime}
-            onChangeText={setCheckOutTime}
-            placeholder="12:00"
-            placeholderTextColor="#A3A3A3"
-            keyboardType="numbers-and-punctuation"
-            textAlign="left"
-          />
+          <View
+            onLayout={(e) => {
+              fieldY.current.checkOutTime = e.nativeEvent.layout.y;
+            }}
+          >
+            <Text style={[styles.label, isRTL && styles.textRTL]}>{t("checkOutTimeLabel")}</Text>
+            <ThemedTextInput
+              ref={checkOutRef}
+              style={[styles.input, errors.checkOutTime && styles.inputError]}
+              isRTL={false}
+              value={form.checkOutTime}
+              onChangeText={setDigits("checkOutTime")}
+              onFocus={prepareKeyboard}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => descriptionRef.current?.focus()}
+              placeholder="12:00"
+              placeholderTextColor="#A3A3A3"
+              keyboardType="numbers-and-punctuation"
+              textAlign="left"
+            />
+            {errors.checkOutTime && (
+              <Text style={[styles.fieldError, isRTL && styles.textRTL]}>
+                {t(errors.checkOutTime)}
+              </Text>
+            )}
+          </View>
 
-          {/* Description */}
+          {/* Description, in each language under its own label — the Arabic
+              box used to sit under the English one's with none. */}
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("listingDescription")}
           </Text>
           <ThemedTextInput
+            ref={descriptionRef}
             style={[styles.input, styles.textArea]}
             isRTL={isRTL}
-            value={description}
-            onChangeText={setDescription}
+            value={form.description}
+            onChangeText={(value) => set("description", value)}
+            onFocus={prepareKeyboard}
             placeholder={t("placeholderDescriptionEn")}
             placeholderTextColor="#A3A3A3"
             multiline
             numberOfLines={4}
           />
 
+          <Text style={[styles.label, isRTL && styles.textRTL]}>
+            {t("listingDescriptionAr")}
+          </Text>
           <ThemedTextInput
+            ref={descriptionArRef}
             style={[styles.input, styles.textArea]}
             isRTL={true}
-            value={descriptionAr}
-            onChangeText={setDescriptionAr}
+            value={form.descriptionAr}
+            onChangeText={(value) => set("descriptionAr", value)}
+            onFocus={prepareKeyboard}
             placeholder={t("placeholderDescriptionAr")}
             placeholderTextColor="#A3A3A3"
             multiline
@@ -497,15 +803,16 @@ export default function PostLodgingScreen() {
           </Text>
           <View style={[styles.optionGrid, isRTL && styles.optionGridRTL]}>
             {AMENITIES.map((amenity) => {
-              const on = selectedAmenities.includes(amenity.key);
+              const on = form.amenities.includes(amenity.key);
               return (
                 <Pressable
                   key={amenity.key}
                   onPress={() => toggleAmenity(amenity.key)}
-                  style={[
+                  style={({ pressed }) => [
                     styles.optionChip,
                     isRTL && styles.rowRTL,
                     on && styles.optionChipOn,
+                    pressed && styles.pressed,
                   ]}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: on }}
@@ -530,50 +837,38 @@ export default function PostLodgingScreen() {
           <Text style={[styles.label, isRTL && styles.textRTL]}>
             {t("addImages")}
           </Text>
-          <Pressable style={styles.imagePickerButton} onPress={pickImage}>
-            <Text style={styles.imagePickerText}>
-              {t("selectPhoto")} ({images.length}/5)
-            </Text>
-          </Pressable>
+          <PhotoPickerField
+            images={form.images}
+            onChange={(images) => set("images", images)}
+          />
 
-          {images.length > 0 && (
-            <View style={styles.imagesContainer}>
-              {images.map((uri, index) => (
-                <View key={index} style={styles.imageWrapper}>
-                  <Image source={{ uri }} style={styles.imagePreview} />
-                  <Pressable
-                    style={styles.removeImageButton}
-                    onPress={() => removeImage(index)}
-                  >
-                    <Text style={styles.removeImageText}>X</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          )}
-
-          {/* Submit Button */}
+          {/* Submit. `loading` keeps the button's size with a spinner in
+              it; the old blank label over a spinner hung below read as a
+              broken button. */}
           <Button
-            title={isLoading ? "" : isEditing ? t("saveChanges") : t("submitForReview")}
+            title={isEditing ? t("saveChanges") : t("submitForReview")}
             onPress={handleSubmit}
             fullWidth
-            disabled={isLoading}
+            loading={isLoading}
+            disabled={saveDisabled}
             style={styles.submitButton}
           />
 
           {isLoading && (
-            <ActivityIndicator
-              size="small"
-              color="#4F5E10"
-              style={styles.loadingIndicator}
-            />
+            <Text style={styles.progressText} accessibilityLiveRegion="polite">
+              {progress && progress.done < progress.total
+                ? t("uploadingPhotos")
+                    .replace("{done}", String(progress.done))
+                    .replace("{total}", String(progress.total))
+                : t("saving")}
+            </Text>
           )}
         </Animated.View>
+        )}
 
         <View style={styles.bottomSpacing} />
       </ScrollView>
       </View>
-      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -604,6 +899,30 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 16,
   },
+  // The editor's "still loading" and "nothing to edit" states.
+  stateBox: {
+    paddingHorizontal: 32,
+    paddingTop: 56,
+    alignItems: "center",
+    gap: 8,
+  },
+  stateTitle: {
+    fontSize: 18,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
+    textAlign: "center",
+  },
+  stateBody: {
+    fontSize: 14,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
+    lineHeight: 20,
+    textAlign: "center",
+  },
+  stateButton: {
+    marginTop: 16,
+    alignSelf: "stretch",
+  },
   label: {
     fontSize: 14,
     fontFamily: fonts.semibold,
@@ -627,6 +946,22 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     lineHeight: 19,
     marginTop: 6,
   },
+  // A notice, not an error: the save still goes through.
+  clearNote: {
+    fontSize: 12.5,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
+    lineHeight: 18,
+    marginTop: 6,
+  },
+  // The destructive text token: 5.2:1 on the cream page.
+  fieldError: {
+    fontSize: 12.5,
+    fontFamily: fonts.medium,
+    color: colors.signOut,
+    lineHeight: 18,
+    marginTop: 6,
+  },
   input: {
     backgroundColor: "#FFFFFF",
     borderRadius: 12,
@@ -637,8 +972,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E5E5",
   },
-  inputRTL: {
-    textAlign: "right",
+  inputError: {
+    borderColor: colors.signOut,
   },
   textArea: {
     minHeight: 100,
@@ -672,55 +1007,18 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   typeButtonTextSelected: {
     color: "#1F1D17",
   },
-  imagePickerButton: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    borderStyle: "dashed",
-  },
-  imagePickerText: {
-    fontSize: 15,
-    color: "#4F5E10",
-    fontFamily: fonts.medium,
-  },
-  imagesContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 12,
-  },
-  imageWrapper: {
-    position: "relative",
-  },
-  imagePreview: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
-  },
-  removeImageButton: {
-    position: "absolute",
-    top: -8,
-    right: -8,
-    backgroundColor: "#DC6B5A",
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  removeImageText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontFamily: fonts.bold,
+  pressed: {
+    opacity: 0.7,
   },
   submitButton: {
     marginTop: 24,
   },
-  loadingIndicator: {
-    marginTop: 16,
+  progressText: {
+    marginTop: 12,
+    fontSize: 13,
+    fontFamily: fonts.medium,
+    color: colors.onSurface.variant,
+    textAlign: "center",
   },
   editNotice: {
     fontSize: 12.5,

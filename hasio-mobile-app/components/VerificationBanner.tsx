@@ -30,7 +30,12 @@ export function VerificationBanner({
 
   return (
     <Pressable
-      style={[styles.card, isPending ? styles.cardPending : styles.cardUnverified]}
+      // The whole card is the button, and it gave no sign of being pressed.
+      style={({ pressed }) => [
+        styles.card,
+        isPending ? styles.cardPending : styles.cardUnverified,
+        pressed && styles.pressed,
+      ]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={
@@ -80,6 +85,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   cardPending: { backgroundColor: "#FDF6EC", borderColor: "#F0DFC4" },
   cardUnverified: { backgroundColor: "#FCEFEC", borderColor: "#F2D6CF" },
+  pressed: { opacity: 0.7 },
   row: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
   rowRTL: { flexDirection: "row-reverse" },
   textWrap: { flex: 1 },
