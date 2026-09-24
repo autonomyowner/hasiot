@@ -47,7 +47,9 @@ export const AUTH_ERROR_COPY = {
   sessionExpired: { title: "authSessionExpiredTitle", message: "errorSessionExpired" },
   network: { title: "authOfflineTitle", message: "networkError" },
   unknown: { title: "error", message: "pleaseTryAgain" },
-} satisfies Record<string, Copy>;
+  // `as const` keeps each value its literal key rather than widening it to
+  // string; `satisfies` then checks every one is a real translation key.
+} as const satisfies Record<string, Copy>;
 
 export type AuthErrorKind = keyof typeof AUTH_ERROR_COPY;
 
