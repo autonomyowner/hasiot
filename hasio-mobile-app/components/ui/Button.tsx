@@ -45,6 +45,8 @@ export function Button({
   style,
   textStyle,
   disabled,
+  onPressIn,
+  onPressOut,
   ...props
 }: ButtonProps) {
   const styles = useThemedStyles(makeStyles);
@@ -55,12 +57,16 @@ export function Button({
     transform: [{ scale: scale.value }],
   }));
 
-  const handlePressIn = () => {
+  // Chained rather than overridable: with these spread after the props, a
+  // caller's own onPressIn silently removed the press feedback.
+  const handlePressIn: PressableProps["onPressIn"] = (e) => {
     scale.value = withSpring(0.97, pressSpring);
+    onPressIn?.(e);
   };
 
-  const handlePressOut = () => {
+  const handlePressOut: PressableProps["onPressOut"] = (e) => {
     scale.value = withSpring(1, pressSpring);
+    onPressOut?.(e);
   };
 
   // Ink on the lime and sand fills, the dark lime on the transparent ones —
@@ -79,13 +85,13 @@ export function Button({
         animatedStyle,
         style,
       ]}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      disabled={inactive}
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityState={{ disabled: !!inactive, busy: loading }}
       {...props}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      disabled={inactive}
     >
       {/* The label stays laid out while loading, only hidden, so the button
           keeps its width and height and nothing around it moves. */}

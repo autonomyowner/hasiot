@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TextInput, StyleSheet, type TextInputProps } from "react-native";
+import { Platform, TextInput, StyleSheet, type TextInputProps } from "react-native";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
@@ -44,9 +44,18 @@ export function ThemedTextInput({ isRTL, style, ref, ...props }: ThemedTextInput
         props.onBlur?.(e);
       }}
       placeholderTextColor={props.placeholderTextColor || colors.onSurface.muted}
+      // The brand's dark lime for the caret and the drag handles. Left to the
+      // platform they came out in the Android theme's teal, which under a dark
+      // system theme is pale teal on these white fields. Android paints the
+      // selection colour solid behind the text, so there it is a wash.
+      cursorColor={props.cursorColor ?? colors.primary.deep}
+      selectionHandleColor={props.selectionHandleColor ?? colors.primary.deep}
+      selectionColor={props.selectionColor ?? SELECTION}
     />
   );
 }
+
+const SELECTION = Platform.OS === "ios" ? colors.primary.deep : "rgba(79, 94, 16, 0.25)";
 
 // The defaults every form in the app inherits. These were the last hardcoded
 // greys of the pre-redesign theme, and because this component is shared they
