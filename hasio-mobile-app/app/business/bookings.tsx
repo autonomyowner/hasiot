@@ -19,7 +19,7 @@ import {
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { todayRiyadhISO } from "@/lib/dates";
-import { nightsLabel, telUrl } from "@/lib/bookingDisplay";
+import { displayTotalSar, nightsLabel, telUrl, type StayTotal } from "@/lib/bookingDisplay";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { haptic } from "@/lib/haptics";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
@@ -48,7 +48,7 @@ export default function OwnerBookingsScreen() {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
-  const { format } = useCurrency();
+  const { format, currency } = useCurrency();
   const [tab, setTab] = useState<Tab>("requests");
   const [decliningId, setDecliningId] = useState<Id<"bookings"> | null>(null);
   const [busy, setBusy] = useState<{ id: string; action: HostAction } | null>(null);
@@ -122,14 +122,14 @@ export default function OwnerBookingsScreen() {
     () => ({
       stay: (nights: number, guests?: number) => nightsLabel(nights, t, guests),
       guest: t("guest"),
-      formatPrice: format,
+      formatTotal: (stay: StayTotal) => format(displayTotalSar(stay, currency)),
       callGuest: t("callGuest"),
       confirm: t("confirmBooking"),
       decline: t("declineBooking"),
       noShow: t("markNoShow"),
       complete: t("markCompleted"),
     }),
-    [t, format]
+    [t, format, currency]
   );
 
   // No canOpenURL first: on Android 11+ it says no for `tel:`, which the

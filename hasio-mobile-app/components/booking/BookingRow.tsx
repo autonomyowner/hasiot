@@ -5,6 +5,7 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { BookingStatusChip } from "./BookingStatusChip";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
+import type { StayTotal } from "@/lib/bookingDisplay";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { Language } from "@/types";
@@ -24,6 +25,8 @@ export interface BookingRowData {
   checkOut?: string;
   nights?: number;
   guests?: number;
+  /** Frozen at booking time; the total is `nights × pricePerNight`. */
+  pricePerNight?: number;
   totalAmount?: number | null;
   listing?: { name_en: string; name_ar: string; images?: string[] } | null;
 }
@@ -36,8 +39,11 @@ interface BookingRowProps {
   labels: {
     /** "3 nights · 2 guests" — lib/bookingDisplay `nightsLabel`, bound to `t`. */
     stay: (nights: number, guests?: number) => string;
-    /** Formats a stored SAR amount in the viewer's display currency. */
-    formatPrice: (amountSar: number) => string;
+    /**
+     * A stay's total in the viewer's currency, agreeing with the quote the
+     * guest was shown (lib/bookingDisplay `displayTotalSar`).
+     */
+    formatTotal: (stay: StayTotal) => string;
   };
   onPress: (id: string) => void;
 }
@@ -84,7 +90,11 @@ function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingR
             <BookingStatusChip status={booking.status} />
             {booking.totalAmount != null && (
               <Text style={styles.amount}>
-                {labels.formatPrice(booking.totalAmount)}
+                {labels.formatTotal({
+                  totalAmount: booking.totalAmount,
+                  nights: booking.nights,
+                  pricePerNight: booking.pricePerNight,
+                })}
               </Text>
             )}
           </View>

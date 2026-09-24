@@ -13,7 +13,7 @@ import { BookingRow, type BookingRowData } from "@/components/booking/BookingRow
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { todayRiyadhISO } from "@/lib/dates";
-import { nightsLabel } from "@/lib/bookingDisplay";
+import { displayTotalSar, nightsLabel, type StayTotal } from "@/lib/bookingDisplay";
 import { haptic } from "@/lib/haptics";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
 import { colors, type AppFonts } from "@/constants/colors";
@@ -34,7 +34,7 @@ export default function MyBookingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
-  const { format } = useCurrency();
+  const { format, currency } = useCurrency();
   const [tab, setTab] = useState<Tab>("upcoming");
 
   const bookings = useQuery(api.bookings.queries.getUserBookings, {});
@@ -62,9 +62,9 @@ export default function MyBookingsScreen() {
   const labels = useMemo(
     () => ({
       stay: (nights: number, guests?: number) => nightsLabel(nights, t, guests),
-      formatPrice: format,
+      formatTotal: (stay: StayTotal) => format(displayTotalSar(stay, currency)),
     }),
-    [t, format]
+    [t, format, currency]
   );
   const openBooking = useCallback((id: string) => router.push(`/bookings/${id}`), [router]);
   const renderItem = useCallback(

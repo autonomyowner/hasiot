@@ -5,7 +5,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { getBookingErrorKey } from "@/lib/bookingError";
-import type { QuoteFooterState } from "@/lib/bookingDisplay";
+import { displayTotalSar, type QuoteFooterState } from "@/lib/bookingDisplay";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
@@ -40,15 +40,23 @@ export function QuoteFooter({
 }: QuoteFooterProps) {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
-  const { format } = useCurrency();
+  const { format, currency } = useCurrency();
   const insets = useSafeAreaInsets();
 
   const canSubmit = state.kind === "total" && !state.stale && !submitting;
+  // The rows mirror as rows; single lines of text have to be told. They sat
+  // at the left edge under a right-to-left page.
+  const alignText = isRTL && styles.textRTL;
 
   return (
     <View style={[styles.footer, { paddingBottom: keyboardOpen ? 16 : insets.bottom + 16 }]}>
       <View style={styles.slot} accessibilityLiveRegion="polite">
-        {state.kind === "idle" && <Text style={styles.hint}>{t("selectDatesHint")}</Text>}
+        {/* Not "tap your arrival, then your departure" again — that already
+            sits under "Select your dates" at the top of the page, and the
+            footer repeated it word for word. Here: what the total waits on. */}
+        {state.kind === "idle" && (
+          <Text style={[styles.hint, alignText]}>{t("quoteIdleHint")}</Text>
+        )}
 
         {state.kind === "loading" && (
           <View style={[styles.totalRow, isRTL && styles.totalRowRTL]}>
@@ -58,13 +66,13 @@ export function QuoteFooter({
         )}
 
         {state.kind === "error" && (
-          <Text style={styles.errorText} numberOfLines={2}>
+          <Text style={[styles.errorText, alignText]} numberOfLines={2}>
             {t(getBookingErrorKey(new Error(state.message)))}
           </Text>
         )}
 
         {state.kind === "unavailable" && (
-          <Text style={styles.errorText}>{t("noAvailability")}</Text>
+          <Text style={[styles.errorText, alignText]}>{t("noAvailability")}</Text>
         )}
 
         {state.kind === "total" && (
@@ -74,19 +82,25 @@ export function QuoteFooter({
                 ? t("updatingTotal")
                 : `${state.nights} × ${format(state.pricePerNight)}`}
             </Text>
+            {/* The total the breakdown beside it adds up to — in dollars the
+                two used to round apart ("3 × $127" beside "$380"). */}
             <Text style={styles.totalAmount}>
-              {format(state.totalAmount)}
+              {format(displayTotalSar(state, currency))}
             </Text>
           </View>
         )}
       </View>
 
-      <Text style={styles.pendingNote}>{t("bookingPendingNote")}</Text>
+      <Text style={[styles.pendingNote, alignText]}>{t("bookingPendingNote")}</Text>
 
       <Pressable
         onPress={onSubmit}
         disabled={!canSubmit}
-        style={[styles.primaryButton, !canSubmit && styles.primaryButtonDisabled]}
+        style={({ pressed }) => [
+          styles.primaryButton,
+          !canSubmit && styles.primaryButtonDisabled,
+          pressed && styles.pressed,
+        ]}
         accessibilityRole="button"
         accessibilityLabel={t("requestBooking")}
         accessibilityState={{ disabled: !canSubmit, busy: submitting }}
@@ -171,6 +185,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   primaryButtonDisabled: {
     opacity: 0.45,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  textRTL: {
+    textAlign: "right",
   },
   primaryButtonText: {
     fontSize: 16,

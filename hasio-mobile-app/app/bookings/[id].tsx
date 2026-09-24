@@ -17,7 +17,7 @@ import { useThemedStyles } from "@/hooks/useAppFonts";
 import { formatDateRange, formatISODate, todayRiyadhISO } from "@/lib/dates";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { SkeletonBookingDetail } from "@/components/ui/SkeletonScreens";
-import { nightsLabel, telUrl } from "@/lib/bookingDisplay";
+import { displayTotalSar, nightsLabel, telUrl } from "@/lib/bookingDisplay";
 import { haptic } from "@/lib/haptics";
 import { colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient, SurfaceGradient } from "@/components/ui/Gradients";
@@ -26,7 +26,7 @@ export default function BookingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
-  const { format } = useCurrency();
+  const { format, currency } = useCurrency();
   // Above the loading and not-found returns below, so the hook order holds.
   const styles = useThemedStyles(makeStyles);
   const promptStyles = useThemedStyles(makePromptStyles);
@@ -231,9 +231,20 @@ export default function BookingDetailScreen() {
             />
           ) : null}
           {booking.totalAmount != null ? (
+            // The same total the quote showed, in dollars too — see
+            // displayTotalSar for why it is not simply converted.
             <Row
               label={t("total")}
-              value={format(booking.totalAmount)}
+              value={format(
+                displayTotalSar(
+                  {
+                    totalAmount: booking.totalAmount,
+                    nights: booking.nights,
+                    pricePerNight: booking.pricePerNight,
+                  },
+                  currency
+                )
+              )}
               isRTL={isRTL}
               emphasis
             />

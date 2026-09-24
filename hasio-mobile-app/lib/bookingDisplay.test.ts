@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { translations } from "@/constants/translations";
+import { formatPrice } from "./currency";
 import {
   countLabel,
+  displayTotalSar,
   hostActionsFor,
   nightsLabel,
   pluralForm,
@@ -88,6 +90,28 @@ describe("telUrl", () => {
 
   it("reads a number typed on an Arabic keypad", () => {
     expect(telUrl("٠٥٠١٢٣٤٥٦٧")).toBe("tel:0501234567");
+  });
+});
+
+describe("displayTotalSar", () => {
+  const unit = { sar: "SAR", usd: "USD" };
+  const stay = { nights: 3, pricePerNight: 475, totalAmount: 1425 };
+
+  it("leaves a riyal total exactly as stored", () => {
+    expect(displayTotalSar(stay, "SAR")).toBe(1425);
+    expect(formatPrice(displayTotalSar(stay, "SAR"), "SAR", unit)).toBe("1,425 SAR");
+  });
+
+  it("makes a dollar total agree with nights × the dollar rate shown", () => {
+    // 1,425 SAR is $380 on its own, but the rate shows as $127 and the
+    // footer reads "3 × $127" — so the total has to be $381.
+    expect(formatPrice(stay.pricePerNight, "USD", unit)).toBe("$127");
+    expect(formatPrice(displayTotalSar(stay, "USD"), "USD", unit)).toBe("$381");
+  });
+
+  it("falls back to the stored total when the rate is not known", () => {
+    expect(displayTotalSar({ totalAmount: 1425 }, "USD")).toBe(1425);
+    expect(displayTotalSar({ totalAmount: 1425, nights: 3 }, "USD")).toBe(1425);
   });
 });
 

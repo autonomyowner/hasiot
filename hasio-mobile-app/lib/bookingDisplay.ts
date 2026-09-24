@@ -6,6 +6,7 @@
  * where the language hook does not exist.
  */
 
+import { convertFromSar, SAR_PER_USD, type Currency } from "./currency";
 import { toLatinDigits } from "./digits";
 
 /** What the app counts in words. */
@@ -60,6 +61,28 @@ export function nightsLabel(nights: number, t: CountTranslate, guests?: number):
  */
 export function telUrl(phone: string): string {
   return `tel:${toLatinDigits(phone).replace(/[^\d+]/g, "")}`;
+}
+
+/** What a stay's total is made of, as stored on a quote or a booking. */
+export type StayTotal = { totalAmount: number; nights?: number; pricePerNight?: number };
+
+/**
+ * The riyal amount to hand the display formatter for a stay's total, so the
+ * total agrees with "nights × the nightly rate" as the guest reads them.
+ *
+ * Prices are stored in riyals and converted only for display, each rounded
+ * to a whole dollar. Converting the rate and the total separately showed
+ * "3 × $127" beside "$380" — 1,425 SAR is $380, but three of the $127 the
+ * guest was shown make $381 — a sum that visibly does not add up. In dollars
+ * the total is therefore the product of the rate as shown, handed back in
+ * riyals so the one formatter still renders it; in riyals nothing is rounded
+ * and the stored total is returned as it is. Every screen that shows a stay's
+ * total goes through this, so the quote, the list and the booking agree.
+ */
+export function displayTotalSar(stay: StayTotal, currency: Currency): number {
+  const { totalAmount, nights, pricePerNight } = stay;
+  if (currency !== "USD" || !nights || !pricePerNight) return totalAmount;
+  return nights * convertFromSar(pricePerNight, "USD") * SAR_PER_USD;
 }
 
 export type QuoteResult =

@@ -749,6 +749,7 @@ export const translations = {
     decreaseGuests: "Fewer guests",
     increaseGuests: "More guests",
     bookingStayLabel: "Stay",
+    quoteIdleHint: "Choose your dates to see the total",
 
     // ── ui-polish: planner, favorites ──
 
@@ -1504,6 +1505,7 @@ export const translations = {
     decreaseGuests: "إنقاص عدد الضيوف",
     increaseGuests: "زيادة عدد الضيوف",
     bookingStayLabel: "الإقامة",
+    quoteIdleHint: "اختر التواريخ لمعرفة الإجمالي",
 
     // ── ui-polish: planner, favorites ──
 
