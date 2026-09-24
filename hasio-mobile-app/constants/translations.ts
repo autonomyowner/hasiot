@@ -777,6 +777,7 @@ export const translations = {
     backToTravelling: "Back to travelling",
     statAddFirstListing: "Add your first listing",
     postsReviewedNote: "Everything you post is checked by our team before it goes live.",
+    startAddingPlaces: "Add a place to stay or a destination to get started.",
 
     // ── ui-polish: app shell ──
   },
@@ -1554,6 +1555,7 @@ export const translations = {
     backToTravelling: "العودة إلى وضع السفر",
     statAddFirstListing: "أضف إعلانك الأول",
     postsReviewedNote: "يراجع فريقنا كل ما تنشره قبل أن يظهر للمسافرين.",
+    startAddingPlaces: "أضف مكان إقامة أو وجهة لتبدأ.",
 
     // ── ui-polish: app shell ──
   },
