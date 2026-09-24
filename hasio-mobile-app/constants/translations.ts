@@ -771,6 +771,7 @@ export const translations = {
     verificationApprovedBody: "Your account is approved — you can post now.",
     verificationUploadFailed:
       "We couldn't upload your document. Check your connection and try again.",
+    errorDailyPostLimit: "You've reached today's limit. Please try again tomorrow.",
 
     // ── ui-polish: app shell ──
   },
@@ -1542,6 +1543,7 @@ export const translations = {
     removePhoto: "إزالة الصورة",
     verificationApprovedBody: "تمت الموافقة على حسابك، ويمكنك النشر الآن.",
     verificationUploadFailed: "تعذّر رفع الوثيقة. تحقق من اتصالك وحاول مرة أخرى.",
+    errorDailyPostLimit: "وصلت إلى الحد اليومي. حاول مرة أخرى غدًا.",
 
     // ── ui-polish: app shell ──
   },
