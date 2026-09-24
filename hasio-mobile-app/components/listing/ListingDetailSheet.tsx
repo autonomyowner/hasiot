@@ -98,6 +98,16 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
   const { isAuthenticated } = useConvexAuth();
   const { user } = useConvexUser();
 
+  // The listing the page draws. `item` goes null the moment the sheet is told
+  // to close, but iOS goes on drawing the page for the whole of its slide off
+  // the screen — and a page drawn from `item` went blank first and slid away
+  // empty. So the page draws the last listing it was given, until iOS reports
+  // the dismissal (`handleDismiss`). Android takes a Modal's content down the
+  // moment it is hidden, so there is nothing to keep there.
+  const [shown, setShown] = useState<DetailItem | null>(item);
+  if (item && item !== shown) setShown(item);
+  if (!item && shown && Platform.OS !== "ios") setShown(null);
+
   // The flags above belong to one opening of the sheet. Closed, or moved on to
   // another listing, none of them may carry over: a flag still set from last
   // time would present its sheet the moment this one opened again.
@@ -110,12 +120,19 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     setVerifyOpen(false);
     setReviewOpen(false);
     setBookAfterVerify(false);
+    // The photo counter lives out here, so it used to carry over: a listing
+    // opened on its first photo with the third dot lit. Reset on the way in
+    // only — reset on the way out, the dots jumped while the page, still on
+    // its third photo, slid away.
+    if (itemId !== null) setImageIndex(0);
   }
 
-  // Three reads, all skipped until there is a listing to read them for. The
-  // summary and the first few reviews are public; `getMine` returns null for a
-  // visitor, which is what makes the button say "rate" rather than "edit".
-  const listingId = item ? (item.id as Id<"listings">) : null;
+  // Three reads, all skipped until there is a listing to read them for — and
+  // read for the listing on the page, so a closing page keeps its reviews
+  // rather than emptying as it leaves. The summary and the first few reviews
+  // are public; `getMine` returns null for a visitor, which is what makes the
+  // button say "rate" rather than "edit".
+  const listingId = shown ? (shown.id as Id<"listings">) : null;
   const summary = useQuery(
     api.reviews.queries.getSummary,
     listingId ? { listingId } : "skip"
@@ -188,10 +205,16 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     setImageIndex(index);
   };
 
-  // Rendered even with no item so the exit animation has something to play
-  // against; `visible` alone drives it.
-  const images = item?.images?.length ? item.images : [];
-  const detail = item?.details;
+  // iOS only: the page has finished sliding away. Let go of the listing it was
+  // showing — its three subscriptions with it — unless another listing has
+  // been opened since. (After a swipe-dismiss iOS may never report back; the
+  // page is then simply kept until the next listing replaces it.)
+  const handleDismiss = () => {
+    if (!item) setShown(null);
+  };
+
+  const images = shown?.images?.length ? shown.images : [];
+  const detail = shown?.details;
 
   const openUrl = async (url: string, failureKey: "detailCallFailed" | "detailLinkFailed") => {
     try {
@@ -252,7 +275,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
 
   // The bar needs something to say on both halves; a price with no CTA, or a
   // CTA with no price, is not worth pinning to the bottom of the screen.
-  const showBookBar = !!(item?.bookable && item.priceLine);
+  const showBookBar = !!(shown?.bookable && shown.priceLine);
 
   const hasContact = !!(
     detail?.phone ||
@@ -270,10 +293,14 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
       // dismiss users expect; Android ignores it and presents full screen.
       presentationStyle={Platform.OS === "ios" ? "pageSheet" : "fullScreen"}
       onRequestClose={onClose}
+      onDismiss={handleDismiss}
     >
       <View style={styles.container}>
-        {item && (
-          <>
+        {shown && (
+          // Keyed on the listing, so another listing opens at the top of the
+          // page and on its own first photo rather than wherever the last one
+          // was left.
+          <React.Fragment key={shown.id}>
             <ScrollView
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{
@@ -360,32 +387,32 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
 
                 {/* Title block */}
                 <View style={[styles.titleRow, isRTL && styles.rowRTL]}>
-                  {item.badge && (
+                  {shown.badge && (
                     <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{item.badge}</Text>
+                      <Text style={styles.badgeText}>{shown.badge}</Text>
                     </View>
                   )}
-                  {typeof item.rating === "number" && item.rating > 0 && (
+                  {typeof shown.rating === "number" && shown.rating > 0 && (
                     <View style={[styles.ratingRow, isRTL && styles.rowRTL]}>
                       <Feather name="star" size={13} color={colors.warm} />
-                      <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
+                      <Text style={styles.ratingText}>{shown.rating.toFixed(1)}</Text>
                     </View>
                   )}
                 </View>
 
                 <Text style={[styles.title, isRTL && styles.textRTL]}>
-                  {item.title}
+                  {shown.title}
                 </Text>
 
-                {item.subtitle ? (
+                {shown.subtitle ? (
                   <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
-                    {item.subtitle}
+                    {shown.subtitle}
                   </Text>
                 ) : null}
 
-                {item.priceLine ? (
+                {shown.priceLine ? (
                   <Text style={[styles.price, isRTL && styles.textRTL]}>
-                    {item.priceLine}
+                    {shown.priceLine}
                   </Text>
                 ) : null}
 
@@ -420,15 +447,15 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                 {/* About */}
                 <Section title={t("detailAbout")} isRTL={isRTL}>
                   <Text style={[styles.paragraph, isRTL && styles.textRTL]}>
-                    {item.description?.trim() || t("detailNoDescription")}
+                    {shown.description?.trim() || t("detailNoDescription")}
                   </Text>
                 </Section>
 
                 {/* Amenities */}
-                {item.amenities && item.amenities.length > 0 && (
+                {shown.amenities && shown.amenities.length > 0 && (
                   <Section title={t("detailAmenities")} isRTL={isRTL}>
                     <View style={[styles.chips, isRTL && styles.rowRTL]}>
-                      {item.amenities.map((amenity) => {
+                      {shown.amenities.map((amenity) => {
                         // The stored value is a key on anything posted through
                         // the toggles, and free text on older listings.
                         const { icon, label } = resolveAmenity(amenity, language);
@@ -518,7 +545,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
                         // Close first: this sheet is a native modal, and a
                         // pushed route underneath it would be hidden by it.
                         onClose();
-                        router.push(`/reviews/${item.id}`);
+                        router.push(`/reviews/${shown.id}`);
                       }}
                       accessibilityRole="button"
                     >
@@ -555,7 +582,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
               >
                 <View style={isRTL ? styles.alignEnd : undefined}>
                   <Text style={styles.bookBarPrice} numberOfLines={1}>
-                    {item.priceLine}
+                    {shown.priceLine}
                   </Text>
                 </View>
                 <Pressable
@@ -585,7 +612,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
             >
               <Feather name="x" size={20} color={colors.ink} />
             </Pressable>
-          </>
+          </React.Fragment>
         )}
       </View>
 
