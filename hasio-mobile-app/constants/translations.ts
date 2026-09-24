@@ -749,6 +749,9 @@ export const translations = {
     authSessionExpiredTitle: "Signed out",
     authOfflineTitle: "No connection",
     authOk: "OK",
+    // Profile — shown in place of the page while the account is going away.
+    accountSigningOut: "Signing you out…",
+    accountDeleting: "Deleting your account…",
 
     // ── ui-polish: business and provider ──
 
@@ -1500,6 +1503,9 @@ export const translations = {
     authSessionExpiredTitle: "تم تسجيل خروجك",
     authOfflineTitle: "لا يوجد اتصال",
     authOk: "حسناً",
+    // Profile — see the English block.
+    accountSigningOut: "جارٍ تسجيل خروجك…",
+    accountDeleting: "جارٍ حذف حسابك…",
 
     // ── ui-polish: business and provider ──
 
