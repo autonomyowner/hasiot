@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import React, { useRef, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useMutation } from "convex/react";
 import { api } from "@/backend";
 import { appAlert } from "@/stores/dialogStore";
-import { AppDialogHost } from "@/components/ui/AppDialog";
+import { getSubmitErrorKey } from "@/lib/submitError";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
@@ -29,17 +29,23 @@ interface EditNameSheetProps {
  */
 export function EditNameSheet({ visible, initialName, onClose }: EditNameSheetProps) {
   const styles = useThemedStyles(makeStyles);
-  const insets = useSafeAreaInsets();
   const { t, isRTL } = useLanguage();
   const updateProfile = useMutation(api.users.mutations.updateProfile);
 
   const [name, setName] = useState(initialName);
   const [saving, setSaving] = useState(false);
+  // Shown once the sheet has gone, not while it is leaving: an alert raised
+  // inside the sheet is carried off with it and then reappears underneath.
+  const savedNotice = useRef(false);
 
   // Reopening must show the current name, not whatever was typed last time.
-  useEffect(() => {
+  // Only on opening: resyncing whenever `initialName` changed would overwrite
+  // what is being typed the moment the server echoed anything back.
+  const [prevVisible, setPrevVisible] = useState(visible);
+  if (visible !== prevVisible) {
+    setPrevVisible(visible);
     if (visible) setName(initialName);
-  }, [visible, initialName]);
+  }
 
   const save = async () => {
     if (saving) return;
@@ -52,80 +58,90 @@ export function EditNameSheet({ visible, initialName, onClose }: EditNameSheetPr
     setSaving(true);
     try {
       await updateProfile({ firstName, lastName: rest.join(" ") || undefined });
-      appAlert(t("nameSaved"));
+      savedNotice.current = true;
       onClose();
     } catch (error) {
-      appAlert(t("error"), error instanceof Error ? error.message : String(error));
+      // Not the raw message: production redacts a plain server Error to
+      // "Server Error", and in development it is a stack-prefixed English
+      // string. Either way the guest could do nothing with it.
+      appAlert(t("error"), t(getSubmitErrorKey(error)));
     } finally {
       setSaving(false);
     }
   };
 
+  const handleDismissed = () => {
+    if (!savedNotice.current) return;
+    savedNotice.current = false;
+    appAlert(t("nameSaved"));
+  };
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      onDismissed={handleDismissed}
+      style={styles.body}
+      header={
         <View style={[styles.head, isRTL && styles.rowRTL]}>
           <Text style={styles.title}>{t("editName")}</Text>
-          <Pressable onPress={onClose} hitSlop={10} accessibilityRole="button">
+          <Pressable
+            onPress={onClose}
+            hitSlop={12}
+            style={({ pressed }) => pressed && styles.pressed}
+            accessibilityRole="button"
+            accessibilityLabel={t("close")}
+          >
             <Feather name="x" size={22} color={colors.ink} />
           </Pressable>
         </View>
+      }
+    >
+      <Text style={[styles.hint, isRTL && styles.textRTL]}>{t("editNameHint")}</Text>
 
-        <Text style={[styles.hint, isRTL && styles.textRTL]}>{t("editNameHint")}</Text>
+      <ThemedTextInput
+        value={name}
+        onChangeText={setName}
+        placeholder={t("fullNamePlaceholder")}
+        autoFocus
+        autoCapitalize="words"
+        autoComplete="name"
+        textContentType="name"
+        returnKeyType="done"
+        onSubmitEditing={save}
+        textAlign={isRTL ? "right" : "left"}
+      />
 
-        <ThemedTextInput
-          value={name}
-          onChangeText={setName}
-          placeholder={t("fullNamePlaceholder")}
-          autoFocus
-          autoCapitalize="words"
-          returnKeyType="done"
-          onSubmitEditing={save}
-          textAlign={isRTL ? "right" : "left"}
-        />
-
-        <Pressable
-          style={[styles.submit, saving && styles.submitDisabled]}
-          onPress={save}
-          disabled={saving}
-          accessibilityRole="button"
-        >
-          {saving ? (
-            <ActivityIndicator color={colors.ink} />
-          ) : (
-            <Text style={styles.submitText}>{t("save")}</Text>
-          )}
-        </Pressable>
-
-        {/* Alerts fired while this native Modal is open must render inside it,
-            or they appear behind the sheet on iOS. */}
-        <AppDialogHost />
-      </View>
-    </Modal>
+      <Pressable
+        style={({ pressed }) => [
+          styles.submit,
+          saving && styles.submitDisabled,
+          pressed && !saving && styles.pressed,
+        ]}
+        onPress={save}
+        disabled={saving}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: saving, busy: saving }}
+      >
+        {saving ? (
+          <ActivityIndicator color={colors.ink} />
+        ) : (
+          <Text style={styles.submitText}>{t("save")}</Text>
+        )}
+      </Pressable>
+    </BottomSheet>
   );
 }
 
 const makeStyles = (fonts: AppFonts) =>
   StyleSheet.create({
-    backdrop: { ...StyleSheet.absoluteFill, backgroundColor: "rgba(31, 29, 23, 0.35)" },
-    sheet: {
-      position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: colors.surface.DEFAULT,
-      borderTopLeftRadius: 28,
-      borderTopRightRadius: 28,
-      paddingHorizontal: 24,
-      paddingTop: 20,
-      gap: 14,
-    },
+    body: { gap: 14 },
     head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
     rowRTL: { flexDirection: "row-reverse" },
     textRTL: { textAlign: "right" },
     title: { fontFamily: fonts.serif, fontSize: 24, color: colors.ink },
-    hint: { fontFamily: fonts.regular, fontSize: 13, color: colors.onSurface.muted, marginTop: -6 },
+    // Tucked under the title: the body's gap is for the controls below it.
+    hint: { fontFamily: fonts.regular, fontSize: 13, color: colors.onSurface.muted, marginTop: -12 },
     // Lime is a fill, so its label is ink: white on it is 1.4:1.
     submit: {
       alignItems: "center",
@@ -136,4 +152,5 @@ const makeStyles = (fonts: AppFonts) =>
     },
     submitDisabled: { opacity: 0.6 },
     submitText: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
+    pressed: { opacity: 0.7 },
   });

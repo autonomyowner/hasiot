@@ -1,20 +1,9 @@
 import { appAlert } from "@/stores/dialogStore";
-import { AppDialogHost } from "@/components/ui/AppDialog";
 import React, { useEffect, useState } from "react";
-import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { View, Text, Pressable, StyleSheet, ActivityIndicator } from "react-native";
+import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { useLanguage } from "@/hooks/useLanguage";
-import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { getAuthErrorKey, sendPhoneOtp, verifyPhoneOtp } from "@/lib/auth";
 import { formatPhoneForDisplay, normalizeKsaPhone } from "@/lib/phone";
 import { colors, type AppFonts } from "@/constants/colors";
@@ -28,6 +17,13 @@ interface VerifyPhoneSheetProps {
   visible: boolean;
   onClose: () => void;
   onVerified?: () => void;
+  /**
+   * The sheet has fully left the screen. Anything that should open next — the
+   * booking sheet, after a verification made on the way to booking — waits
+   * for this: iOS silently refuses to present a sheet while another is still
+   * being dismissed.
+   */
+  onDismissed?: () => void;
 }
 
 /**
@@ -42,15 +38,14 @@ interface VerifyPhoneSheetProps {
  * `users.phoneVerified` follows automatically through Better-Auth's onUpdate
  * trigger, so any screen watching the current user updates without a refetch.
  */
-export function VerifyPhoneSheet({ visible, onClose, onVerified }: VerifyPhoneSheetProps) {
+export function VerifyPhoneSheet({
+  visible,
+  onClose,
+  onVerified,
+  onDismissed,
+}: VerifyPhoneSheetProps) {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL, language } = useLanguage();
-  const insets = useSafeAreaInsets();
-  const {
-    ref: keyboardRef,
-    overlap: keyboardOverlap,
-    onLayout: keyboardOnLayout,
-  } = useKeyboardOverlap();
 
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [phone, setPhone] = useState("");
@@ -123,193 +118,162 @@ export function VerifyPhoneSheet({ visible, onClose, onVerified }: VerifyPhoneSh
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
-      <Pressable style={styles.backdrop} onPress={handleClose} />
-      <KeyboardAvoidingView
-        style={styles.avoider}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        pointerEvents="box-none"
-      >
-        <View
-          ref={keyboardRef}
-          onLayout={keyboardOnLayout}
-          style={[
-            styles.sheet,
-            {
-              paddingBottom: keyboardOverlap > 0 ? keyboardOverlap + 24 : insets.bottom + 24,
-            },
-          ]}
-        >
-          <View style={styles.handle} />
+    <BottomSheet
+      visible={visible}
+      onClose={handleClose}
+      onDismissed={onDismissed}
+      bottomPadding={24}
+      header={
+        <Text style={[styles.title, isRTL && styles.textRTL]}>
+          {step === "phone" ? t("verifyPhoneTitle") : t("enterCodeTitle")}
+        </Text>
+      }
+    >
+      <View style={styles.body}>
+        <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
+          {step === "phone"
+            ? t("verifyPhoneSubtitle")
+            : t("enterCodeSubtitle").replace(
+                "{phone}",
+                formatPhoneForDisplay(normalizedPhone)
+              )}
+        </Text>
 
-          <View style={styles.body}>
-            <Text style={[styles.title, isRTL && styles.textRTL]}>
-              {step === "phone" ? t("verifyPhoneTitle") : t("enterCodeTitle")}
-            </Text>
-            <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
-              {step === "phone"
-                ? t("verifyPhoneSubtitle")
-                : t("enterCodeSubtitle").replace(
-                    "{phone}",
-                    formatPhoneForDisplay(normalizedPhone)
-                  )}
-            </Text>
+        {step === "phone" ? (
+          <>
+            {/* A phone number reads left-to-right in both languages, so the
+                +966 chip and the digits keep their order in Arabic too. */}
+            <View style={styles.phoneRow}>
+              <View style={styles.countryChip}>
+                <Text style={styles.countryChipText}>+966</Text>
+              </View>
+              <ThemedTextInput
+                style={[styles.input, styles.phoneInput]}
+                isRTL={false}
+                placeholder={t("phonePlaceholder")}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                autoCapitalize="none"
+                autoCorrect={false}
+                textAlign="left"
+                textContentType="telephoneNumber"
+                autoComplete="tel"
+                returnKeyType="go"
+                onSubmitEditing={handleSendCode}
+                autoFocus
+              />
+            </View>
 
-            {step === "phone" ? (
-              <>
-                {/* A phone number reads left-to-right in both languages, so the
-                    +966 chip and the digits keep their order in Arabic too. */}
-                <View style={styles.phoneRow}>
-                  <View style={styles.countryChip}>
-                    <Text style={styles.countryChipText}>+966</Text>
-                  </View>
-                  <ThemedTextInput
-                    style={[styles.input, styles.phoneInput]}
-                    isRTL={false}
-                    placeholder={t("phonePlaceholder")}
-                    value={phone}
-                    onChangeText={setPhone}
-                    keyboardType="phone-pad"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    textAlign="left"
-                    textContentType="telephoneNumber"
-                    autoComplete="tel"
-                    returnKeyType="go"
-                    onSubmitEditing={handleSendCode}
-                    autoFocus
-                  />
-                </View>
+            <Pressable
+              onPress={handleSendCode}
+              disabled={loading || !normalizedPhone}
+              style={({ pressed }) => [
+                styles.submitButton,
+                (loading || !normalizedPhone) && styles.submitButtonDisabled,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t("sendCode")}
+              accessibilityState={{ disabled: loading || !normalizedPhone, busy: loading }}
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.ink} />
+              ) : (
+                <Text style={styles.submitButtonText}>{t("sendCode")}</Text>
+              )}
+            </Pressable>
+          </>
+        ) : (
+          <>
+            <ThemedTextInput
+              style={[styles.input, styles.codeInput]}
+              isRTL={false}
+              value={code}
+              onChangeText={(next) => {
+                const digits = next.replace(/\D/g, "").slice(0, CODE_LENGTH);
+                setCode(digits);
+                if (digits.length === CODE_LENGTH) handleVerify(digits);
+              }}
+              keyboardType="number-pad"
+              maxLength={CODE_LENGTH}
+              textAlign="center"
+              textContentType="oneTimeCode"
+              autoComplete="sms-otp"
+              autoFocus
+              editable={!loading}
+            />
 
-                <Pressable
-                  onPress={handleSendCode}
-                  disabled={loading || !normalizedPhone}
-                  style={[
-                    styles.submitButton,
-                    (loading || !normalizedPhone) && styles.submitButtonDisabled,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("sendCode")}
-                  accessibilityState={{ disabled: loading || !normalizedPhone, busy: loading }}
-                >
-                  {loading ? (
-                    <ActivityIndicator color={colors.ink} />
+            <Pressable
+              onPress={() => handleVerify(code)}
+              disabled={loading || code.length !== CODE_LENGTH}
+              style={({ pressed }) => [
+                styles.submitButton,
+                (loading || code.length !== CODE_LENGTH) && styles.submitButtonDisabled,
+                pressed && styles.pressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel={t("verifyCode")}
+              accessibilityState={{ disabled: loading, busy: loading }}
+            >
+              {loading ? (
+                <ActivityIndicator color={colors.ink} />
+              ) : (
+                <Text style={styles.submitButtonText}>{t("verifyCode")}</Text>
+              )}
+            </Pressable>
+
+            <View style={[styles.linkRow, isRTL && styles.rowRTL]}>
+              <Pressable
+                onPress={handleSendCode}
+                disabled={resendIn > 0 || loading}
+                hitSlop={10}
+                style={({ pressed }) => pressed && styles.pressed}
+                accessibilityRole="button"
+                accessibilityLabel={t("resendCode")}
+                accessibilityState={{ disabled: resendIn > 0 || loading }}
+              >
+                <Text style={styles.linkMuted}>
+                  {resendIn > 0 ? (
+                    t("resendIn").replace("{seconds}", String(resendIn))
                   ) : (
-                    <Text style={styles.submitButtonText}>{t("sendCode")}</Text>
+                    <Text style={styles.link}>{t("resendCode")}</Text>
                   )}
-                </Pressable>
-              </>
-            ) : (
-              <>
-                <ThemedTextInput
-                  style={[styles.input, styles.codeInput]}
-                  isRTL={false}
-                  value={code}
-                  onChangeText={(next) => {
-                    const digits = next.replace(/\D/g, "").slice(0, CODE_LENGTH);
-                    setCode(digits);
-                    if (digits.length === CODE_LENGTH) handleVerify(digits);
-                  }}
-                  keyboardType="number-pad"
-                  maxLength={CODE_LENGTH}
-                  textAlign="center"
-                  textContentType="oneTimeCode"
-                  autoComplete="sms-otp"
-                  autoFocus
-                  editable={!loading}
-                />
+                </Text>
+              </Pressable>
 
-                <Pressable
-                  onPress={() => handleVerify(code)}
-                  disabled={loading || code.length !== CODE_LENGTH}
-                  style={[
-                    styles.submitButton,
-                    (loading || code.length !== CODE_LENGTH) && styles.submitButtonDisabled,
-                  ]}
-                  accessibilityRole="button"
-                  accessibilityLabel={t("verifyCode")}
-                  accessibilityState={{ disabled: loading, busy: loading }}
-                >
-                  {loading ? (
-                    <ActivityIndicator color={colors.ink} />
-                  ) : (
-                    <Text style={styles.submitButtonText}>{t("verifyCode")}</Text>
-                  )}
-                </Pressable>
-
-                <View style={styles.linkRow}>
-                  <Pressable
-                    onPress={handleSendCode}
-                    disabled={resendIn > 0 || loading}
-                    accessibilityRole="button"
-                    accessibilityLabel={t("resendCode")}
-                    accessibilityState={{ disabled: resendIn > 0 || loading }}
-                  >
-                    <Text style={styles.linkMuted}>
-                      {resendIn > 0 ? (
-                        t("resendIn").replace("{seconds}", String(resendIn))
-                      ) : (
-                        <Text style={styles.link}>{t("resendCode")}</Text>
-                      )}
-                    </Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => {
-                      setStep("phone");
-                      setCode("");
-                    }}
-                    accessibilityRole="button"
-                    accessibilityLabel={t("changeNumber")}
-                  >
-                    <Text style={styles.link}>{t("changeNumber")}</Text>
-                  </Pressable>
-                </View>
-              </>
-            )}
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-
-      {/* This sheet is a native Modal, so an alert fired from inside it needs
-          its own host or it renders behind. */}
-      <AppDialogHost />
-    </Modal>
+              <Pressable
+                onPress={() => {
+                  setStep("phone");
+                  setCode("");
+                }}
+                hitSlop={10}
+                style={({ pressed }) => pressed && styles.pressed}
+                accessibilityRole="button"
+                accessibilityLabel={t("changeNumber")}
+              >
+                <Text style={styles.link}>{t("changeNumber")}</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
+      </View>
+    </BottomSheet>
   );
 }
 
 const makeStyles = (fonts: AppFonts) => StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: "rgba(31, 29, 23, 0.35)",
-  },
-  avoider: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  // A sheet is one surface, so a flat fill is right here - with the 28px top
-  // radius every other sheet in the app uses.
-  sheet: {
-    backgroundColor: colors.surface.DEFAULT,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    maxHeight: "85%",
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: colors.border,
-    borderRadius: 2,
-    alignSelf: "center",
-    marginTop: 10,
-    marginBottom: 8,
-  },
+  // The title lives in the sheet's drag zone; this keeps the subtitle the
+  // same 16pt below it that separates everything else.
   body: {
-    paddingHorizontal: 24,
-    paddingTop: 8,
     gap: 16,
+    paddingTop: 10,
+  },
+  rowRTL: {
+    flexDirection: "row-reverse",
+  },
+  pressed: {
+    opacity: 0.7,
   },
   title: {
     fontSize: 26,

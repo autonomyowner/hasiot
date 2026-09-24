@@ -1,14 +1,7 @@
 import React from "react";
-import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { BottomSheet } from "./BottomSheet";
 import { colors, type AppFonts } from "@/constants/colors";
 import { cityLabel } from "@/constants/cities";
 import { useThemedStyles } from "@/hooks/useAppFonts";
@@ -80,7 +73,6 @@ export function FilterSheet({
   onClose,
 }: FilterSheetProps) {
   const styles = useThemedStyles(makeStyles);
-  const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
   const { format } = useCurrency();
 
@@ -93,102 +85,105 @@ export function FilterSheet({
   const hasBudget = priceBounds && priceBounds.max > priceBounds.min;
 
   return (
-    <Modal
+    <BottomSheet
       visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
-      <Pressable style={styles.backdrop} onPress={onClose} />
-      <View style={[styles.sheet, { paddingBottom: insets.bottom + 20 }]}>
+      onClose={onClose}
+      maxHeightRatio={0.8}
+      header={
         <View style={[styles.head, isRTL && styles.rowRTL]}>
           <Text style={styles.title}>{t("filters")}</Text>
           <Pressable
             onPress={onClose}
-            hitSlop={10}
+            hitSlop={12}
+            style={({ pressed }) => pressed && styles.pressed}
             accessibilityRole="button"
             accessibilityLabel={t("close")}
           >
             <Feather name="x" size={22} color={colors.ink} />
           </Pressable>
         </View>
-
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {types.length > 1 && (
-            <Group title={t("filterType")} isRTL={isRTL} styles={styles}>
-              {types.map((type) => (
-                <Chip
-                  key={type}
-                  label={t(`cat_${type}` as never) || type}
-                  selected={value.type === type}
-                  onPress={() => toggle("type", type)}
-                  styles={styles}
-                />
-              ))}
-            </Group>
-          )}
-
-          {cities.length > 1 && (
-            <Group title={t("filterPlace")} isRTL={isRTL} styles={styles}>
-              {cities.map(({ city, count: n }) => (
-                <Chip
-                  key={city}
-                  label={`${cityLabel(city, language)} (${n})`}
-                  selected={value.city === city}
-                  onPress={() => toggle("city", city)}
-                  styles={styles}
-                />
-              ))}
-            </Group>
-          )}
-
-          {hasBudget && (
-            <View style={styles.group}>
-              <Text style={[styles.groupTitle, isRTL && styles.textRTL]}>
-                {t("filterBudget")}
-              </Text>
-              <Text style={[styles.groupNote, isRTL && styles.textRTL]}>
-                {t("filterBudgetNote")}
-              </Text>
-              <RangeSlider
-                min={priceBounds.min}
-                max={priceBounds.max}
-                step={PRICE_STEP}
-                lower={value.priceMin ?? priceBounds.min}
-                upper={value.priceMax ?? priceBounds.max}
-                onChange={(lower, upper) =>
-                  onChange({ ...value, priceMin: lower, priceMax: upper })
-                }
-                formatValue={format}
-                isRTL={isRTL}
-                minLabel={t("filterBudgetMin")}
-                maxLabel={t("filterBudgetMax")}
+      }
+    >
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {types.length > 1 && (
+          <Group title={t("filterType")} isRTL={isRTL} styles={styles}>
+            {types.map((type) => (
+              <Chip
+                key={type}
+                label={t(`cat_${type}` as never) || type}
+                selected={value.type === type}
+                onPress={() => toggle("type", type)}
+                styles={styles}
               />
-            </View>
-          )}
-        </ScrollView>
+            ))}
+          </Group>
+        )}
 
-        <View style={[styles.foot, isRTL && styles.rowRTL]}>
-          <Pressable
-            onPress={() => onChange(EMPTY_FILTERS)}
-            disabled={count === 0}
-            style={[styles.clear, count === 0 && styles.clearDisabled]}
-            accessibilityRole="button"
-            accessibilityLabel={t("filterClear")}
-          >
-            <Text style={styles.clearText}>{t("filterClear")}</Text>
-          </Pressable>
-          <Pressable
-            onPress={onClose}
-            style={styles.apply}
-            accessibilityRole="button"
-            accessibilityLabel={t("filterApply")}
-          >
-            <Text style={styles.applyText}>{t("filterApply")}</Text>
-          </Pressable>
-        </View>
+        {cities.length > 1 && (
+          <Group title={t("filterPlace")} isRTL={isRTL} styles={styles}>
+            {cities.map(({ city, count: n }) => (
+              <Chip
+                key={city}
+                label={`${cityLabel(city, language)} (${n})`}
+                selected={value.city === city}
+                onPress={() => toggle("city", city)}
+                styles={styles}
+              />
+            ))}
+          </Group>
+        )}
+
+        {hasBudget && (
+          <View style={styles.group}>
+            <Text style={[styles.groupTitle, isRTL && styles.textRTL]}>
+              {t("filterBudget")}
+            </Text>
+            <Text style={[styles.groupNote, isRTL && styles.textRTL]}>
+              {t("filterBudgetNote")}
+            </Text>
+            <RangeSlider
+              min={priceBounds.min}
+              max={priceBounds.max}
+              step={PRICE_STEP}
+              lower={value.priceMin ?? priceBounds.min}
+              upper={value.priceMax ?? priceBounds.max}
+              onChange={(lower, upper) =>
+                onChange({ ...value, priceMin: lower, priceMax: upper })
+              }
+              formatValue={format}
+              isRTL={isRTL}
+              minLabel={t("filterBudgetMin")}
+              maxLabel={t("filterBudgetMax")}
+            />
+          </View>
+        )}
+      </ScrollView>
+
+      <View style={[styles.foot, isRTL && styles.rowRTL]}>
+        <Pressable
+          onPress={() => onChange(EMPTY_FILTERS)}
+          disabled={count === 0}
+          style={({ pressed }) => [
+            styles.clear,
+            count === 0 && styles.clearDisabled,
+            pressed && styles.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={t("filterClear")}
+          accessibilityState={{ disabled: count === 0 }}
+        >
+          <Text style={styles.clearText}>{t("filterClear")}</Text>
+        </Pressable>
+        <Pressable
+          onPress={onClose}
+          style={({ pressed }) => [styles.apply, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={t("filterApply")}
+        >
+          <Text style={styles.applyText}>{t("filterApply")}</Text>
+        </Pressable>
       </View>
-    </Modal>
+    </BottomSheet>
   );
 }
 
@@ -225,7 +220,11 @@ function Chip({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.chip, selected && styles.chipSelected]}
+      style={({ pressed }) => [
+        styles.chip,
+        selected && styles.chipSelected,
+        pressed && styles.pressed,
+      ]}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       accessibilityLabel={label}
@@ -239,22 +238,6 @@ function Chip({
 
 const makeStyles = (fonts: AppFonts) =>
   StyleSheet.create({
-    backdrop: {
-      ...StyleSheet.absoluteFill,
-      backgroundColor: "rgba(31, 29, 23, 0.35)",
-    },
-    sheet: {
-      position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: 0,
-      maxHeight: "80%",
-      backgroundColor: colors.surface.DEFAULT,
-      borderTopLeftRadius: 28,
-      borderTopRightRadius: 28,
-      paddingHorizontal: 24,
-      paddingTop: 20,
-    },
     head: {
       flexDirection: "row",
       alignItems: "center",
@@ -310,4 +293,5 @@ const makeStyles = (fonts: AppFonts) =>
       backgroundColor: colors.primary.DEFAULT,
     },
     applyText: { fontFamily: fonts.semibold, fontSize: 16, color: colors.ink },
+    pressed: { opacity: 0.7 },
   });
