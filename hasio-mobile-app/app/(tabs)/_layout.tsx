@@ -409,8 +409,19 @@ function TabButton({
       <View style={styles.iconWrap}>
         <Animated.View pointerEvents="none" style={[styles.activeCircle, circleStyle]} />
         {/* No `color` prop: the animated style supplies it, and the prop would
-            be a static value competing with the interpolation. */}
-        <AnimatedFeather name={icon} size={ICON_SIZE} style={tintStyle} />
+            be a static value competing with the interpolation. Except on web,
+            where Reanimated applies an animated style to a class component
+            through setNativeProps, which the icon's react-native-web Text
+            lacks — the first tint change threw and stopped the page. */}
+        {Platform.OS === "web" ? (
+          <Feather
+            name={icon}
+            size={ICON_SIZE}
+            color={isActive ? ACTIVE_TINT : INACTIVE_TINT}
+          />
+        ) : (
+          <AnimatedFeather name={icon} size={ICON_SIZE} style={tintStyle} />
+        )}
       </View>
       <Animated.Text
         numberOfLines={1}
