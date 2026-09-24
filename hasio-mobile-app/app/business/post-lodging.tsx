@@ -1,12 +1,11 @@
 import { appAlert } from "@/stores/dialogStore";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  Alert,
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
@@ -24,13 +23,23 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { getSubmitErrorKey } from "@/lib/submitError";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
+import {
+  EMPTY_STAY_FORM,
+  editedStayLocation,
+  isLocalPhoto,
+  newStayLocation,
+  stayFormFromListing,
+  withUploadedPhotos,
+  type StayFormValues,
+} from "@/lib/listingForm";
 import { BackButton, Button } from "@/components/ui";
 import { LodgingType } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Feather } from "@expo/vector-icons";
-import { AMENITIES, type AmenityKey } from "@/constants/amenities";
-import { CITIES, canonicalCity, cityCoordinates } from "@/constants/cities";
+import { AMENITIES } from "@/constants/amenities";
+import { CITIES } from "@/constants/cities";
 import { colors, type AppFonts } from "@/constants/colors";
+import { lodgingTypeOf } from "@/hooks/useConvexData";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const LODGING_TYPES: { value: LodgingType; labelKey: string }[] = [
@@ -67,57 +76,50 @@ export default function PostLodgingScreen() {
   const isEditing = Boolean(id);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [name, setName] = useState("");
-  const [nameAr, setNameAr] = useState("");
-  const [type, setType] = useState<LodgingType>("hotel");
-  const [city, setCity] = useState("");
-  const [neighborhood, setNeighborhood] = useState("");
+  // Every field in one object: an edit needs the whole form to compare with
+  // what it opened with, which a dozen separate states made impossible.
+  // Amenities are canonical keys, not typed words — see
+  // `constants/amenities.ts` — but a legacy free-text amenity is carried as it
+  // is, so an edit never drops it.
+  const [form, setForm] = useState<StayFormValues>(EMPTY_STAY_FORM);
+  // What the form held when it opened: the empty form, or the listing as it is
+  // stored. An edit writes the location only where the host moved away from it.
+  const [saved, setSaved] = useState<StayFormValues>(EMPTY_STAY_FORM);
   const [neighborhoodAr, setNeighborhoodAr] = useState("");
-  const [priceRange, setPriceRange] = useState("");
-  // Booking fields. Without a nightly price the listing still appears in the
-  // directory, it just cannot be booked — so these are optional, not required.
-  const [pricePerNight, setPricePerNight] = useState("");
-  const [maxGuests, setMaxGuests] = useState("2");
-  const [unitCount, setUnitCount] = useState("1");
-  const [checkInTime, setCheckInTime] = useState("15:00");
-  const [checkOutTime, setCheckOutTime] = useState("12:00");
-  const [description, setDescription] = useState("");
-  const [descriptionAr, setDescriptionAr] = useState("");
-  // Canonical keys, not typed words — see `constants/amenities.ts`. The old
-  // pair of comma-separated fields also collected an Arabic line that was
-  // never sent anywhere, so a host's Arabic amenities were silently dropped.
-  const [selectedAmenities, setSelectedAmenities] = useState<AmenityKey[]>([]);
-  const toggleAmenity = (key: AmenityKey) =>
-    setSelectedAmenities((current) =>
-      current.includes(key)
-        ? current.filter((item) => item !== key)
-        : [...current, key]
-    );
-  const [images, setImages] = useState<string[]>([]);
+  const set = <K extends keyof StayFormValues>(key: K, value: StayFormValues[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+  const toggleAmenity = (key: string) =>
+    setForm((current) => ({
+      ...current,
+      amenities: current.amenities.includes(key)
+        ? current.amenities.filter((item) => item !== key)
+        : [...current.amenities, key],
+    }));
 
-  // Fill the form the first time the listing lands, and only then: re-running
-  // this on every render of a live query would overwrite whatever is being
-  // typed each time anything else on the account changes.
-  const prefilled = useRef(false);
-  useEffect(() => {
-    if (!existing || prefilled.current) return;
-    prefilled.current = true;
-    setName(existing.name_en ?? "");
-    setNameAr(existing.name_ar ?? "");
-    setType((existing.category as LodgingType) ?? "hotel");
-    setCity(canonicalCity(existing.city ?? ""));
-    setNeighborhood(existing.region ?? "");
-    setPriceRange(existing.priceRange ?? "");
-    setPricePerNight(existing.pricePerNight != null ? String(existing.pricePerNight) : "");
-    setMaxGuests(existing.maxGuests != null ? String(existing.maxGuests) : "2");
-    setUnitCount(existing.unitCount != null ? String(existing.unitCount) : "1");
-    setCheckInTime(existing.checkInTime ?? "15:00");
-    setCheckOutTime(existing.checkOutTime ?? "12:00");
-    setDescription(existing.description_en ?? "");
-    setDescriptionAr(existing.description_ar ?? "");
-    setSelectedAmenities((existing.amenities ?? []) as AmenityKey[]);
-    setImages(existing.images ?? []);
-  }, [existing]);
+  // Fill the form when the listing lands, once per listing: re-filling on
+  // every tick of a live query would overwrite whatever is being typed each
+  // time anything else on the account changes. Done during render rather than
+  // in an effect, so the first frame of the editor is already the listing.
+  const [prefilledId, setPrefilledId] = useState<string | null>(null);
+  if (existing && prefilledId !== existing._id) {
+    const values = stayFormFromListing(existing);
+    setPrefilledId(existing._id);
+    setForm(values);
+    setSaved(values);
+  }
+
+  // A seeded stay's finer category ("luxury_hotel") lights the chip it files
+  // under; it is only rewritten if the host picks a different chip.
+  const shownType = LODGING_TYPES.some((item) => item.value === form.type)
+    ? form.type
+    : lodgingTypeOf(form.type);
+
+  // The server skips an undefined number and its validator rejects null, so a
+  // stored nightly price, guest cap or unit count cannot be cleared from here
+  // (open item: a backend change). When the host empties one, the form says
+  // it will be kept rather than pretending the save removed it.
+  const cannotClear = (key: "pricePerNight" | "maxGuests" | "unitCount") =>
+    isEditing && saved[key] !== "" && form[key].trim() === "";
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -141,19 +143,25 @@ export default function PostLodgingScreen() {
 
     if (!result.canceled) {
       const newImages = result.assets.map((asset) => asset.uri);
-      setImages([...images, ...newImages].slice(0, 5));
+      setForm((current) => ({
+        ...current,
+        images: [...current.images, ...newImages].slice(0, 5),
+      }));
     }
   };
 
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+    setForm((current) => ({
+      ...current,
+      images: current.images.filter((_, i) => i !== index),
+    }));
   };
 
   const handleSubmit = async () => {
     if (isLoading) return;
 
     // Validation
-    if (!name.trim() || !nameAr.trim() || !city.trim()) {
+    if (!form.name.trim() || !form.nameAr.trim() || !form.city.trim()) {
       appAlert(t("error"), t("fillRequiredFields"));
       return;
     }
@@ -161,26 +169,26 @@ export default function PostLodgingScreen() {
     // The booking fields are optional as a group, but each one that is filled
     // in has to be usable — the server rejects the rest, and finding that out
     // after an image upload is a poor trade.
-    const nightly = pricePerNight.trim() ? Number(pricePerNight.trim()) : undefined;
+    const nightly = form.pricePerNight.trim() ? Number(form.pricePerNight.trim()) : undefined;
     if (nightly !== undefined && (!Number.isInteger(nightly) || nightly <= 0 || nightly > 100000)) {
       appAlert(t("error"), t("invalidPrice"));
       return;
     }
 
-    const guests = maxGuests.trim() ? Number(maxGuests.trim()) : undefined;
+    const guests = form.maxGuests.trim() ? Number(form.maxGuests.trim()) : undefined;
     if (guests !== undefined && (!Number.isInteger(guests) || guests < 1 || guests > 20)) {
       appAlert(t("error"), t("invalidGuestCount"));
       return;
     }
 
-    const units = unitCount.trim() ? Number(unitCount.trim()) : undefined;
+    const units = form.unitCount.trim() ? Number(form.unitCount.trim()) : undefined;
     if (units !== undefined && (!Number.isInteger(units) || units < 1 || units > 500)) {
       appAlert(t("error"), t("invalidUnitCount"));
       return;
     }
 
     const isHHMM = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
-    if (!isHHMM(checkInTime.trim()) || !isHHMM(checkOutTime.trim())) {
+    if (!isHHMM(form.checkInTime.trim()) || !isHHMM(form.checkOutTime.trim())) {
       appAlert(t("error"), t("invalidTime"));
       return;
     }
@@ -189,43 +197,67 @@ export default function PostLodgingScreen() {
 
     try {
       // Anything already stored is an https URL and must not be re-uploaded;
-      // only what the picker just handed us is a local file.
-      const alreadyStored = images.filter((uri) => /^https?:/.test(uri));
-      const freshPicks = images.filter((uri) => !/^https?:/.test(uri));
-      const uploadedImages = [
-        ...alreadyStored,
-        ...(freshPicks.length > 0 ? await uploadMultipleToConvex(freshPicks) : []),
-      ];
+      // only what the picker just handed us is a local file. The uploads go
+      // back in the places their local files held, so the host's order — and
+      // with it the cover — survives the save.
+      const localPhotos = form.images.filter(isLocalPhoto);
+      const uploaded =
+        localPhotos.length > 0 ? await uploadMultipleToConvex(localPhotos) : [];
+      const images = withUploadedPhotos(form.images, uploaded);
 
-      const payload = {
-        type: "hotel",
-        name_en: name.trim(),
-        name_ar: nameAr.trim(),
-        category: type,
-        description_en: description.trim() || undefined,
-        description_ar: descriptionAr.trim() || undefined,
-        address: neighborhood.trim() || city.trim(),
-        city: city.trim(),
-        region: neighborhood.trim() || undefined,
-        // The city centre, not the oasis: this listing may be on the coast.
-        coordinates: cityCoordinates(city),
-        priceRange: priceRange.trim() || undefined,
+      const city = form.city.trim();
+      // Undefined is "leave as stored" to the server, so an empty booking
+      // field is simply not sent. The price cannot be cleared that way; the
+      // form says so under the field instead of pretending it was.
+      const pricing = {
         pricePerNight: nightly,
         currency: nightly !== undefined ? "SAR" : undefined,
         maxGuests: guests,
         unitCount: units,
-        checkInTime: checkInTime.trim(),
-        checkOutTime: checkOutTime.trim(),
-        amenities: selectedAmenities.length > 0 ? selectedAmenities : undefined,
-        images: uploadedImages.length > 0 ? uploadedImages : undefined,
-      } as const;
+        checkInTime: form.checkInTime.trim(),
+        checkOutTime: form.checkOutTime.trim(),
+      };
 
       if (isEditing && id) {
         // The server resets the listing to pending on any edit, which is why
         // the confirmation says "sent for review" rather than "saved".
-        await updateMyListing({ listingId: id as Id<"listings">, ...payload });
+        await updateMyListing({
+          listingId: id as Id<"listings">,
+          type: "hotel",
+          name_en: form.name.trim(),
+          name_ar: form.nameAr.trim(),
+          category: form.type,
+          // A seeded stay's stored Arabic label names its old category, and
+          // the cards prefer it; once the category changes it is wrong.
+          category_ar: form.type !== saved.type ? "" : undefined,
+          city,
+          // Only what the host changed: the stored pin and address used to
+          // be replaced by a city centre and "Eastern Province" on any save.
+          ...editedStayLocation(saved, form),
+          // "" and [] rather than undefined: the server skips undefined, so
+          // an emptied description or a removed last photo was silently kept.
+          description_en: form.description.trim(),
+          description_ar: form.descriptionAr.trim(),
+          priceRange: form.priceRange.trim(),
+          amenities: form.amenities,
+          images,
+          ...pricing,
+        });
       } else {
-        await submitListing(payload);
+        await submitListing({
+          type: "hotel",
+          name_en: form.name.trim(),
+          name_ar: form.nameAr.trim(),
+          category: form.type,
+          city,
+          ...newStayLocation(form),
+          description_en: form.description.trim() || undefined,
+          description_ar: form.descriptionAr.trim() || undefined,
+          priceRange: form.priceRange.trim() || undefined,
+          amenities: form.amenities.length > 0 ? form.amenities : undefined,
+          images: images.length > 0 ? images : undefined,
+          ...pricing,
+        });
       }
 
       appAlert(
@@ -287,14 +319,18 @@ export default function PostLodgingScreen() {
                 key={item.value}
                 style={[
                   styles.typeButton,
-                  type === item.value && styles.typeButtonSelected,
+                  shownType === item.value && styles.typeButtonSelected,
                 ]}
-                onPress={() => setType(item.value)}
+                // Tapping the chip that is already lit changes nothing, so a
+                // seeded "luxury_hotel" is not flattened to "hotel" by a tap.
+                onPress={() => {
+                  if (item.value !== shownType) set("type", item.value);
+                }}
               >
                 <Text
                   style={[
                     styles.typeButtonText,
-                    type === item.value && styles.typeButtonTextSelected,
+                    shownType === item.value && styles.typeButtonTextSelected,
                   ]}
                 >
                   {t(item.labelKey as any)}
@@ -310,8 +346,8 @@ export default function PostLodgingScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={name}
-            onChangeText={setName}
+            value={form.name}
+            onChangeText={(value) => set("name", value)}
             placeholder={t("placeholderNameEn")}
             placeholderTextColor="#A3A3A3"
           />
@@ -322,8 +358,8 @@ export default function PostLodgingScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={true}
-            value={nameAr}
-            onChangeText={setNameAr}
+            value={form.nameAr}
+            onChangeText={(value) => set("nameAr", value)}
             placeholder={t("placeholderNameAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
@@ -338,11 +374,11 @@ export default function PostLodgingScreen() {
           </Text>
           <View style={[styles.optionGrid, isRTL && styles.optionGridRTL]}>
             {CITIES.map((option) => {
-              const on = city === option.key;
+              const on = form.city === option.key;
               return (
                 <Pressable
                   key={option.key}
-                  onPress={() => setCity(option.key)}
+                  onPress={() => set("city", option.key)}
                   style={[styles.optionChip, on && styles.optionChipOn]}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: on }}
@@ -363,8 +399,8 @@ export default function PostLodgingScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={neighborhood}
-            onChangeText={setNeighborhood}
+            value={form.neighborhood}
+            onChangeText={(value) => set("neighborhood", value)}
             placeholder={t("placeholderNeighborhoodEn")}
             placeholderTextColor="#A3A3A3"
           />
@@ -386,8 +422,8 @@ export default function PostLodgingScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={priceRange}
-            onChangeText={setPriceRange}
+            value={form.priceRange}
+            onChangeText={(value) => set("priceRange", value)}
             placeholder={t("placeholderPriceLodging")}
             placeholderTextColor="#A3A3A3"
           />
@@ -408,30 +444,45 @@ export default function PostLodgingScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={pricePerNight}
-            onChangeText={setPricePerNight}
+            value={form.pricePerNight}
+            onChangeText={(value) => set("pricePerNight", value)}
             placeholder={t("placeholderPricePerNight")}
             placeholderTextColor="#A3A3A3"
             keyboardType="number-pad"
           />
+          {cannotClear("pricePerNight") && (
+            <Text style={[styles.clearNote, isRTL && styles.textRTL]}>
+              {t("editCannotClear").replace("{value}", `${saved.pricePerNight} ${t("sar")}`)}
+            </Text>
+          )}
 
           <Text style={[styles.label, isRTL && styles.textRTL]}>{t("maxGuestsLabel")}</Text>
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={maxGuests}
-            onChangeText={setMaxGuests}
+            value={form.maxGuests}
+            onChangeText={(value) => set("maxGuests", value)}
             keyboardType="number-pad"
           />
+          {cannotClear("maxGuests") && (
+            <Text style={[styles.clearNote, isRTL && styles.textRTL]}>
+              {t("editCannotClear").replace("{value}", saved.maxGuests)}
+            </Text>
+          )}
 
           <Text style={[styles.label, isRTL && styles.textRTL]}>{t("unitCountLabel")}</Text>
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={unitCount}
-            onChangeText={setUnitCount}
+            value={form.unitCount}
+            onChangeText={(value) => set("unitCount", value)}
             keyboardType="number-pad"
           />
+          {cannotClear("unitCount") && (
+            <Text style={[styles.clearNote, isRTL && styles.textRTL]}>
+              {t("editCannotClear").replace("{value}", saved.unitCount)}
+            </Text>
+          )}
 
           {/* Times stay left-aligned in both languages: "15:00" is a fixed
               pattern, and mirroring it puts the minutes before the hour. */}
@@ -439,8 +490,8 @@ export default function PostLodgingScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={false}
-            value={checkInTime}
-            onChangeText={setCheckInTime}
+            value={form.checkInTime}
+            onChangeText={(value) => set("checkInTime", value)}
             placeholder="15:00"
             placeholderTextColor="#A3A3A3"
             keyboardType="numbers-and-punctuation"
@@ -451,8 +502,8 @@ export default function PostLodgingScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={false}
-            value={checkOutTime}
-            onChangeText={setCheckOutTime}
+            value={form.checkOutTime}
+            onChangeText={(value) => set("checkOutTime", value)}
             placeholder="12:00"
             placeholderTextColor="#A3A3A3"
             keyboardType="numbers-and-punctuation"
@@ -466,8 +517,8 @@ export default function PostLodgingScreen() {
           <ThemedTextInput
             style={[styles.input, styles.textArea]}
             isRTL={isRTL}
-            value={description}
-            onChangeText={setDescription}
+            value={form.description}
+            onChangeText={(value) => set("description", value)}
             placeholder={t("placeholderDescriptionEn")}
             placeholderTextColor="#A3A3A3"
             multiline
@@ -477,8 +528,8 @@ export default function PostLodgingScreen() {
           <ThemedTextInput
             style={[styles.input, styles.textArea]}
             isRTL={true}
-            value={descriptionAr}
-            onChangeText={setDescriptionAr}
+            value={form.descriptionAr}
+            onChangeText={(value) => set("descriptionAr", value)}
             placeholder={t("placeholderDescriptionAr")}
             placeholderTextColor="#A3A3A3"
             multiline
@@ -497,7 +548,7 @@ export default function PostLodgingScreen() {
           </Text>
           <View style={[styles.optionGrid, isRTL && styles.optionGridRTL]}>
             {AMENITIES.map((amenity) => {
-              const on = selectedAmenities.includes(amenity.key);
+              const on = form.amenities.includes(amenity.key);
               return (
                 <Pressable
                   key={amenity.key}
@@ -532,13 +583,13 @@ export default function PostLodgingScreen() {
           </Text>
           <Pressable style={styles.imagePickerButton} onPress={pickImage}>
             <Text style={styles.imagePickerText}>
-              {t("selectPhoto")} ({images.length}/5)
+              {t("selectPhoto")} ({form.images.length}/5)
             </Text>
           </Pressable>
 
-          {images.length > 0 && (
+          {form.images.length > 0 && (
             <View style={styles.imagesContainer}>
-              {images.map((uri, index) => (
+              {form.images.map((uri, index) => (
                 <View key={index} style={styles.imageWrapper}>
                   <Image source={{ uri }} style={styles.imagePreview} />
                   <Pressable
@@ -625,6 +676,14 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontFamily: fonts.regular,
     color: "#737373",
     lineHeight: 19,
+    marginTop: 6,
+  },
+  // A notice, not an error: the save still goes through.
+  clearNote: {
+    fontSize: 12.5,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
+    lineHeight: 18,
     marginTop: 6,
   },
   input: {

@@ -1,12 +1,11 @@
 import { appAlert } from "@/stores/dialogStore";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  Alert,
   ActivityIndicator,
   Image,
   KeyboardAvoidingView,
@@ -24,9 +23,18 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { getSubmitErrorKey } from "@/lib/submitError";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { uploadMultipleToConvex } from "@/lib/convexUpload";
+import {
+  EMPTY_PLACE_FORM,
+  editedPlaceLocation,
+  isLocalPhoto,
+  newPlaceLocation,
+  placeFormFromListing,
+  withUploadedPhotos,
+  type PlaceFormValues,
+} from "@/lib/listingForm";
 import { BackButton, Button } from "@/components/ui";
 import { DestinationCategory } from "@/types";
-import { CITIES, canonicalCity, cityCoordinates } from "@/constants/cities";
+import { CITIES } from "@/constants/cities";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
@@ -38,6 +46,20 @@ const DESTINATION_CATEGORIES: { value: DestinationCategory; labelKey: string }[]
   { value: "recreational", labelKey: "recreational" },
   { value: "religious", labelKey: "religious" },
 ];
+
+/**
+ * The chip a seeded place's finer category files under, for display only.
+ * The stored key is kept unless the host picks a different chip — the old
+ * form showed no chip lit for these, and saving kept "natural_landmark"
+ * anyway, so nothing here changes what is written.
+ */
+const CHIP_FOR_SEEDED: Record<string, DestinationCategory> = {
+  historical_site: "historical",
+  natural_landmark: "natural",
+  museum: "cultural",
+  market: "cultural",
+  entertainment: "recreational",
+};
 
 export default function PostDestinationScreen() {
   const styles = useThemedStyles(makeStyles);
@@ -64,31 +86,27 @@ export default function PostDestinationScreen() {
   const isEditing = Boolean(id);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [name, setName] = useState("");
-  const [nameAr, setNameAr] = useState("");
-  const [category, setCategory] = useState<DestinationCategory>("historical");
-  const [city, setCity] = useState("");
-  const [address, setAddress] = useState("");
+  // One object, and a copy of what it opened with — see post-lodging.tsx.
+  const [form, setForm] = useState<PlaceFormValues>(EMPTY_PLACE_FORM);
+  const [saved, setSaved] = useState<PlaceFormValues>(EMPTY_PLACE_FORM);
   const [addressAr, setAddressAr] = useState("");
-  const [description, setDescription] = useState("");
-  const [descriptionAr, setDescriptionAr] = useState("");
-  const [images, setImages] = useState<string[]>([]);
+  const set = <K extends keyof PlaceFormValues>(key: K, value: PlaceFormValues[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
 
-  // Once, when the listing lands: re-running on every tick of a live query
-  // would overwrite whatever is being typed.
-  const prefilled = useRef(false);
-  useEffect(() => {
-    if (!existing || prefilled.current) return;
-    prefilled.current = true;
-    setName(existing.name_en ?? "");
-    setNameAr(existing.name_ar ?? "");
-    setCategory((existing.category as DestinationCategory) ?? "historical");
-    setCity(canonicalCity(existing.city ?? ""));
-    setAddress(existing.address ?? "");
-    setDescription(existing.description_en ?? "");
-    setDescriptionAr(existing.description_ar ?? "");
-    setImages(existing.images ?? []);
-  }, [existing]);
+  // Once per listing, when it lands, and during render rather than in an
+  // effect: re-filling on every tick of a live query would overwrite whatever
+  // is being typed.
+  const [prefilledId, setPrefilledId] = useState<string | null>(null);
+  if (existing && prefilledId !== existing._id) {
+    const values = placeFormFromListing(existing);
+    setPrefilledId(existing._id);
+    setForm(values);
+    setSaved(values);
+  }
+
+  const shownCategory = DESTINATION_CATEGORIES.some((item) => item.value === form.category)
+    ? form.category
+    : CHIP_FOR_SEEDED[form.category];
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -112,18 +130,24 @@ export default function PostDestinationScreen() {
 
     if (!result.canceled) {
       const newImages = result.assets.map((asset) => asset.uri);
-      setImages([...images, ...newImages].slice(0, 5));
+      setForm((current) => ({
+        ...current,
+        images: [...current.images, ...newImages].slice(0, 5),
+      }));
     }
   };
 
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
+    setForm((current) => ({
+      ...current,
+      images: current.images.filter((_, i) => i !== index),
+    }));
   };
 
   const handleSubmit = async () => {
     if (isLoading) return;
 
-    if (!name.trim() || !nameAr.trim()) {
+    if (!form.name.trim() || !form.nameAr.trim()) {
       appAlert(t("error"), t("fillRequiredFields"));
       return;
     }
@@ -131,39 +155,52 @@ export default function PostDestinationScreen() {
     setIsLoading(true);
 
     try {
-      // Anything already stored is an https URL and must not be re-uploaded;
-      // only what the picker just handed us is a local file.
-      const alreadyStored = images.filter((uri) => /^https?:/.test(uri));
-      const freshPicks = images.filter((uri) => !/^https?:/.test(uri));
-      const uploadedImages = [
-        ...alreadyStored,
-        ...(freshPicks.length > 0 ? await uploadMultipleToConvex(freshPicks) : []),
-      ];
+      // Stored photos are https URLs and are not re-uploaded; local picks are
+      // swapped for their uploads in place, so the cover stays the cover.
+      const localPhotos = form.images.filter(isLocalPhoto);
+      const uploaded =
+        localPhotos.length > 0 ? await uploadMultipleToConvex(localPhotos) : [];
+      const images = withUploadedPhotos(form.images, uploaded);
 
       // A canonical key, never free text: the filter groups on this exact
       // string. The old fallback wrote "Al-Ahsa", which is not one of them.
       // The coordinate is derived from the same value so the pin and the label
       // can never disagree.
-      const cityKey = city.trim() || "Al Ahsa";
-
-      const payload = {
-        type: "attraction",
-        name_en: name.trim(),
-        name_ar: nameAr.trim(),
-        category: category,
-        description_en: description.trim() || undefined,
-        description_ar: descriptionAr.trim() || undefined,
-        address: address.trim() || name.trim(),
-        city: cityKey,
-        // The city centre, not the oasis: this place may be on the coast.
-        coordinates: cityCoordinates(cityKey),
-        images: uploadedImages.length > 0 ? uploadedImages : undefined,
-      } as const;
+      const cityKey = form.city.trim() || "Al Ahsa";
+      const located = { city: cityKey, address: form.address };
 
       if (isEditing && id) {
-        await updateMyListing({ listingId: id as Id<"listings">, ...payload });
+        await updateMyListing({
+          listingId: id as Id<"listings">,
+          type: "attraction",
+          name_en: form.name.trim(),
+          name_ar: form.nameAr.trim(),
+          category: form.category,
+          // The stored Arabic label of a seeded place names its old category,
+          // and the cards prefer it; once the category changes it is wrong.
+          category_ar: form.category !== saved.category ? "" : undefined,
+          city: cityKey,
+          // The pin moves only with the city: a seeded place's exact pin used
+          // to be swapped for the city centre on every save.
+          ...editedPlaceLocation(saved, located),
+          // "" and [] rather than undefined, which the server skips — an
+          // emptied description or a removed last photo was silently kept.
+          description_en: form.description.trim(),
+          description_ar: form.descriptionAr.trim(),
+          images,
+        });
       } else {
-        await submitListing(payload);
+        await submitListing({
+          type: "attraction",
+          name_en: form.name.trim(),
+          name_ar: form.nameAr.trim(),
+          category: form.category,
+          city: cityKey,
+          ...newPlaceLocation(located),
+          description_en: form.description.trim() || undefined,
+          description_ar: form.descriptionAr.trim() || undefined,
+          images: images.length > 0 ? images : undefined,
+        });
       }
 
       appAlert(
@@ -225,14 +262,16 @@ export default function PostDestinationScreen() {
                 key={item.value}
                 style={[
                   styles.typeButton,
-                  category === item.value && styles.typeButtonSelected,
+                  shownCategory === item.value && styles.typeButtonSelected,
                 ]}
-                onPress={() => setCategory(item.value)}
+                onPress={() => {
+                  if (item.value !== shownCategory) set("category", item.value);
+                }}
               >
                 <Text
                   style={[
                     styles.typeButtonText,
-                    category === item.value && styles.typeButtonTextSelected,
+                    shownCategory === item.value && styles.typeButtonTextSelected,
                   ]}
                 >
                   {t(item.labelKey as any)}
@@ -248,8 +287,8 @@ export default function PostDestinationScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={name}
-            onChangeText={setName}
+            value={form.name}
+            onChangeText={(value) => set("name", value)}
             placeholder={t("placeholderNameEn")}
             placeholderTextColor="#A3A3A3"
           />
@@ -260,8 +299,8 @@ export default function PostDestinationScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={true}
-            value={nameAr}
-            onChangeText={setNameAr}
+            value={form.nameAr}
+            onChangeText={(value) => set("nameAr", value)}
             placeholder={t("placeholderNameAr")}
             placeholderTextColor="#A3A3A3"
             textAlign="right"
@@ -275,11 +314,11 @@ export default function PostDestinationScreen() {
           </Text>
           <View style={[styles.optionGrid, isRTL && styles.optionGridRTL]}>
             {CITIES.map((option) => {
-              const on = city === option.key;
+              const on = form.city === option.key;
               return (
                 <Pressable
                   key={option.key}
-                  onPress={() => setCity(option.key)}
+                  onPress={() => set("city", option.key)}
                   style={[styles.optionChip, on && styles.optionChipOn]}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: on }}
@@ -300,8 +339,8 @@ export default function PostDestinationScreen() {
           <ThemedTextInput
             style={[styles.input]}
             isRTL={isRTL}
-            value={address}
-            onChangeText={setAddress}
+            value={form.address}
+            onChangeText={(value) => set("address", value)}
             placeholder={t("placeholderAddressEn")}
             placeholderTextColor="#A3A3A3"
           />
@@ -323,8 +362,8 @@ export default function PostDestinationScreen() {
           <ThemedTextInput
             style={[styles.input, styles.textArea]}
             isRTL={isRTL}
-            value={description}
-            onChangeText={setDescription}
+            value={form.description}
+            onChangeText={(value) => set("description", value)}
             placeholder={t("placeholderDescriptionEn")}
             placeholderTextColor="#A3A3A3"
             multiline
@@ -334,8 +373,8 @@ export default function PostDestinationScreen() {
           <ThemedTextInput
             style={[styles.input, styles.textArea]}
             isRTL={true}
-            value={descriptionAr}
-            onChangeText={setDescriptionAr}
+            value={form.descriptionAr}
+            onChangeText={(value) => set("descriptionAr", value)}
             placeholder={t("placeholderDescriptionAr")}
             placeholderTextColor="#A3A3A3"
             multiline
@@ -349,13 +388,13 @@ export default function PostDestinationScreen() {
           </Text>
           <Pressable style={styles.imagePickerButton} onPress={pickImage}>
             <Text style={styles.imagePickerText}>
-              {t("selectPhoto")} ({images.length}/5)
+              {t("selectPhoto")} ({form.images.length}/5)
             </Text>
           </Pressable>
 
-          {images.length > 0 && (
+          {form.images.length > 0 && (
             <View style={styles.imagesContainer}>
-              {images.map((uri, index) => (
+              {form.images.map((uri, index) => (
                 <View key={index} style={styles.imageWrapper}>
                   <Image source={{ uri }} style={styles.imagePreview} />
                   <Pressable

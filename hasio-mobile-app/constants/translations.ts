@@ -733,6 +733,12 @@ export const translations = {
     // ── ui-polish: account (profile, sign-in, onboarding) ──
 
     // ── ui-polish: business and provider ──
+    fieldRequired: "This field is required",
+    chooseCity: "Choose a city",
+    invalidPriceRange: "Enter a whole number from 1 to 100,000",
+    invalidUnitCountRange: "Enter a number of rooms or units from 1 to 500",
+    invalidContactPhone: "Enter a valid phone number",
+    editCannotClear: "This can't be removed in the app yet. Saving keeps {value}.",
 
     // ── ui-polish: app shell ──
   },
@@ -1467,6 +1473,12 @@ export const translations = {
     // ── ui-polish: account (profile, sign-in, onboarding) ──
 
     // ── ui-polish: business and provider ──
+    fieldRequired: "هذا الحقل مطلوب",
+    chooseCity: "اختر مدينة",
+    invalidPriceRange: "أدخل رقمًا صحيحًا من 1 إلى 100,000",
+    invalidUnitCountRange: "أدخل عدد غرف أو وحدات من 1 إلى 500",
+    invalidContactPhone: "أدخل رقم هاتف صحيحًا",
+    editCannotClear: "لا يمكن حذف هذه القيمة من التطبيق حاليًا. عند الحفظ تبقى {value}.",
 
     // ── ui-polish: app shell ──
   },
