@@ -293,6 +293,13 @@ function SheetBody({
           const distance = Math.min(140, panelHeight.value * 0.3);
           if (g.dy > distance || g.vy > 1.1) {
             onCloseRef.current();
+            // A sheet may decline to close (one mid-request, say). If no
+            // close has started shortly after, spring back rather than stay
+            // pulled halfway down. Not straight away: springing back while
+            // the close animation begins would lift the panel before it fell.
+            setTimeout(() => {
+              if (progress.value >= 0.999) drag.value = withSpring(0, SNAP_BACK);
+            }, 120);
           } else {
             drag.value = withSpring(0, SNAP_BACK);
           }
@@ -301,7 +308,7 @@ function SheetBody({
           drag.value = withSpring(0, SNAP_BACK);
         },
       }),
-    [drag, panelHeight]
+    [drag, panelHeight, progress]
   );
 
   const backdropStyle = useAnimatedStyle(() => {

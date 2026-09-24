@@ -97,8 +97,14 @@ function InnerLayout() {
   // sign-in, the tabs themselves) cross-fade. Every root screen used to fade,
   // so opening My bookings dissolved in while the screens inside it slid.
   // From the left in Arabic, where the reading — and the Back button — starts
-  // on the right.
-  const push = isRTL ? "slide_from_left" : "slide_from_right";
+  // on the right. There the iOS back swipe only follows the finger with
+  // `animationMatchesGesture`; without it the custom animation pops the screen
+  // at once, sliding it away from the finger. Same pairing as every nested
+  // stack's layout.
+  const push = {
+    animation: isRTL ? "slide_from_left" : "slide_from_right",
+    animationMatchesGesture: isRTL,
+  } as const;
 
   return (
     <>
@@ -113,12 +119,12 @@ function InnerLayout() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="auth" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="business" options={{ animation: push }} />
-        <Stack.Screen name="provider" options={{ animation: push }} />
-        <Stack.Screen name="blocked-accounts" options={{ animation: push }} />
-        <Stack.Screen name="bookings" options={{ animation: push }} />
-        <Stack.Screen name="notifications" options={{ animation: push }} />
-        <Stack.Screen name="reviews" options={{ animation: push }} />
+        <Stack.Screen name="business" options={push} />
+        <Stack.Screen name="provider" options={push} />
+        <Stack.Screen name="blocked-accounts" options={push} />
+        <Stack.Screen name="bookings" options={push} />
+        <Stack.Screen name="notifications" options={push} />
+        <Stack.Screen name="reviews" options={push} />
       </Stack>
       <StatusBar style="dark" />
       {/* Branded alert dialog (appAlert). Native Modals that fire alerts while

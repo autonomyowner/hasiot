@@ -47,7 +47,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Hasio uses your photo library so you can attach pictures to your travel moments, listings, and verification documents.",
+          "photosPermission": "Hasio uses your photo library so you can attach pictures to your listings, services and verification documents.",
           "cameraPermission": false,
           "microphonePermission": false
         }
