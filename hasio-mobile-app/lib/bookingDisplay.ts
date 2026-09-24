@@ -6,12 +6,46 @@
  * where the language hook does not exist.
  */
 
-type Translate = (key: "night" | "nights" | "guests") => string;
+/** What the app counts in words. */
+export type CountUnit = "nights" | "guests" | "reviews" | "stars";
+
+/**
+ * The form a count takes.
+ *
+ * English needs two, and the translations say "2 nights" for both Two and
+ * Few. Arabic needs four, and a number glued to one noun gets three of them
+ * wrong: one is a word ("ليلة واحدة"), two is the dual ("ليلتان"), three to ten
+ * take the plural ("3 ليالٍ"), and from eleven the noun goes back to the
+ * singular ("11 ليلة"). The app used to write "{n} ليالٍ" for every stay, and
+ * "2 الضيوف" — "2 the guests" — on the guest stepper.
+ */
+export type PluralForm = "One" | "Two" | "Few" | "Many";
+
+/** One form of one unit, e.g. `nightsFew` — a key in `constants/translations`. */
+export type CountKey = `${CountUnit}${PluralForm}`;
+
+type CountTranslate = (key: CountKey) => string;
+
+export function pluralForm(n: number): PluralForm {
+  if (n === 1) return "One";
+  if (n === 2) return "Two";
+  if (n >= 3 && n <= 10) return "Few";
+  return "Many";
+}
+
+/**
+ * A count in words: "1 night", "ليلتان", "11 ضيفًا". The digits stay Latin in
+ * Arabic, like every other number the app shows beside prices and codes.
+ */
+export function countLabel(n: number, unit: CountUnit, t: CountTranslate): string {
+  const key = `${unit}${pluralForm(n)}` as const;
+  return t(key).replace("{n}", String(n));
+}
 
 /** "3 nights · 2 guests" — the second half only when there is a count. */
-export function nightsLabel(nights: number, t: Translate, guests?: number): string {
-  const base = `${nights} ${nights === 1 ? t("night") : t("nights")}`;
-  return guests ? `${base} · ${guests} ${t("guests")}` : base;
+export function nightsLabel(nights: number, t: CountTranslate, guests?: number): string {
+  const stay = countLabel(nights, "nights", t);
+  return guests ? `${stay} · ${countLabel(guests, "guests", t)}` : stay;
 }
 
 export type QuoteResult =

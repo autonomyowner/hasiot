@@ -727,6 +727,28 @@ export const translations = {
     // ── ui-polish: discovery (Home, Stay, filters, search) ──
 
     // ── ui-polish: listing sheet, booking, reviews ──
+    // Counts in words, one key per form — lib/bookingDisplay.ts `countLabel`
+    // picks the form. English only needs two, but every unit has all four so
+    // both languages share one set of keys.
+    nightsOne: "1 night",
+    nightsTwo: "2 nights",
+    nightsFew: "{n} nights",
+    nightsMany: "{n} nights",
+    guestsOne: "1 guest",
+    guestsTwo: "2 guests",
+    guestsFew: "{n} guests",
+    guestsMany: "{n} guests",
+    reviewsOne: "1 review",
+    reviewsTwo: "2 reviews",
+    reviewsFew: "{n} reviews",
+    reviewsMany: "{n} reviews",
+    starsOne: "1 star",
+    starsTwo: "2 stars",
+    starsFew: "{n} stars",
+    starsMany: "{n} stars",
+    decreaseGuests: "Fewer guests",
+    increaseGuests: "More guests",
+    bookingStayLabel: "Stay",
 
     // ── ui-polish: planner, favorites ──
 
@@ -1461,6 +1483,27 @@ export const translations = {
     // ── ui-polish: discovery (Home, Stay, filters, search) ──
 
     // ── ui-polish: listing sheet, booking, reviews ──
+    // One is a word, two the dual, 3–10 the plural, 11 and up the singular
+    // again (accusative where it shows). Digits stay Latin, as elsewhere.
+    nightsOne: "ليلة واحدة",
+    nightsTwo: "ليلتان",
+    nightsFew: "{n} ليالٍ",
+    nightsMany: "{n} ليلة",
+    guestsOne: "ضيف واحد",
+    guestsTwo: "ضيفان",
+    guestsFew: "{n} ضيوف",
+    guestsMany: "{n} ضيفًا",
+    reviewsOne: "تقييم واحد",
+    reviewsTwo: "تقييمان",
+    reviewsFew: "{n} تقييمات",
+    reviewsMany: "{n} تقييمًا",
+    starsOne: "نجمة واحدة",
+    starsTwo: "نجمتان",
+    starsFew: "{n} نجوم",
+    starsMany: "{n} نجمة",
+    decreaseGuests: "إنقاص عدد الضيوف",
+    increaseGuests: "زيادة عدد الضيوف",
+    bookingStayLabel: "الإقامة",
 
     // ── ui-polish: planner, favorites ──
 

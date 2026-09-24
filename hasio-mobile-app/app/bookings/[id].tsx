@@ -210,8 +210,10 @@ export default function BookingDetailScreen() {
             />
           ) : null}
           {booking.nights ? (
+            // Labelled "Stay": the value carries the guests as well, and the
+            // old label was the bare plural "nights" — "ليالٍ" in Arabic.
             <Row
-              label={t("nights")}
+              label={t("bookingStayLabel")}
               value={nightsLabel(booking.nights, t, booking.guests)}
               isRTL={isRTL}
             />

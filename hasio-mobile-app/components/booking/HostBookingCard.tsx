@@ -6,7 +6,7 @@ import { BookingStatusChip } from "./BookingStatusChip";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
 import { formatPhoneForDisplay } from "@/lib/phone";
-import { hostActionsFor, nightsLabel } from "@/lib/bookingDisplay";
+import { hostActionsFor } from "@/lib/bookingDisplay";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { SurfaceGradient } from "@/components/ui/Gradients";
@@ -38,9 +38,9 @@ interface HostBookingCardProps {
   /** Which action, if any, is running on this card right now. */
   busy: HostAction | null;
   labels: {
-    night: string;
-    nights: string;
-    guests: string;
+    /** "3 nights · 2 guests" — lib/bookingDisplay `nightsLabel`, bound to `t`. */
+    stay: (nights: number, guests?: number) => string;
+    /** Stands in for a guest with no name on their account. */
     guest: string;
     /** Formats a stored SAR amount in the viewer's display currency. */
     formatPrice: (amountSar: number) => string;
@@ -69,7 +69,6 @@ function HostBookingCardInner({
     [guest?.firstName, guest?.lastName].filter(Boolean).join(" ").trim() || labels.guest;
   const isStay = booking.kind === "stay" && !!booking.checkIn && !!booking.checkOut;
   const actions = hostActionsFor(booking, today);
-  const t = (key: "night" | "nights" | "guests") => labels[key];
   const anyBusy = busy !== null;
 
   return (
@@ -100,7 +99,7 @@ function HostBookingCardInner({
           </Text>
           {isStay && booking.nights ? (
             <Text style={[styles.meta, isRTL && styles.textRTL]}>
-              {nightsLabel(booking.nights, t, booking.guests)}
+              {labels.stay(booking.nights, booking.guests)}
             </Text>
           ) : null}
           <View style={[styles.chipRow, isRTL && styles.rowRTL]}>

@@ -13,6 +13,7 @@ import { BookingRow, type BookingRowData } from "@/components/booking/BookingRow
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { todayRiyadhISO } from "@/lib/dates";
+import { nightsLabel } from "@/lib/bookingDisplay";
 import { haptic } from "@/lib/haptics";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
 import { colors, type AppFonts } from "@/constants/colors";
@@ -59,7 +60,10 @@ export default function MyBookingsScreen() {
   // a new labels object on every render of this screen. `t` is a useCallback
   // keyed on language, so these recompute once per language switch.
   const labels = useMemo(
-    () => ({ night: t("night"), nights: t("nights"), guests: t("guests"), formatPrice: format }),
+    () => ({
+      stay: (nights: number, guests?: number) => nightsLabel(nights, t, guests),
+      formatPrice: format,
+    }),
     [t, format]
   );
   const openBooking = useCallback((id: string) => router.push(`/bookings/${id}`), [router]);

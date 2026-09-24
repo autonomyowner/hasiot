@@ -21,7 +21,7 @@ import { quoteFooterState, type LastGoodQuote } from "@/lib/bookingDisplay";
 import { GuestStepper } from "./GuestStepper";
 import { useLanguage } from "@/hooks/useLanguage";
 import { addDays, datesBetween, formatISODate, nightsBetween, todayRiyadhISO } from "@/lib/dates";
-import { nightsLabel } from "@/lib/bookingDisplay";
+import { countLabel, nightsLabel } from "@/lib/bookingDisplay";
 import { haptic } from "@/lib/haptics";
 import Animated from "react-native-reanimated";
 import { enterFade, popIn } from "@/constants/motion";
@@ -368,7 +368,9 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
                 onChange={setGuests}
                 max={item?.maxGuests ?? 4}
                 label={t("guests")}
-                unit={guests === 1 ? t("guest") : t("guests")}
+                caption={countLabel(guests, "guests", t)}
+                decreaseLabel={t("decreaseGuests")}
+                increaseLabel={t("increaseGuests")}
                 isRTL={isRTL}
               />
 

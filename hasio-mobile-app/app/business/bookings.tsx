@@ -19,6 +19,7 @@ import {
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { todayRiyadhISO } from "@/lib/dates";
+import { nightsLabel } from "@/lib/bookingDisplay";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { haptic } from "@/lib/haptics";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
@@ -119,9 +120,7 @@ export default function OwnerBookingsScreen() {
 
   const labels = useMemo(
     () => ({
-      night: t("night"),
-      nights: t("nights"),
-      guests: t("guests"),
+      stay: (nights: number, guests?: number) => nightsLabel(nights, t, guests),
       guest: t("guest"),
       formatPrice: format,
       callGuest: t("callGuest"),

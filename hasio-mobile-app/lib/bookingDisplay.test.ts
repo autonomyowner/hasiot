@@ -1,21 +1,80 @@
 import { describe, expect, it } from "vitest";
-import { hostActionsFor, nightsLabel, quoteFooterState } from "./bookingDisplay";
+import { translations } from "@/constants/translations";
+import {
+  countLabel,
+  hostActionsFor,
+  nightsLabel,
+  pluralForm,
+  quoteFooterState,
+  type CountKey,
+} from "./bookingDisplay";
 
-const t = (key: string) => key; // identity translator: assertions read as keys
+// The real copy, not an identity translator: what is under test is that the
+// words a count is shown in are the right ones, in both languages.
+const en = (key: CountKey) => translations.en[key];
+const ar = (key: CountKey) => translations.ar[key];
+
+describe("pluralForm", () => {
+  it("follows the forms Arabic counts in", () => {
+    expect(pluralForm(1)).toBe("One");
+    expect(pluralForm(2)).toBe("Two");
+    for (const n of [3, 7, 10]) expect(pluralForm(n)).toBe("Few");
+    for (const n of [0, 11, 30, 100]) expect(pluralForm(n)).toBe("Many");
+  });
+});
+
+describe("countLabel", () => {
+  it("counts in English", () => {
+    expect(countLabel(1, "nights", en)).toBe("1 night");
+    expect(countLabel(2, "nights", en)).toBe("2 nights");
+    expect(countLabel(11, "nights", en)).toBe("11 nights");
+    expect(countLabel(1, "guests", en)).toBe("1 guest");
+    expect(countLabel(4, "guests", en)).toBe("4 guests");
+    expect(countLabel(1, "reviews", en)).toBe("1 review");
+    expect(countLabel(12, "reviews", en)).toBe("12 reviews");
+    expect(countLabel(1, "stars", en)).toBe("1 star");
+    expect(countLabel(5, "stars", en)).toBe("5 stars");
+  });
+
+  it("takes the singular, dual, plural and counted-singular forms in Arabic", () => {
+    // "2 guests" used to read "2 الضيوف" — "2 the guests" — and every stay was
+    // "ليالٍ", the 3–10 plural, even for one night.
+    expect(countLabel(1, "nights", ar)).toBe("ليلة واحدة");
+    expect(countLabel(2, "nights", ar)).toBe("ليلتان");
+    expect(countLabel(3, "nights", ar)).toBe("3 ليالٍ");
+    expect(countLabel(10, "nights", ar)).toBe("10 ليالٍ");
+    expect(countLabel(11, "nights", ar)).toBe("11 ليلة");
+    expect(countLabel(30, "nights", ar)).toBe("30 ليلة");
+
+    expect(countLabel(1, "guests", ar)).toBe("ضيف واحد");
+    expect(countLabel(2, "guests", ar)).toBe("ضيفان");
+    expect(countLabel(3, "guests", ar)).toBe("3 ضيوف");
+    expect(countLabel(11, "guests", ar)).toBe("11 ضيفًا");
+
+    expect(countLabel(1, "reviews", ar)).toBe("تقييم واحد");
+    expect(countLabel(2, "reviews", ar)).toBe("تقييمان");
+    expect(countLabel(7, "reviews", ar)).toBe("7 تقييمات");
+    expect(countLabel(12, "reviews", ar)).toBe("12 تقييمًا");
+
+    expect(countLabel(1, "stars", ar)).toBe("نجمة واحدة");
+    expect(countLabel(2, "stars", ar)).toBe("نجمتان");
+    expect(countLabel(5, "stars", ar)).toBe("5 نجوم");
+  });
+
+  it("keeps Latin digits in Arabic, like every other number in the app", () => {
+    expect(countLabel(4, "guests", ar)).not.toMatch(/[٠-٩]/);
+    expect(countLabel(14, "nights", ar)).toBe("14 ليلة");
+  });
+});
 
 describe("nightsLabel", () => {
-  it("singular for one night", () => {
-    expect(nightsLabel(1, t)).toBe("1 night");
-  });
-  it("plural otherwise", () => {
-    expect(nightsLabel(3, t)).toBe("3 nights");
-  });
   it("appends guests when given", () => {
-    expect(nightsLabel(2, t, 4)).toBe("2 nights · 4 guests");
+    expect(nightsLabel(2, en, 4)).toBe("2 nights · 4 guests");
+    expect(nightsLabel(1, ar, 2)).toBe("ليلة واحدة · ضيفان");
   });
   it("omits guests when zero or undefined", () => {
-    expect(nightsLabel(2, t, 0)).toBe("2 nights");
-    expect(nightsLabel(2, t, undefined)).toBe("2 nights");
+    expect(nightsLabel(3, en, 0)).toBe("3 nights");
+    expect(nightsLabel(3, en, undefined)).toBe("3 nights");
   });
 });
 

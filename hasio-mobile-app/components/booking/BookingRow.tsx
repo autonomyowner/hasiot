@@ -5,7 +5,6 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { BookingStatusChip } from "./BookingStatusChip";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
-import { nightsLabel } from "@/lib/bookingDisplay";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { Language } from "@/types";
@@ -33,11 +32,10 @@ interface BookingRowProps {
   booking: BookingRowData;
   language: Language;
   isRTL: boolean;
-  /** Already-translated words the row needs; passed in so memo can compare them. */
+  /** Already-bound formatters the row needs; passed in so memo can compare them. */
   labels: {
-    night: string;
-    nights: string;
-    guests: string;
+    /** "3 nights · 2 guests" — lib/bookingDisplay `nightsLabel`, bound to `t`. */
+    stay: (nights: number, guests?: number) => string;
     /** Formats a stored SAR amount in the viewer's display currency. */
     formatPrice: (amountSar: number) => string;
   };
@@ -49,7 +47,6 @@ function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingR
   const listing = booking.listing;
   const image = listing?.images?.[0];
   const isStay = booking.kind === "stay" && !!booking.checkIn && !!booking.checkOut;
-  const t = (key: "night" | "nights" | "guests") => labels[key];
 
   return (
     <PressableScale onPress={() => onPress(booking._id)} accessibilityRole="button">
@@ -79,7 +76,7 @@ function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingR
 
           {isStay && booking.nights ? (
             <Text style={[styles.meta, isRTL && styles.textRTL]}>
-              {nightsLabel(booking.nights, t, booking.guests)}
+              {labels.stay(booking.nights, booking.guests)}
             </Text>
           ) : null}
 

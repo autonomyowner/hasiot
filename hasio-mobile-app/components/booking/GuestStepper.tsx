@@ -10,8 +10,14 @@ interface GuestStepperProps {
   max: number;
   min?: number;
   label: string;
-  /** Rendered after the number, already pluralised by the caller. */
-  unit: string;
+  /**
+   * The count in words, already in the right form — "2 guests", "ضيفان".
+   * It used to be the number plus a unit the caller picked between two
+   * words, which cannot say the Arabic dual and came out as "2 الضيوف".
+   */
+  caption: string;
+  decreaseLabel: string;
+  increaseLabel: string;
   isRTL: boolean;
 }
 
@@ -27,7 +33,9 @@ export function GuestStepper({
   max,
   min = 1,
   label,
-  unit,
+  caption,
+  decreaseLabel,
+  increaseLabel,
   isRTL,
 }: GuestStepperProps) {
   const styles = useThemedStyles(makeStyles);
@@ -36,11 +44,9 @@ export function GuestStepper({
 
   return (
     <View style={[styles.row, isRTL && styles.rowRTL]}>
-      <View>
-        <Text style={styles.label}>{label}</Text>
-        <Text style={styles.unit}>
-          {value} {unit}
-        </Text>
+      <View style={styles.text}>
+        <Text style={[styles.label, isRTL && styles.textRTL]}>{label}</Text>
+        <Text style={[styles.caption, isRTL && styles.textRTL]}>{caption}</Text>
       </View>
 
       {/* The controls keep their order in RTL: minus on the left, plus on the
@@ -49,10 +55,15 @@ export function GuestStepper({
         <Pressable
           onPress={() => canDecrease && onChange(value - 1)}
           disabled={!canDecrease}
-          style={[styles.button, !canDecrease && styles.buttonDisabled]}
+          style={({ pressed }) => [
+            styles.button,
+            !canDecrease && styles.buttonDisabled,
+            pressed && styles.pressed,
+          ]}
           accessibilityRole="button"
-          accessibilityLabel={isRTL ? "إنقاص عدد الضيوف" : "Decrease guests"}
+          accessibilityLabel={decreaseLabel}
           accessibilityState={{ disabled: !canDecrease }}
+          // 36pt drawn, 52pt to the finger.
           hitSlop={8}
         >
           <Feather
@@ -69,9 +80,13 @@ export function GuestStepper({
         <Pressable
           onPress={() => canIncrease && onChange(value + 1)}
           disabled={!canIncrease}
-          style={[styles.button, !canIncrease && styles.buttonDisabled]}
+          style={({ pressed }) => [
+            styles.button,
+            !canIncrease && styles.buttonDisabled,
+            pressed && styles.pressed,
+          ]}
           accessibilityRole="button"
-          accessibilityLabel={isRTL ? "زيادة عدد الضيوف" : "Increase guests"}
+          accessibilityLabel={increaseLabel}
           accessibilityState={{ disabled: !canIncrease }}
           hitSlop={8}
         >
@@ -91,16 +106,23 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    gap: 12,
   },
   rowRTL: {
     flexDirection: "row-reverse",
+  },
+  text: {
+    flexShrink: 1,
+  },
+  textRTL: {
+    textAlign: "right",
   },
   label: {
     fontSize: 15,
     fontFamily: fonts.semibold,
     color: colors.ink,
   },
-  unit: {
+  caption: {
     fontSize: 13,
     fontFamily: fonts.regular,
     color: colors.onSurface.variant,
@@ -123,6 +145,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: colors.chip,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   value: {
     minWidth: 32,
