@@ -39,7 +39,7 @@ import { ChatBubble } from "@/components/planner";
 import { colors, type AppFonts } from "@/constants/colors";
 import { ScreenGradient, SurfaceGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-import { TAB_BAR_CLEARANCE } from "@/constants/layout";
+import { TAB_BAR_HEIGHT } from "@/constants/layout";
 import { Feather } from "@expo/vector-icons";
 import type { TranslationKey } from "@/constants/translations";
 import type { ChatMessage } from "@/types";
@@ -52,6 +52,13 @@ const SUGGESTION_CARD_WIDTH = (Dimensions.get("window").width - 32 - 10) / 2;
 
 // What the input rests on once the keyboard is carrying the safe area itself.
 const INPUT_KEYBOARD_GAP = 10;
+
+// Between the resting composer and the top of the tab bar. It used to rest on
+// the scroll clearance every list reserves, which keeps content out of the
+// bar's 64pt fade — so the composer sat 32pt up inside that fade and was
+// washed out by it. The shell now fades the fade out on this tab, and the
+// composer rests on the bar itself.
+const COMPOSER_REST_GAP = 8;
 
 const IS_ANDROID = Platform.OS === "android";
 
@@ -92,17 +99,17 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
   // that room back — reserving the bar's height here as well is what used to
   // leave the composer stranded under the keyboard.
   //
-  // On Android the composer now follows the keyboard's actual height, frame by
+  // On Android the composer follows the keyboard's actual height, frame by
   // frame, because that platform has no will-show event and everything driven
-  // off `keyboardDidShow` starts only once the keyboard has finished arriving.
-  // Focus still starts the transition as a head start for the fallback path.
+  // off `keyboardDidShow` starts only once the keyboard has moved.
   const {
     visible: keyboardVisible,
     beginOpen,
     height: keyboardHeight,
+    trackingSeen: keyboardTrackingSeen,
   } = useKeyboardTransition();
   const [focused, setFocused] = useState(false);
-  const closedClearance = TAB_BAR_CLEARANCE + insets.bottom;
+  const closedClearance = TAB_BAR_HEIGHT + insets.bottom + COMPOSER_REST_GAP;
 
   const scrollToEndSoon = useCallback(() => {
     setTimeout(() => {
@@ -110,24 +117,22 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
     }, 100);
   }, []);
 
-  // Android: pad by the measured keyboard overlap. iOS: KeyboardAvoidingView below.
+  // Android's fallback: the measured keyboard overlap, for a device where the
+  // tracked height never reports. iOS: KeyboardAvoidingView below.
   const {
     ref: innerRef,
     overlap: androidKeyboardHeight,
     onLayout: keyboardOnLayout,
-    prepare: prepareForKeyboard,
   } = useKeyboardOverlap(scrollToEndSoon);
 
   const openForKeyboard = focused || keyboardVisible;
 
   // `Math.max` rather than a switch, and that shape is the behaviour: the
   // composer holds its resting place until the keyboard actually reaches it,
-  // then rides up on top of it. Anything else makes it dip before it rises.
+  // then rides up on top of it — and on the way down rides it back to rest.
+  // Anything else makes it dip before it rises.
   //
-  // Three sources, whichever is furthest along. On Android the tracked height
-  // moves frame by frame with the keyboard; the measured overlap is the
-  // fallback for a device where tracking reports nothing, and lands late but
-  // lands. iOS uses neither — `KeyboardAvoidingView` lifts the whole screen
+  // iOS uses none of the heights: `KeyboardAvoidingView` lifts the whole screen
   // there, so all this has to do is give back the departing tab bar's room.
   const inputClearanceStyle = useAnimatedStyle(() => {
     if (!IS_ANDROID) {
@@ -138,47 +143,58 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
         ),
       };
     }
-    // Closed is a state, not the smallest of three numbers.
+    // Android, once tracking has been seen on this device: the tracked height
+    // and nothing else, up and down.
     //
-    // `Math.max` on its own is a ratchet with no reset: it assumes all three
-    // sources return to zero, and holds the composer up at the highest one
-    // that does not. Neither height source is reliable that way here — two
-    // `useAnimatedKeyboard` instances are live at once (this screen and the
-    // tab bar), and on Android that hook drives the window's soft-input mode,
-    // so one of them settling a frame late or not at all leaves a keyboard's
-    // worth of blank space wedged under the composer until the screen
-    // remounts. That is the "it never comes back down to the tab bar" bug.
+    // This used to take the higher of it and the React-state overlap from
+    // `useKeyboardOverlap`, and that state is not a height in motion:
+    // `prepare()`, called on focus, set it to the whole of the last keyboard,
+    // `keyboardDidShow` set it to the whole of this one, and only
+    // `keyboardDidHide` cleared it. So from the second keyboard of a session
+    // on, the composer leapt to its final height the moment the field was
+    // tapped, ahead of a keyboard still at the bottom of the screen; and on
+    // every keyboard, the overlap held the composer up while the keyboard slid
+    // away, then dropped it in one step once the hide event landed.
     //
-    // `openForKeyboard` is the authority the iOS branch above already trusts,
-    // and it is the same answer here: when the keyboard is gone the composer
-    // goes back to resting, whatever the heights still claim. Rising is
-    // untouched — `focused` is true from the moment the field is tapped, which
-    // is what lets `prepare()` lift it before the keyboard has moved at all.
+    // The comment here used to blame two `useAnimatedKeyboard` instances
+    // disagreeing. They cannot: Reanimated keeps one native keyboard model and
+    // hands every listener the same numbers in one loop. What does get stuck
+    // is a keyboard that vanishes without animating, which Reanimated never
+    // sees go; `useKeyboardTransition` now declares that one gone itself, and
+    // the tracked height drops to zero with it — no gate needed here.
+    if (keyboardTrackingSeen.value) {
+      return {
+        paddingBottom: Math.max(closedClearance, keyboardHeight.value + INPUT_KEYBOARD_GAP),
+      };
+    }
+    // A device where tracking has never reported: the measured overlap, which
+    // lands late but lands. Closed is a state here rather than the smallest of
+    // the numbers, because only the did-event clears the overlap.
     if (!openForKeyboard) return { paddingBottom: closedClearance };
     return {
-      paddingBottom: Math.max(
-        closedClearance,
-        keyboardHeight.value + INPUT_KEYBOARD_GAP,
-        androidKeyboardHeight + INPUT_KEYBOARD_GAP
-      ),
+      paddingBottom: Math.max(closedClearance, androidKeyboardHeight + INPUT_KEYBOARD_GAP),
     };
   });
 
   const handleInputFocus = useCallback(() => {
     setFocused(true);
-    // Both before the keyboard has moved: the bar starts leaving and the
-    // composer starts rising on the same frame the guest taps the field.
-    prepareForKeyboard();
+    // iOS: the bar starts leaving on the same frame the guest taps the field.
+    // Android follows the keyboard itself from its first frame, so it needs no
+    // head start — and the old one, `prepare()`, was the jump.
     beginOpen();
     scrollToEndSoon();
-  }, [beginOpen, prepareForKeyboard, scrollToEndSoon]);
+  }, [beginOpen, scrollToEndSoon]);
 
-  // Android's back button dismisses the keyboard without blurring the field, so
-  // focus alone would hold the composer up over nothing. The keyboard leaving
-  // is the authority on this, not the cursor.
+  // The keyboard leaving is the authority on focus, not the cursor: Android's
+  // back button dismisses the keyboard without blurring the field, and focus
+  // alone would hold the composer up over nothing. Set from the event itself
+  // rather than from an effect on `keyboardVisible`, which rendered the whole
+  // screen a second time for every keyboard that closed.
   useEffect(() => {
-    if (!keyboardVisible) setFocused(false);
-  }, [keyboardVisible]);
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const sub = Keyboard.addListener(hideEvent, () => setFocused(false));
+    return () => sub.remove();
+  }, []);
 
   // iOS only — KeyboardAvoidingView moves the input, we just follow with a scroll.
   useEffect(() => {
@@ -333,7 +349,12 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
           contentContainerStyle={styles.chatContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="interactive"
+          // "interactive" does nothing on Android, and on iOS it drags the
+          // keyboard with the finger while KeyboardAvoidingView only hears
+          // about it once the drag ends, so the composer and the keyboard
+          // came apart mid-gesture. A drag closes the keyboard, and the
+          // composer rides it down.
+          keyboardDismissMode="on-drag"
         >
           {chatMessages.length === 0 && (
             <Animated.View
@@ -429,7 +450,11 @@ export function PlannerScreenContent(_props: PlannerScreenContentProps) {
             multiline
             maxLength={500}
             textAlign={isRTL ? "right" : "left"}
-            editable={!isLoading}
+            // Stays editable while a reply is on its way. `editable={false}`
+            // on a focused field blurs it, so every send used to close the
+            // keyboard, and the guest had to tap back in to write the next
+            // line. The send button's own disabled state and `sendMessage`'s
+            // guard are what stop a second send.
           />
           </View>
           <Pressable
