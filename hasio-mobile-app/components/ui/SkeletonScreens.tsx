@@ -10,7 +10,6 @@ import {
   HOME_RAIL_GAP,
   HOME_STAY_BANNER_HEIGHT,
   LIST_CONTAINER_PADDING,
-  MOMENT_CARD_WIDTH,
 } from "@/constants/layout";
 import { Skeleton, SkeletonLine, SkeletonPill, sweepPhase } from "./Skeleton";
 
@@ -263,44 +262,6 @@ export function SkeletonOwnerList({
   );
 }
 
-/** Stands in for the 2-column moments grid. */
-export function SkeletonMomentsGrid({
-  isRTL = false,
-  count = 4,
-}: {
-  isRTL?: boolean;
-  count?: number;
-}) {
-  return (
-    <View style={styles.momentsGrid}>
-      {Array.from({ length: count }).map((_, index) => {
-        const seed = index * 3;
-        return (
-          <View key={index} style={styles.momentCard}>
-            <Skeleton phase={sweepPhase(seed)} style={styles.momentImage} />
-            <View style={styles.momentNote}>
-              <SkeletonLine
-                width="85%"
-                box={20}
-                isRTL={isRTL}
-                phase={sweepPhase(seed + 1)}
-              />
-            </View>
-            <View style={styles.momentLocation}>
-              <SkeletonLine
-                width="55%"
-                box={15}
-                isRTL={isRTL}
-                phase={sweepPhase(seed + 2)}
-              />
-            </View>
-          </View>
-        );
-      })}
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   // --- Listing screens (LodgingCard) ---
   // Matches `listContent` on the lodging screen.
@@ -447,38 +408,6 @@ const styles = StyleSheet.create({
     width: 78,
     height: 23,
     alignSelf: "flex-start",
-  },
-
-  // --- Moments screen ---
-  momentsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-    paddingHorizontal: LIST_CONTAINER_PADDING,
-  },
-  momentCard: {
-    width: MOMENT_CARD_WIDTH,
-    backgroundColor: colors.surface.DEFAULT,
-    borderRadius: 22,
-    overflow: "hidden",
-    shadowColor: colors.ink,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.07,
-    shadowRadius: 16,
-    elevation: 4,
-    marginBottom: 12,
-  },
-  momentImage: {
-    width: "100%",
-    height: MOMENT_CARD_WIDTH,
-  },
-  momentNote: {
-    padding: 12,
-    paddingBottom: 8,
-  },
-  momentLocation: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
   },
 });
 

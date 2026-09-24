@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Language, Moment, DayPlan, ChatMessage } from "@/types";
+import type { Language, ChatMessage } from "@/types";
 import type { Currency } from "@/lib/currency";
 
 interface AppState {
@@ -24,17 +24,6 @@ interface AppState {
   removeFavorite: (id: string) => void;
   clearFavorites: () => void;
   isFavorite: (id: string) => boolean;
-
-  // Moments
-  moments: Moment[];
-  addMoment: (moment: Moment) => void;
-  removeMoment: (id: string) => void;
-
-  // Day Plans
-  dayPlans: DayPlan[];
-  addDayPlan: (plan: DayPlan) => void;
-  updateDayPlan: (plan: DayPlan) => void;
-  removeDayPlan: (id: string) => void;
 
   // Chat Messages
   chatMessages: ChatMessage[];
@@ -81,32 +70,6 @@ export const useAppStore = create<AppState>()(
       clearFavorites: () => set({ favorites: [] }),
       isFavorite: (id) => get().favorites.includes(id),
 
-      // Moments
-      moments: [],
-      addMoment: (moment) =>
-        set((state) => ({
-          moments: [moment, ...state.moments],
-        })),
-      removeMoment: (id) =>
-        set((state) => ({
-          moments: state.moments.filter((m) => m.id !== id),
-        })),
-
-      // Day Plans
-      dayPlans: [],
-      addDayPlan: (plan) =>
-        set((state) => ({
-          dayPlans: [...state.dayPlans, plan],
-        })),
-      updateDayPlan: (plan) =>
-        set((state) => ({
-          dayPlans: state.dayPlans.map((p) => (p.id === plan.id ? plan : p)),
-        })),
-      removeDayPlan: (id) =>
-        set((state) => ({
-          dayPlans: state.dayPlans.filter((p) => p.id !== id),
-        })),
-
       // Chat Messages
       chatMessages: [],
       addChatMessage: (message) =>
@@ -134,8 +97,6 @@ export const useAppStore = create<AppState>()(
       clearUserData: () =>
         set({
           favorites: [],
-          moments: [],
-          dayPlans: [],
           chatMessages: [],
           hasCompletedOnboarding: false,
         }),
@@ -143,13 +104,15 @@ export const useAppStore = create<AppState>()(
     {
       name: "hasio-storage",
       storage: createJSONStorage(() => AsyncStorage),
+      // `moments` and `dayPlans` used to be stored here as well. Neither has
+      // a screen any more; a row written by an older build still carries them,
+      // and they drop out of it the next time the store is written, because
+      // only the keys listed here are ever written back.
       partialize: (state) => ({
         language: state.language,
         currency: state.currency,
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         favorites: state.favorites,
-        moments: state.moments,
-        dayPlans: state.dayPlans,
         notificationsEnabled: state.notificationsEnabled,
         sessionId: state.sessionId,
       }),

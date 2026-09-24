@@ -139,33 +139,6 @@ export interface Event {
   details?: ListingDetails;
 }
 
-// Plan Types
-export interface PlanItem {
-  id: string;
-  time: string;
-  type: "lodging" | "food" | "event";
-  refId: string;
-  note: string;
-}
-
-export interface DayPlan {
-  id: string;
-  date: string;
-  items: PlanItem[];
-}
-
-// Moment Type
-export interface Moment {
-  id: string;
-  // Null when the stored file behind the moment can no longer be resolved. The
-  // record still carries its note and date, so the card shows its placeholder
-  // rather than the moment disappearing.
-  image: string | null;
-  note: string;
-  location?: string;
-  timestamp: string;
-}
-
 // User Types
 export interface User {
   name: string;
