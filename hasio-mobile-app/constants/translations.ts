@@ -729,6 +729,9 @@ export const translations = {
     // ── ui-polish: listing sheet, booking, reviews ──
 
     // ── ui-polish: planner, favorites ──
+    favoritesExploreStays: "Explore stays",
+    favoritesGuestHint:
+      "Places you heart are saved on this phone. Sign in to keep them on every device.",
 
     // ── ui-polish: account (profile, sign-in, onboarding) ──
 
@@ -1463,6 +1466,9 @@ export const translations = {
     // ── ui-polish: listing sheet, booking, reviews ──
 
     // ── ui-polish: planner, favorites ──
+    favoritesExploreStays: "استكشف أماكن الإقامة",
+    favoritesGuestHint:
+      "تُحفظ الأماكن التي تضيفها إلى المفضلة على هذا الجهاز. سجّل الدخول لتبقى معك على كل أجهزتك.",
 
     // ── ui-polish: account (profile, sign-in, onboarding) ──
 
