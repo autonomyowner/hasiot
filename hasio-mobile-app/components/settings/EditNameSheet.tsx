@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useMutation } from "convex/react";
@@ -37,6 +37,15 @@ export function EditNameSheet({ visible, initialName, onClose }: EditNameSheetPr
   // Shown once the sheet has gone, not while it is leaving: an alert raised
   // inside the sheet is carried off with it and then reappears underneath.
   const savedNotice = useRef(false);
+  // From opening until `onDismissed`. A save can land after the sheet was
+  // closed mid-request; its notice then has no dismissal left to wait for,
+  // and used to sit in `savedNotice` until the next time the sheet closed.
+  const shown = useRef(visible);
+  useEffect(() => {
+    if (!visible) return;
+    shown.current = true;
+    savedNotice.current = false;
+  }, [visible]);
 
   // Reopening must show the current name, not whatever was typed last time.
   // Only on opening: resyncing whenever `initialName` changed would overwrite
@@ -47,30 +56,47 @@ export function EditNameSheet({ visible, initialName, onClose }: EditNameSheetPr
     if (visible) setName(initialName);
   }
 
+  const tidy = (value: string) => value.trim().replace(/\s+/g, " ");
+  const trimmed = tidy(name);
+  // Save with nothing in the field used to close the sheet as if it had
+  // worked, leaving the name as it was without a word. Now the button waits
+  // for a name.
+  const canSave = trimmed.length > 0 && !saving;
+  // `saving` is a render late; this stops a double tap sending twice.
+  const busy = useRef(false);
+
   const save = async () => {
-    if (saving) return;
-    const trimmed = name.trim().replace(/\s+/g, " ");
-    if (!trimmed) {
+    if (!canSave || busy.current) return;
+    // Nothing changed: closing is all Save has to do, and "Name saved" would
+    // claim a change that did not happen.
+    if (trimmed === tidy(initialName)) {
       onClose();
       return;
     }
     const [firstName, ...rest] = trimmed.split(" ");
+    busy.current = true;
     setSaving(true);
     try {
       await updateProfile({ firstName, lastName: rest.join(" ") || undefined });
-      savedNotice.current = true;
-      onClose();
+      if (shown.current) {
+        savedNotice.current = true;
+        onClose();
+      } else {
+        appAlert(t("nameSaved"));
+      }
     } catch (error) {
       // Not the raw message: production redacts a plain server Error to
       // "Server Error", and in development it is a stack-prefixed English
       // string. Either way the guest could do nothing with it.
       appAlert(t("error"), t(getSubmitErrorKey(error)));
     } finally {
+      busy.current = false;
       setSaving(false);
     }
   };
 
   const handleDismissed = () => {
+    shown.current = false;
     if (!savedNotice.current) return;
     savedNotice.current = false;
     appAlert(t("nameSaved"));
@@ -115,13 +141,14 @@ export function EditNameSheet({ visible, initialName, onClose }: EditNameSheetPr
       <Pressable
         style={({ pressed }) => [
           styles.submit,
-          saving && styles.submitDisabled,
-          pressed && !saving && styles.pressed,
+          !canSave && styles.submitDisabled,
+          pressed && canSave && styles.pressed,
         ]}
         onPress={save}
-        disabled={saving}
+        disabled={!canSave}
         accessibilityRole="button"
-        accessibilityState={{ disabled: saving, busy: saving }}
+        accessibilityLabel={t("save")}
+        accessibilityState={{ disabled: !canSave, busy: saving }}
       >
         {saving ? (
           <ActivityIndicator color={colors.ink} />

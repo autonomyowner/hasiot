@@ -287,7 +287,7 @@ export const translations = {
     shareFeedback: "Share your feedback",
     appVersionInfo: "App version and info",
     appName: "Hasio",
-    version: "Version 1.0.0",
+    version: "Version",
     appDescription: "Your perfect travel companion for discovering amazing places, delicious food, and unforgettable experiences across Saudi Arabia's Eastern Province.",
 
     // Common
@@ -754,6 +754,11 @@ export const translations = {
     // Profile — shown in place of the page while the account is going away.
     accountSigningOut: "Signing you out…",
     accountDeleting: "Deleting your account…",
+    profileTrips: "Trips",
+    profileGetStarted: "Get started",
+    profileAddName: "Add your name",
+    // Read by screen readers on the Notifications row's count.
+    profileUnread: "{n} unread",
 
     // ── ui-polish: business and provider ──
 
@@ -1045,8 +1050,8 @@ export const translations = {
     rateApp: "قيم التطبيق",
     shareFeedback: "شارك رأيك",
     appVersionInfo: "إصدار التطبيق والمعلومات",
-    appName: "هاسيو",
-    version: "الإصدار 1.0.0",
+    appName: "Hasio",
+    version: "الإصدار",
     appDescription: "رفيقك المثالي للسفر لاكتشاف الأماكن الرائعة والطعام اللذيذ والتجارب التي لا تُنسى في المنطقة الشرقية.",
 
     // Common
@@ -1437,7 +1442,7 @@ export const translations = {
     reviewSignInFirst: "سجّل الدخول لكتابة تقييم",
 
     reportTitle: "الإبلاغ عن هذا المحتوى",
-    reportSubtitle: "ساعدنا في الحفاظ على سلامة هاسيو. بلاغك سري.",
+    reportSubtitle: "ساعدنا في الحفاظ على سلامة Hasio. بلاغك سري.",
     reportReasonSpam: "سبام أو مضلل",
     reportReasonInappropriate: "محتوى غير لائق",
     reportReasonOffensive: "مسيء أو يحض على الكراهية",
@@ -1462,7 +1467,7 @@ export const translations = {
     unblockConfirmTitle: "إلغاء حظر هذا الحساب؟",
     unblockConfirmMessage: "ستظهر إعلاناته وخدماته مرة أخرى.",
     unblockFailed: "تعذّر إلغاء الحظر. حاول مرة أخرى.",
-    blockedAccountFallbackName: "حساب هاسيو",
+    blockedAccountFallbackName: "حساب Hasio",
 
     // Permission alerts
     permissionRequired: "إذن مطلوب",
@@ -1510,6 +1515,10 @@ export const translations = {
     // Profile — see the English block.
     accountSigningOut: "جارٍ تسجيل خروجك…",
     accountDeleting: "جارٍ حذف حسابك…",
+    profileTrips: "الرحلات",
+    profileGetStarted: "ابدأ الآن",
+    profileAddName: "أضف اسمك",
+    profileUnread: "{n} غير مقروءة",
 
     // ── ui-polish: business and provider ──
 
