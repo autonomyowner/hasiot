@@ -13,10 +13,10 @@ import {
 } from "react-native";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRouter } from "expo-router";
+import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
@@ -27,11 +27,13 @@ import {
   EMPTY_SERVICE_FORM,
   isLocalPhoto,
   sameValues,
+  serviceFormFromService,
   withUploadedPhotos,
   type ServiceFormValues,
 } from "@/lib/listingForm";
 import { BackButton, Button } from "@/components/ui";
 import { ServiceType, PriceUnit } from "@/types";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
@@ -64,13 +66,32 @@ export default function PostServiceScreen() {
     onLayout: keyboardOnLayout,
   } = useKeyboardOverlap();
   const submitService = useMutation(api.services.mutations.submitService);
+  const updateMyService = useMutation(api.services.mutations.updateMyService);
+
+  // An `id` in the route makes this the editor for one of the provider's own
+  // services — My Services had no way to change or remove anything. Read
+  // from `getMyServices`, which is what enforces "yours", as the listing
+  // editors do with `getMyListings`.
+  const { id } = useLocalSearchParams<{ id?: string }>();
+  const myServices = useQuery(api.services.queries.getMyServices, id ? {} : "skip");
+  const existing = id ? (myServices ?? []).find((service) => service._id === id) : undefined;
+  const isEditing = Boolean(id);
 
   const [isLoading, setIsLoading] = useState(false);
   // One object, compared with what it opened with — see post-lodging.tsx.
   const [form, setForm] = useState<ServiceFormValues>(EMPTY_SERVICE_FORM);
-  const [saved] = useState<ServiceFormValues>(EMPTY_SERVICE_FORM);
+  const [saved, setSaved] = useState<ServiceFormValues>(EMPTY_SERVICE_FORM);
   const set = <K extends keyof ServiceFormValues>(key: K, value: ServiceFormValues[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
+
+  // Filled once per service, during render, when it lands.
+  const [prefilledId, setPrefilledId] = useState<string | null>(null);
+  if (existing && prefilledId !== existing._id) {
+    const values = serviceFormFromService(existing);
+    setPrefilledId(existing._id);
+    setForm(values);
+    setSaved(values);
+  }
 
   // Ask before unsaved work is dropped; off once the save has gone through.
   const [submitted, setSubmitted] = useState(false);
@@ -142,27 +163,50 @@ export default function PostServiceScreen() {
             })
           : [];
       const images = withUploadedPhotos(form.images, uploaded);
+      const languages = form.languages.trim()
+        ? form.languages.split(",").map((l) => l.trim()).filter(Boolean)
+        : [];
 
-      await submitService({
-        serviceType: form.serviceType,
-        title_en: form.title.trim(),
-        title_ar: form.titleAr.trim(),
-        description_en: form.description.trim() || undefined,
-        description_ar: form.descriptionAr.trim() || undefined,
-        priceRange: form.priceRange.trim() || undefined,
-        priceUnit: form.priceUnit,
-        availability_en: form.availability.trim() || undefined,
-        availability_ar: form.availabilityAr.trim() || undefined,
-        contactPhone: form.contactPhone.trim() || undefined,
-        contactEmail: form.contactEmail.trim() || undefined,
-        languages: form.languages.trim()
-          ? form.languages.split(",").map((l) => l.trim()).filter(Boolean)
-          : undefined,
-        images: images.length > 0 ? images : undefined,
-      });
+      if (isEditing && id) {
+        // Every field, with "" and [] for an emptied one: the server skips
+        // undefined, so a cleared phone number or language list would
+        // otherwise be kept. It sends the service back to review.
+        await updateMyService({
+          serviceId: id as Id<"services">,
+          serviceType: form.serviceType,
+          title_en: form.title.trim(),
+          title_ar: form.titleAr.trim(),
+          description_en: form.description.trim(),
+          description_ar: form.descriptionAr.trim(),
+          priceRange: form.priceRange.trim(),
+          priceUnit: form.priceUnit,
+          availability_en: form.availability.trim(),
+          availability_ar: form.availabilityAr.trim(),
+          contactPhone: form.contactPhone.trim(),
+          contactEmail: form.contactEmail.trim(),
+          languages,
+          images,
+        });
+      } else {
+        await submitService({
+          serviceType: form.serviceType,
+          title_en: form.title.trim(),
+          title_ar: form.titleAr.trim(),
+          description_en: form.description.trim() || undefined,
+          description_ar: form.descriptionAr.trim() || undefined,
+          priceRange: form.priceRange.trim() || undefined,
+          priceUnit: form.priceUnit,
+          availability_en: form.availability.trim() || undefined,
+          availability_ar: form.availabilityAr.trim() || undefined,
+          contactPhone: form.contactPhone.trim() || undefined,
+          contactEmail: form.contactEmail.trim() || undefined,
+          languages: languages.length > 0 ? languages : undefined,
+          images: images.length > 0 ? images : undefined,
+        });
+      }
 
       setSubmitted(true);
-      appAlert(t("success"), t("listingSubmittedForReview"), [
+      appAlert(t("success"), isEditing ? t("listingUpdated") : t("serviceSubmittedForReview"), [
         {
           text: t("done"),
           // Only from this screen: a provider who left mid-upload is
@@ -203,8 +247,13 @@ export default function PostServiceScreen() {
         >
           <BackButton />
           <Text style={[styles.title, isRTL && styles.textRTL]}>
-            {t("postService")}
+            {isEditing ? t("editService") : t("postService")}
           </Text>
+          {isEditing && (
+            <Text style={[styles.editNotice, isRTL && styles.textRTL]}>
+              {t("editReviewNotice")}
+            </Text>
+          )}
         </Animated.View>
 
         {/* Form, locked while it submits. */}
@@ -421,7 +470,7 @@ export default function PostServiceScreen() {
           {/* Submit: a spinner inside the button at its own size, and what
               is happening underneath it. */}
           <Button
-            title={t("submitForReview")}
+            title={isEditing ? t("saveChanges") : t("submitForReview")}
             onPress={handleSubmit}
             fullWidth
             loading={isLoading}
@@ -579,6 +628,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontFamily: fonts.medium,
     color: colors.onSurface.variant,
     textAlign: "center",
+  },
+  editNotice: {
+    fontSize: 12.5,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
+    marginTop: 6,
+    lineHeight: 18,
   },
   bottomSpacing: {
     height: 32,

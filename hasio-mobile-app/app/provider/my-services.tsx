@@ -11,17 +11,25 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { BackButton, SkeletonFade, SkeletonOwnerList } from "@/components/ui";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { useQuery } from "convex/react";
+import { useRouter } from "expo-router";
+import { Feather } from "@expo/vector-icons";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
+import { appAlert } from "@/stores/dialogStore";
 import { OwnerStatusBadge, ReviewNote } from "@/components/hosting/OwnerStatus";
 import { ownerStatusOf } from "@/lib/listingForm";
-import { type AppFonts } from "@/constants/colors";
+import type { Id } from "../../../convex/_generated/dataModel";
+import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 export default function MyServicesScreen() {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL, language } = useLanguage();
+  const router = useRouter();
+  const deleteMyService = useMutation(api.services.mutations.deleteMyService);
+  // The card being deleted, dimmed and inert until the server answers.
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | string>("all");
   const [refreshing, setRefreshing] = useState<boolean>(false);
 
@@ -38,6 +46,25 @@ export default function MyServicesScreen() {
   const filteredServices = filter === "all"
     ? services
     : services.filter((s) => ownerStatusOf(s.status) === filter);
+
+  // My Services used to be read-only: a provider could post a service but
+  // never change or remove it. Delete is permanent, so it asks first.
+  const remove = async (serviceId: string) => {
+    setDeletingId(serviceId);
+    try {
+      await deleteMyService({ serviceId: serviceId as Id<"services"> });
+    } catch {
+      appAlert(t("error"), t("deleteFailed"));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+  const confirmDelete = (serviceId: string) => {
+    appAlert(t("deleteServiceTitle"), t("deleteForGoodMessage"), [
+      { text: t("cancel"), style: "cancel" },
+      { text: t("delete"), style: "destructive", onPress: () => void remove(serviceId) },
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -106,7 +133,11 @@ export default function MyServicesScreen() {
         {filteredServices.length > 0 ? (
           <View style={styles.listingsContainer}>
             {filteredServices.map((service: any) => (
-              <View key={service._id} style={styles.listingCard}>
+              <View
+                key={service._id}
+                style={[styles.listingCard, deletingId === service._id && styles.cardBusy]}
+                pointerEvents={deletingId === service._id ? "none" : "auto"}
+              >
                 {service.images && service.images.length > 0 && (
                   <Image
                     source={{ uri: service.images[0] }}
@@ -120,15 +151,48 @@ export default function MyServicesScreen() {
                   <Text style={[styles.listingType, isRTL && styles.textRTL]}>
                     {service.serviceType === "tour_guide" ? t("tourGuide") : service.serviceType === "photographer" ? t("photographer") : service.serviceType === "driver" ? t("driver") : service.serviceType === "translator" ? t("translator") : service.serviceType === "event_planner" ? t("eventPlanner") : service.serviceType === "catering" ? t("catering") : service.serviceType === "equipment_rental" ? t("equipmentRental") : t("otherService")}
                   </Text>
-                  {/* Services have no editor yet, so the note carries the
-                      admin's reason without an "edit to resubmit" hint. */}
                   <ReviewNote
                     status={ownerStatusOf(service.status)}
                     reason={service.rejectionReason}
-                    canEdit={false}
+                    canEdit
                   />
                   <View style={[styles.cardFoot, isRTL && styles.rowRTL]}>
                     <OwnerStatusBadge status={ownerStatusOf(service.status)} />
+                    <View style={[styles.actions, isRTL && styles.rowRTL]}>
+                      <Pressable
+                        onPress={() =>
+                          router.push({
+                            pathname: "/provider/post-service",
+                            params: { id: service._id },
+                          })
+                        }
+                        style={({ pressed }) => [
+                          styles.editButton,
+                          isRTL && styles.rowRTL,
+                          pressed && styles.pressed,
+                        ]}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("editService")}
+                      >
+                        <Feather name="edit-2" size={13} color={colors.ink} />
+                        <Text style={styles.editText}>{t("edit")}</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => confirmDelete(service._id)}
+                        style={({ pressed }) => [
+                          styles.deleteButton,
+                          isRTL && styles.rowRTL,
+                          pressed && styles.pressed,
+                        ]}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={t("deleteServiceTitle")}
+                      >
+                        <Feather name="trash-2" size={13} color={colors.signOut} />
+                        <Text style={styles.deleteText}>{t("delete")}</Text>
+                      </Pressable>
+                    </View>
                   </View>
                 </View>
               </View>
@@ -244,6 +308,48 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   rowRTL: {
     flexDirection: "row-reverse",
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: colors.primary.DEFAULT,
+  },
+  editText: {
+    fontSize: 12.5,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
+  },
+  // Outlined rather than filled: it is the action nobody should hit by
+  // accident, so it does not compete with Edit.
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 11,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(176, 73, 63, 0.35)",
+  },
+  deleteText: {
+    fontSize: 12.5,
+    fontFamily: fonts.semibold,
+    color: colors.signOut,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  cardBusy: {
+    opacity: 0.5,
   },
   emptyContainer: {
     paddingHorizontal: 24,

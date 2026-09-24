@@ -13,11 +13,13 @@ import { BackButton, SkeletonFade, SkeletonOwnerList } from "@/components/ui";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
+import { appAlert } from "@/stores/dialogStore";
 import { OwnerStatusBadge, ReviewNote } from "@/components/hosting/OwnerStatus";
 import { ownerStatusOf } from "@/lib/listingForm";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
@@ -25,6 +27,19 @@ export default function MyListingsScreen() {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL, language } = useLanguage();
   const router = useRouter();
+  const deleteMyListing = useMutation(api.listings.mutations.deleteMyListing);
+  // The card being deleted, dimmed and inert until the server answers.
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // The host's bookings, to know which places a guest still holds a stay
+  // at. The server deletes a listing whatever is booked on it, which would
+  // leave those guests holding a booking for a place that no longer exists.
+  const hostBookings = useQuery(api.bookings.queries.getBusinessBookings, {});
+  const openBookingListingIds = new Set(
+    (hostBookings ?? [])
+      .filter((booking) => booking.status === "pending" || booking.status === "confirmed")
+      .map((booking) => booking.listingId as string)
+  );
 
   // Which form owns a listing. Only these two exist, so anything else has no
   // editor to send the owner to and simply shows no button.
@@ -56,6 +71,29 @@ export default function MyListingsScreen() {
   const hasSuspended = (allListings ?? []).some((l) => l.status === "suspended");
   const filters = ["all", "pending", "approved", "rejected"];
   if (hasSuspended || filter === "suspended") filters.push("suspended");
+
+  const remove = async (listingId: string) => {
+    setDeletingId(listingId);
+    try {
+      await deleteMyListing({ listingId: listingId as Id<"listings"> });
+    } catch {
+      appAlert(t("error"), t("deleteFailed"));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+  const confirmDelete = (listingId: string) => {
+    // Unknown until the bookings load; a second's wait beats a guess.
+    if (hostBookings === undefined) return;
+    if (openBookingListingIds.has(listingId)) {
+      appAlert(t("deleteBlockedTitle"), t("deleteBlockedOpenBookings"));
+      return;
+    }
+    appAlert(t("deleteListingTitle"), t("deleteForGoodMessage"), [
+      { text: t("cancel"), style: "cancel" },
+      { text: t("delete"), style: "destructive", onPress: () => void remove(listingId) },
+    ]);
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -124,7 +162,11 @@ export default function MyListingsScreen() {
         {filteredListings.length > 0 ? (
           <View style={styles.listingsContainer}>
             {filteredListings.map((listing: any) => (
-              <View key={listing._id} style={styles.listingCard}>
+              <View
+                key={listing._id}
+                style={[styles.listingCard, deletingId === listing._id && styles.cardBusy]}
+                pointerEvents={deletingId === listing._id ? "none" : "auto"}
+              >
                 {listing.images && listing.images.length > 0 && (
                   <Image
                     source={{ uri: listing.images[0] }}
@@ -150,26 +192,47 @@ export default function MyListingsScreen() {
                   <View style={[styles.cardFoot, isRTL && styles.rowRTL]}>
                     <OwnerStatusBadge status={ownerStatusOf(listing.status)} />
 
-                    {/* Editable in every state, approved included: a price or a
-                        phone number that has gone stale is worse live than it
-                        is in the queue. The server sends it back for review. */}
-                    {editorFor(listing.type) && (
+                    <View style={[styles.actions, isRTL && styles.rowRTL]}>
+                      {/* Editable in every state, approved included: a price
+                          or a phone number that has gone stale is worse live
+                          than it is in the queue. The server sends it back
+                          for review. */}
+                      {editorFor(listing.type) && (
+                        <Pressable
+                          onPress={() =>
+                            router.push({
+                              pathname: editorFor(listing.type) as never,
+                              params: { id: listing._id },
+                            })
+                          }
+                          style={({ pressed }) => [
+                            styles.editButton,
+                            isRTL && styles.rowRTL,
+                            pressed && styles.pressed,
+                          ]}
+                          hitSlop={8}
+                          accessibilityRole="button"
+                          accessibilityLabel={t("editListing")}
+                        >
+                          <Feather name="edit-2" size={13} color={colors.ink} />
+                          <Text style={styles.editText}>{t("edit")}</Text>
+                        </Pressable>
+                      )}
                       <Pressable
-                        onPress={() =>
-                          router.push({
-                            pathname: editorFor(listing.type) as never,
-                            params: { id: listing._id },
-                          })
-                        }
-                        style={[styles.editButton, isRTL && styles.rowRTL]}
+                        onPress={() => confirmDelete(listing._id)}
+                        style={({ pressed }) => [
+                          styles.deleteButton,
+                          isRTL && styles.rowRTL,
+                          pressed && styles.pressed,
+                        ]}
                         hitSlop={8}
                         accessibilityRole="button"
-                        accessibilityLabel={t("editListing")}
+                        accessibilityLabel={t("deleteListingTitle")}
                       >
-                        <Feather name="edit-2" size={13} color={colors.ink} />
-                        <Text style={styles.editText}>{t("edit")}</Text>
+                        <Feather name="trash-2" size={13} color={colors.signOut} />
+                        <Text style={styles.deleteText}>{t("delete")}</Text>
                       </Pressable>
-                    )}
+                    </View>
                   </View>
                 </View>
               </View>
@@ -299,6 +362,34 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 12.5,
     fontFamily: fonts.semibold,
     color: colors.ink,
+  },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  // Outlined rather than filled: it is the action nobody should hit by
+  // accident, so it does not compete with Edit.
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 11,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(176, 73, 63, 0.35)",
+  },
+  deleteText: {
+    fontSize: 12.5,
+    fontFamily: fonts.semibold,
+    color: colors.signOut,
+  },
+  pressed: {
+    opacity: 0.7,
+  },
+  cardBusy: {
+    opacity: 0.5,
   },
   emptyContainer: {
     paddingHorizontal: 24,

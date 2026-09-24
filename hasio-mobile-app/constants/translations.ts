@@ -743,6 +743,15 @@ export const translations = {
     reviewNoteLabel: "Note from our team",
     editToResubmit: "Edit and save to send it back for review.",
     uploadingPhotos: "Uploading photos {done}/{total}",
+    editService: "Edit service",
+    serviceSubmittedForReview: "Your service has been submitted for review",
+    deleteListingTitle: "Delete this listing?",
+    deleteServiceTitle: "Delete this service?",
+    deleteForGoodMessage: "It will be removed from Hasio for good. This can't be undone.",
+    deleteFailed: "Couldn't delete it. Please try again.",
+    deleteBlockedTitle: "Can't delete this yet",
+    deleteBlockedOpenBookings:
+      "It still has bookings that are waiting or confirmed. Once they are declined, completed or cancelled, you can delete it.",
 
     // ── ui-polish: app shell ──
   },
@@ -1487,6 +1496,15 @@ export const translations = {
     reviewNoteLabel: "ملاحظة من فريقنا",
     editToResubmit: "عدّل واحفظ لإعادة الإرسال إلى المراجعة.",
     uploadingPhotos: "جاري رفع الصور {done} من {total}",
+    editService: "تعديل الخدمة",
+    serviceSubmittedForReview: "تم إرسال خدمتك للمراجعة",
+    deleteListingTitle: "حذف هذا الإعلان؟",
+    deleteServiceTitle: "حذف هذه الخدمة؟",
+    deleteForGoodMessage: "الحذف من Hasio نهائي ولا يمكن التراجع عنه.",
+    deleteFailed: "تعذّر الحذف. حاول مرة أخرى.",
+    deleteBlockedTitle: "لا يمكن الحذف الآن",
+    deleteBlockedOpenBookings:
+      "لا تزال هناك حجوزات بانتظار الرد أو مؤكدة. يمكنك الحذف بعد رفضها أو إتمامها أو إلغائها.",
 
     // ── ui-polish: app shell ──
   },
