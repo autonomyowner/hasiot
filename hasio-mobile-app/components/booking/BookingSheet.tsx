@@ -2,6 +2,7 @@ import { appAlert } from "@/stores/dialogStore";
 import { AppDialogHost } from "@/components/ui/AppDialog";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Keyboard,
   Modal,
   View,
   Text,
@@ -13,6 +14,7 @@ import {
 import { Calendar } from "react-native-calendars";
 import { Feather } from "@expo/vector-icons";
 import { useMutation, useQuery } from "convex/react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api } from "@/backend";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { BookingNotesField, type BookingNotesFieldHandle } from "./BookingNotesField";
@@ -20,6 +22,7 @@ import { QuoteFooter } from "./QuoteFooter";
 import { quoteFooterState, type LastGoodQuote } from "@/lib/bookingDisplay";
 import { GuestStepper } from "./GuestStepper";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { addDays, datesBetween, formatISODate, nightsBetween, todayRiyadhISO } from "@/lib/dates";
 import { countLabel, nightsLabel } from "@/lib/bookingDisplay";
 import { haptic } from "@/lib/haptics";
@@ -34,6 +37,12 @@ import type { DetailItem } from "@/components/listing/ListingDetailSheet";
 
 // A year out. Past that a host's pricing is guesswork anyway.
 const MAX_HORIZON_DAYS = 365;
+// Where the guest count starts — never above what the place takes.
+const DEFAULT_GUESTS = 2;
+// The stepper's ceiling for a listing whose host set none.
+const FALLBACK_MAX_GUESTS = 4;
+// The header's own top padding, before any status bar is added to it.
+const HEADER_TOP = 16;
 
 // Module scope on purpose: an inline object here is a new reference every
 // render, and react-native-calendars re-renders every day cell when it sees
@@ -83,13 +92,64 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
   const styles = useThemedStyles(makeStyles);
   const calendarTheme = useThemedStyles(makeCalendarTheme);
   const { t, isRTL, language } = useLanguage();
+  const insets = useSafeAreaInsets();
+
+  const maxGuests = item?.maxGuests ?? FALLBACK_MAX_GUESTS;
+  // Two, unless the place takes one: starting at 2 against a ceiling of 1
+  // left the stepper above its own maximum, a count the server rejects.
+  const startingGuests = Math.min(DEFAULT_GUESTS, maxGuests);
 
   const [checkIn, setCheckIn] = useState<string | null>(null);
   const [checkOut, setCheckOut] = useState<string | null>(null);
-  const [guests, setGuests] = useState(2);
+  const [guests, setGuests] = useState(startingGuests);
   const notesRef = useRef<BookingNotesFieldHandle>(null);
+  // Whether the notes box holds anything. The draft itself stays in the box
+  // (see BookingNotesField); this flips only when it empties or fills.
+  const [notesWritten, setNotesWritten] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [confirmation, setConfirmation] = useState<string | null>(null);
+  // The last total the server gave us, kept so a refetch does not blank the
+  // footer. Cleared when the range is cleared — a different range is a
+  // different number, and showing the old one for it would be a lie.
+  const [lastGood, setLastGood] = useState<LastGoodQuote | null>(null);
+  // Counts openings. The content is keyed on it, so each opening starts from
+  // this month on the calendar, an empty notes box and the top of the page.
+  const [opening, setOpening] = useState(0);
+
+  // Everything starts over when the sheet opens. It used to on close, which
+  // flipped the success screen back to an empty form while the sheet was
+  // still sliding away with it.
+  const [wasVisible, setWasVisible] = useState(visible);
+  if (visible !== wasVisible) {
+    setWasVisible(visible);
+    if (visible) {
+      setCheckIn(null);
+      setCheckOut(null);
+      setGuests(startingGuests);
+      setNotesWritten(false);
+      setSubmitting(false);
+      setConfirmation(null);
+      setLastGood(null);
+      setOpening((n) => n + 1);
+    }
+  }
+
+  // What closing now would throw away. The guest count is left out on
+  // purpose: it is one tap to put back, and asking about it would turn every
+  // idle look at the calendar into a dialog.
+  const dirty = !confirmation && (checkIn !== null || notesWritten);
+
+  // Android: lifts the form — notes box and pinned footer both — above the
+  // keyboard, which an edge-to-edge window no longer resizes for. On iOS the
+  // hook does nothing; the ScrollView's own keyboard insets take over there.
+  const {
+    ref: formRef,
+    overlap: keyboardOverlap,
+    onLayout: formOnLayout,
+    prepare: prepareKeyboard,
+  } = useKeyboardOverlap();
+  const scrollRef = useRef<ScrollView>(null);
+  const notesFocused = useRef(false);
 
   const createStayBooking = useMutation(api.bookings.mutations.createStayBooking);
 
@@ -114,10 +174,6 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
       : "skip"
   );
 
-  // The last total the server gave us, kept so a refetch does not blank the
-  // footer. Cleared when the range is cleared — a different range is a
-  // different number, and showing the old one for it would be a lie.
-  const [lastGood, setLastGood] = useState<LastGoodQuote | null>(null);
   useEffect(() => {
     if (quote?.ok && quote.available) setLastGood(quote.quote);
   }, [quote]);
@@ -177,19 +233,42 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
     setCheckOut(picked);
   };
 
-  const reset = () => {
-    setCheckIn(null);
-    setCheckOut(null);
-    setLastGood(null);
-    setGuests(2);
-    notesRef.current?.reset();
-    setSubmitting(false);
-    setConfirmation(null);
+  // Every way out comes through here: the close button, Android's back
+  // button, and on iOS a swipe down. Nothing closes the sheet while the
+  // request is being sent — the answer would arrive to a sheet that is gone.
+  // With dates or a note entered, the guest is asked first (the swipe is
+  // held by the sheet for as long as that is so; see `allowSwipeDismissal`).
+  // "Discard" runs once the dialog has fully gone, so the sheet it closes is
+  // no longer presenting anything.
+  const requestClose = () => {
+    if (submitting) return;
+    if (!dirty) {
+      onClose();
+      return;
+    }
+    Keyboard.dismiss();
+    appAlert(t("discardChangesTitle"), t("discardChangesMessage"), [
+      { text: t("keepEditing"), style: "cancel" },
+      { text: t("discardChanges"), style: "destructive", onPress: onClose },
+    ]);
   };
 
-  const handleClose = () => {
-    reset();
-    onClose();
+  const handleNotesFocus = () => {
+    notesFocused.current = true;
+    // Android has no keyboard-will-show; move now, by what the keyboard took
+    // last time, rather than jump once it has finished arriving.
+    prepareKeyboard();
+  };
+
+  const handleNotesBlur = () => {
+    notesFocused.current = false;
+  };
+
+  // Android: the form has just shrunk above the keyboard, and the notes box
+  // is the last thing on the page — follow it up rather than leave it under
+  // the pinned footer. iOS scrolls to the focused field by itself.
+  const handleScrollLayout = () => {
+    if (notesFocused.current) scrollRef.current?.scrollToEnd({ animated: true });
   };
 
   // What to do once the sheet is off the screen. This sheet is presented from
@@ -202,11 +281,11 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
   const handleViewBookings = () => {
     if (Platform.OS === "ios") {
       afterDismiss.current = onViewBookings;
-      handleClose();
+      onClose();
       return;
     }
     // Every Android Modal is its own window; there is nothing to wait for.
-    handleClose();
+    onClose();
     onViewBookings();
   };
 
@@ -220,6 +299,9 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
   const handleSubmit = async () => {
     if (!item || !checkIn || !checkOut || submitting) return;
 
+    // The success screen replaces the form; it should not arrive under a
+    // keyboard left up from the notes box.
+    Keyboard.dismiss();
     setSubmitting(true);
     try {
       const result = await createStayBooking({
@@ -243,12 +325,28 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
       visible={visible}
       animationType="slide"
       presentationStyle={Platform.OS === "ios" ? "pageSheet" : "fullScreen"}
-      onRequestClose={handleClose}
+      // The native swipe down, but only while it loses nothing. RN 0.86 keeps
+      // `modalInPresentation` on without this prop, so the sheet resisted
+      // every swipe and closed a beat later through `onRequestClose` anyway —
+      // with the dates and the note the guest had entered. Now a clean sheet
+      // (or the success screen) goes under the finger, and one with something
+      // in it holds, while iOS reports the attempt to `requestClose`, which
+      // asks before discarding. While sending, it holds and nothing is asked.
+      allowSwipeDismissal={!dirty && !submitting}
+      onRequestClose={requestClose}
       onDismiss={handleDismiss}
     >
-      <View style={styles.container}>
+      <View key={opening} style={styles.container}>
         <ScreenGradient />
-        <View style={[styles.header, isRTL && styles.headerRTL]}>
+        <View
+          style={[
+            styles.header,
+            // Android draws a Modal edge to edge, so the title sat under the
+            // status bar. The iOS page sheet already starts below it.
+            Platform.OS === "android" && { paddingTop: HEADER_TOP + insets.top },
+            isRTL && styles.headerRTL,
+          ]}
+        >
           <View style={styles.headerText}>
             <Text style={[styles.title, isRTL && styles.textRTL]} numberOfLines={1}>
               {confirmation ? t("bookingRequested") : t("bookStay")}
@@ -260,10 +358,17 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
             )}
           </View>
           <Pressable
-            onPress={handleClose}
-            style={styles.closeButton}
+            onPress={requestClose}
+            disabled={submitting}
+            style={({ pressed }) => [
+              styles.closeButton,
+              submitting && styles.closeButtonDisabled,
+              pressed && styles.pressed,
+            ]}
             accessibilityRole="button"
             accessibilityLabel={t("close")}
+            accessibilityState={{ disabled: submitting }}
+            // 36pt drawn, 52pt to the finger.
             hitSlop={8}
           >
             <Feather name="x" size={22} color={colors.ink} />
@@ -271,7 +376,7 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
         </View>
 
         {confirmation ? (
-          <View style={styles.successBody}>
+          <View style={[styles.successBody, { paddingBottom: insets.bottom + 24 }]}>
             <Animated.View entering={popIn} style={styles.successIcon}>
               <Feather name="check" size={28} color={colors.ink} />
             </Animated.View>
@@ -286,23 +391,40 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
             <Animated.View entering={enterFade(2)} style={styles.successActions}>
               <Pressable
                 onPress={handleViewBookings}
-                style={styles.primaryButton}
+                style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
                 accessibilityRole="button"
                 accessibilityLabel={t("viewMyBookings")}
               >
                 <Text style={styles.primaryButtonText}>{t("viewMyBookings")}</Text>
               </Pressable>
 
-              <Pressable onPress={handleClose} style={styles.secondaryButton} accessibilityRole="button">
+              <Pressable
+                onPress={onClose}
+                style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+                accessibilityRole="button"
+                accessibilityLabel={t("done")}
+              >
                 <Text style={styles.secondaryButtonText}>{t("done")}</Text>
               </Pressable>
             </Animated.View>
           </View>
         ) : (
-          <>
+          <View
+            ref={formRef}
+            onLayout={formOnLayout}
+            style={[styles.form, { paddingBottom: keyboardOverlap }]}
+          >
             <ScrollView
+              ref={scrollRef}
               contentContainerStyle={styles.scroll}
               keyboardShouldPersistTaps="handled"
+              // iOS: the native keyboard insets scroll the notes box — the last
+              // thing on the page — clear of the keyboard, and dragging down
+              // takes the keyboard with the finger. `interactive` does nothing
+              // on Android, where a drag simply puts it away.
+              automaticallyAdjustKeyboardInsets
+              keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+              onLayout={handleScrollLayout}
             >
               <Text style={[styles.sectionLabel, isRTL && styles.textRTL]}>{t("selectDates")}</Text>
               <Text style={[styles.sectionHint, isRTL && styles.textRTL]}>
@@ -366,7 +488,7 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
               <GuestStepper
                 value={guests}
                 onChange={setGuests}
-                max={item?.maxGuests ?? 4}
+                max={maxGuests}
                 label={t("guests")}
                 caption={countLabel(guests, "guests", t)}
                 decreaseLabel={t("decreaseGuests")}
@@ -381,13 +503,21 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
                 label={t("notesOptional")}
                 placeholder={t("notesPlaceholder")}
                 isRTL={isRTL}
+                onFocus={handleNotesFocus}
+                onBlur={handleNotesBlur}
+                onWrittenChange={setNotesWritten}
               />
             </ScrollView>
 
             {/* Summary and the action stay pinned: the total is the thing the
                 guest is agreeing to, and it should never be scrolled away. */}
-            <QuoteFooter state={footerState} submitting={submitting} onSubmit={handleSubmit} />
-          </>
+            <QuoteFooter
+              state={footerState}
+              submitting={submitting}
+              onSubmit={handleSubmit}
+              keyboardOpen={keyboardOverlap > 0}
+            />
+          </View>
         )}
       </View>
 
@@ -412,9 +542,17 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: HEADER_TOP,
     paddingBottom: 12,
     gap: 12,
+  },
+  // Everything under the header, so the keyboard padding lifts the scroll
+  // and the pinned footer together.
+  form: {
+    flex: 1,
+  },
+  pressed: {
+    opacity: 0.7,
   },
   headerRTL: {
     flexDirection: "row-reverse",
@@ -443,6 +581,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     backgroundColor: colors.chip,
     alignItems: "center",
     justifyContent: "center",
+  },
+  closeButtonDisabled: {
+    opacity: 0.45,
   },
   scroll: {
     paddingHorizontal: 20,

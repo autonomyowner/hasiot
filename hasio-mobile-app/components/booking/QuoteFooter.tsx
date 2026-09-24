@@ -17,6 +17,11 @@ interface QuoteFooterProps {
   state: QuoteFooterState;
   submitting: boolean;
   onSubmit: () => void;
+  /**
+   * The Android keyboard is up and the form has been lifted above it. The
+   * keyboard covers the navigation bar then, so its inset is not added again.
+   */
+  keyboardOpen?: boolean;
 }
 
 /**
@@ -27,7 +32,12 @@ interface QuoteFooterProps {
  * "updating" hint rather than blinking out — the guest is looking at *that
  * number* while they bump the guest count, and it should change in place.
  */
-export function QuoteFooter({ state, submitting, onSubmit }: QuoteFooterProps) {
+export function QuoteFooter({
+  state,
+  submitting,
+  onSubmit,
+  keyboardOpen = false,
+}: QuoteFooterProps) {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
   const { format } = useCurrency();
@@ -36,7 +46,7 @@ export function QuoteFooter({ state, submitting, onSubmit }: QuoteFooterProps) {
   const canSubmit = state.kind === "total" && !state.stale && !submitting;
 
   return (
-    <View style={[styles.footer, { paddingBottom: insets.bottom + 16 }]}>
+    <View style={[styles.footer, { paddingBottom: keyboardOpen ? 16 : insets.bottom + 16 }]}>
       <View style={styles.slot} accessibilityLiveRegion="polite">
         {state.kind === "idle" && <Text style={styles.hint}>{t("selectDatesHint")}</Text>}
 
