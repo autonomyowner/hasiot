@@ -14,7 +14,7 @@ const path = require('path');
 let createCanvas;
 try {
   createCanvas = require('canvas').createCanvas;
-} catch (e) {
+} catch {
   console.log('Canvas not installed. Creating placeholder SVG icons instead.');
   console.log('To generate PNG icons, run: npm install canvas');
   console.log('');
@@ -66,8 +66,6 @@ function generateSplashIcon(size, filename) {
 
   // Draw centered logo
   const logoSize = size * 0.4;
-  const x = (size - logoSize) / 2;
-  const y = (size - logoSize) / 2;
 
   // Logo background circle
   ctx.beginPath();

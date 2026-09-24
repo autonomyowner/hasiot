@@ -120,8 +120,3 @@ export const HOME_RAIL_CARD_HEIGHT = 300;
 export const HOME_RAIL_GAP = 12;
 // The "find your stay" banner that closes the featured rail.
 export const HOME_STAY_BANNER_HEIGHT = 120;
-
-// Moments — 2-column grid, wider gap than the home grid.
-export const MOMENT_CARD_GAP = 12;
-export const MOMENT_CARD_WIDTH =
-  (width - LIST_CONTAINER_PADDING * 2 - MOMENT_CARD_GAP) / 2;

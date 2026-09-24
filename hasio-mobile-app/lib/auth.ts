@@ -132,7 +132,7 @@ export async function fetchConvexToken(sessionToken: string): Promise<string | n
       await SecureStore.setItemAsync(JWT_KEY, jwt);
     }
     return jwt || null;
-  } catch (e) {
+  } catch {
 
     return null;
   }
@@ -159,7 +159,7 @@ export async function signIn(email: string, password: string) {
     }
     // Exchange session token for Convex JWT
     await fetchConvexToken(sessionToken);
-  } catch (e) {
+  } catch {
 
   }
 
@@ -255,7 +255,7 @@ export async function signUp(
     }
     // Exchange session token for Convex JWT
     await fetchConvexToken(sessionToken);
-  } catch (e) {
+  } catch {
 
   }
 
@@ -271,7 +271,7 @@ export async function clearStoredAuth() {
     await SecureStore.deleteItemAsync(SESSION_TOKEN_KEY);
     await SecureStore.deleteItemAsync(JWT_KEY);
     await SecureStore.deleteItemAsync(SESSION_KEY);
-  } catch (e) {
+  } catch {
 
   }
 }
