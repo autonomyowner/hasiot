@@ -7,7 +7,8 @@ import {
   Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useIsFocused, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -30,6 +31,7 @@ export default function BusinessDashboardContent() {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const isFocused = useIsFocused();
   const { t, isRTL } = useLanguage();
   const { format } = useCurrency();
   const { verificationStatus, isApproved, isSignedIn } = useConvexUser();
@@ -47,6 +49,11 @@ export default function BusinessDashboardContent() {
   return (
     <View style={styles.container}>
       <ScreenGradient />
+      {/* Light status-bar icons over the ink band — the app's are dark, and
+          dark on ink could not be seen. Only while this screen is in front:
+          the dashboard stays mounted under the forms it opens, and an
+          unconditional one left white icons over their cream headers. */}
+      {isFocused && <StatusBar style="light" />}
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Ink hosting header band */}
         <Animated.View
@@ -179,7 +186,9 @@ export default function BusinessDashboardContent() {
           </Pressable>
         </Animated.View>
 
-        <View style={styles.bottomSpacing} />
+        {/* The route no longer wraps this in a SafeAreaView, so the home
+            indicator's inset is paid here, under the last row. */}
+        <View style={{ height: 32 + insets.bottom }} />
       </ScrollView>
     </View>
   );
@@ -414,5 +423,4 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: colors.ink,
     textAlign: "center",
   },
-  bottomSpacing: { height: 32 },
 });

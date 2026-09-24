@@ -12,7 +12,8 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useIsFocused, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Feather } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -38,6 +39,7 @@ export default function VerificationScreenContent() {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const isFocused = useIsFocused();
   const { t, isRTL } = useLanguage();
   const { verificationStatus, isUserLoading } = useConvexUser();
 
@@ -132,6 +134,9 @@ export default function VerificationScreenContent() {
   return (
     <View style={styles.container}>
       <ScreenGradient />
+      {/* Light icons over the ink band while this screen is in front; the
+          app's dark ones were invisible on it. */}
+      {isFocused && <StatusBar style="light" />}
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}

@@ -7,7 +7,8 @@ import {
   Pressable,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useIsFocused, useRouter } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 import Animated, {
   FadeInDown,
   useAnimatedStyle,
@@ -27,6 +28,7 @@ export default function ProviderDashboardContent() {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const isFocused = useIsFocused();
   const { t, isRTL } = useLanguage();
   const { verificationStatus, isApproved } = useConvexUser();
 
@@ -36,6 +38,9 @@ export default function ProviderDashboardContent() {
   return (
     <View style={styles.container}>
       <ScreenGradient />
+      {/* Light icons over the ink band, only while in front — see the
+          business dashboard. */}
+      {isFocused && <StatusBar style="light" />}
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Ink hosting header band */}
         <Animated.View
@@ -123,7 +128,8 @@ export default function ProviderDashboardContent() {
           />
         </Animated.View>
 
-        <View style={styles.bottomSpacing} />
+        {/* The home indicator's inset, now that the route is a plain View. */}
+        <View style={{ height: 32 + insets.bottom }} />
       </ScrollView>
     </View>
   );
@@ -305,7 +311,9 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 16,
     color: colors.ink,
   },
-  actionButtonTextPrimary: { color: "#FFFFFF" },
+  // Ink, not white: lime is a light fill and white on it is 1.39:1 — the
+  // "Post Service" label on the one button that matters could not be read.
+  actionButtonTextPrimary: { color: colors.ink },
   actionButtonLocked: {
     backgroundColor: colors.surface.variant,
     borderColor: colors.border,
@@ -318,5 +326,4 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     color: colors.onSurface.muted,
     marginTop: 4,
   },
-  bottomSpacing: { height: 32 },
 });
