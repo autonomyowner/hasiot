@@ -793,6 +793,14 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
             targetType={reportTarget?.type ?? "listing"}
             targetId={reportTarget?.id ?? item.id}
             ownerId={reportTarget?.ownerId ?? null}
+            // Called once the report sheet has gone. Its default — pushing
+            // /auth — would open sign-in underneath this sheet, which is still
+            // up; so this sheet leaves too, the way Book and Rate leave for a
+            // signed-out guest.
+            onSignIn={() => {
+              onClose();
+              router.push("/auth");
+            }}
           />
 
           <BookingSheet

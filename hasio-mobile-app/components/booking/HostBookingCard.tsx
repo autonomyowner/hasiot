@@ -5,7 +5,7 @@ import { Feather } from "@expo/vector-icons";
 import { BookingStatusChip } from "./BookingStatusChip";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
-import { formatPhoneForDisplay } from "@/lib/phone";
+import { formatPhoneForDisplay, ltr } from "@/lib/phone";
 import { hostActionsFor, type StayTotal } from "@/lib/bookingDisplay";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
@@ -138,7 +138,9 @@ function HostBookingCardInner({
           </Text>
           {phone ? (
             <Text style={[styles.meta, isRTL && styles.textRTL]}>
-              {formatPhoneForDisplay(phone)}
+              {/* Kept in one piece: in an Arabic line the digit groups
+                  otherwise come out in reverse order. */}
+              {ltr(formatPhoneForDisplay(phone))}
             </Text>
           ) : null}
         </View>
