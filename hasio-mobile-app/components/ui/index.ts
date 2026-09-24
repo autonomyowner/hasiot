@@ -17,7 +17,6 @@ export {
   SkeletonHomeSections,
   SkeletonList,
   SkeletonListingCard,
-  SkeletonMomentsGrid,
   SkeletonOwnerList,
 } from "./SkeletonScreens";
 export {
