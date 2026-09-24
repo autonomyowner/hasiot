@@ -45,8 +45,15 @@ export const CHIP_PADDING_VERTICAL = 9;
 // The space between chips in a row. The row's own `gap`, never a margin on the
 // chip: a trailing margin lands on the wrong side in a mirrored row.
 export const CHIP_GAP = 8;
+// The transparent band a FilterChip carries above and below its pill, which
+// makes the ~37pt pill a 44pt target. A row that wants its pills where they
+// would sit without it takes the band back with its own spacing.
+export const CHIP_TARGET_INSET = 4;
 
-/** A FilterChip's height, hairline border included. */
+/**
+ * A FilterChip's pill — what a skeleton draws — hairline border included.
+ * The chip's box is `CHIP_TARGET_INSET` taller at each end.
+ */
 export function chipHeight(arabic: boolean): number {
   return (
     CHIP_PADDING_VERTICAL * 2 +

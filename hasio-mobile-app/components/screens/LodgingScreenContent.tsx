@@ -11,7 +11,7 @@ import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { categoryColors, colors, type AppFonts } from "@/constants/colors";
-import { CHIP_GAP } from "@/constants/layout";
+import { CHIP_GAP, CHIP_TARGET_INSET } from "@/constants/layout";
 import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
@@ -263,9 +263,11 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   textRTL: {
     textAlign: "right",
   },
+  // 12pt above and below the pills, as before: each chip already brings
+  // CHIP_TARGET_INSET of its own, its 44pt target (see FilterChip).
   filtersContainer: {
     paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingVertical: 12 - CHIP_TARGET_INSET,
     gap: CHIP_GAP,
   },
   listContent: {

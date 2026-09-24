@@ -323,7 +323,16 @@ const makeStyles = (fonts: AppFonts) =>
       marginTop: -6,
       marginBottom: 14,
     },
-    chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+    // Padded by the chips' slop and pulled back by as much, so nothing moves
+    // but the first and last rows' slop lies inside this view: slop outside
+    // a parent's bounds is never hit-tested.
+    chips: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      paddingVertical: CHIP_HIT_SLOP.top,
+      marginVertical: -CHIP_HIT_SLOP.top,
+    },
     chip: {
       paddingHorizontal: 14,
       paddingVertical: 9,

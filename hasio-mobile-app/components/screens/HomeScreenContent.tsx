@@ -44,6 +44,7 @@ import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useTabBarClearance } from "@/hooks/useTabBarClearance";
 import {
   CHIP_GAP,
+  CHIP_TARGET_INSET,
   HOME_CARD_GAP,
   HOME_CARD_WIDTH,
   HOME_CHIP_ROW_MARGIN_TOP,
@@ -1303,8 +1304,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     paddingHorizontal: CONTAINER_PADDING + 12,
     marginTop: -30,
   },
+  // Each chip carries a transparent band above and below its pill — its 44pt
+  // target, see FilterChip. The row gives that space back here, so the pills
+  // sit exactly where they did and where the skeleton draws them.
   kindChipList: {
-    marginTop: HOME_CHIP_ROW_MARGIN_TOP,
+    marginTop: HOME_CHIP_ROW_MARGIN_TOP - CHIP_TARGET_INSET,
+    marginBottom: -CHIP_TARGET_INSET,
   },
   kindChips: {
     paddingHorizontal: CONTAINER_PADDING,
@@ -1569,9 +1574,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 8,
   },
+  // Starts below the chips' target band rather than over it — as the later
+  // sibling it would sit on top and take their touches — with the same 16pt
+  // to its text as before.
   searchResultsContainer: {
     paddingHorizontal: CONTAINER_PADDING,
-    paddingTop: 16,
+    marginTop: CHIP_TARGET_INSET,
+    paddingTop: 16 - CHIP_TARGET_INSET,
   },
   resultsCount: {
     fontSize: 16,
@@ -1669,9 +1678,11 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   // Centred in either language, so its text is centred too — it used to be
   // pushed right in Arabic inside a centred block.
+  // Clear of the chips' target band for the same reason as the results.
   emptyStateContainer: {
     paddingHorizontal: 24,
-    paddingTop: 40,
+    marginTop: CHIP_TARGET_INSET,
+    paddingTop: 40 - CHIP_TARGET_INSET,
     alignItems: "center",
   },
   emptyStateTitle: {
