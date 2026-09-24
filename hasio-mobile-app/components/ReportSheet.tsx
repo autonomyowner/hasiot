@@ -9,6 +9,7 @@ import {
   ScrollView,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useMutation, useConvexAuth } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -27,6 +28,14 @@ interface ReportSheetProps {
   targetType: TargetType;
   targetId: string;
   ownerId?: Id<"users"> | null;
+  /**
+   * What "Sign in" does for a signed-out guest, called once this sheet has
+   * gone. Without it the sheet opens the sign-in screen itself — right where
+   * the sheet sits on a screen. Inside another Modal (the listing sheet) pass
+   * one that closes that Modal first: a screen pushed under an open Modal
+   * stays hidden behind it until the Modal goes.
+   */
+  onSignIn?: () => void;
 }
 
 const REASONS: { key: string; label: TranslationKey }[] = [
@@ -51,12 +60,21 @@ export function ReportSheet({
   targetType,
   targetId,
   ownerId,
+  onSignIn,
 }: ReportSheetProps) {
   const styles = useThemedStyles(makeStyles);
+  const router = useRouter();
   const { t, isRTL } = useLanguage();
-  const { isAuthenticated } = useConvexAuth();
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
   const reportContent = useMutation(api.moderation.mutations.reportContent);
   const blockUser = useMutation(api.moderation.mutations.blockUser);
+
+  // A signed-out guest used to get the whole form — reasons, details — and
+  // learn only on Submit that reporting needs an account, with everything they
+  // had filled in thrown away. They are told first now, and offered the way
+  // in. (While the session is still being read, the form: most people who
+  // open this are signed in.)
+  const signedOut = !isAuthenticated && !authLoading;
 
   const [selectedReason, setSelectedReason] = useState<string | null>(null);
   const [details, setDetails] = useState("");
@@ -64,24 +82,39 @@ export function ReportSheet({
   // The confirmation waits for the sheet to be gone. Shown while it was still
   // leaving, it was carried off with the sheet and reappeared underneath.
   const notice = useRef<TranslationKey | null>(null);
+  // Sign-in waits for it too: nothing can be presented, or pushed where it can
+  // be seen, while the sheet is still on its way out.
+  const signInNext = useRef(false);
 
-  const reset = () => {
-    setSelectedReason(null);
-    setDetails("");
-    setSubmitting(false);
-  };
-
-  const handleClose = () => {
-    reset();
-    onClose();
-  };
+  // Start clean on opening — not on closing, which is what it used to do: the
+  // chosen reason cleared while the sheet was still sliding away.
+  const [prevVisible, setPrevVisible] = useState(visible);
+  if (visible !== prevVisible) {
+    setPrevVisible(visible);
+    if (visible) {
+      setSelectedReason(null);
+      setDetails("");
+      setSubmitting(false);
+    }
+  }
 
   const finish = (key: TranslationKey) => {
     notice.current = key;
-    handleClose();
+    onClose();
+  };
+
+  const handleSignIn = () => {
+    signInNext.current = true;
+    onClose();
   };
 
   const handleDismissed = () => {
+    if (signInNext.current) {
+      signInNext.current = false;
+      if (onSignIn) onSignIn();
+      else router.push("/auth");
+      return;
+    }
     const key = notice.current;
     if (!key) return;
     notice.current = null;
@@ -138,13 +171,13 @@ export function ReportSheet({
   return (
     <BottomSheet
       visible={visible}
-      onClose={handleClose}
+      onClose={onClose}
       onDismissed={handleDismissed}
       header={
         <View style={[styles.head, isRTL && styles.rowRTL]}>
           <Text style={styles.title}>{t("reportTitle")}</Text>
           <Pressable
-            onPress={handleClose}
+            onPress={onClose}
             hitSlop={12}
             style={({ pressed }) => pressed && styles.pressed}
             accessibilityRole="button"
@@ -155,6 +188,31 @@ export function ReportSheet({
         </View>
       }
     >
+      {signedOut ? (
+        <View style={styles.scrollContent}>
+          <Text style={[styles.signedOutText, isRTL && styles.textRTL]}>
+            {t("reportSignInRequired")}
+          </Text>
+
+          <Pressable
+            onPress={handleSignIn}
+            style={({ pressed }) => [styles.submitBtn, styles.signInBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t("signIn")}
+          >
+            <Text style={styles.submitText}>{t("signIn")}</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [styles.cancelBtn, pressed && styles.pressed]}
+            accessibilityRole="button"
+            accessibilityLabel={t("cancel")}
+          >
+            <Text style={styles.cancelText}>{t("cancel")}</Text>
+          </Pressable>
+        </View>
+      ) : (
       <ScrollView
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -219,6 +277,7 @@ export function ReportSheet({
             pressed && canSubmit && styles.pressed,
           ]}
           accessibilityRole="button"
+          accessibilityLabel={t("reportSubmit")}
           accessibilityState={{ disabled: !canSubmit, busy: submitting }}
         >
           {submitting ? (
@@ -233,19 +292,22 @@ export function ReportSheet({
             onPress={handleBlock}
             style={({ pressed }) => [styles.blockBtn, pressed && styles.pressed]}
             accessibilityRole="button"
+            accessibilityLabel={t("blockProvider")}
           >
             <Text style={styles.blockText}>{t("blockProvider")}</Text>
           </Pressable>
         )}
 
         <Pressable
-          onPress={handleClose}
+          onPress={onClose}
           style={({ pressed }) => [styles.cancelBtn, pressed && styles.pressed]}
           accessibilityRole="button"
+          accessibilityLabel={t("cancel")}
         >
           <Text style={styles.cancelText}>{t("cancel")}</Text>
         </Pressable>
       </ScrollView>
+      )}
     </BottomSheet>
   );
 }
@@ -278,6 +340,16 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     lineHeight: 20,
     color: colors.onSurface.variant,
     marginBottom: 16,
+  },
+  // The whole message of the signed-out sheet, so a step up from the subtitle.
+  signedOutText: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.onSurface.variant,
+  },
+  signInBtn: {
+    marginTop: 20,
   },
   reasonRow: {
     flexDirection: "row",
