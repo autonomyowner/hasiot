@@ -1,7 +1,27 @@
-import React from "react";
-import { StyleSheet, View } from "react-native";
-import { colors } from "@/constants/colors";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
+import { colors, type AppFonts } from "@/constants/colors";
+import { Feather } from "@expo/vector-icons";
+import { useConvexConnectionState } from "convex/react";
+import { useThemedStyles } from "@/hooks/useAppFonts";
+import { useLanguage } from "@/hooks/useLanguage";
 import {
+  CHIP_GAP,
+  chipHeight,
+  HOME_CHIP_ROW_MARGIN_TOP,
+  HOME_GRID_CARD_HEIGHT,
+  HOME_GRID_CARD_TALL_HEIGHT,
+  HOME_SECTION_EYEBROW,
+  HOME_SECTION_MARGIN_BOTTOM,
+  HOME_SECTION_MARGIN_TOP,
+  HOME_SECTION_TITLE,
+  LODGING_CARD_CHIP_PADDING_VERTICAL,
+  LODGING_CARD_CHIP_TEXT,
+  LODGING_CARD_HEIGHT,
+  LODGING_CARD_LOCATION_TEXT,
+  LODGING_CARD_NAME_TEXT,
+  LODGING_CARD_PRICE_TEXT,
+  lineHeightFor,
   HOME_CARD_GAP,
   HOME_CARD_WIDTH,
   HOME_CONTAINER_PADDING,
@@ -37,8 +57,28 @@ type ListingVariant = "lodging";
 
 // LodgingCard image (the image *is* the card now).
 const IMAGE_HEIGHT: Record<ListingVariant, number> = {
-  lodging: 240,
+  lodging: LODGING_CARD_HEIGHT,
 };
+
+/**
+ * The caption's three lines as LodgingCard sets them, in the script being
+ * shown. The caption is pinned to the card's bottom edge, so every point a
+ * line is short of its Arabic height moved the lines above it down: the chip
+ * and the title bar sat 4–6pt low and jumped up as the cards faded in.
+ */
+function lodgingCaptionBoxes(arabic: boolean) {
+  return {
+    chip:
+      LODGING_CARD_CHIP_PADDING_VERTICAL * 2 +
+      lineHeightFor(LODGING_CARD_CHIP_TEXT, arabic),
+    name: lineHeightFor(LODGING_CARD_NAME_TEXT, arabic),
+    // The meta row is as tall as the taller of its two lines.
+    meta: Math.max(
+      lineHeightFor(LODGING_CARD_LOCATION_TEXT, arabic),
+      lineHeightFor(LODGING_CARD_PRICE_TEXT, arabic)
+    ),
+  };
+}
 
 interface SkeletonListingCardProps {
   variant: ListingVariant;
@@ -53,6 +93,8 @@ export function SkeletonListingCard({
   index = 0,
 }: SkeletonListingCardProps) {
   const seed = index * 3;
+  // In this app a right-to-left layout is always the Arabic one.
+  const boxes = lodgingCaptionBoxes(isRTL);
 
   return (
     <View style={styles.listingCard}>
@@ -68,18 +110,18 @@ export function SkeletonListingCard({
         <Skeleton
           radius={999}
           phase={sweepPhase(seed + 1)}
-          style={styles.listingCaptionChip}
+          style={[styles.listingCaptionChip, { height: boxes.chip }]}
         />
         <SkeletonLine
           width="62%"
-          box={28}
+          box={boxes.name}
           isRTL={isRTL}
           phase={sweepPhase(seed + 2)}
           style={[styles.captionLine, styles.gapTop8]}
         />
         <SkeletonLine
           width="45%"
-          box={17}
+          box={boxes.meta}
           isRTL={isRTL}
           phase={sweepPhase(seed + 3)}
           style={[styles.captionLine, styles.gapTop6]}
@@ -101,6 +143,9 @@ export function SkeletonList({
   isRTL = false,
   count = 3,
 }: SkeletonListProps) {
+  const stalled = useStalledConnection();
+  if (stalled) return <StalledNotice />;
+
   return (
     <View style={styles.listContent}>
       {Array.from({ length: count }).map((_, index) => (
@@ -127,19 +172,24 @@ function SkeletonSectionHeader({
 }) {
   // A column, not a row: the eyebrow stacks over the title. SkeletonLine
   // aligns its own bar, so the block needs no RTL variant of its own.
+  //
+  // The boxes are the line heights the Home heads are set in, raised for
+  // Arabic the way the heads themselves are (an RTL layout is always the
+  // Arabic one here). They used to be 12 and 26 — short of the real lines even
+  // in English, and ~30pt short in Arabic, so the page jumped as data landed.
   return (
     <View style={styles.sectionHeader}>
       {eyebrow && (
         <SkeletonLine
           width={110}
-          box={12}
+          box={lineHeightFor(HOME_SECTION_EYEBROW, isRTL)}
           isRTL={isRTL}
           phase={sweepPhase(seed)}
         />
       )}
       <SkeletonLine
         width={210}
-        box={26}
+        box={lineHeightFor(HOME_SECTION_TITLE, isRTL)}
         isRTL={isRTL}
         phase={sweepPhase(seed + 1)}
       />
@@ -169,19 +219,25 @@ function SkeletonDestinationGrid({
 
 /**
  * The home screen below its search bar: the kind chips, the featured rail, the
- * stay banner, then the "more" grid. `DestinationGridCard` alternates a tall
- * card in on every third position, which is why the heights below are uneven.
+ * stay banner, then the "more" grid. The grid's first row is a short card
+ * beside a tall one — see `isTallGridCard` on the Home screen — which is why
+ * the heights below are uneven.
  */
 export function SkeletonHomeSections({ isRTL = false }: { isRTL?: boolean }) {
+  const stalled = useStalledConnection();
+  if (stalled) return <StalledNotice />;
+
   return (
     <View>
-      {/* Kind chips — "All" plus whichever kinds the data holds. */}
+      {/* Kind chips — "All" plus whichever kinds the data holds. As tall as
+          a FilterChip in the language being shown: the label's line height is
+          raised in Arabic, and the pills used to stay at the English 36pt. */}
       <View style={[styles.chipRow, isRTL && styles.rowReverse]}>
         {[56, 72, 64, 68].map((width, index) => (
           <SkeletonPill
             key={index}
             width={width}
-            height={36}
+            height={chipHeight(isRTL)}
             phase={sweepPhase(index)}
           />
         ))}
@@ -206,12 +262,82 @@ export function SkeletonHomeSections({ isRTL = false }: { isRTL?: boolean }) {
         <Skeleton radius={24} phase={sweepPhase(8)} style={styles.cardFill} />
       </View>
 
-      {/* More destinations — tall card at index % 3 === 1. */}
+      {/* More destinations — the first row of the two columns. */}
       <SkeletonSectionHeader seed={9} isRTL={isRTL} />
-      <SkeletonDestinationGrid heights={[210, 260]} seed={11} isRTL={isRTL} />
+      <SkeletonDestinationGrid
+        heights={[HOME_GRID_CARD_HEIGHT, HOME_GRID_CARD_TALL_HEIGHT]}
+        seed={11}
+        isRTL={isRTL}
+      />
     </View>
   );
 }
+
+/** How long a placeholder may shimmer with the connection down before it says so. */
+const STALLED_AFTER_MS = 6000;
+
+/**
+ * True once this placeholder has been up for `STALLED_AFTER_MS` while the
+ * connection to the backend is down.
+ *
+ * A skeleton promises "a moment". Offline — flight mode, a dead zone on the
+ * road between cities — the shimmer used to run for as long as anyone
+ * watched, with nothing to say it never would finish. The clock starts when
+ * the skeleton mounts, which is when the loading started, and the answer
+ * follows the connection: once it is back the shimmer returns until the data
+ * lands, and Convex resubscribes by itself, so there is nothing to retry.
+ */
+function useStalledConnection(): boolean {
+  const { isWebSocketConnected } = useConvexConnectionState();
+  const [waited, setWaited] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setWaited(true), STALLED_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  return waited && !isWebSocketConnected;
+}
+
+/**
+ * Stands in for a skeleton that has been waiting on a connection that is not
+ * there. Centred, so it reads the same in either language; TalkBack announces
+ * it when it appears (the live region is Android's alone).
+ */
+function StalledNotice() {
+  const noticeStyles = useThemedStyles(makeNoticeStyles);
+  const { t } = useLanguage();
+  return (
+    <View style={noticeStyles.notice} accessibilityLiveRegion="polite">
+      <Feather name="wifi-off" size={28} color={colors.onSurface.muted} />
+      <Text style={noticeStyles.title}>{t("loadStalledTitle")}</Text>
+      <Text style={noticeStyles.message}>{t("loadStalledMessage")}</Text>
+    </View>
+  );
+}
+
+const makeNoticeStyles = (fonts: AppFonts) =>
+  StyleSheet.create({
+    notice: {
+      alignItems: "center",
+      paddingHorizontal: 32,
+      paddingTop: 48,
+      paddingBottom: 24,
+      gap: 8,
+    },
+    title: {
+      fontFamily: fonts.semibold,
+      fontSize: 17,
+      color: colors.ink,
+      textAlign: "center",
+      marginTop: 4,
+    },
+    message: {
+      fontFamily: fonts.regular,
+      fontSize: 14,
+      lineHeight: 20,
+      color: colors.onSurface.variant,
+      textAlign: "center",
+    },
+  });
 
 /**
  * Stands in for the owner's own listings and services (`business/my-listings`,
@@ -327,9 +453,9 @@ const styles = StyleSheet.create({
   listingCaptionRTL: {
     alignItems: "flex-end",
   },
+  // Its height comes from `lodgingCaptionBoxes`, per language.
   listingCaptionChip: {
     width: 64,
-    height: 22,
   },
   // The chip sizes to itself, so the two lines under it have to be stretched
   // back to full width or their percentage widths resolve against nothing.
@@ -354,14 +480,14 @@ const styles = StyleSheet.create({
   // The chip rail, at the gutter and stride the real FilterChip row uses.
   chipRow: {
     flexDirection: "row",
-    gap: 8,
+    gap: CHIP_GAP,
     paddingHorizontal: HOME_CONTAINER_PADDING,
-    marginTop: 18,
+    marginTop: HOME_CHIP_ROW_MARGIN_TOP,
   },
   sectionHeader: {
     paddingHorizontal: HOME_CONTAINER_PADDING,
-    marginTop: 24,
-    marginBottom: 14,
+    marginTop: HOME_SECTION_MARGIN_TOP,
+    marginBottom: HOME_SECTION_MARGIN_BOTTOM,
   },
   rail: {
     flexDirection: "row",
@@ -415,8 +541,10 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
   },
-  // The home screen flips these three rows in Arabic rather than relying on
-  // I18nManager, which the app deliberately leaves off.
+  // In Arabic these three rows start at the right edge, as the real ones do:
+  // the chips and the rail are inverted FlatLists there, and the grid's first
+  // column is the right-hand one. (The app leaves I18nManager off, so nothing
+  // mirrors by itself.)
   rowReverse: {
     flexDirection: "row-reverse",
   },

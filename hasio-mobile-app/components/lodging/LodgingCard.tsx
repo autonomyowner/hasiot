@@ -1,23 +1,37 @@
 import React, { useState } from "react";
-import { View, Text, Pressable, StyleSheet } from "react-native";
+import { View, Text, Pressable, StyleSheet, type TextLayoutEvent } from "react-native";
 import { Image } from "expo-image";
 import type { Lodging, Language } from "@/types";
 import { Feather } from "@expo/vector-icons";
 import { getLocalizedText, useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { colors, type AppFonts } from "@/constants/colors";
+import {
+  LODGING_CARD_CHIP_PADDING_VERTICAL,
+  LODGING_CARD_CHIP_TEXT,
+  LODGING_CARD_HEIGHT,
+  LODGING_CARD_LOCATION_TEXT,
+  LODGING_CARD_NAME_TEXT,
+  LODGING_CARD_PRICE_TEXT,
+} from "@/constants/layout";
 import { CaptionScrim, ImageScrim } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { appAlert } from "@/stores/dialogStore";
 import { useToggleFavorite, useFavoriteIds } from "@/hooks/useConvexData";
 import { ReportSheet } from "@/components/ReportSheet";
 import { PressableScale } from "@/components/ui";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 interface LodgingCardProps {
   lodging: Lodging;
   language: Language;
   isRTL: boolean;
-  onPress?: () => void;
+  /**
+   * Handed the card's own stay, so a list can pass one stable callback for
+   * every row. A fresh closure per row is a new prop on every render, and the
+   * card could never skip one.
+   */
+  onPress?: (lodging: Lodging) => void;
   perNightText: string;
   /**
    * Overrides the type chip. The card is shaped for stays, but Favorites
@@ -29,7 +43,22 @@ interface LodgingCardProps {
   showPrice?: boolean;
 }
 
-export function LodgingCard({
+// The heart and the "⋯" are 36pt discs 8pt apart. Four points of slop all
+// round make each a 44pt target, and the two targets meet in the middle of the
+// gap instead of overlapping: they used to be 34pt with 10pt of slop each, so
+// they overlapped by 12pt, and a tap aimed at "⋯" near the heart saved the
+// place instead — the heart is drawn later, so it won the overlap.
+const ICON_BUTTON = 36;
+const ICON_INSET = 12;
+const ICON_GAP = 8;
+const ICON_HIT_SLOP = { top: 4, bottom: 4, left: 4, right: 4 } as const;
+
+/**
+ * Memoised: a list re-renders on every keystroke and every filter change, and
+ * with a stable `onPress` a card whose stay has not changed now sits those out.
+ * It still re-renders when its heart does — that comes from its own hook.
+ */
+export const LodgingCard = React.memo(function LodgingCard({
   lodging,
   language,
   isRTL,
@@ -39,11 +68,26 @@ export function LodgingCard({
   showPrice = true,
 }: LodgingCardProps) {
   const styles = useThemedStyles(makeStyles);
-  const [reportOpen, setReportOpen] = useState(false);
   const { t } = useLanguage();
   const { format } = useCurrency();
   const isFavorite = useFavoriteIds().has(lodging.id);
   const toggleFavoriteFor = useToggleFavorite();
+
+  // The report sheet — its own mutations, auth subscription and bottom sheet —
+  // mounts on the first "⋯" tap rather than with the card, and then stays, so
+  // its close animation and any later opening are instant. A Stay tab of a
+  // dozen cards used to carry a dozen closed report sheets.
+  const [reportMounted, setReportMounted] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const openReport = () => {
+    setReportMounted(true);
+    setReportOpen(true);
+  };
+
+  // Whether the name took its second line; see the caption scrim below.
+  const [nameWraps, setNameWraps] = useState(false);
+  const handleNameLayout = (event: TextLayoutEvent) =>
+    setNameWraps(event.nativeEvent.lines.length > 1);
 
   // The heart flips at once either way — on the device for a guest, and as an
   // optimistic change for an account, which Convex rolls back if the server
@@ -62,9 +106,26 @@ export function LodgingCard({
   const typeLabel = badge ?? t(`cat_${lodging.type}` as const);
   // The real nightly rate wins over the "$$$" band a host typed: it is the
   // number the quote is built from, and it is the only one worth converting.
-  // `priceRange` is free-text display copy, so it is shown as-is or not at all.
+  // `priceRange` is free-text display copy, so it is shown as-is — and without
+  // "per night", because a band is not a nightly price. With neither there is
+  // no price at all, where the card used to print a bare " per night".
+  const hasRate = lodging.pricePerNight != null;
   const priceText =
     lodging.pricePerNight != null ? format(lodging.pricePerNight) : lodging.priceRange;
+  const showPriceLine = showPrice && !!priceText;
+  // An unreviewed place shows no rating rather than "★ 0.0": it is not a bad
+  // place, only a new one.
+  const rated = lodging.rating > 0;
+
+  const accessibilityLabel = [
+    name,
+    typeLabel,
+    city,
+    showPriceLine ? (hasRate ? `${priceText} ${perNightText}` : priceText) : "",
+    rated ? `${t("rating")} ${lodging.rating.toFixed(1)}` : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     // Shadow lives on a wrapper that doesn't clip; iOS drops the shadow if the
@@ -72,13 +133,9 @@ export function LodgingCard({
     <View style={styles.shadowWrap}>
       <PressableScale
         style={styles.card}
-        onPress={onPress}
+        onPress={() => onPress?.(lodging)}
         accessibilityRole="button"
-        accessibilityLabel={
-          showPrice
-            ? `${name}, ${typeLabel}, ${city}, ${priceText} ${perNightText}`
-            : `${name}, ${typeLabel}, ${city}`
-        }
+        accessibilityLabel={accessibilityLabel}
       >
         <Image
           source={lodging.images?.[0] ? { uri: lodging.images[0] } : undefined}
@@ -88,32 +145,44 @@ export function LodgingCard({
         />
         {/* Sheen, then the weighted bottom the caption reads against. Both
             sit above the photo and below every badge, so the overlays keep
-            their own contrast. */}
+            their own contrast. The scrim reaches further up once the name
+            wraps, or its first line would sit in the ramp's weak half. */}
         <ImageScrim />
-        <CaptionScrim />
+        <CaptionScrim tall={nameWraps} />
 
-        {/* Rating Badge */}
-        <View style={[styles.ratingBadge, isRTL && styles.ratingBadgeRTL]}>
-          <Feather name="star" size={12} color={colors.warm} />
-          <Text style={styles.ratingText}>{lodging.rating.toFixed(1)}</Text>
-        </View>
+        {rated && (
+          <View style={[styles.ratingBadge, isRTL && styles.ratingBadgeRTL]}>
+            <Feather name="star" size={12} color={colors.warm} />
+            <Text style={styles.ratingText}>{lodging.rating.toFixed(1)}</Text>
+          </View>
+        )}
 
         {/* More actions */}
         <Pressable
-          style={[styles.moreButton, isRTL && styles.moreButtonRTL]}
-          onPress={() => setReportOpen(true)}
-          hitSlop={10}
+          style={({ pressed }) => [
+            styles.iconButton,
+            styles.moreButton,
+            isRTL && styles.moreButtonRTL,
+            pressed && styles.iconPressed,
+          ]}
+          onPress={openReport}
+          hitSlop={ICON_HIT_SLOP}
           accessibilityRole="button"
           accessibilityLabel={t("reportTitle")}
         >
-          <Text style={styles.moreText}>⋯</Text>
+          <Feather name="more-horizontal" size={18} color={colors.ink} />
         </Pressable>
 
         {/* Favorite Button */}
         <Pressable
-          style={[styles.favoriteButton, isRTL && styles.favoriteButtonRTL]}
+          style={({ pressed }) => [
+            styles.iconButton,
+            styles.favoriteButton,
+            isRTL && styles.favoriteButtonRTL,
+            pressed && styles.iconPressed,
+          ]}
           onPress={toggleFavorite}
-          hitSlop={10}
+          hitSlop={ICON_HIT_SLOP}
           accessibilityRole="button"
           accessibilityState={{ selected: isFavorite }}
           accessibilityLabel={
@@ -133,9 +202,12 @@ export function LodgingCard({
           <View style={styles.typeChip}>
             <Text style={styles.typeText}>{typeLabel}</Text>
           </View>
+          {/* Two lines: at one, most hotel names in the province lost their
+              second half to an ellipsis. */}
           <Text
             style={[styles.name, isRTL && styles.textRTL]}
-            numberOfLines={1}
+            numberOfLines={2}
+            onTextLayout={handleNameLayout}
           >
             {name}
           </Text>
@@ -149,25 +221,32 @@ export function LodgingCard({
                 {city}
               </Text>
             </View>
-            {showPrice && (
-              <Text style={styles.price}>
-                {priceText}{" "}
-                <Text style={styles.priceUnit}>{perNightText}</Text>
+            {showPriceLine && (
+              <Text style={styles.price} numberOfLines={1}>
+                {priceText}
+                {hasRate ? (
+                  <Text style={styles.priceUnit}>{` ${perNightText}`}</Text>
+                ) : null}
               </Text>
             )}
           </View>
         </View>
       </PressableScale>
 
-      <ReportSheet
-        visible={reportOpen}
-        onClose={() => setReportOpen(false)}
-        targetType="listing"
-        targetId={lodging.id}
-      />
+      {reportMounted && (
+        <ReportSheet
+          visible={reportOpen}
+          onClose={() => setReportOpen(false)}
+          targetType="listing"
+          targetId={lodging.id}
+          // The detail sheet's report offers "Block this provider" for a
+          // host's listing; the card's now does the same.
+          ownerId={lodging.owner_id ? (lodging.owner_id as Id<"users">) : null}
+        />
+      )}
     </View>
   );
-}
+});
 
 // White on the scrim, at the three weights the caption uses. Kept as
 // constants because the map-pin icon needs the same value as the label beside
@@ -187,7 +266,7 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     borderRadius: 24,
   },
   card: {
-    height: 240,
+    height: LODGING_CARD_HEIGHT,
     borderRadius: 24,
     overflow: "hidden",
     backgroundColor: colors.sand,
@@ -217,41 +296,32 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 12,
     fontFamily: fonts.semibold,
   },
-  favoriteButton: {
+  iconButton: {
     position: "absolute",
-    top: 12,
-    right: 12,
+    top: ICON_INSET,
+    width: ICON_BUTTON,
+    height: ICON_BUTTON,
+    borderRadius: ICON_BUTTON / 2,
     backgroundColor: "rgba(255, 255, 255, 0.92)",
-    width: 34,
-    height: 34,
-    borderRadius: 17,
     alignItems: "center",
     justifyContent: "center",
+  },
+  iconPressed: {
+    opacity: 0.7,
+  },
+  favoriteButton: {
+    right: ICON_INSET,
   },
   favoriteButtonRTL: {
     right: undefined,
-    left: 12,
+    left: ICON_INSET,
   },
   moreButton: {
-    position: "absolute",
-    top: 12,
-    right: 54,
-    backgroundColor: "rgba(255, 255, 255, 0.92)",
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
+    right: ICON_INSET + ICON_BUTTON + ICON_GAP,
   },
   moreButtonRTL: {
     right: undefined,
-    left: 54,
-  },
-  moreText: {
-    fontSize: 18,
-    color: colors.ink,
-    fontFamily: fonts.bold,
-    lineHeight: 18,
+    left: ICON_INSET + ICON_BUTTON + ICON_GAP,
   },
   // `alignItems` sizes the type chip to its label; everything below it is
   // stretched back to full width so the meta row can push the price out to the
@@ -275,13 +345,13 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   typeChip: {
     backgroundColor: colors.primary.DEFAULT,
     paddingHorizontal: 9,
-    paddingVertical: 4,
+    paddingVertical: LODGING_CARD_CHIP_PADDING_VERTICAL,
     borderRadius: 999,
   },
   typeText: {
     color: colors.ink,
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: LODGING_CARD_CHIP_TEXT.fontSize,
+    lineHeight: LODGING_CARD_CHIP_TEXT.lineHeight,
     fontFamily: fonts.semibold,
   },
   // The serif at 20px is the display face the rest of the app uses for
@@ -291,8 +361,8 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   name: {
     alignSelf: "stretch",
     marginTop: 8,
-    fontSize: 20,
-    lineHeight: 28,
+    fontSize: LODGING_CARD_NAME_TEXT.fontSize,
+    lineHeight: LODGING_CARD_NAME_TEXT.lineHeight,
     fontFamily: fonts.serif,
     color: CAPTION,
     letterSpacing: -0.2,
@@ -316,14 +386,14 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   location: {
     flexShrink: 1,
-    fontSize: 12.5,
-    lineHeight: 17,
+    fontSize: LODGING_CARD_LOCATION_TEXT.fontSize,
+    lineHeight: LODGING_CARD_LOCATION_TEXT.lineHeight,
     fontFamily: fonts.regular,
     color: CAPTION_MUTED,
   },
   price: {
-    fontSize: 15,
-    lineHeight: 17,
+    fontSize: LODGING_CARD_PRICE_TEXT.fontSize,
+    lineHeight: LODGING_CARD_PRICE_TEXT.lineHeight,
     fontFamily: fonts.bold,
     color: CAPTION,
   },
