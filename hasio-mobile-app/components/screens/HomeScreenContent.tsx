@@ -23,7 +23,7 @@ import Animated, {
 import { Feather } from "@expo/vector-icons";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useCities, useHomeData } from "@/hooks/useConvexData";
+import { useHomeData } from "@/hooks/useConvexData";
 import {
   SearchBar,
   FilterChip,
@@ -115,7 +115,21 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
 
   // Get data from Convex with fallback to mock data
   const { lodgings, destinations: allDestinations, isLoading } = useHomeData();
-  const { cities } = useCities();
+
+  // The cities the filter sheet offers, counted from the rows this screen
+  // shows. They used to come from `getCities`, which also counts restaurants —
+  // listed nowhere on Home — so a count could be wrong, and a city whose only
+  // listings were restaurants was offered and then filtered to nothing.
+  const cities = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const item of [...lodgings, ...allDestinations]) {
+      const key = canonicalCity(item.city);
+      totals.set(key, (totals.get(key) ?? 0) + 1);
+    }
+    return Array.from(totals, ([city, count]) => ({ city, count })).sort(
+      (a, b) => b.count - a.count || a.city.localeCompare(b.city)
+    );
+  }, [lodgings, allDestinations]);
 
   const [filters, setFilters] = useState<HomeFilters>(EMPTY_FILTERS);
   const [filterOpen, setFilterOpen] = useState(false);

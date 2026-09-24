@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   PanResponder,
   StyleSheet,
   Text,
   View,
+  type AccessibilityActionEvent,
   type LayoutChangeEvent,
 } from "react-native";
 import Animated, {
@@ -22,14 +23,20 @@ interface RangeSliderProps {
   lower: number;
   upper: number;
   /**
-   * Fires when a thumb is released, not while it moves.
+   * Fires when a drag ends or a screen reader nudges a thumb — not while a
+   * thumb moves, and not at all for a touch that changed nothing.
    *
    * Dragging is a continuous gesture and the filter it feeds re-runs a whole
    * screen's worth of list building; committing per frame meant every frame
    * waited on that work, which is what made this feel stuck. The labels still
-   * count up during the drag — see `display` below.
+   * count up during the drag — see `dragDisplay` below.
    */
   onChange: (lower: number, upper: number) => void;
+  /**
+   * True while a finger is on the slider, false once it lets go. A scrolling
+   * parent uses it to hold still — see the note on `onPanResponderTerminate`.
+   */
+  onSlidingChange?: (sliding: boolean) => void;
   /** Renders a value as money, in whichever currency the reader picked. */
   formatValue: (value: number) => string;
   isRTL?: boolean;
@@ -39,8 +46,23 @@ interface RangeSliderProps {
 
 const THUMB = 28;
 const TRACK_HEIGHT = 4;
+// The whole band takes touches, not only the thumbs: the 28pt thumbs were the
+// only targets, and at 28pt they were easy to miss.
+const BAND = THUMB + 16;
+// A touch this close to a thumb's centre takes hold of that thumb. Anywhere
+// else on the band, the nearer thumb comes to the touch.
+const GRAB_RADIUS = BAND / 2;
 /** How long a released thumb takes to settle onto its snapped value. */
 const SETTLE_MS = 120;
+
+const ADJUST_ACTIONS = [{ name: "increment" }, { name: "decrement" }];
+
+type Thumb = "lower" | "upper";
+
+/** `value` on the step grid that starts at `min`, and inside the range. */
+function snapToStep(value: number, min: number, max: number, step: number) {
+  return Math.min(max, Math.max(min, min + Math.round((value - min) / step) * step));
+}
 
 /**
  * Two-thumb budget slider.
@@ -55,7 +77,15 @@ const SETTLE_MS = 120;
  * move event — a snap to the step, a `setState`, and the parent's whole filter
  * pipeline — and the thumb could only ever land on one of thirteen positions.
  * Now the motion is continuous, the labels re-render only when the snapped
- * number actually changes, and the filter is told once, on release.
+ * number actually changes, and the filter is told once, when the finger lifts.
+ *
+ * One responder covers the whole band rather than one per thumb. That is what
+ * makes three things possible that two thumb-sized targets could not do: a
+ * touch on the bare track moves the nearer thumb there; the band is a 44pt
+ * target all the way along; and when the two thumbs overlap — close prices at
+ * the top of a wide range — the first move decides which one the finger meant,
+ * where before the upper thumb, drawn on top, took every such touch and the
+ * lower one could not be pulled back out from under it.
  */
 export function RangeSlider({
   min,
@@ -64,6 +94,7 @@ export function RangeSlider({
   lower,
   upper,
   onChange,
+  onSlidingChange,
   formatValue,
   isRTL = false,
   minLabel,
@@ -74,105 +105,228 @@ export function RangeSlider({
 
   const span = Math.max(max - min, 1);
   const usable = Math.max(width - THUMB, 1);
+  // A range the data has since outgrown — a budget set before the dearest stay
+  // was delisted — is drawn at the nearest end rather than off the track.
+  const low = Math.min(Math.max(lower, min), max);
+  const high = Math.min(Math.max(upper, min), max);
 
-  // Where the thumbs actually are, in value space, on the UI thread.
-  const lowerValue = useSharedValue(lower);
-  const upperValue = useSharedValue(upper);
+  // Where the thumbs are drawn, in value space, on the UI thread.
+  const lowerValue = useSharedValue(low);
+  const upperValue = useSharedValue(high);
 
-  // What the two captions read. Snapped, so this changes a handful of times
-  // across a drag rather than once per frame.
-  const [display, setDisplay] = useState({ lower, upper });
+  // What the captions read while a finger is down: the snapped values, so it
+  // changes a handful of times across a drag rather than once per frame. Null
+  // the rest of the time, when the props are the truth.
+  const [dragDisplay, setDragDisplay] = useState<{ lower: number; upper: number } | null>(
+    null
+  );
+  const shown = dragDisplay ?? { lower: low, upper: high };
 
-  // Everything a memoised PanResponder must not close over: it would keep
-  // whichever copy existed when the responder was built. `onChange` matters
-  // most — in the filter sheet it spreads the whole filter object, so a stale
-  // one would revert a city picked after this mounted.
-  const live = useRef({ lower, upper });
-  const dragStart = useRef({ lower, upper });
-  const geometry = useRef({ usable, span, min, max, step, isRTL });
-  geometry.current = { usable, span, min, max, step, isRTL };
-  const onChangeRef = useRef(onChange);
-  onChangeRef.current = onChange;
+  // Where the gesture has moved the thumbs to, in value space.
+  const live = useRef({ lower: low, upper: high });
+  // The drag in progress: which thumb, and where both started. `thumb` is null
+  // while it is still undecided — see the overlap case in the grant.
+  const gesture = useRef<{ thumb: Thumb | null; lower: number; upper: number } | null>(null);
 
-  const snap = useCallback((value: number) => {
-    const g = geometry.current;
-    return Math.min(g.max, Math.max(g.min, Math.round(value / g.step) * g.step));
-  }, []);
+  // Everything the responder reads. It is built once — a responder rebuilt
+  // mid-drag drops the drag — so it cannot close over any one render's values:
+  // `onChange` above all, which in the filter sheet spreads the whole filter
+  // object, where a stale copy would revert a city picked after this mounted.
+  // Refreshed after every render.
+  const latest = useRef({
+    usable,
+    span,
+    min,
+    max,
+    step,
+    isRTL,
+    lower: low,
+    upper: high,
+    onChange,
+    onSlidingChange,
+  });
+  useEffect(() => {
+    latest.current = {
+      usable,
+      span,
+      min,
+      max,
+      step,
+      isRTL,
+      lower: low,
+      upper: high,
+      onChange,
+      onSlidingChange,
+    };
+  });
 
-  // Someone else changed the range — Clear, or a fresh set of bounds. Follow it
-  // rather than keeping whatever the last drag left behind.
+  // Someone else moved the range — Clear, a screen-reader nudge, new bounds.
+  // Follow it rather than keeping whatever the last drag left behind.
   //
   // The guard is what keeps this from firing on our own release: committing
   // sends these exact numbers up to the parent and straight back down, and
   // syncing on that would cancel the settle animation a frame after it started.
   useEffect(() => {
-    if (live.current.lower === lower && live.current.upper === upper) return;
-    live.current = { lower, upper };
-    lowerValue.value = lower;
-    upperValue.value = upper;
-    setDisplay({ lower, upper });
-  }, [lower, upper, lowerValue, upperValue]);
+    if (live.current.lower === low && live.current.upper === high) return;
+    live.current = { lower: low, upper: high };
+    lowerValue.value = low;
+    upperValue.value = high;
+  }, [low, high, lowerValue, upperValue]);
 
-  const responders = useMemo(() => {
-    const build = (thumb: "lower" | "upper") =>
-      PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onMoveShouldSetPanResponder: () => true,
-        onPanResponderGrant: () => {
-          dragStart.current = { ...live.current };
-        },
-        onPanResponderMove: (_event, gesture) => {
-          const g = geometry.current;
-          if (g.usable <= 0) return;
+  // A slider unmounted mid-drag — the sheet closed under the finger — never
+  // hears the release, so it says so here instead of leaving its parent frozen.
+  useEffect(
+    () => () => {
+      if (gesture.current) latest.current.onSlidingChange?.(false);
+    },
+    []
+  );
 
-          // In Arabic the track runs the other way, so dragging right has to
-          // lower the value rather than raise it.
-          const delta = ((g.isRTL ? -gesture.dx : gesture.dx) / g.usable) * g.span;
+  const responder = useMemo(() => {
+    const snap = (value: number) => {
+      const g = latest.current;
+      return snapToStep(value, g.min, g.max, g.step);
+    };
 
-          if (thumb === "lower") {
-            const next = Math.min(
-              Math.max(dragStart.current.lower + delta, g.min),
-              live.current.upper - g.step
-            );
-            live.current.lower = next;
-            lowerValue.value = next;
-          } else {
-            const next = Math.max(
-              Math.min(dragStart.current.upper + delta, g.max),
-              live.current.lower + g.step
-            );
-            live.current.upper = next;
-            upperValue.value = next;
-          }
+    // The centre of a thumb holding `value`, in the band's own coordinates.
+    const centreOf = (value: number) => {
+      const g = latest.current;
+      const along = ((value - g.min) / g.span) * g.usable;
+      return THUMB / 2 + (g.isRTL ? g.usable - along : along);
+    };
 
-          // Only when the number a reader would see has actually changed.
-          const shown = { lower: snap(live.current.lower), upper: snap(live.current.upper) };
-          setDisplay((current) =>
-            current.lower === shown.lower && current.upper === shown.upper
-              ? current
-              : shown
-          );
-        },
-        onPanResponderRelease: () => {
-          const settled = {
-            lower: snap(live.current.lower),
-            upper: snap(live.current.upper),
-          };
-          live.current = settled;
-          lowerValue.value = withTiming(settled.lower, { duration: SETTLE_MS });
-          upperValue.value = withTiming(settled.upper, { duration: SETTLE_MS });
-          setDisplay(settled);
-          onChangeRef.current(settled.lower, settled.upper);
-        },
-      });
+    // The value under a point on the band.
+    const valueAt = (x: number) => {
+      const g = latest.current;
+      const along = Math.min(Math.max(x - THUMB / 2, 0), g.usable);
+      return g.min + ((g.isRTL ? g.usable - along : along) / g.usable) * g.span;
+    };
 
-    return { lower: build("lower"), upper: build("upper") };
-    // Built once: every moving part is read through a ref, and rebuilding
-    // mid-gesture would drop the drag.
-  }, [lowerValue, upperValue, snap]);
+    // Move one thumb, never past the other, and update the captions only when
+    // the snapped number a reader would see has actually changed.
+    const place = (thumb: Thumb, value: number) => {
+      const g = latest.current;
+      if (thumb === "lower") {
+        const next = Math.min(Math.max(value, g.min), live.current.upper - g.step);
+        live.current.lower = next;
+        lowerValue.value = next;
+      } else {
+        const next = Math.max(Math.min(value, g.max), live.current.lower + g.step);
+        live.current.upper = next;
+        upperValue.value = next;
+      }
+      const snapped = { lower: snap(live.current.lower), upper: snap(live.current.upper) };
+      setDragDisplay((current) =>
+        current && current.lower === snapped.lower && current.upper === snapped.upper
+          ? current
+          : snapped
+      );
+    };
+
+    const finish = () => {
+      const current = gesture.current;
+      gesture.current = null;
+      // The grant was ignored (the band had not been laid out yet).
+      if (!current) return;
+      const g = latest.current;
+      const settled = { lower: snap(live.current.lower), upper: snap(live.current.upper) };
+      live.current = settled;
+      lowerValue.value = withTiming(settled.lower, { duration: SETTLE_MS });
+      upperValue.value = withTiming(settled.upper, { duration: SETTLE_MS });
+      setDragDisplay(null);
+      g.onSlidingChange?.(false);
+      // A touch that moved nothing is not a choice. Every release used to be
+      // committed, which turned the untouched full range into a set budget —
+      // and a set budget drops everything without a nightly rate, so one tap
+      // on a thumb emptied Home of every attraction.
+      if (settled.lower !== g.lower || settled.upper !== g.upper) {
+        g.onChange(settled.lower, settled.upper);
+      }
+    };
+
+    // Built once, and every handler reads the refs only when a touch arrives,
+    // never while rendering — the same shape as BottomSheet's drag handle.
+    // eslint-disable-next-line react-hooks/refs
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      // Only a touch that starts on the band: one taken over halfway through
+      // would measure its drag from wherever it began.
+      onMoveShouldSetPanResponder: () => false,
+      // The sheet's scroll view asks for the touch once the finger drifts
+      // vertically. The answer is no: the drag belongs to the slider.
+      onPanResponderTerminationRequest: () => false,
+      onPanResponderGrant: (event) => {
+        const g = latest.current;
+        if (g.usable <= 1) return;
+        const x = event.nativeEvent.locationX;
+        const nearLower = Math.abs(x - centreOf(live.current.lower)) <= GRAB_RADIUS;
+        const nearUpper = Math.abs(x - centreOf(live.current.upper)) <= GRAB_RADIUS;
+
+        let thumb: Thumb | null = null;
+        if (nearLower !== nearUpper) {
+          thumb = nearLower ? "lower" : "upper";
+        } else if (!nearLower) {
+          // The bare track: the nearer thumb comes to the finger, and a drag
+          // carries on from there.
+          const target = valueAt(x);
+          thumb =
+            Math.abs(target - live.current.lower) <= Math.abs(target - live.current.upper)
+              ? "lower"
+              : "upper";
+          place(thumb, target);
+        }
+        // Near both: the thumbs overlap under the finger. Left undecided
+        // until the first move says which one was meant.
+        gesture.current = { thumb, lower: live.current.lower, upper: live.current.upper };
+        g.onSlidingChange?.(true);
+      },
+      onPanResponderMove: (_event, state) => {
+        const current = gesture.current;
+        if (!current) return;
+        const g = latest.current;
+        // In Arabic the track runs the other way, so dragging right has to
+        // lower the value rather than raise it.
+        const delta = ((g.isRTL ? -state.dx : state.dx) / g.usable) * g.span;
+        if (current.thumb === null) {
+          if (delta === 0) return;
+          // Heading up the range can only mean the upper thumb, and down the
+          // lower: the other one could not move that way past its partner.
+          current.thumb = delta > 0 ? "upper" : "lower";
+        }
+        const start = current.thumb === "lower" ? current.lower : current.upper;
+        place(current.thumb, start + delta);
+      },
+      onPanResponderRelease: finish,
+      // Taken away regardless of the answer above: on iOS the sheet's native
+      // scroll view can still claim a drag that turns vertical. Keep what the
+      // drag had reached. With no handler here the drag was simply lost — the
+      // thumb stayed where the finger left it and the filter never heard.
+      onPanResponderTerminate: finish,
+    });
+  }, [lowerValue, upperValue]);
 
   const onLayout = (event: LayoutChangeEvent) =>
     setWidth(event.nativeEvent.layout.width);
+
+  // VoiceOver and TalkBack: swipe up or down on a thumb to move it one step,
+  // committed at once like a released drag.
+  const nudge = (thumb: Thumb, direction: 1 | -1) => {
+    const next =
+      thumb === "lower"
+        ? {
+            lower: Math.min(snapToStep(low + direction * step, min, max, step), high - step),
+            upper: high,
+          }
+        : {
+            lower: low,
+            upper: Math.max(snapToStep(high + direction * step, min, max, step), low + step),
+          };
+    if (next.lower !== low || next.upper !== high) onChange(next.lower, next.upper);
+  };
+  const actionFor = (thumb: Thumb) => (event: AccessibilityActionEvent) => {
+    if (event.nativeEvent.actionName === "increment") nudge(thumb, 1);
+    else if (event.nativeEvent.actionName === "decrement") nudge(thumb, -1);
+  };
 
   // Transforms, not `left`: a transform is composited on the UI thread without
   // asking the layout system for anything.
@@ -187,42 +341,53 @@ export function RangeSlider({
   });
 
   const fillStyle = useAnimatedStyle(() => {
-    const low = ((lowerValue.value - min) / span) * usable;
-    const high = ((upperValue.value - min) / span) * usable;
+    const from = ((lowerValue.value - min) / span) * usable;
+    const to = ((upperValue.value - min) / span) * usable;
     return {
-      transform: [{ translateX: (isRTL ? usable - high : low) + THUMB / 2 }],
-      width: Math.max(high - low, 2),
+      transform: [{ translateX: (isRTL ? usable - to : from) + THUMB / 2 }],
+      width: Math.max(to - from, 2),
     };
   });
 
   return (
     <View>
+      {/* Each caption hugs its own outer edge, whichever side that is. */}
       <View style={[styles.valueRow, isRTL && styles.rowRTL]}>
-        <View style={styles.valueBlock}>
+        <View style={[styles.valueBlock, isRTL && styles.valueBlockEnd]}>
           <Text style={styles.valueCaption}>{minLabel}</Text>
-          <Text style={styles.value}>{formatValue(display.lower)}</Text>
+          <Text style={styles.value}>{formatValue(shown.lower)}</Text>
         </View>
-        <View style={[styles.valueBlock, styles.valueBlockEnd]}>
+        <View style={[styles.valueBlock, !isRTL && styles.valueBlockEnd]}>
           <Text style={styles.valueCaption}>{maxLabel}</Text>
-          <Text style={styles.value}>{formatValue(display.upper)}</Text>
+          <Text style={styles.value}>{formatValue(shown.upper)}</Text>
         </View>
       </View>
 
-      <View style={styles.trackArea} onLayout={onLayout}>
-        <View style={styles.track} />
-        <Animated.View style={[styles.fill, fillStyle]} />
+      {/* The children take no touches, so every touch lands on the band and
+          `locationX` is always measured from its edge. */}
+      <View style={styles.band} onLayout={onLayout} {...responder.panHandlers}>
+        <View style={styles.track} pointerEvents="none" />
+        <Animated.View style={[styles.fill, fillStyle]} pointerEvents="none" />
 
         <Animated.View
-          {...responders.lower.panHandlers}
+          pointerEvents="none"
           style={[styles.thumb, lowerThumbStyle]}
+          accessible
           accessibilityRole="adjustable"
-          accessibilityLabel={`${minLabel}: ${formatValue(display.lower)}`}
+          accessibilityLabel={minLabel}
+          accessibilityValue={{ min, max, now: shown.lower, text: formatValue(shown.lower) }}
+          accessibilityActions={ADJUST_ACTIONS}
+          onAccessibilityAction={actionFor("lower")}
         />
         <Animated.View
-          {...responders.upper.panHandlers}
+          pointerEvents="none"
           style={[styles.thumb, upperThumbStyle]}
+          accessible
           accessibilityRole="adjustable"
-          accessibilityLabel={`${maxLabel}: ${formatValue(display.upper)}`}
+          accessibilityLabel={maxLabel}
+          accessibilityValue={{ min, max, now: shown.upper, text: formatValue(shown.upper) }}
+          accessibilityActions={ADJUST_ACTIONS}
+          onAccessibilityAction={actionFor("upper")}
         />
       </View>
     </View>
@@ -252,9 +417,10 @@ const makeStyles = (fonts: AppFonts) =>
       color: colors.ink,
       marginTop: 2,
     },
-    // Taller than the track so the thumbs have somewhere to be grabbed.
-    trackArea: {
-      height: THUMB + 16,
+    // Taller than the track and as wide as the slider, so the thumbs have
+    // somewhere to be grabbed and the track can be tapped.
+    band: {
+      height: BAND,
       justifyContent: "center",
     },
     track: {
@@ -263,27 +429,29 @@ const makeStyles = (fonts: AppFonts) =>
       backgroundColor: colors.chip,
       marginHorizontal: THUMB / 2,
     },
-    // Lime is a fill, which is exactly what this is.
+    // The dark lime, not the fill lime: lime on the beige track is 1.16:1, so
+    // the selected span barely showed. `primary.deep` is the lime family's
+    // colour for anything drawn on a light surface.
     fill: {
       position: "absolute",
       left: 0,
       // Centred by hand: an absolute child with no vertical inset falls back to
       // the parent's alignment, which is a rule worth not depending on.
-      top: (THUMB + 16 - TRACK_HEIGHT) / 2,
+      top: (BAND - TRACK_HEIGHT) / 2,
       height: TRACK_HEIGHT,
       borderRadius: TRACK_HEIGHT / 2,
-      backgroundColor: colors.primary.DEFAULT,
+      backgroundColor: colors.primary.deep,
     },
     thumb: {
       position: "absolute",
       left: 0,
-      top: 8,
+      top: (BAND - THUMB) / 2,
       width: THUMB,
       height: THUMB,
       borderRadius: THUMB / 2,
       backgroundColor: colors.surface.DEFAULT,
       borderWidth: 2,
-      borderColor: colors.primary.DEFAULT,
+      borderColor: colors.primary.deep,
       shadowColor: colors.ink,
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.16,
