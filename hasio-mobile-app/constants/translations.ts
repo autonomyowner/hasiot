@@ -309,6 +309,10 @@ export const translations = {
     resultsFound: "results found",
     error: "Something went wrong",
     retry: "Retry",
+    discardChangesTitle: "Discard changes?",
+    discardChangesMessage: "You'll lose what you've entered on this screen.",
+    keepEditing: "Keep editing",
+    discardChanges: "Discard",
 
     // Empty States
     emptyLodgingTitle: "No lodging found",
@@ -1029,6 +1033,10 @@ export const translations = {
     resultsFound: "نتيجة",
     error: "حدث خطأ ما",
     retry: "إعادة المحاولة",
+    discardChangesTitle: "تجاهل التغييرات؟",
+    discardChangesMessage: "ستفقد ما أدخلته في هذه الشاشة.",
+    keepEditing: "متابعة التعديل",
+    discardChanges: "تجاهل",
 
     // Empty States
     emptyLodgingTitle: "لا توجد نتائج",
