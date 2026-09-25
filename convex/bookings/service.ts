@@ -416,15 +416,30 @@ export async function cancelAsTourist(
     throw new ConvexError(BOOKING_ERRORS.STAY_STARTED);
   }
 
+  // The same for a service the provider confirmed: from its start time they
+  // are at the meeting point, and it is a conversation with them (design
+  // D11). A request nobody confirmed promised nothing, so the traveller may
+  // always withdraw it — even one whose start time passed before the expiry
+  // job got to it.
+  if (
+    booking.kind === "service" &&
+    booking.status === "confirmed" &&
+    riyadhDateTimeToTimestamp(booking.date, booking.time) <= now
+  ) {
+    throw new ConvexError(SERVICE_ERRORS.SERVICE_STARTED);
+  }
+
   await ctx.db.patch(booking._id, {
     status: "cancelled",
-    cancellationReason: reason?.trim().slice(0, 500) || undefined,
+    cancellationReason: reason?.trim().slice(0, MAX_NOTES) || undefined,
     updatedAt: now,
   });
 
-  if (booking.kind === "stay") {
+  // Stays and services tell whoever was holding the day for them. A legacy
+  // slot booking never did, and its 1.0.2 host screens do not expect it.
+  if (booking.kind === "stay" || booking.kind === "service") {
     const updated = await ctx.db.get(booking._id);
-    if (updated) await notifyBookingEvent(ctx, "booking.cancelled", updated);
+    if (updated) await notifyBookingEvent(ctx, "booking.cancelled", updated, {}, now);
   }
 }
 

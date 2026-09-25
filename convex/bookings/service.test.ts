@@ -797,3 +797,75 @@ describe("one active request per service per day", () => {
     expect(await refusalOf(bookService(t, user, serviceId))).toBe(SERVICE_ERRORS.DUPLICATE);
   });
 });
+
+describe("cancelling a service booking", () => {
+  // Today at 10:00 Riyadh.
+  const START = riyadhDateTimeToTimestamp(TODAY, "10:00");
+  const MINUTE = 60_000;
+
+  async function booked(t: TestT, status: string) {
+    const user = await guest(t, { firstName: "Sara" });
+    const { ownerId, serviceId } = await offering(t, { title_en: "Oasis day tour" });
+    const bookingId = await seedServiceBooking(t, {
+      userId: user._id,
+      serviceId,
+      ownerId,
+      date: TODAY,
+      time: "10:00",
+      status,
+    });
+    return { bookingId, ownerId };
+  }
+
+  const cancel = (t: TestT, bookingId: Id<"bookings">, now: number) =>
+    t.run(async (ctx) => cancelAsTourist(ctx, (await ctx.db.get(bookingId))!, "Plans changed", now));
+
+  it("cancels a confirmed booking before it starts, and tells the provider", async () => {
+    const t = makeT();
+    const { bookingId, ownerId } = await booked(t, "confirmed");
+
+    await cancel(t, bookingId, START - MINUTE);
+
+    expect(await t.run((ctx) => ctx.db.get(bookingId))).toMatchObject({
+      status: "cancelled",
+      cancellationReason: "Plans changed",
+    });
+    const inbox = await t.run((ctx) => ctx.db.query("notifications").collect());
+    expect(inbox).toHaveLength(1);
+    expect(inbox[0]).toMatchObject({ userId: ownerId, type: "booking.cancelled" });
+    expect(inbox[0].data).toMatchObject({ bookingId, target: "provider-inbox" });
+    expect(inbox[0].body_en).toContain("Oasis day tour");
+  });
+
+  it("refuses a confirmed booking once its start time has come", async () => {
+    const t = makeT();
+    const { bookingId } = await booked(t, "confirmed");
+
+    // The provider is at the meeting point: from here it is a conversation
+    // with them, not a button (design D11).
+    for (const now of [START, START + 60 * MINUTE]) {
+      expect(await refusalOf(cancel(t, bookingId, now))).toBe(SERVICE_ERRORS.SERVICE_STARTED);
+    }
+    expect(await t.run((ctx) => ctx.db.get(bookingId))).toMatchObject({ status: "confirmed" });
+    expect(await t.run((ctx) => ctx.db.query("notifications").collect())).toHaveLength(0);
+  });
+
+  it("always lets a traveller withdraw a request nobody confirmed, even after its start time", async () => {
+    const t = makeT();
+    const { bookingId, ownerId } = await booked(t, "pending");
+
+    // Nothing was promised, so there is nothing to hold them to.
+    await cancel(t, bookingId, START + 30 * MINUTE);
+
+    expect(await t.run((ctx) => ctx.db.get(bookingId))).toMatchObject({ status: "cancelled" });
+    const inbox = await t.run((ctx) => ctx.db.query("notifications").collect());
+    expect(inbox[0]).toMatchObject({ userId: ownerId, type: "booking.cancelled" });
+  });
+
+  it("refuses a booking that is already closed", async () => {
+    const t = makeT();
+    const { bookingId } = await booked(t, "declined");
+
+    expect(await refusalOf(cancel(t, bookingId, START - MINUTE))).toBe(BOOKING_ERRORS.ALREADY_CLOSED);
+  });
+});
