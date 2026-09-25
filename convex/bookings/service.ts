@@ -3,7 +3,7 @@ import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { enforceRateLimit } from "../rateLimit";
 import { isBookableStay } from "../listings/pricing";
-import { isPublicListing } from "../listings/queries";
+import { isPublicListing, withoutSuspendedOwners } from "../listings/queries";
 import { riyadhDateTimeToTimestamp, todayRiyadhISO } from "../lib/dates";
 import { notifyBookingEvent } from "../notifications/internal";
 import {
@@ -78,6 +78,12 @@ export async function createStayForUser(
   const listing = await ctx.db.get(args.listingId);
   if (!listing) throw new ConvexError(BOOKING_ERRORS.LISTING_UNAVAILABLE);
   if (!isBookableStay(listing)) throw new ConvexError(BOOKING_ERRORS.NOT_BOOKABLE);
+  // A suspended host's places are hidden from every list, but a guest holding
+  // the id (an open sheet, a link, the old app's cache) could still book one
+  // the host can no longer honour.
+  if ((await withoutSuspendedOwners(ctx, [listing])).length === 0) {
+    throw new ConvexError(BOOKING_ERRORS.LISTING_UNAVAILABLE);
+  }
   if (listing.ownerId && listing.ownerId === user._id) {
     throw new ConvexError(BOOKING_ERRORS.OWN_LISTING);
   }
@@ -174,7 +180,11 @@ export async function createSlotForUser(
   const listing = await ctx.db.get(args.listingId);
   // Previously this checked only isActive, so a pending or rejected listing
   // could be booked by anyone who knew its id.
-  if (!listing || !isPublicListing(listing)) {
+  if (
+    !listing ||
+    !isPublicListing(listing) ||
+    (await withoutSuspendedOwners(ctx, [listing])).length === 0
+  ) {
     throw new ConvexError(BOOKING_ERRORS.LISTING_UNAVAILABLE);
   }
 

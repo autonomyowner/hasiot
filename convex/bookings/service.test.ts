@@ -25,6 +25,7 @@ import {
 } from "./service";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { TestT } from "../test.utils";
+import { api, internal } from "../_generated/api";
 
 const IN = "2026-09-10";
 const OUT = "2026-09-13";
@@ -179,6 +180,61 @@ describe("createStayForUser", () => {
     await expect(
       book(t, user, listingId, { checkIn: TODAY, checkOut: "2026-09-05" })
     ).resolves.toBeTruthy();
+  });
+});
+
+describe("a suspended host's places", () => {
+  // Suspending an account hides its listings from every list, but a guest who
+  // already had the id (an open detail sheet, a shared link, the old app's
+  // cache) could still book or be quoted. The host can no longer honour it.
+  async function suspendedHostHotel(t: TestT) {
+    const ownerId = await seedUser(t, { role: "business_owner", isApproved: true, isSuspended: true });
+    return await seedHotel(t, { ownerId });
+  }
+
+  it("cannot be booked as a stay", async () => {
+    const t = makeT();
+    const user = await guest(t);
+    const listingId = await suspendedHostHotel(t);
+
+    await expect(book(t, user, listingId)).rejects.toThrow(BOOKING_ERRORS.LISTING_UNAVAILABLE);
+  });
+
+  it("cannot be booked as a slot", async () => {
+    const t = makeT();
+    const user = await guest(t);
+    const listingId = await suspendedHostHotel(t);
+
+    await expect(
+      t.run((ctx) =>
+        createSlotForUser(ctx, user, { listingId, date: "2026-09-10", time: "19:00" }, NOW)
+      )
+    ).rejects.toThrow(BOOKING_ERRORS.LISTING_UNAVAILABLE);
+  });
+
+  it("is not quoted", async () => {
+    const t = makeT();
+    const listingId = await suspendedHostHotel(t);
+
+    const quote = await t.query(api.bookings.queries.quoteStay, {
+      listingId,
+      checkIn: "2030-01-10",
+      checkOut: "2030-01-12",
+      guests: 2,
+    });
+    expect(quote).toEqual({ ok: false, error: BOOKING_ERRORS.NOT_BOOKABLE });
+  });
+
+  it("is left out of what the AI planner may recommend", async () => {
+    const t = makeT();
+    const listingId = await suspendedHostHotel(t);
+    const visibleId = await seedHotel(t, { name_en: "Open Hotel" });
+
+    const context = await t.query(internal.travelPlanner.context.getPlannerContext, {});
+    const names = context.listings.map((l: { name_en: string }) => l.name_en);
+    expect(names).toContain("Open Hotel");
+    expect(names.filter((n: string) => n === "Test Hotel")).toHaveLength(0);
+    expect(listingId).not.toBe(visibleId);
   });
 });
 

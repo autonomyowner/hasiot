@@ -5,6 +5,7 @@ import { getAuthenticatedAppUser } from "../auth";
 import { isPlaceholderEmail } from "../lib/contact";
 import { riyadhMonthKey, todayRiyadhISO } from "../lib/dates";
 import { isBookableStay } from "../listings/pricing";
+import { withoutSuspendedOwners } from "../listings/queries";
 import {
   computeServiceQuote,
   isBookableService,
@@ -617,7 +618,12 @@ export const quoteStay = query({
   },
   handler: async (ctx, args) => {
     const listing = await ctx.db.get(args.listingId);
-    if (!listing || !isBookableStay(listing)) {
+    // A suspended host's place is not quoted, as it cannot be booked.
+    if (
+      !listing ||
+      !isBookableStay(listing) ||
+      (await withoutSuspendedOwners(ctx, [listing])).length === 0
+    ) {
       return { ok: false as const, error: BOOKING_ERRORS.NOT_BOOKABLE };
     }
 
