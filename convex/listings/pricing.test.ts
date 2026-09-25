@@ -1,7 +1,24 @@
 import { describe, expect, it } from "vitest";
+import { ConvexError } from "convex/values";
 import { isBookableStay, validatePricing, withPricingDefaults } from "./pricing";
 
 describe("validatePricing", () => {
+  it("refuses with a ConvexError, so production shows the reason instead of 'Server Error'", () => {
+    // A plain Error's text is redacted in production; the admin panel and the
+    // host's form both need to say which field is wrong.
+    const cases = [
+      { pricePerNight: 0 },
+      { pricePerNight: 450.5 },
+      { currency: "USD" },
+      { maxGuests: 0 },
+      { unitCount: 0 },
+      { checkInTime: "3pm" },
+    ];
+    for (const args of cases) {
+      expect(() => validatePricing(args)).toThrow(ConvexError);
+    }
+  });
+
   it("accepts a complete, sane set of values", () => {
     expect(() =>
       validatePricing({

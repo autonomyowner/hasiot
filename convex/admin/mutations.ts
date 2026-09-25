@@ -1,20 +1,40 @@
 import { mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { requireAdmin } from "../auth";
 import { logAdminAction, labelFor } from "./activity";
 import {
   applyBookingStatusAsAdmin,
+  approveBusinessAccountRecord,
+  approveListingRecord,
+  approveServiceRecord,
+  assignListingHostRecord,
+  createListingAsAdmin,
+  deleteListingAsAdmin,
+  deleteServiceAsAdmin,
   reinstateListingRecord,
+  reinstateServiceRecord,
+  rejectBusinessAccountRecord,
+  rejectListingRecord,
+  rejectServiceRecord,
+  removeReviewRecord,
+  setUserRoleRecord,
   suspendListingRecord,
+  suspendServiceRecord,
   suspendUserRecord,
   unsuspendUserRecord,
+  updateListingAsAdmin,
+  updateServiceAsAdmin,
 } from "./service";
+import { CLEARABLE_PRICING_ARGS, PRICING_ARGS } from "../listings/pricing";
+import { LISTING_ERRORS } from "../listings/queries";
 import type { Id } from "../_generated/dataModel";
 
 // One bulk call may not touch more documents than this. Convex transactions are
 // bounded, and a runaway "approve everything" is exactly the kind of action that
 // should happen in reviewable batches.
 const MAX_BULK = 50;
+
+const KNOWLEDGE_NOT_FOUND = "المعلومة غير موجودة. / Knowledge data not found.";
 
 // Create a new listing
 export const createListing = mutation({
@@ -37,6 +57,9 @@ export const createListing = mutation({
     email: v.optional(v.string()),
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
+    // The nightly price and stay terms the form has sent since 2449fbf. Until
+    // these were accepted every hotel save was rejected by the validator.
+    ...PRICING_ARGS,
     amenities: v.optional(v.array(v.string())),
     languages: v.optional(v.array(v.string())),
     // Convex storage URLs in display order — index 0 is the cover. Same shape
@@ -47,29 +70,11 @@ export const createListing = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const now = Date.now();
-    const id = await ctx.db.insert("listings", {
-      ...args,
-      status: "approved",
-      rating: 0,
-      reviewCount: 0,
-      isActive: args.isActive ?? true,
-      isVerified: args.isVerified ?? false,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: "listing.create",
-      targetType: "listing",
-      targetId: id,
-      summary: args.name_ar || args.name_en,
-    });
-    return id;
+    return await createListingAsAdmin(ctx, admin, args);
   },
 });
 
-// Update a listing
+// Update a listing. `null` clears a field; a field left out is not touched.
 export const updateListing = mutation({
   args: {
     id: v.id("listings"),
@@ -78,8 +83,8 @@ export const updateListing = mutation({
     name_ar: v.optional(v.string()),
     category: v.optional(v.string()),
     category_ar: v.optional(v.string()),
-    description_en: v.optional(v.string()),
-    description_ar: v.optional(v.string()),
+    description_en: v.optional(v.union(v.string(), v.null())),
+    description_ar: v.optional(v.union(v.string(), v.null())),
     address: v.optional(v.string()),
     city: v.optional(v.string()),
     region: v.optional(v.string()),
@@ -87,10 +92,11 @@ export const updateListing = mutation({
       lat: v.number(),
       lng: v.number(),
     })),
-    phone: v.optional(v.string()),
-    email: v.optional(v.string()),
-    website: v.optional(v.string()),
-    priceRange: v.optional(v.string()),
+    phone: v.optional(v.union(v.string(), v.null())),
+    email: v.optional(v.union(v.string(), v.null())),
+    website: v.optional(v.union(v.string(), v.null())),
+    priceRange: v.optional(v.union(v.string(), v.null())),
+    ...CLEARABLE_PRICING_ARGS,
     amenities: v.optional(v.array(v.string())),
     languages: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
@@ -99,24 +105,7 @@ export const updateListing = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const { id, ...updates } = args;
-    const existing = await ctx.db.get(id);
-    if (!existing) {
-      throw new Error("Listing not found");
-    }
-
-    await ctx.db.patch(id, {
-      ...updates,
-      updatedAt: Date.now(),
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: "listing.update",
-      targetType: "listing",
-      targetId: id,
-      summary: labelFor(existing),
-    });
-    return id;
+    return await updateListingAsAdmin(ctx, admin, args);
   },
 });
 
@@ -138,7 +127,7 @@ export const setListingActive = mutation({
     const admin = await requireAdmin(ctx);
     const listing = await ctx.db.get(args.id);
     if (!listing) {
-      throw new Error("Listing not found");
+      throw new ConvexError(LISTING_ERRORS.NOT_FOUND);
     }
 
     await ctx.db.patch(args.id, {
@@ -157,26 +146,12 @@ export const setListingActive = mutation({
   },
 });
 
-// Delete a listing
+// Delete a listing — refused while it has open bookings.
 export const deleteListing = mutation({
   args: { id: v.id("listings") },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    // Read before deleting so the log row can name what went, and so deleting a
-    // listing that is already gone reports it instead of silently succeeding.
-    const existing = await ctx.db.get(args.id);
-    if (!existing) {
-      throw new Error("Listing not found");
-    }
-
-    await ctx.db.delete(args.id);
-
-    await logAdminAction(ctx, admin, {
-      action: "listing.delete",
-      targetType: "listing",
-      targetId: args.id,
-      summary: labelFor(existing),
-    });
+    await deleteListingAsAdmin(ctx, admin, args.id);
     return { success: true };
   },
 });
@@ -239,7 +214,7 @@ export const updateKnowledgeData = mutation({
     const { id, ...updates } = args;
     const existing = await ctx.db.get(id);
     if (!existing) {
-      throw new Error("Knowledge data not found");
+      throw new ConvexError(KNOWLEDGE_NOT_FOUND);
     }
 
     await ctx.db.patch(id, {
@@ -264,7 +239,7 @@ export const deleteKnowledgeData = mutation({
     const admin = await requireAdmin(ctx);
     const existing = await ctx.db.get(args.id);
     if (!existing) {
-      throw new Error("Knowledge data not found");
+      throw new ConvexError(KNOWLEDGE_NOT_FOUND);
     }
 
     await ctx.db.delete(args.id);
@@ -297,6 +272,20 @@ export const updateBookingStatus = mutation({
       status: args.status,
       reason: args.cancellationReason,
     });
+    return { success: true };
+  },
+});
+
+/**
+ * Change an account's role: tourist, business_owner or service_provider.
+ * Never an admin account (the acting admin's included). Moving to business or
+ * provider leaves the account unapproved until its document is reviewed.
+ */
+export const setUserRoleAsAdmin = mutation({
+  args: { userId: v.id("users"), role: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await setUserRoleRecord(ctx, admin, args.userId, args.role);
     return { success: true };
   },
 });
@@ -344,31 +333,17 @@ export const reinstateListing = mutation({
   },
 });
 
-// Approve a pending content listing
+// Approve a pending content listing (and tell its owner)
 export const approveContent = mutation({
   args: { id: v.id("listings") },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const listing = await ctx.db.get(args.id);
-    if (!listing) throw new Error("Listing not found");
-
-    await ctx.db.patch(args.id, {
-      status: "approved",
-      rejectionReason: undefined,
-      updatedAt: Date.now(),
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: "content.approve",
-      targetType: "listing",
-      targetId: args.id,
-      summary: labelFor(listing),
-    });
+    await approveListingRecord(ctx, admin, args.id);
     return { success: true };
   },
 });
 
-// Reject a pending content listing
+// Reject a pending content listing (and tell its owner why)
 export const rejectContent = mutation({
   args: {
     id: v.id("listings"),
@@ -376,51 +351,22 @@ export const rejectContent = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const listing = await ctx.db.get(args.id);
-    if (!listing) throw new Error("Listing not found");
-
-    await ctx.db.patch(args.id, {
-      status: "rejected",
-      rejectionReason: args.reason,
-      updatedAt: Date.now(),
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: "content.reject",
-      targetType: "listing",
-      targetId: args.id,
-      summary: labelFor(listing),
-      details: args.reason,
-    });
+    await rejectListingRecord(ctx, admin, args.id, args.reason);
     return { success: true };
   },
 });
 
-// Approve a pending service
+// Approve a pending service (and tell its provider)
 export const approveService = mutation({
   args: { id: v.id("services") },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const service = await ctx.db.get(args.id);
-    if (!service) throw new Error("Service not found");
-
-    await ctx.db.patch(args.id, {
-      status: "approved",
-      rejectionReason: undefined,
-      updatedAt: Date.now(),
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: "service.approve",
-      targetType: "service",
-      targetId: args.id,
-      summary: labelFor(service),
-    });
+    await approveServiceRecord(ctx, admin, args.id);
     return { success: true };
   },
 });
 
-// Reject a pending service
+// Reject a pending service (and tell its provider why)
 export const rejectService = mutation({
   args: {
     id: v.id("services"),
@@ -428,22 +374,89 @@ export const rejectService = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const service = await ctx.db.get(args.id);
-    if (!service) throw new Error("Service not found");
+    await rejectServiceRecord(ctx, admin, args.id, args.reason);
+    return { success: true };
+  },
+});
 
-    await ctx.db.patch(args.id, {
-      status: "rejected",
-      rejectionReason: args.reason,
-      updatedAt: Date.now(),
-    });
+// === Live services (design 6 "New" 1) ===
 
-    await logAdminAction(ctx, admin, {
-      action: "service.reject",
-      targetType: "service",
-      targetId: args.id,
-      summary: labelFor(service),
-      details: args.reason,
-    });
+/**
+ * Edit a service as support: the same fields and checks as updateMyService,
+ * but the service keeps its status. `null` clears the price or group size.
+ */
+export const adminUpdateService = mutation({
+  args: {
+    serviceId: v.id("services"),
+    serviceType: v.optional(v.string()),
+    title_en: v.optional(v.string()),
+    title_ar: v.optional(v.string()),
+    description_en: v.optional(v.string()),
+    description_ar: v.optional(v.string()),
+    priceRange: v.optional(v.string()),
+    priceUnit: v.optional(v.string()),
+    price: v.optional(v.union(v.number(), v.null())),
+    maxGroupSize: v.optional(v.union(v.number(), v.null())),
+    availability_en: v.optional(v.string()),
+    availability_ar: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    languages: v.optional(v.array(v.string())),
+    images: v.optional(v.array(v.string())),
+    city: v.optional(v.string()),
+    region: v.optional(v.string()),
+    coordinates: v.optional(v.object({ lat: v.number(), lng: v.number() })),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await updateServiceAsAdmin(ctx, admin, args);
+    return { success: true };
+  },
+});
+
+/** Take a live service down, with a reason the provider is sent. */
+export const suspendService = mutation({
+  args: { serviceId: v.id("services"), reason: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await suspendServiceRecord(ctx, admin, args.serviceId, args.reason);
+    return { success: true };
+  },
+});
+
+export const reinstateService = mutation({
+  args: { serviceId: v.id("services") },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await reinstateServiceRecord(ctx, admin, args.serviceId);
+    return { success: true };
+  },
+});
+
+/** Delete a service. Refused while it has a pending or confirmed booking. */
+export const deleteService = mutation({
+  args: { serviceId: v.id("services") },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await deleteServiceAsAdmin(ctx, admin, args.serviceId);
+    return { success: true };
+  },
+});
+
+/**
+ * Take down a review (usually a reported one). The rating it counted towards
+ * is recomputed, and the report — with any other open report of the same
+ * review — is marked actioned.
+ */
+export const removeReview = mutation({
+  args: {
+    reviewId: v.id("reviews"),
+    reason: v.string(),
+    reportId: v.optional(v.id("contentReports")),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await removeReviewRecord(ctx, admin, args);
     return { success: true };
   },
 });
@@ -458,9 +471,13 @@ export const rejectService = mutation({
 type BulkFailure = { id: string; error: string };
 
 function assertBulkSize(ids: string[]) {
-  if (ids.length === 0) throw new Error("No items selected");
+  if (ids.length === 0) {
+    throw new ConvexError("لم يتم اختيار أي عنصر. / No items selected.");
+  }
   if (ids.length > MAX_BULK) {
-    throw new Error(`Too many items in one batch (max ${MAX_BULK})`);
+    throw new ConvexError(
+      `لا يمكن معالجة أكثر من ${MAX_BULK} عنصرًا دفعة واحدة. / Too many items in one batch (max ${MAX_BULK}).`
+    );
   }
 }
 
@@ -469,7 +486,6 @@ const GONE_SERVICE = "لم تعد هذه الخدمة موجودة";
 const GONE_ACCOUNT = "لم يعد هذا الحساب موجوداً";
 const NOT_BUSINESS = "ليس حساب أعمال";
 const NO_DOCUMENT = "لم يتم رفع وثيقة العمل";
-const IN_BULK = "ضمن إجراء جماعي";
 
 export const bulkApproveContent = mutation({
   args: { ids: v.array(v.id("listings")) },
@@ -481,23 +497,11 @@ export const bulkApproveContent = mutation({
     let succeeded = 0;
 
     for (const id of args.ids) {
-      const listing = await ctx.db.get(id);
-      if (!listing) {
+      if (!(await ctx.db.get(id))) {
         failed.push({ id, error: GONE_LISTING });
         continue;
       }
-      await ctx.db.patch(id, {
-        status: "approved",
-        rejectionReason: undefined,
-        updatedAt: Date.now(),
-      });
-      await logAdminAction(ctx, admin, {
-        action: "content.approve",
-        targetType: "listing",
-        targetId: id,
-        summary: labelFor(listing),
-        details: IN_BULK,
-      });
+      await approveListingRecord(ctx, admin, id, { bulk: true });
       succeeded++;
     }
 
@@ -515,23 +519,11 @@ export const bulkRejectContent = mutation({
     let succeeded = 0;
 
     for (const id of args.ids) {
-      const listing = await ctx.db.get(id);
-      if (!listing) {
+      if (!(await ctx.db.get(id))) {
         failed.push({ id, error: GONE_LISTING });
         continue;
       }
-      await ctx.db.patch(id, {
-        status: "rejected",
-        rejectionReason: args.reason,
-        updatedAt: Date.now(),
-      });
-      await logAdminAction(ctx, admin, {
-        action: "content.reject",
-        targetType: "listing",
-        targetId: id,
-        summary: labelFor(listing),
-        details: args.reason || IN_BULK,
-      });
+      await rejectListingRecord(ctx, admin, id, args.reason, { bulk: true });
       succeeded++;
     }
 
@@ -549,23 +541,11 @@ export const bulkApproveServices = mutation({
     let succeeded = 0;
 
     for (const id of args.ids) {
-      const service = await ctx.db.get(id);
-      if (!service) {
+      if (!(await ctx.db.get(id))) {
         failed.push({ id, error: GONE_SERVICE });
         continue;
       }
-      await ctx.db.patch(id, {
-        status: "approved",
-        rejectionReason: undefined,
-        updatedAt: Date.now(),
-      });
-      await logAdminAction(ctx, admin, {
-        action: "service.approve",
-        targetType: "service",
-        targetId: id,
-        summary: labelFor(service),
-        details: IN_BULK,
-      });
+      await approveServiceRecord(ctx, admin, id, { bulk: true });
       succeeded++;
     }
 
@@ -583,23 +563,11 @@ export const bulkRejectServices = mutation({
     let succeeded = 0;
 
     for (const id of args.ids) {
-      const service = await ctx.db.get(id);
-      if (!service) {
+      if (!(await ctx.db.get(id))) {
         failed.push({ id, error: GONE_SERVICE });
         continue;
       }
-      await ctx.db.patch(id, {
-        status: "rejected",
-        rejectionReason: args.reason,
-        updatedAt: Date.now(),
-      });
-      await logAdminAction(ctx, admin, {
-        action: "service.reject",
-        targetType: "service",
-        targetId: id,
-        summary: labelFor(service),
-        details: args.reason || IN_BULK,
-      });
+      await rejectServiceRecord(ctx, admin, id, args.reason, { bulk: true });
       succeeded++;
     }
 
@@ -633,14 +601,8 @@ export const bulkApproveBusinesses = mutation({
         continue;
       }
 
-      await ctx.db.patch(userId, { isApproved: true, updatedAt: Date.now() });
-      await logAdminAction(ctx, admin, {
-        action: "account.approve",
-        targetType: "user",
-        targetId: userId,
-        summary: labelFor(user),
-        details: IN_BULK,
-      });
+      // Clears any earlier rejection, logs, and sends account.approved.
+      await approveBusinessAccountRecord(ctx, admin, userId, { bulk: true });
       succeeded++;
     }
 
@@ -649,12 +611,22 @@ export const bulkApproveBusinesses = mutation({
 });
 
 /**
- * Point a listing at the account that will answer its booking requests.
- *
- * The seeded Al-Ahsa catalogue has no owner, so nothing in it can be managed
- * from the app — and a stay request against an ownerless listing has no inbox
- * to arrive in. Assigning a Hasio-run account is what makes the seeded hotels
- * bookable before any real hotel has signed up.
+ * Turn down a business or provider account with a reason (contract section 8).
+ * The owner sees it on their verification screen and is sent account.rejected;
+ * uploading a new document puts the account back in the queue.
+ */
+export const rejectBusinessAccount = mutation({
+  args: { userId: v.id("users"), reason: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await rejectBusinessAccountRecord(ctx, admin, args.userId, args.reason);
+    return { success: true };
+  },
+});
+
+/**
+ * Point a listing at the account that will answer its booking requests, and
+ * move its open bookings to that account's inbox (assignListingHostRecord).
  *
  * `ownerId: null` clears it, which is how a listing is handed back after a real
  * host claims it.
@@ -666,39 +638,8 @@ export const assignListingHost = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-
-    const listing = await ctx.db.get(args.listingId);
-    if (!listing) {
-      throw new Error("المكان غير موجود. / Listing not found.");
-    }
-
-    let owner = null;
-    if (args.ownerId !== null) {
-      owner = await ctx.db.get(args.ownerId);
-      if (!owner) {
-        throw new Error("الحساب غير موجود. / User not found.");
-      }
-      // The host inbox reads `by_ownerId_and_status`, and only these two roles
-      // can reach it. A tourist would receive requests they cannot answer.
-      if (owner.role !== "business_owner" && owner.role !== "admin") {
-        throw new Error(
-          "يجب أن يكون الحساب مالك نشاط تجاري. / The host must be a business owner account."
-        );
-      }
-    }
-
-    await ctx.db.patch(args.listingId, {
-      ownerId: args.ownerId ?? undefined,
-      updatedAt: Date.now(),
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: owner ? "listing.assign_host" : "listing.clear_host",
-      targetType: "listing",
-      targetId: args.listingId,
-      summary: labelFor(listing),
-      details: owner ? labelFor(owner) : undefined,
-    });
+    const { movedBookings } = await assignListingHostRecord(ctx, admin, args.listingId, args.ownerId);
+    return { success: true, movedBookings };
   },
 });
 

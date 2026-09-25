@@ -10,11 +10,67 @@ import { Id } from "../_generated/dataModel";
 const MAX_SCAN = 1000;
 const MAX_LIST = 200;
 
+/**
+ * Refusals about a listing, Arabic first then English. The app matches the
+ * English half (lib/submitError.ts: /not found|Not your listing/), so that
+ * wording is an API. Shared by the owner's mutations and the admin panel.
+ */
+export const LISTING_ERRORS = {
+  NOT_FOUND: "المكان غير موجود. / Listing not found.",
+  NOT_YOURS: "هذا المكان ليس لك. / Not your listing.",
+  HAS_OPEN_BOOKINGS:
+    "لا يمكن حذف مكان لديه حجوزات قائمة. / A listing with open bookings cannot be deleted.",
+} as const;
+
+/**
+ * Whether anyone is still waiting on this listing: a request the host has not
+ * answered, or a stay they have promised. Deleting it then would strand a
+ * guest with a booking for a place that no longer exists.
+ */
+export async function listingHasOpenBookings(
+  ctx: QueryCtx,
+  listingId: Id<"listings">
+): Promise<boolean> {
+  const open = await ctx.db
+    .query("bookings")
+    .withIndex("by_listingId", (q) => q.eq("listingId", listingId))
+    .filter((q) => q.or(q.eq(q.field("status"), "pending"), q.eq(q.field("status"), "confirmed")))
+    .first();
+  return open !== null;
+}
+
 // Helper: check if listing is publicly visible (approved or no status = seed data)
 export function isPublicListing(listing: { isActive?: boolean; status?: string }) {
   if (listing.isActive === false) return false;
   if (listing.status && listing.status !== "approved") return false;
   return true;
+}
+
+/**
+ * Drop the listings of suspended accounts.
+ *
+ * Suspending an account hides everything it published without an admin
+ * taking each listing down (design D15) — the rule services already follow
+ * through isPublicService. Kept out of isPublicListing, which stays a pure
+ * check on the listing alone because the booking code calls it synchronously.
+ * Seed rows have no owner and stay public.
+ *
+ * Reads each distinct owner once: a page of fifty places from three hosts
+ * costs three reads, not fifty.
+ */
+export async function withoutSuspendedOwners<T extends { ownerId?: Id<"users"> }>(
+  ctx: QueryCtx,
+  listings: T[]
+): Promise<T[]> {
+  const ownerIds = [
+    ...new Set(listings.map((l) => l.ownerId).filter((id): id is Id<"users"> => id !== undefined)),
+  ];
+  const owners = await Promise.all(ownerIds.map((id) => ctx.db.get(id)));
+  const suspended = new Set<string>(
+    owners.filter((owner) => owner?.isSuspended === true).map((owner) => owner!._id)
+  );
+  if (suspended.size === 0) return listings;
+  return listings.filter((l) => !(l.ownerId && suspended.has(l.ownerId)));
 }
 
 // Helper: fetch blocked user IDs for the current user (empty set if anonymous)
@@ -67,11 +123,13 @@ export const listListingsPaginated = query({
     const result = await buildListingQuery(ctx, args).paginate(args.paginationOpts);
     const blockedIds = await getBlockedIds(ctx);
 
+    const visible = result.page
+      .filter(isPublicListing)
+      .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string)));
+
     return {
       ...result,
-      page: result.page
-        .filter(isPublicListing)
-        .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string))),
+      page: await withoutSuspendedOwners(ctx, visible),
     };
   },
 });
@@ -90,9 +148,12 @@ export const listListings = query({
     const listings = await buildListingQuery(ctx, args).take(MAX_SCAN);
 
     const blockedIds = await getBlockedIds(ctx);
-    const publicListings = listings
-      .filter(isPublicListing)
-      .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string)));
+    const publicListings = await withoutSuspendedOwners(
+      ctx,
+      listings
+        .filter(isPublicListing)
+        .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string)))
+    );
 
     return publicListings.slice(0, Math.min(args.limit ?? 500, MAX_SCAN));
   },
@@ -123,9 +184,12 @@ export const searchListings = query({
     const results = await searchBuilder.take(MAX_LIST);
 
     const blockedIds = await getBlockedIds(ctx);
-    const publicListings = results
-      .filter(isPublicListing)
-      .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string)));
+    const publicListings = await withoutSuspendedOwners(
+      ctx,
+      results
+        .filter(isPublicListing)
+        .filter((l) => !(l.ownerId && blockedIds.has(l.ownerId as string)))
+    );
 
     return publicListings.slice(0, Math.min(args.limit ?? 50, MAX_LIST));
   },
@@ -137,7 +201,8 @@ export const getListing = query({
   handler: async (ctx, args) => {
     const listing = await ctx.db.get(args.listingId);
     if (!listing || !isPublicListing(listing)) return null;
-    return listing;
+    const [visible] = await withoutSuspendedOwners(ctx, [listing]);
+    return visible ?? null;
   },
 });
 
@@ -145,13 +210,14 @@ export const getListing = query({
 export const getCategories = query({
   args: {},
   handler: async (ctx) => {
-    const listings = await ctx.db.query("listings").take(MAX_SCAN);
+    const listings = await withoutSuspendedOwners(
+      ctx,
+      (await ctx.db.query("listings").take(MAX_SCAN)).filter(isPublicListing)
+    );
 
     const categoryMap = new Map<string, { category: string; category_ar?: string; count: number }>();
 
     for (const listing of listings) {
-      if (!isPublicListing(listing)) continue;
-
       const existing = categoryMap.get(listing.category);
       if (existing) {
         existing.count += 1;
@@ -172,13 +238,14 @@ export const getCategories = query({
 export const getCities = query({
   args: {},
   handler: async (ctx) => {
-    const listings = await ctx.db.query("listings").take(MAX_SCAN);
+    const listings = await withoutSuspendedOwners(
+      ctx,
+      (await ctx.db.query("listings").take(MAX_SCAN)).filter(isPublicListing)
+    );
 
     const cityMap = new Map<string, number>();
 
     for (const listing of listings) {
-      if (!isPublicListing(listing)) continue;
-
       const count = cityMap.get(listing.city) || 0;
       cityMap.set(listing.city, count + 1);
     }
@@ -203,7 +270,7 @@ export const getListingsNearLocation = query({
 
     let listings = await ctx.db.query("listings").take(MAX_SCAN);
 
-    listings = listings.filter(isPublicListing);
+    listings = await withoutSuspendedOwners(ctx, listings.filter(isPublicListing));
 
     if (args.category) {
       listings = listings.filter((l) => l.category === args.category);
