@@ -4,6 +4,13 @@
 - **Branch:** `services-release`. Commits whose subject starts with `contract:` change this document.
 - **Design:** `docs/superpowers/specs/2026-09-25-bookable-services-release-design.md` (section 4).
 - **Status:** written before implementation. Every function below is built test-first in Part 1 of the plan; clients build against this text in Part 2.
+- **Already implemented in the foundation (F, commits `a2e83c1`, `d18fe2f`, `501f291`):**
+  - all of section 1 (`services/logic.ts`, `lib/errors.ts`, `toProvinceCity`);
+  - all of section 2 (the schema);
+  - the compatibility rows of section 3 (`includeServices` and the legacy filters on `getUserBookings` and `getBooking`, the manager check, `rescheduleBooking`);
+  - the event texts, `notifyUserEvent` and `data.target` of section 6;
+  - `recomputeReviewTarget` / `recomputeServiceRating` for section 5;
+  - `enforceRateLimit` as `ConvexError` (section 7).
 
 ## Rules for every function
 
@@ -71,7 +78,7 @@ export const MAX_DESCRIPTION = 2000;
 | `TOO_MANY_PEOPLE` | `عدد الأشخاص أكبر من المسموح لهذه الخدمة. / Too many people for this service.` |
 | `DUPLICATE` | `لديك طلب قائم لهذه الخدمة في هذا اليوم. / You already have an active request for this service on that day.` |
 | `SERVICE_STARTED` | `لا يمكن الإلغاء بعد بدء الخدمة. تواصل مع مقدم الخدمة. / A service cannot be cancelled after it starts. Contact the provider.` |
-| `NO_RESCHEDULE` | `لتغيير موعد الخدمة، ألغِ الطلب واحجز من جديد. / To change a service booking, cancel it and book again.` |
+| `NO_RESCHEDULE` | `لتغيير موعد الخدمة، ألغِ الطلب واحجز من جديد. / To change a service booking, cancel it and book again.` The same string as `BOOKING_ERRORS.SERVICE_NO_RESCHEDULE`, which `rescheduleBooking` throws. |
 | `INVALID_TYPE` | `اختر نوع خدمة صحيحًا. / Choose a valid service type.` |
 | `INVALID_UNIT` | `اختر وحدة سعر صحيحة. / Choose a valid price unit.` |
 | `INVALID_PRICE` | `أدخل سعرًا صحيحًا بين 1 و 100000 ريال. / Enter a valid price between 1 and 100000 SAR.` |
@@ -250,7 +257,7 @@ Returns `{ ok: true, quote: ServiceQuote } | { ok: false, error: string }`.
 | Function | Change |
 |---|---|
 | `cancelBooking` | For a service booking, refuses `SERVICE_ERRORS.SERVICE_STARTED` once `riyadhDateTimeToTimestamp(date, time) <= now`. Notifies the provider (`booking.cancelled`) for service bookings as it does for stays. |
-| `confirmBooking`, `declineBooking`, `completeBooking`, `markNoShow` | The manager check allows an admin, **or** `booking.ownerId === user._id`, **or** the listing's owner for listing bookings, **or** the service's owner for service bookings. Otherwise `"Not authorized to manage this booking"` (unchanged text). |
+| `confirmBooking`, `declineBooking`, `completeBooking`, `markNoShow` | The manager check allows an admin, or the **current** owner of the booking's service (service bookings) or listing (the others), read from that document, not from `booking.ownerId`. A host an admin moved off a listing can no longer act on its bookings. Otherwise `"Not authorized to manage this booking"` (unchanged text). *Implemented in F.* |
 | `rescheduleBooking` | Refuses a service booking with `SERVICE_ERRORS.NO_RESCHEDULE`. |
 | `getUserBookings` | New optional `includeServices?: boolean`. Without it, rows with `kind === "service"` are skipped. With it, every row also has `service` (below). |
 | `getBooking` | New optional `includeServices?: boolean`. Without it, a service booking returns `null`. With it, see the shape below. |
@@ -353,8 +360,8 @@ The existing `DUPLICATE` stays the place wording.
 ## 6. Notifications and push
 
 **Events**
-- Existing booking events keep their names. When the booking's `kind` is `"service"`, the text names the service and shows the date, the start time and the quantity instead of nights (exact wording in `notifications/templates.ts`, tested).
-- New events, rendered by `renderAccountNotification(event, input)` in `notifications/templates.ts`:
+- Existing booking events keep their names, and `NotificationEvent` stays the union of booking events. When the booking's `kind` is `"service"`, the text names the service and shows the date, the start time and the quantity instead of nights. *Implemented and tested in F* (`renderServiceNotification`).
+- New events, typed `AccountEvent` (separate from `NotificationEvent`) and rendered by `renderAccountNotification(event, input)` in `notifications/templates.ts` (*implemented in F*):
   - `listing.approved`, `listing.rejected`, `listing.suspended`
   - `service.approved`, `service.rejected`, `service.suspended`
   - `account.approved`, `account.rejected`
