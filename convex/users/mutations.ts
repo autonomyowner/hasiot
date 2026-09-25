@@ -452,7 +452,7 @@ export async function deleteAccountData(
     .collect();
   const blockedBy = await ctx.db
     .query("userBlocks")
-    .filter((q) => q.eq(q.field("blockedUserId"), user._id))
+    .withIndex("by_blocked", (q) => q.eq("blockedUserId", user._id))
     .collect();
   for (const block of [...blocking, ...blockedBy]) await ctx.db.delete(block._id);
 

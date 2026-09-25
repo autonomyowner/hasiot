@@ -413,7 +413,10 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_blocker", ["blockerId"])
-    .index("by_blocker_and_blocked", ["blockerId", "blockedUserId"]),
+    .index("by_blocker_and_blocked", ["blockerId", "blockedUserId"])
+    // Account deletion removes the blocks against a user too; without this it
+    // scanned the whole table.
+    .index("by_blocked", ["blockedUserId"]),
 
   // Admin action log. Every write an admin makes through /admin lands here, so
   // "who approved this listing, and when" has an answer. Append-only: nothing in
