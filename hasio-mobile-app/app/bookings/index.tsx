@@ -17,6 +17,9 @@ import {
   minuteNow,
   nightsLabel,
   partitionGuestBookings,
+  serviceAmountLabel,
+  serviceWhen,
+  type ServiceAmount,
   type StayTotal,
 } from "@/lib/bookingDisplay";
 import { haptic } from "@/lib/haptics";
@@ -32,7 +35,7 @@ type Tab = "upcoming" | "past";
 const OPEN_GUARD_MS = 800;
 
 /**
- * The guest's own bookings.
+ * The guest's own bookings: stays and service providers, in one list.
  *
  * Real-time through useQuery, so a host confirming on their phone flips the
  * status here without the guest doing anything — which is the whole point of
@@ -46,7 +49,9 @@ export default function MyBookingsScreen() {
   const { format, currency } = useCurrency();
   const [tab, setTab] = useState<Tab>("upcoming");
 
-  const bookings = useQuery(api.bookings.queries.getUserBookings, {});
+  // `includeServices`: without it the server leaves service bookings out, for
+  // the 1.0.2 and 1.0.0 apps, which cannot render a booking with no place.
+  const bookings = useQuery(api.bookings.queries.getUserBookings, { includeServices: true });
   // To the minute: a service moves to Past at its start time, and the split
   // is recomputed at most once a minute rather than on every render.
   const now = minuteNow();
@@ -61,13 +66,14 @@ export default function MyBookingsScreen() {
 
   // Each tab says what it is missing. Both used to say "No bookings yet" —
   // on Past too, right after the guest had just seen their stays under
-  // Upcoming.
+  // Upcoming. They speak of bookings now, not stays: the list holds service
+  // providers as well.
   const empty =
     upcoming.length === 0 && past.length === 0
-      ? { title: t("noBookings"), hint: t("noBookingsHint") }
+      ? { title: t("noBookings"), hint: t("myBookingsEmptyHint") }
       : tab === "upcoming"
-        ? { title: t("noUpcomingStays"), hint: t("noUpcomingStaysHint") }
-        : { title: t("noPastStays"), hint: t("noPastStaysHint") };
+        ? { title: t("noUpcomingBookings"), hint: t("noUpcomingBookingsHint") }
+        : { title: t("noPastStays"), hint: t("noPastBookingsHint") };
 
   // Stable identities so the memoised row is not handed a new callback or
   // a new labels object on every render of this screen. `t` is a useCallback
@@ -76,17 +82,20 @@ export default function MyBookingsScreen() {
     () => ({
       stay: (nights: number, guests?: number) => nightsLabel(nights, t, guests),
       formatTotal: (stay: StayTotal) => format(displayTotalSar(stay, currency)),
+      serviceWhen: (date: string, time: string) => serviceWhen(date, time, language, t),
+      serviceAmount: (booking: ServiceAmount) => serviceAmountLabel(booking, t),
+      serviceGone: t("serviceNoLongerListed"),
     }),
-    [t, format, currency]
+    [t, format, currency, language]
   );
   // One push per tap. A second tap before the detail screen had come up
   // pushed it again — two identical screens to back out of.
   const lastOpened = useRef(0);
   const openBooking = useCallback(
     (id: string) => {
-      const now = Date.now();
-      if (now - lastOpened.current < OPEN_GUARD_MS) return;
-      lastOpened.current = now;
+      const tappedAt = Date.now();
+      if (tappedAt - lastOpened.current < OPEN_GUARD_MS) return;
+      lastOpened.current = tappedAt;
       router.push(`/bookings/${id}`);
     },
     [router]
