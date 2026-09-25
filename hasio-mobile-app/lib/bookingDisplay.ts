@@ -6,11 +6,26 @@
  * where the language hook does not exist.
  */
 
+import type { TranslationKey } from "@/constants/translations";
+import type { Language } from "@/types";
+import { getBookingErrorKey } from "./bookingError";
 import { convertFromSar, SAR_PER_USD, type Currency } from "./currency";
+import { formatISODate, todayRiyadhISO } from "./dates";
 import { toLatinDigits } from "./digits";
+import { serverErrorText } from "./serverError";
 
-/** What the app counts in words. */
-export type CountUnit = "nights" | "guests" | "reviews" | "stars";
+/**
+ * What the app counts in words. Hours, days and people are a service
+ * booking's: its hours or days when it is priced by them, and its group.
+ */
+export type CountUnit =
+  | "nights"
+  | "guests"
+  | "reviews"
+  | "stars"
+  | "hours"
+  | "days"
+  | "people";
 
 /**
  * The form a count takes.
@@ -51,6 +66,91 @@ export function nightsLabel(nights: number, t: CountTranslate, guests?: number):
   return guests ? `${stay} · ${countLabel(guests, "guests", t)}` : stay;
 }
 
+/** The fields a service booking's second line is written from. */
+export type ServiceAmount = {
+  priceUnit?: string;
+  quantity?: number;
+  partySize?: number;
+  guests?: number;
+};
+
+/**
+ * "3 hours · 4 people" — a service booking's line under its day, as a stay has
+ * "3 nights · 2 guests".
+ *
+ * The hours or days only when the service is priced by them. A fixed-price
+ * tour or a price per event is booked once: the server stores a quantity of 1
+ * for it, and "1 hour" under a tour that is not sold by the hour would be
+ * wrong. Then the group, which a row may carry as `partySize` or `guests` (the
+ * server writes both). Empty when there is nothing to count.
+ */
+export function serviceAmountLabel(booking: ServiceAmount, t: CountTranslate): string {
+  const parts: string[] = [];
+  const { quantity, priceUnit } = booking;
+  if (quantity && priceUnit === "per_hour") parts.push(countLabel(quantity, "hours", t));
+  if (quantity && priceUnit === "per_day") parts.push(countLabel(quantity, "days", t));
+  const people = booking.partySize ?? booking.guests;
+  if (people) parts.push(countLabel(people, "people", t));
+  return parts.join(" · ");
+}
+
+/**
+ * The clock, floored to the minute.
+ *
+ * What a booking screen reads in render to decide what is still ahead: a
+ * value that stays the same across the renders of one minute, so the lists
+ * memoised on it are not recomputed on every keystroke or busy flag. The
+ * screens call this rather than `Date.now()` for the same reason they call
+ * todayRiyadhISO(): the clock is read in one place, and a test passes it.
+ */
+export function minuteNow(now: number = Date.now()): number {
+  return Math.floor(now / 60_000) * 60_000;
+}
+
+const RIYADH_OFFSET_MS = 3 * 60 * 60 * 1000;
+const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
+const HH_MM = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+/**
+ * A booking's day and start time as a moment, on the Riyadh clock.
+ *
+ * Every booking day and start time is Riyadh wall-clock time (UTC+3, no
+ * daylight saving), whatever zone the phone is in — and the app ships to
+ * Australia and Algeria as well as the Gulf. `new Date("2026-09-10T19:00")`
+ * reads it in the phone's zone instead, which would move a Sydney traveller's
+ * 19:00 tour seven hours earlier than it is. The same sum as the server's
+ * riyadhDateTimeToTimestamp (convex/lib/dates.ts), so a booking goes to Past at
+ * the moment the server stops letting it be cancelled. NaN when either part is
+ * malformed, which compares false with everything.
+ */
+export function riyadhMoment(date: string, time: string): number {
+  const day = ISO_DAY.exec(date);
+  const clock = HH_MM.exec(time);
+  if (!day || !clock) return NaN;
+  return (
+    Date.UTC(
+      Number(day[1]),
+      Number(day[2]) - 1,
+      Number(day[3]),
+      Number(clock[1]),
+      Number(clock[2])
+    ) - RIYADH_OFFSET_MS
+  );
+}
+
+/**
+ * "10 Sep at 19:00" — a service booking's day and its start time. The time is
+ * the stored "HH:MM" as it is, never parsed into a Date (see riyadhMoment).
+ */
+export function serviceWhen(
+  date: string,
+  time: string,
+  language: Language,
+  t: (key: "dateAtTime") => string
+): string {
+  return t("dateAtTime").replace("{date}", formatISODate(date, language)).replace("{time}", time);
+}
+
 /**
  * A `tel:` link any dialer will take, for a listing's or a guest's number.
  *
@@ -83,6 +183,40 @@ export function displayTotalSar(stay: StayTotal, currency: Currency): number {
   const { totalAmount, nights, pricePerNight } = stay;
   if (currency !== "USD" || !nights || !pricePerNight) return totalAmount;
   return nights * convertFromSar(pricePerNight, "USD") * SAR_PER_USD;
+}
+
+/** The money fields a stay or a service booking row carries. */
+export type BookingMoney = {
+  kind?: string;
+  totalAmount: number;
+  nights?: number;
+  pricePerNight?: number;
+  quantity?: number;
+  unitPrice?: number;
+};
+
+/**
+ * What displayTotalSar needs, for a booking of either kind.
+ *
+ * A service's hours or days stand where a stay's nights do, and its unit price
+ * where the nightly rate does, so a service total in dollars is the product of
+ * the rate as shown — SAR 125 an hour is $33, and three hours are $99, not the
+ * $100 that 375 SAR converts to on its own. A fixed price has a quantity of 1,
+ * where the two agree anyway.
+ */
+export function totalShownFor(booking: BookingMoney): StayTotal {
+  if (booking.kind === "service") {
+    return {
+      totalAmount: booking.totalAmount,
+      nights: booking.quantity,
+      pricePerNight: booking.unitPrice,
+    };
+  }
+  return {
+    totalAmount: booking.totalAmount,
+    nights: booking.nights,
+    pricePerNight: booking.pricePerNight,
+  };
 }
 
 export type QuoteResult =
@@ -127,6 +261,12 @@ export function quoteFooterState(input: {
 /** What the booking lists sort and split on. */
 export type StayDates = { status: string; date: string; checkIn?: string; checkOut?: string };
 
+/**
+ * A row of any kind — a stay, a legacy slot, or a service — with the time it
+ * begins: a stay's check-in time, a slot's time, a service's start time.
+ */
+export type BookingTiming = StayDates & { kind?: string; time?: string };
+
 /** The first day of a stay, or a slot booking's date. */
 const startOf = (b: StayDates) => b.checkIn ?? b.date;
 /** The day a stay ends (check-out is exclusive), or a slot booking's date. */
@@ -137,27 +277,89 @@ const soonestFirst = (a: StayDates, b: StayDates) =>
 const latestFirst = (a: StayDates, b: StayDates) => soonestFirst(b, a);
 
 /**
+ * "YYYY-MM-DD HH:MM": the day a booking begins, then its time. It sorts as a
+ * string, and it orders a service at 09:00 before a stay checking in at 15:00
+ * on the same day, which comparing days alone left to the server's order.
+ */
+const beginsAt = (b: BookingTiming) => `${startOf(b)} ${b.time ?? ""}`;
+const earliestFirst = (a: BookingTiming, b: BookingTiming) =>
+  beginsAt(a) < beginsAt(b) ? -1 : beginsAt(a) > beginsAt(b) ? 1 : 0;
+const mostRecentFirst = (a: BookingTiming, b: BookingTiming) => earliestFirst(b, a);
+
+const isOpen = (b: StayDates) => b.status === "pending" || b.status === "confirmed";
+
+/**
  * A guest's bookings, split the way "My bookings" shows them.
  *
  * Upcoming is every request or confirmed stay the guest has not checked out
- * of yet — on the middle night they are still living it — soonest first,
- * since the next arrival is what they open the list for. Past is everything
- * else, most recent stay first. Both used to keep the server's order, newest
- * made first.
+ * of yet — on the middle night they are still living it — and every request
+ * or confirmed service that has not started. A service is decided by its
+ * start, on the Riyadh clock, not by its day: from the start it can no longer
+ * be cancelled (the server refuses it), the provider is at the meeting point,
+ * and it is under way or over. Soonest first, since the next thing ahead is
+ * what the guest opens the list for; past most recent first. Both used to
+ * keep the server's order, newest made first.
+ *
+ * `now` is the clock, passed in; "today" is its Riyadh date.
  */
-export function partitionGuestBookings<T extends StayDates>(
+export function partitionGuestBookings<T extends BookingTiming>(
   bookings: readonly T[],
-  todayISO: string
+  now: number
 ): { upcoming: T[]; past: T[] } {
+  const today = todayRiyadhISO(now);
   const upcoming: T[] = [];
   const past: T[] = [];
   for (const booking of bookings) {
-    const open = booking.status === "pending" || booking.status === "confirmed";
-    (open && endOf(booking) >= todayISO ? upcoming : past).push(booking);
+    const ahead =
+      booking.kind === "service"
+        ? riyadhMoment(booking.date, booking.time ?? "") > now
+        : endOf(booking) >= today;
+    (isOpen(booking) && ahead ? upcoming : past).push(booking);
   }
-  upcoming.sort(soonestFirst);
-  past.sort(latestFirst);
+  upcoming.sort(earliestFirst);
+  past.sort(mostRecentFirst);
   return { upcoming, past };
+}
+
+/** A service booking as the provider's inbox reads it. */
+export type ProviderTiming = BookingTiming & { expiresAt?: number };
+
+/**
+ * A request the provider can still answer. A service request expires at its
+ * start time if that comes before the usual 48 hours, and the server refuses
+ * to confirm one past its expiry even while the hourly job has not yet marked
+ * it — so offering Confirm on it would only earn an error.
+ */
+const isLiveRequest = (b: ProviderTiming, now: number) =>
+  b.status === "pending" && (b.expiresAt === undefined || b.expiresAt > now);
+
+/**
+ * A provider's inbox, split into its three tabs.
+ *
+ * Requests are the ones still alive; a request past its expiry is already
+ * past, whatever the hourly job has had time to write on it. Upcoming is
+ * confirmed work that has not ended — until the morning after the last day
+ * (checkOut is exclusive), when the 04:00 job completes it — the same rule as
+ * the dashboard's count (getProviderStats), so the tab and the tile agree.
+ * Requests and upcoming soonest start first; past most recent first.
+ */
+export function partitionProviderBookings<T extends ProviderTiming>(
+  bookings: readonly T[],
+  now: number
+): { requests: T[]; upcoming: T[]; past: T[] } {
+  const today = todayRiyadhISO(now);
+  const requests: T[] = [];
+  const upcoming: T[] = [];
+  const past: T[] = [];
+  for (const booking of bookings) {
+    if (isLiveRequest(booking, now)) requests.push(booking);
+    else if (booking.status === "confirmed" && endOf(booking) >= today) upcoming.push(booking);
+    else past.push(booking);
+  }
+  requests.sort(earliestFirst);
+  upcoming.sort(earliestFirst);
+  past.sort(mostRecentFirst);
+  return { requests, upcoming, past };
 }
 
 /**
@@ -204,6 +406,43 @@ export function hostActionsFor(
   if (booking.status !== "confirmed") return "none";
   const arrival = booking.checkIn ?? booking.date;
   return arrival !== undefined && arrival <= todayISO ? "close" : "none";
+}
+
+/**
+ * Which pair of buttons a provider's card shows on a service booking.
+ *
+ * As hostActionsFor, with two differences a service needs. No-show and
+ * completed come with the start time, not the start of the day: at 10:00 a
+ * provider cannot know whether a 19:00 guest will turn up. And a request past
+ * its expiry offers nothing — the server would refuse the confirm, and the
+ * hourly job is about to close it and tell the guest.
+ */
+export function providerActionsFor(
+  booking: { status: string; date: string; time: string; expiresAt?: number },
+  now: number
+): HostActionSet {
+  if (booking.status === "pending") {
+    return booking.expiresAt !== undefined && booking.expiresAt <= now ? "none" : "decide";
+  }
+  if (booking.status !== "confirmed") return "none";
+  return riyadhMoment(booking.date, booking.time) <= now ? "close" : "none";
+}
+
+/**
+ * The copy for a refused booking action — cancel, confirm, decline, complete,
+ * no-show — in the words of the booking's own kind.
+ *
+ * getBookingErrorKey reads the English half of the server's refusal, and
+ * predates two things settled here. The server now has two sign-in refusals:
+ * the booking mutations' English-only "Not authenticated" and the newer
+ * "… / You need to be signed in.", and both mean the session is gone. And a
+ * service that has started is refused in the provider's words, which the
+ * stay's copy ("Contact the host") would misname.
+ */
+export function bookingActionErrorKey(error: unknown, kind?: string): TranslationKey {
+  if (/You need to be signed in/i.test(serverErrorText(error))) return "errorSessionExpired";
+  const key = getBookingErrorKey(error);
+  return kind === "service" && key === "errorStayStarted" ? "errorServiceStarted" : key;
 }
 
 /**

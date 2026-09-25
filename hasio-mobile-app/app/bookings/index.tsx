@@ -12,9 +12,9 @@ import { SkeletonBookingList } from "@/components/ui/SkeletonScreens";
 import { BookingRow, type BookingRowData } from "@/components/booking/BookingRow";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
-import { todayRiyadhISO } from "@/lib/dates";
 import {
   displayTotalSar,
+  minuteNow,
   nightsLabel,
   partitionGuestBookings,
   type StayTotal,
@@ -47,12 +47,14 @@ export default function MyBookingsScreen() {
   const [tab, setTab] = useState<Tab>("upcoming");
 
   const bookings = useQuery(api.bookings.queries.getUserBookings, {});
-  const today = todayRiyadhISO();
+  // To the minute: a service moves to Past at its start time, and the split
+  // is recomputed at most once a minute rather than on every render.
+  const now = minuteNow();
 
   // Soonest arrival first; see partitionGuestBookings.
   const { upcoming, past } = useMemo(
-    () => partitionGuestBookings<BookingRowData>(bookings ?? [], today),
-    [bookings, today]
+    () => partitionGuestBookings<BookingRowData>(bookings ?? [], now),
+    [bookings, now]
   );
 
   const shown = tab === "upcoming" ? upcoming : past;
