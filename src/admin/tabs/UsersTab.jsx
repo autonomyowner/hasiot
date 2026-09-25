@@ -6,9 +6,10 @@ import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
 import { EmptyState, KeepLooking, LoadMore, TableSkeleton } from '../components/States'
 import FilterSelect from '../components/FilterSelect'
+import UserDrawer from '../components/UserDrawer'
 import { usePagedList } from '../usePagedList'
 import { useDebounced } from '../../hooks/useDebounced'
-import { ROLE_LABELS, formatDate } from '../constants'
+import { ROLE_LABELS, formatDate, personName, roleLabel } from '../constants'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../ui/table'
@@ -27,8 +28,11 @@ const triState = (value) => (value === '' ? undefined : value === 'yes')
  * Browsing and searching are separate queries and only one runs at a time, the
  * same shape the listings tab uses: Convex search results are ranked by
  * relevance and cannot be paginated like an index scan.
+ *
+ * «التفاصيل» opens the whole account (UserDrawer): its bookings, what it
+ * publishes, the reports against it, and «تغيير الدور».
  */
-export default function UsersTab() {
+export default function UsersTab({ currentUser }) {
   const [searchInput, setSearchInput] = useState('')
   const searchQuery = useDebounced(searchInput.trim())
   const [role, setRole] = useState('')
@@ -38,6 +42,7 @@ export default function UsersTab() {
   const toast = useToast()
   const { confirm, confirmDialog } = useConfirm()
   const [busyId, setBusyId] = useState(null)
+  const [openId, setOpenId] = useState(null)
 
   const suspendUser = useMutation(api.admin.mutations.suspendUser)
   const unsuspendUser = useMutation(api.admin.mutations.unsuspendUser)
@@ -70,13 +75,9 @@ export default function UsersTab() {
   const stalled = !isSearching && browse.results.length === 0 && browse.status === 'CanLoadMore'
   const hasFilters = Boolean(role || verified || suspended || isSearching)
 
-  const displayName = (user) => {
-    const name = [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
-    if (name) return name
-    // A phone sign-up's address is synthesised and undeliverable, so showing
-    // it as a name would put "966501234567@phone.hasio.xyz" in the table.
-    return user.isPlaceholderEmail ? (user.phone ?? '—') : user.email
-  }
+  // A phone sign-up's address is synthesised and undeliverable, so showing it
+  // as a name would put "966501234567@phone.hasio.xyz" in the table.
+  const displayName = personName
 
   const handleSuspend = async (user) => {
     const result = await confirm({
@@ -119,7 +120,7 @@ export default function UsersTab() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
       <div className="admin-page-head">
         <div>
-          <h2 className="admin-page-title" style={{ margin: 0 }}>المستخدمون</h2>
+          <h2 className="admin-page-title">المستخدمون</h2>
           <p className="admin-page-subtitle">
             {loading
               ? 'جاري التحميل...'
@@ -132,7 +133,7 @@ export default function UsersTab() {
 
       <div className="admin-filters">
         <input
-          className="admin-search-input"
+          className="admin-form-input admin-search-input"
           type="search"
           value={searchInput}
           onChange={(e) => setSearchInput(e.target.value)}
@@ -227,7 +228,7 @@ export default function UsersTab() {
                     )}
                   </TableCell>
                   <TableCell data-label="الدور">
-                    {ROLE_LABELS[user.role] || user.role}
+                    {roleLabel(user.role)}
                     {user.isApproved === false && (
                       <div className="admin-table-sub">بانتظار الاعتماد</div>
                     )}
@@ -244,9 +245,15 @@ export default function UsersTab() {
                   <TableCell data-label="التسجيل">{formatDate(user.createdAt)}</TableCell>
                   <TableCell>
                     <div className="admin-actions">
-                      {user.role === 'admin' ? (
-                        <span className="admin-table-sub">—</span>
-                      ) : user.isSuspended ? (
+                      <button
+                        className="admin-action-btn edit"
+                        onClick={() => setOpenId(user._id)}
+                      >
+                        التفاصيل
+                      </button>
+                      {/* An admin account, the operator's own included, can be
+                          neither suspended nor re-roled: the server refuses. */}
+                      {user.role === 'admin' || user._id === currentUser?._id ? null : user.isSuspended ? (
                         <button
                           className="admin-action-btn edit"
                           onClick={() => handleUnsuspend(user)}
@@ -276,6 +283,17 @@ export default function UsersTab() {
         </>
       )}
 
+      {openId && (
+        <UserDrawer
+          key={openId}
+          userId={openId}
+          currentUserId={currentUser?._id}
+          busy={busyId === openId}
+          onClose={() => setOpenId(null)}
+          onSuspend={handleSuspend}
+          onUnsuspend={handleUnsuspend}
+        />
+      )}
       {confirmDialog}
     </motion.div>
   )
