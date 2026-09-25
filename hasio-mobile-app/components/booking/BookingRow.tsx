@@ -5,7 +5,12 @@ import { PressableScale } from "@/components/ui/PressableScale";
 import { BookingStatusChip } from "./BookingStatusChip";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
-import { totalShownFor, type ServiceAmount, type StayTotal } from "@/lib/bookingDisplay";
+import {
+  shownStatus,
+  totalShownFor,
+  type ServiceAmount,
+  type StayTotal,
+} from "@/lib/bookingDisplay";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import type { Language } from "@/types";
@@ -37,10 +42,17 @@ export interface BookingRowData {
   priceUnit?: string;
   partySize?: number;
   service?: { title_en: string; title_ar: string; images?: string[] } | null;
+  /** When an unanswered request closes (lib/bookingDisplay `shownStatus`). */
+  expiresAt?: number;
 }
 
 interface BookingRowProps {
   booking: BookingRowData;
+  /**
+   * The screen's clock, the one its tabs were split by, so a request filed
+   * under Past for having expired is also called expired on its chip.
+   */
+  now: number;
   language: Language;
   isRTL: boolean;
   /** Already-bound formatters the row needs; passed in so memo can compare them. */
@@ -62,7 +74,7 @@ interface BookingRowProps {
   onPress: (id: string) => void;
 }
 
-function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingRowProps) {
+function BookingRowInner({ booking, now, language, isRTL, labels, onPress }: BookingRowProps) {
   const styles = useThemedStyles(makeStyles);
   const isService = booking.kind === "service";
   const listing = booking.listing;
@@ -118,7 +130,7 @@ function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingR
           {amount ? <Text style={[styles.meta, isRTL && styles.textRTL]}>{amount}</Text> : null}
 
           <View style={[styles.cardFooter, isRTL && styles.cardRTL]}>
-            <BookingStatusChip status={booking.status} kind={booking.kind} />
+            <BookingStatusChip status={shownStatus(booking, now)} kind={booking.kind} />
             {booking.totalAmount != null && (
               <Text style={styles.amount}>
                 {labels.formatTotal(

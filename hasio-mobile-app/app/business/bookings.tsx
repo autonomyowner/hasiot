@@ -18,7 +18,7 @@ import {
 } from "@/components/booking/HostBookingCard";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
-import { todayRiyadhISO } from "@/lib/dates";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import {
   displayTotalSar,
   nightsLabel,
@@ -78,12 +78,14 @@ export default function OwnerBookingsScreen() {
     maybeAskForPush("host");
   }, []);
 
-  const today = todayRiyadhISO();
+  // Ticking, so a request leaves Requests the minute it expires and a stay's
+  // closing buttons appear on its arrival day without anything else changing.
+  const now = useMinuteClock();
 
   // Soonest arrival first in Requests and Upcoming; see partitionHostBookings.
   const groups = useMemo(
-    () => partitionHostBookings<HostBookingData>(bookings ?? [], today),
-    [bookings, today]
+    () => partitionHostBookings<HostBookingData>(bookings ?? [], now),
+    [bookings, now]
   );
 
   const shown = groups[tab];
@@ -185,7 +187,7 @@ export default function OwnerBookingsScreen() {
       <Animated.View exiting={FadeOut.duration(180)}>
         <HostBookingCard
           booking={item}
-          today={today}
+          now={now}
           language={language}
           isRTL={isRTL}
           busy={busy[item._id] ?? null}
@@ -195,8 +197,11 @@ export default function OwnerBookingsScreen() {
         />
       </Animated.View>
     ),
-    [today, language, isRTL, busy, labels, onAction, callGuest]
+    [now, language, isRTL, busy, labels, onAction, callGuest]
   );
+  // What the cards read beyond their own booking: a busy flag, and the clock
+  // that closes an expired request and opens a stay's buttons on its day.
+  const listExtra = useMemo(() => ({ busy, now }), [busy, now]);
 
   const switchTab = (next: Tab) => {
     if (next === tab) return;
@@ -248,9 +253,9 @@ export default function OwnerBookingsScreen() {
               data={shown}
               keyExtractor={(booking) => booking._id}
               renderItem={renderItem}
-              // The busy card must re-render when busy changes even though
-              // its booking object did not.
-              extraData={busy}
+              // A card must re-render when busy or the clock changes even
+              // though its booking object did not.
+              extraData={listExtra}
               // The cards under a card that left slide up into its place.
               itemLayoutAnimation={LinearTransition.duration(220)}
               // Not on a tab switch, though: the whole list cross-fades there,

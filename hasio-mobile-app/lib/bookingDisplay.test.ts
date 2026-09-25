@@ -19,6 +19,7 @@ import {
   riyadhMoment,
   serviceAmountLabel,
   serviceWhen,
+  shownStatus,
   telUrl,
   totalShownFor,
   type CountKey,
@@ -277,6 +278,18 @@ describe("partitionGuestBookings", () => {
     expect(ids(past)).toEqual(["unanswered"]);
   });
 
+  it("files a stay request the host let expire under past, before the hourly job marks it", () => {
+    const { upcoming, past } = partitionGuestBookings(
+      [
+        { ...stay("lapsed", "pending", "2026-10-01", "2026-10-03"), expiresAt: NOON_10_SEP - 60_000 },
+        { ...stay("waiting", "pending", "2026-10-05", "2026-10-06"), expiresAt: NOON_10_SEP + 60_000 },
+      ],
+      NOON_10_SEP
+    );
+    expect(ids(upcoming)).toEqual(["waiting"]);
+    expect(ids(past)).toEqual(["lapsed"]);
+  });
+
   it("never shows a closed service as upcoming", () => {
     for (const status of ["cancelled", "declined", "expired", "completed", "no_show"]) {
       const { upcoming } = partitionGuestBookings(
@@ -333,6 +346,11 @@ describe("guestCanCancel", () => {
       );
     }
   });
+
+  it("offers nothing on a request past its expiry, which its chip already calls expired", () => {
+    const lapsed = { ...stay("s", "pending", "2026-10-01", "2026-10-03"), expiresAt: NOON_10_SEP - 1 };
+    expect(guestCanCancel(lapsed, NOON_10_SEP)).toBe(false);
+  });
 });
 
 describe("partitionProviderBookings", () => {
@@ -382,6 +400,28 @@ describe("partitionProviderBookings", () => {
     expect(requests).toEqual([]);
     expect(upcoming).toEqual([]);
     expect(ids(past)).toEqual(["declined", "no-show", "morning", "may"]);
+  });
+});
+
+describe("shownStatus", () => {
+  it("shows a request past its expiry as expired, before the hourly job marks it", () => {
+    // The server already refuses to confirm it and the lists file it under
+    // past; a chip still saying "Awaiting provider" asked for a wait that can
+    // no longer end in a yes.
+    expect(shownStatus({ status: "pending", expiresAt: NOON_10_SEP - 1 }, NOON_10_SEP)).toBe("expired");
+    expect(shownStatus({ status: "pending", expiresAt: NOON_10_SEP }, NOON_10_SEP)).toBe("expired");
+  });
+
+  it("leaves a live request, or one with no expiry, pending", () => {
+    expect(shownStatus({ status: "pending", expiresAt: NOON_10_SEP + 1 }, NOON_10_SEP)).toBe("pending");
+    // Restaurant slot bookings from 1.0.x carry no expiry.
+    expect(shownStatus({ status: "pending" }, NOON_10_SEP)).toBe("pending");
+  });
+
+  it("shows every other status as the server wrote it", () => {
+    for (const status of ["confirmed", "completed", "cancelled", "declined", "expired", "no_show"]) {
+      expect(shownStatus({ status, expiresAt: NOON_10_SEP - 1 }, NOON_10_SEP)).toBe(status);
+    }
   });
 });
 
@@ -558,7 +598,8 @@ describe("bookingActionErrorKey", () => {
 });
 
 describe("partitionHostBookings", () => {
-  const today = "2026-09-10";
+  // 10 September in Riyadh.
+  const now = NOON_10_SEP;
 
   it("puts the nearest arrival first in requests and upcoming", () => {
     const { requests, upcoming } = partitionHostBookings(
@@ -568,7 +609,7 @@ describe("partitionHostBookings", () => {
         stay("later", "confirmed", "2026-10-01", "2026-10-04"),
         stay("soon", "confirmed", "2026-09-15", "2026-09-16"),
       ],
-      today
+      now
     );
     expect(ids(requests)).toEqual(["tomorrow", "spring"]);
     expect(ids(upcoming)).toEqual(["soon", "later"]);
@@ -577,7 +618,7 @@ describe("partitionHostBookings", () => {
   it("keeps a stay under upcoming until the guest checks out", () => {
     const { upcoming } = partitionHostBookings(
       [stay("checking-out-today", "confirmed", "2026-09-08", "2026-09-10")],
-      today
+      now
     );
     expect(ids(upcoming)).toEqual(["checking-out-today"]);
   });
@@ -589,32 +630,52 @@ describe("partitionHostBookings", () => {
         stay("over", "confirmed", "2026-09-01", "2026-09-03"),
         stay("declined", "declined", "2026-09-20", "2026-09-21"),
       ],
-      today
+      now
     );
     expect(requests).toEqual([]);
     expect(upcoming).toEqual([]);
     expect(ids(past)).toEqual(["declined", "over", "old"]);
   });
+
+  it("files a request past its expiry under past, as the provider inbox does", () => {
+    // The server refuses to confirm it from its expiry (contract rule 11); in
+    // Requests it offered a Confirm that could only fail.
+    const { requests, past } = partitionHostBookings(
+      [
+        { ...stay("lapsed", "pending", "2026-10-01", "2026-10-03"), expiresAt: now - 60_000 },
+        { ...stay("live", "pending", "2026-10-05", "2026-10-06"), expiresAt: now + 60_000 },
+      ],
+      now
+    );
+    expect(ids(requests)).toEqual(["live"]);
+    expect(ids(past)).toEqual(["lapsed"]);
+  });
 });
 
 describe("hostActionsFor", () => {
-  const today = "2026-09-10";
+  // 10 September in Riyadh.
+  const now = NOON_10_SEP;
   it("pending → confirm / decline", () => {
-    expect(hostActionsFor({ status: "pending", checkIn: "2026-09-20" }, today)).toBe("decide");
+    expect(hostActionsFor({ status: "pending", checkIn: "2026-09-20" }, now)).toBe("decide");
   });
   it("confirmed and not yet arrived → nothing", () => {
-    expect(hostActionsFor({ status: "confirmed", checkIn: "2026-09-20" }, today)).toBe("none");
+    expect(hostActionsFor({ status: "confirmed", checkIn: "2026-09-20" }, now)).toBe("none");
   });
   it("confirmed and arrival day reached → no-show / complete", () => {
-    expect(hostActionsFor({ status: "confirmed", checkIn: "2026-09-10" }, today)).toBe("close");
-    expect(hostActionsFor({ status: "confirmed", checkIn: "2026-09-01" }, today)).toBe("close");
+    expect(hostActionsFor({ status: "confirmed", checkIn: "2026-09-10" }, now)).toBe("close");
+    expect(hostActionsFor({ status: "confirmed", checkIn: "2026-09-01" }, now)).toBe("close");
   });
   it("falls back to date for slot bookings", () => {
-    expect(hostActionsFor({ status: "confirmed", date: "2026-09-09" }, today)).toBe("close");
+    expect(hostActionsFor({ status: "confirmed", date: "2026-09-09" }, now)).toBe("close");
   });
   it("terminal statuses → nothing", () => {
     for (const status of ["completed", "cancelled", "declined", "expired", "no_show"]) {
-      expect(hostActionsFor({ status, checkIn: "2026-09-01" }, today)).toBe("none");
+      expect(hostActionsFor({ status, checkIn: "2026-09-01" }, now)).toBe("none");
     }
+  });
+  it("a request past its expiry → nothing: the server would refuse the confirm", () => {
+    const request = { status: "pending", checkIn: "2026-09-20" };
+    expect(hostActionsFor({ ...request, expiresAt: now }, now)).toBe("none");
+    expect(hostActionsFor({ ...request, expiresAt: now + 1 }, now)).toBe("decide");
   });
 });

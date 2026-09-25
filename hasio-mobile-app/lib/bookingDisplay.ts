@@ -259,7 +259,14 @@ export function quoteFooterState(input: {
 }
 
 /** What the booking lists sort and split on. */
-export type StayDates = { status: string; date: string; checkIn?: string; checkOut?: string };
+export type StayDates = {
+  status: string;
+  date: string;
+  checkIn?: string;
+  checkOut?: string;
+  /** When an unanswered request closes; see shownStatus. */
+  expiresAt?: number;
+};
 
 /**
  * A row of any kind — a stay, a legacy slot, or a service — with the time it
@@ -286,7 +293,11 @@ const earliestFirst = (a: BookingTiming, b: BookingTiming) =>
   beginsAt(a) < beginsAt(b) ? -1 : beginsAt(a) > beginsAt(b) ? 1 : 0;
 const mostRecentFirst = (a: BookingTiming, b: BookingTiming) => earliestFirst(b, a);
 
-const isOpen = (b: StayDates) => b.status === "pending" || b.status === "confirmed";
+/** Pending or confirmed as shown — a request past its expiry is not open. */
+const isOpen = (b: StayDates, now: number) => {
+  const status = shownStatus(b, now);
+  return status === "pending" || status === "confirmed";
+};
 
 /**
  * A guest's bookings, split the way "My bookings" shows them.
@@ -314,7 +325,7 @@ export function partitionGuestBookings<T extends BookingTiming>(
       booking.kind === "service"
         ? riyadhMoment(booking.date, booking.time ?? "") > now
         : endOf(booking) >= today;
-    (isOpen(booking) && ahead ? upcoming : past).push(booking);
+    (isOpen(booking, now) && ahead ? upcoming : past).push(booking);
   }
   upcoming.sort(earliestFirst);
   past.sort(mostRecentFirst);
@@ -334,7 +345,7 @@ export function partitionGuestBookings<T extends BookingTiming>(
  * the rule: only the guest who made the booking may cancel it.
  */
 export function guestCanCancel(booking: BookingTiming, now: number): boolean {
-  if (!isOpen(booking)) return false;
+  if (!isOpen(booking, now)) return false;
   if (booking.kind === "service") return riyadhMoment(booking.date, booking.time ?? "") > now;
   return startOf(booking) > todayRiyadhISO(now);
 }
@@ -343,13 +354,26 @@ export function guestCanCancel(booking: BookingTiming, now: number): boolean {
 export type ProviderTiming = BookingTiming & { expiresAt?: number };
 
 /**
+ * The status a booking is shown with: what the server wrote, except that a
+ * request past its expiry is expired. The hourly job marks it up to an hour
+ * late, but from `expiresAt` the server already refuses to confirm it and the
+ * lists file it under past — where its chip still read "Awaiting provider",
+ * a wait that could no longer end in a yes. Every chip goes through this, so
+ * a row and the tab it sits in never disagree.
+ */
+export function shownStatus(booking: { status: string; expiresAt?: number }, now: number): string {
+  const expired =
+    booking.status === "pending" && booking.expiresAt !== undefined && booking.expiresAt <= now;
+  return expired ? "expired" : booking.status;
+}
+
+/**
  * A request the provider can still answer. A service request expires at its
  * start time if that comes before the usual 48 hours, and the server refuses
  * to confirm one past its expiry even while the hourly job has not yet marked
  * it — so offering Confirm on it would only earn an error.
  */
-const isLiveRequest = (b: ProviderTiming, now: number) =>
-  b.status === "pending" && (b.expiresAt === undefined || b.expiresAt > now);
+const isLiveRequest = (b: ProviderTiming, now: number) => shownStatus(b, now) === "pending";
 
 /**
  * A provider's inbox, split into its three tabs.
@@ -386,18 +410,24 @@ export function partitionProviderBookings<T extends ProviderTiming>(
  * Requests and upcoming stays are soonest first — the nearest arrival is the
  * one to act on — and past ones most recent first. The server returns
  * bookings newest-made first, which put a request made today for next spring
- * above one arriving tomorrow.
+ * above one arriving tomorrow. A request past its expiry is past, as in the
+ * provider's inbox: the server refuses to confirm it from then (contract
+ * rule 11), so under Requests it only offered a Confirm that could fail.
+ *
+ * `now` is the clock, passed in; "today" is its Riyadh date.
  */
 export function partitionHostBookings<T extends StayDates>(
   bookings: readonly T[],
-  todayISO: string
+  now: number
 ): { requests: T[]; upcoming: T[]; past: T[] } {
+  const today = todayRiyadhISO(now);
   const requests: T[] = [];
   const upcoming: T[] = [];
   const past: T[] = [];
   for (const booking of bookings) {
-    if (booking.status === "pending") requests.push(booking);
-    else if (booking.status === "confirmed" && endOf(booking) >= todayISO) upcoming.push(booking);
+    const status = shownStatus(booking, now);
+    if (status === "pending") requests.push(booking);
+    else if (status === "confirmed" && endOf(booking) >= today) upcoming.push(booking);
     else past.push(booking);
   }
   requests.sort(soonestFirst);
@@ -411,19 +441,21 @@ export type HostActionSet = "decide" | "close" | "none";
 /**
  * Which pair of buttons a host card shows.
  *
- * "decide" is confirm/decline on a pending request. "close" is no-show /
- * completed, offered only once the arrival date is reached — marking someone
- * a no-show before they are due makes no sense. Mirrors the transitions in
- * convex/bookings/logic.ts; the server still has the last word.
+ * "decide" is confirm/decline on a pending request that has not expired.
+ * "close" is no-show / completed, offered only once the arrival date is
+ * reached (Riyadh) — marking someone a no-show before they are due makes no
+ * sense. Mirrors the transitions in convex/bookings/logic.ts; the server still
+ * has the last word.
  */
 export function hostActionsFor(
-  booking: { status: string; checkIn?: string; date?: string },
-  todayISO: string
+  booking: { status: string; checkIn?: string; date?: string; expiresAt?: number },
+  now: number
 ): HostActionSet {
-  if (booking.status === "pending") return "decide";
-  if (booking.status !== "confirmed") return "none";
+  const status = shownStatus(booking, now);
+  if (status === "pending") return "decide";
+  if (status !== "confirmed") return "none";
   const arrival = booking.checkIn ?? booking.date;
-  return arrival !== undefined && arrival <= todayISO ? "close" : "none";
+  return arrival !== undefined && arrival <= todayRiyadhISO(now) ? "close" : "none";
 }
 
 /**
@@ -439,10 +471,9 @@ export function providerActionsFor(
   booking: { status: string; date: string; time: string; expiresAt?: number },
   now: number
 ): HostActionSet {
-  if (booking.status === "pending") {
-    return booking.expiresAt !== undefined && booking.expiresAt <= now ? "none" : "decide";
-  }
-  if (booking.status !== "confirmed") return "none";
+  const status = shownStatus(booking, now);
+  if (status === "pending") return "decide";
+  if (status !== "confirmed") return "none";
   return riyadhMoment(booking.date, booking.time) <= now ? "close" : "none";
 }
 

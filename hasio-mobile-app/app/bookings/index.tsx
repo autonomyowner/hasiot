@@ -102,9 +102,16 @@ export default function MyBookingsScreen() {
   );
   const renderItem = useCallback(
     ({ item }: { item: BookingRowData }) => (
-      <BookingRow booking={item} language={language} isRTL={isRTL} labels={labels} onPress={openBooking} />
+      <BookingRow
+        booking={item}
+        now={now}
+        language={language}
+        isRTL={isRTL}
+        labels={labels}
+        onPress={openBooking}
+      />
     ),
-    [language, isRTL, labels, openBooking]
+    [now, language, isRTL, labels, openBooking]
   );
 
   const switchTab = (next: Tab) => {

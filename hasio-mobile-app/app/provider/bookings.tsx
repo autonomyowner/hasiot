@@ -18,11 +18,10 @@ import {
 } from "@/components/booking/HostBookingCard";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
-import { todayRiyadhISO } from "@/lib/dates";
+import { useMinuteClock } from "@/hooks/useMinuteClock";
 import {
   bookingActionErrorKey,
   displayTotalSar,
-  minuteNow,
   nightsLabel,
   partitionProviderBookings,
   serviceAmountLabel,
@@ -42,30 +41,9 @@ import type { TranslationKey } from "@/constants/translations";
 type Tab = "requests" | "upcoming" | "past";
 
 const TOAST_MS = 1800;
-// Often enough that a booking's buttons change within a minute of its start.
-const CLOCK_TICK_MS = 30_000;
 // Long enough for the screen to have slid in: the question should arrive
 // over the inbox it is about, not over a screen still on its way.
 const PUSH_PROMPT_DELAY_MS = 600;
-
-/**
- * The clock to the minute, ticking while the inbox is open.
- *
- * A service's no-show and completed buttons come with its start time, and a
- * request goes out of Requests when it expires — both moments that pass while
- * a provider is looking at the list. Read once per render, as a stay's inbox
- * reads today's date, the buttons would wait for something else to re-render
- * the screen. Floored to the minute, so a tick that changes nothing renders
- * nothing (setState with an equal value bails out).
- */
-function useMinuteClock(): number {
-  const [now, setNow] = useState(() => minuteNow());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(minuteNow()), CLOCK_TICK_MS);
-    return () => clearInterval(timer);
-  }, []);
-  return now;
-}
 
 /**
  * A service provider's booking inbox: the requests and bookings for their
@@ -99,7 +77,6 @@ export default function ProviderBookingsScreen() {
   const completeBooking = useMutation(api.bookings.mutations.completeBooking);
 
   const now = useMinuteClock();
-  const today = todayRiyadhISO(now);
 
   // Opening the inbox is a moment a provider can see why notifications matter:
   // a request unanswered for 48 hours — or until its start time — is lost.
@@ -228,7 +205,6 @@ export default function ProviderBookingsScreen() {
       <Animated.View exiting={FadeOut.duration(180)}>
         <HostBookingCard
           booking={item}
-          today={today}
           now={now}
           language={language}
           isRTL={isRTL}
@@ -239,7 +215,7 @@ export default function ProviderBookingsScreen() {
         />
       </Animated.View>
     ),
-    [today, now, language, isRTL, busy, labels, onAction, callGuest]
+    [now, language, isRTL, busy, labels, onAction, callGuest]
   );
   // What the cards read beyond their own booking: a busy flag, and the clock
   // that turns a booking's buttons on at its start time.

@@ -37,6 +37,7 @@ import {
   nightsLabel,
   providerActionsFor,
   serviceWhen,
+  shownStatus,
   telUrl,
   totalShownFor,
 } from "@/lib/bookingDisplay";
@@ -280,7 +281,7 @@ export default function BookingDetailScreen() {
           {/* The one raised surface on the page: status and code are what the
               guest opens this screen to see. Everything below is content. */}
           <SurfaceGradient />
-          <BookingStatusChip status={booking.status} kind={booking.kind} />
+          <BookingStatusChip status={shownStatus(booking, now)} kind={booking.kind} />
           {booking.confirmationCode ? (
             <>
               {/* To the right in Arabic, under the chip, which already is. */}

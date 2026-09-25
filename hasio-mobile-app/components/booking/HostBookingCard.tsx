@@ -8,8 +8,8 @@ import { formatDateRange, formatISODate } from "@/lib/dates";
 import { formatPhoneForDisplay, ltr } from "@/lib/phone";
 import {
   hostActionsFor,
-  minuteNow,
   providerActionsFor,
+  shownStatus,
   totalShownFor,
   type ServiceAmount,
   type StayTotal,
@@ -61,12 +61,13 @@ export interface ServiceCardLabels {
 
 interface HostBookingCardProps {
   booking: HostBookingData;
-  today: string;
   /**
-   * The clock, for a service booking: its no-show and completed buttons come
-   * with its start time, not its day (lib/bookingDisplay `providerActionsFor`).
+   * The clock (hooks/useMinuteClock). It decides the buttons — a service's
+   * no-show and completed come with its start time, a stay's with its arrival
+   * day, and a request past its expiry offers none — and the chip, which calls
+   * that request expired (lib/bookingDisplay `shownStatus`).
    */
-  now?: number;
+  now: number;
   language: Language;
   isRTL: boolean;
   /** Which action, if any, is running on this card right now. */
@@ -104,7 +105,6 @@ interface HostBookingCardProps {
  */
 function HostBookingCardInner({
   booking,
-  today,
   now,
   language,
   isRTL,
@@ -122,9 +122,7 @@ function HostBookingCardInner({
     [guest?.firstName, guest?.lastName].filter(Boolean).join(" ").trim() || labels.guest;
   const phone = guest?.phone;
   const isStay = booking.kind === "stay" && !!booking.checkIn && !!booking.checkOut;
-  const actions = isService
-    ? providerActionsFor(booking, now ?? minuteNow())
-    : hostActionsFor(booking, today);
+  const actions = isService ? providerActionsFor(booking, now) : hostActionsFor(booking, now);
   const anyBusy = busy !== null;
 
   const image = isService ? service?.images?.[0] : listing?.images?.[0];
@@ -173,7 +171,7 @@ function HostBookingCardInner({
           <Text style={[styles.meta, isRTL && styles.textRTL]}>{when}</Text>
           {amount ? <Text style={[styles.meta, isRTL && styles.textRTL]}>{amount}</Text> : null}
           <View style={[styles.chipRow, isRTL && styles.rowRTL]}>
-            <BookingStatusChip status={booking.status} kind={booking.kind} />
+            <BookingStatusChip status={shownStatus(booking, now)} kind={booking.kind} />
             {booking.totalAmount != null ? (
               <Text style={styles.amount}>
                 {labels.formatTotal(
