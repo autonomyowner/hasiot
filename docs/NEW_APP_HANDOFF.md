@@ -162,10 +162,18 @@ old store persists a generated `sessionId` for signed-out use.
 
 ### Push
 
-`users.mutations.registerPushToken({token, language})` on launch while signed in + enabled,
-`unregisterPushToken({token})` on sign-out/disable. `lib/push.ts` returns `null` wherever push is
-unavailable (Expo Go, simulator, web) and that is a normal state — the in-app inbox
-(`notifications.queries.listMine`, `unreadCount`, `mutations.markRead/markAllRead`) carries everything.
+*Updated 2026-09-25 (branch `services-release`, not yet on production).*
+`users.push.registerPushToken({ token, platform: "ios" | "android" })` once the person has allowed
+notifications (asked in context, never at first launch), and again on each sign-in;
+`users.push.unregisterPushToken({ token })` on sign-out and before account deletion, **before** the
+session is cleared. Tokens live in the `pushTokens` table: a token that belongs to another account
+moves to whoever registers it (a shared phone never gets someone else's bookings), and each account
+keeps its newest 5. Skip registration on web and simulators. Every notification row and push payload
+carries `data.target` — `booking` | `host-inbox` | `provider-inbox` | `my-listings` | `my-services` |
+`verification` — which is where a tap lands; rows written before 1.1.0 have no target and fall back to
+`audience`. The in-app inbox (`notifications.queries.listMine`, `unreadCount`,
+`mutations.markRead/markAllRead`) stays the source of truth. The full backend contract for 1.1.0 is
+`docs/superpowers/contracts/2026-09-25-services-backend.md`.
 
 ### ⚠️ What production actually has today
 

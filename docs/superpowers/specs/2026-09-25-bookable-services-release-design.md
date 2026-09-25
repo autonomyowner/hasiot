@@ -166,7 +166,7 @@ The same mirroring is already done for stays (`date`/`time`).
 - it sends `priority: "high"` and `channelId: "default"`;
 - it stops requiring a listing before it will email.
 
-The app registers its Expo push token with `users.mutations.registerPushToken` once permission is granted (D14), and removes it on sign-out with `unregisterPushToken`. At most 5 tokens per user, newest kept.
+The app registers its Expo push token with `users.push.registerPushToken` once permission is granted (D14), and removes it on sign-out with `users.push.unregisterPushToken`. Tokens live in their own `pushTokens` table, so a token moves to whoever signs in on that phone. At most 5 tokens per user, newest kept.
 
 **Credentials, outside the code:**
 - **iOS:** Nabil enables Push Notifications on the App ID `com.hasio.travel` and creates an APNs key (`.p8`, with its Key ID). The key is given to Expo through `eas credentials`, and the App Store provisioning profile is regenerated with push, by the Windows recipe in `IOS_RELEASE_STATUS.md`.
