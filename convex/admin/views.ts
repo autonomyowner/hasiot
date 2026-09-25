@@ -188,6 +188,113 @@ export function cityFilter<TI extends GenericTableInfo>(
 }
 
 type ServiceFilter = FilterBuilder<NamedTableInfo<DataModel, "services">>;
+type BookingFilter = FilterBuilder<NamedTableInfo<DataModel, "bookings">>;
+
+// === Bookings (the bookings tab) ===
+
+/** "slot" is the legacy restaurant booking: `kind` "slot", or no kind at all. */
+export type BookingKind = "stay" | "service" | "slot";
+
+function kindFilter(q: BookingFilter, kind: BookingKind): Expression<boolean> {
+  if (kind === "slot") {
+    return q.or(q.eq(q.field("kind"), undefined), q.eq(q.field("kind"), "slot"));
+  }
+  return q.eq(q.field("kind"), kind);
+}
+
+/**
+ * Every booking, newest first, for support: stays, service bookings and old
+ * slots, with what was booked, who booked it and who has to honour it.
+ * `listAllBookings` stays for the dashboard's "recent bookings" card.
+ */
+export async function listBookingsPage(
+  ctx: QueryCtx,
+  args: { paginationOpts: PaginationOptions; status?: string; kind?: BookingKind }
+): Promise<PaginationResult<AdminBookingRow>> {
+  const { status, kind } = args;
+  const base = status
+    ? ctx.db.query("bookings").withIndex("by_status", (q) => q.eq("status", status))
+    : ctx.db.query("bookings");
+
+  let query = base.order("desc");
+  if (kind) query = query.filter((q) => kindFilter(q, kind));
+
+  const result = await query.paginate(args.paginationOpts);
+  return { ...result, page: await bookingRows(ctx, result.page) };
+}
+
+/** Arabic-Indic and Persian digits to ASCII: the panel is Arabic, and so is its keyboard. */
+function toLatinDigits(value: string): string {
+  return value
+    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0));
+}
+
+/**
+ * The stored form (E.164, "+9665…") of a phone number an operator pasted or
+ * typed, or null when the text is not a phone number. Accepts the local Saudi
+ * forms ("05…", "5…"), a "00" prefix, spaces and dashes, and Arabic digits.
+ */
+export function phoneSearchKey(term: string): string | null {
+  const text = toLatinDigits(term).trim();
+  if (!/^\+?[\d\s\-()]+$/.test(text)) return null;
+  const digits = text.replace(/\D/g, "");
+  if (digits.length < 7 || digits.length > 15) return null;
+  if (text.startsWith("+")) return `+${digits}`;
+  if (digits.startsWith("00")) return `+${digits.slice(2)}`;
+  if (digits.length === 10 && digits.startsWith("05")) return `+966${digits.slice(1)}`;
+  if (digits.length === 9 && digits.startsWith("5")) return `+966${digits}`;
+  return `+${digits}`;
+}
+
+const CODE = /^(?:HSO-?)?([A-Z0-9]{5})$/i;
+const PHONE_MATCHES = 5;
+
+/**
+ * Find bookings the way support is asked about them: the confirmation code a
+ * guest reads out ("HSO-7K3M2", in any case, with or without the prefix), or
+ * the phone number of the guest who made them. One capped array, like every
+ * search in the panel.
+ */
+export async function searchBookingsForAdmin(
+  ctx: QueryCtx,
+  args: { search: string }
+): Promise<AdminBookingRow[]> {
+  const term = args.search.trim();
+  if (!term) return [];
+
+  const code = CODE.exec(term);
+  if (code) {
+    const bookings = await ctx.db
+      .query("bookings")
+      .withIndex("by_confirmationCode", (q) => q.eq("confirmationCode", `HSO-${code[1].toUpperCase()}`))
+      .take(MAX_SEARCH);
+    return await bookingRows(ctx, bookings);
+  }
+
+  const phone = phoneSearchKey(term);
+  if (!phone) return [];
+
+  const guests = await ctx.db
+    .query("users")
+    .withIndex("by_phone", (q) => q.eq("phone", phone))
+    .take(PHONE_MATCHES);
+  const perGuest = await Promise.all(
+    guests.map((guest) =>
+      ctx.db
+        .query("bookings")
+        .withIndex("by_userId", (q) => q.eq("userId", guest._id))
+        .order("desc")
+        .take(MAX_SEARCH)
+    )
+  );
+  const bookings = perGuest
+    .flat()
+    .sort((a, b) => b._creationTime - a._creationTime)
+    .slice(0, MAX_SEARCH);
+
+  return await bookingRows(ctx, bookings);
+}
 
 // === Accounts ===
 

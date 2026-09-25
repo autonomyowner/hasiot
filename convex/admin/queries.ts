@@ -8,8 +8,10 @@ import { riyadhMonthKey } from "../lib/dates";
 import {
   getServiceForAdmin,
   getUserForAdmin,
+  listBookingsPage,
   listServicesPage,
   pendingBusinessRows,
+  searchBookingsForAdmin,
   searchServicesForAdmin,
 } from "./views";
 
@@ -451,6 +453,37 @@ export const listAllBookings = query({
     );
 
     return enrichedBookings;
+  },
+});
+
+/**
+ * The bookings tab: every booking, newest first, paginated. `kind` is "stay",
+ * "service" or "slot" (legacy rows with no kind, or "slot"). Filters run inside
+ * the query, so a page is never empty while matches remain. Each row carries
+ * listing / service / guest / owner summaries.
+ */
+export const adminListBookings = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    status: v.optional(v.string()),
+    kind: v.optional(v.union(v.literal("stay"), v.literal("service"), v.literal("slot"))),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await listBookingsPage(ctx, args);
+  },
+});
+
+/**
+ * Find bookings by confirmation code (any case, prefix optional) or by the
+ * guest's phone number (local or international form). The same rows as
+ * adminListBookings, at most 50.
+ */
+export const adminSearchBookings = query({
+  args: { search: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await searchBookingsForAdmin(ctx, args);
   },
 });
 
