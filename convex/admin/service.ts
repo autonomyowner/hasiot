@@ -50,6 +50,12 @@ export const ADMIN_ERRORS = {
   ROLE_LOCKED: "لا يمكن تغيير دور هذا الحساب. / This account's role cannot be changed.",
   REPORT_NOT_FOUND: "البلاغ غير موجود. / Report not found.",
   REPORT_MISMATCH: "هذا البلاغ لا يخص هذا التقييم. / That report is not about this review.",
+  // Reinstating sets "approved", so suspending a submission would be a way to
+  // publish it unreviewed. A submission is rejected instead.
+  LISTING_NOT_LIVE:
+    "لا يمكن إيقاف إلا مكان منشور؛ ارفض الطلبات المعلقة بدلًا من ذلك. / Only a live listing can be suspended; reject a pending one instead.",
+  SERVICE_NOT_LIVE:
+    "لا يمكن إيقاف إلا خدمة منشورة؛ ارفض الطلبات المعلقة بدلًا من ذلك. / Only a live service can be suspended; reject a pending one instead.",
 } as const;
 
 /** The roles an admin may give an account. Admin itself is granted from the CLI only (devTools). */
@@ -456,6 +462,7 @@ export async function suspendServiceRecord(
 ): Promise<void> {
   const service = await ctx.db.get(serviceId);
   if (!service) refuse(SERVICE_ERRORS.NOT_FOUND);
+  if (service.status !== "approved") refuse(ADMIN_ERRORS.SERVICE_NOT_LIVE);
 
   const trimmed = reason.trim();
   if (!trimmed) refuse(ADMIN_ERRORS.SUSPEND_REASON_REQUIRED);
@@ -831,6 +838,10 @@ export async function suspendListingRecord(
 ): Promise<void> {
   const listing = await ctx.db.get(listingId);
   if (!listing) refuse(LISTING_ERRORS.NOT_FOUND);
+  // Live means approved, or no status at all (seed rows predate approval).
+  if (listing.status !== undefined && listing.status !== "approved") {
+    refuse(ADMIN_ERRORS.LISTING_NOT_LIVE);
+  }
 
   const trimmed = reason.trim();
   if (!trimmed) refuse(ADMIN_ERRORS.SUSPEND_REASON_REQUIRED);

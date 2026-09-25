@@ -330,6 +330,21 @@ describe("suspendServiceRecord and reinstateServiceRecord", () => {
     expect((await service(t, serviceId))!.status).toBe("approved");
   });
 
+  it("will not suspend a service that is not live, so reinstating cannot skip review", async () => {
+    // Suspend then reinstate used to publish a pending service nobody had
+    // reviewed: reinstating sets "approved". A submission is rejected instead.
+    const t = makeT();
+    const acting = await admin(t);
+    const owner = await provider(t);
+    for (const status of ["pending", "rejected"]) {
+      const serviceId = await seedService(t, { ownerId: owner, status });
+      await expect(
+        t.run((ctx) => suspendServiceRecord(ctx, acting, serviceId, "Reported", NOW))
+      ).rejects.toSatisfy(refusedWith(/Only a live service can be suspended/));
+      expect((await service(t, serviceId))!.status).toBe(status);
+    }
+  });
+
   it("puts a suspended service back live and clears the reason", async () => {
     const t = makeT();
     const acting = await admin(t);

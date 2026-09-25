@@ -140,6 +140,24 @@ describe("listing suspension", () => {
     expect(restored.suspendedReason).toBeUndefined();
   });
 
+  it("will not suspend a listing that is not live, so reinstating cannot skip review", async () => {
+    // Suspending a pending listing and reinstating it used to approve it
+    // without anyone reviewing it. A submission is rejected instead.
+    const t = makeT();
+    const acting = await admin(t);
+    for (const status of ["pending", "rejected"]) {
+      const listingId = await seedHotel(t, { status });
+      await expect(
+        t.run((ctx) => suspendListingRecord(ctx, acting, listingId, "Reported", NOW))
+      ).rejects.toThrow(/Only a live listing can be suspended/);
+      expect((await t.run((ctx) => ctx.db.get(listingId)))!.status).toBe(status);
+    }
+    // Seed rows have no status and are live.
+    const seeded = await seedHotel(t, { status: "" });
+    await t.run((ctx) => suspendListingRecord(ctx, acting, seeded, "Closed", NOW));
+    expect((await t.run((ctx) => ctx.db.get(seeded)))!.status).toBe("suspended");
+  });
+
   it("refuses to reinstate something that was never suspended", async () => {
     const t = makeT();
     const acting = await admin(t);
