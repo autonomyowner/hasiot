@@ -54,6 +54,7 @@
 | 20 | A service booking can be completed by its provider only once it is **confirmed and its start time has passed** (`BOOKING_ERRORS.SERVICE_NOT_STARTED`). Anything else goes through the admin panel. | "A service can only be completed once it is confirmed and has started." |
 | 21 | A same-day request that expired at its start time is told "did not respond before the start time", not "within 48 hours" (`expiredAtStart`). | — |
 | 22 | `deleteMyAccount` deletes the sign-in too: Better Auth's sessions, linked accounts and user, via the internal adapter. If that fails, the whole deletion rolls back. Verified on development: the email no longer signs in, and the phone returns as a new, empty account. | — |
+| 23 | `markNoShow` on a booking that is already closed (cancelled, completed, declined, expired, no-show) is refused as closed, not as forbidden — the race where the guest cancels while the host's inbox still shows the booking confirmed. A pending request keeps `NOT_AUTHORIZED`. Stays and services alike. | "This booking is already closed." (existing) |
 
 ## 1. Shared constants
 

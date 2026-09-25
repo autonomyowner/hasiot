@@ -22,6 +22,7 @@ import {
   createSlotForUser,
   createStayForUser,
   declineAsManager,
+  markNoShowAsManager,
 } from "./service";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { TestT } from "../test.utils";
@@ -465,6 +466,41 @@ describe("host responses", () => {
     await expect(
       t.run(async (ctx) => completeAsManager(ctx, (await ctx.db.get(bookingId))!, undefined, NOW))
     ).rejects.toThrow(BOOKING_ERRORS.ALREADY_CLOSED);
+  });
+
+  it("marks a confirmed booking as a no-show", async () => {
+    const t = makeT();
+    const { bookingId } = await pendingStay(t);
+    await t.run(async (ctx) => confirmAsManager(ctx, (await ctx.db.get(bookingId))!, NOW));
+
+    await t.run(async (ctx) => markNoShowAsManager(ctx, (await ctx.db.get(bookingId))!, NOW + 1000));
+
+    expect(await load(t, bookingId)).toMatchObject({ status: "no_show", updatedAt: NOW + 1000 });
+  });
+
+  it("calls a no-show on a booking the guest just cancelled closed, not forbidden", async () => {
+    // The host's list still shows the booking as confirmed when the guest
+    // cancels it. "You are not allowed to do that" matched nothing in the
+    // apps, so the host read "Please try again" and got it again on retry.
+    const t = makeT();
+    const { bookingId } = await pendingStay(t);
+    await t.run(async (ctx) => confirmAsManager(ctx, (await ctx.db.get(bookingId))!, NOW));
+    await t.run(async (ctx) => cancelAsTourist(ctx, (await ctx.db.get(bookingId))!, undefined, NOW));
+
+    await expect(
+      t.run(async (ctx) => markNoShowAsManager(ctx, (await ctx.db.get(bookingId))!, NOW))
+    ).rejects.toThrow(BOOKING_ERRORS.ALREADY_CLOSED);
+    expect(await load(t, bookingId)).toMatchObject({ status: "cancelled" });
+  });
+
+  it("still refuses a no-show on a request nobody confirmed", async () => {
+    const t = makeT();
+    const { bookingId } = await pendingStay(t);
+
+    await expect(
+      t.run(async (ctx) => markNoShowAsManager(ctx, (await ctx.db.get(bookingId))!, NOW))
+    ).rejects.toThrow(BOOKING_ERRORS.NOT_AUTHORIZED);
+    expect(await load(t, bookingId)).toMatchObject({ status: "pending" });
   });
 });
 

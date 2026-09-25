@@ -428,6 +428,28 @@ export async function completeAsManager(
   });
 }
 
+export async function markNoShowAsManager(
+  ctx: MutationCtx,
+  booking: Doc<"bookings">,
+  now: number = Date.now()
+): Promise<void> {
+  // A closed booking is the race a host actually meets: the inbox still shows
+  // it confirmed when the guest cancels, or the nightly job completes it. That
+  // used to be refused as "not allowed", which no app maps, so the host read
+  // "Please try again" and got the same on every retry. "Already closed" is
+  // what both apps already explain.
+  if (TERMINAL_STATUSES.includes(booking.status as BookingStatus)) {
+    throw new ConvexError(BOOKING_ERRORS.ALREADY_CLOSED);
+  }
+  // A request nobody confirmed promised nothing to miss; no screen offers a
+  // no-show on one, so this keeps the refusal it always had.
+  if (booking.status !== "confirmed") {
+    throw new ConvexError(BOOKING_ERRORS.NOT_AUTHORIZED);
+  }
+
+  await ctx.db.patch(booking._id, { status: "no_show", updatedAt: now });
+}
+
 export async function cancelAsTourist(
   ctx: MutationCtx,
   booking: Doc<"bookings">,

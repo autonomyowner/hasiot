@@ -12,6 +12,7 @@ import {
   createSlotForUser,
   createStayForUser,
   declineAsManager,
+  markNoShowAsManager,
 } from "./service";
 
 /**
@@ -248,16 +249,7 @@ export const markNoShow = mutation({
   args: { bookingId: v.id("bookings") },
   handler: async (ctx, args) => {
     const booking = await requireBookingManager(ctx, args.bookingId);
-
-    if (booking.status !== "confirmed") {
-      throw new ConvexError(BOOKING_ERRORS.NOT_AUTHORIZED);
-    }
-
-    await ctx.db.patch(args.bookingId, {
-      status: "no_show",
-      updatedAt: Date.now(),
-    });
-
+    await markNoShowAsManager(ctx, booking);
     return { success: true };
   },
 });
