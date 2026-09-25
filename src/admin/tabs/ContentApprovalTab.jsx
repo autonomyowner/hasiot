@@ -2,11 +2,19 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
+import ListingDrawer from '../components/ListingDrawer'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
 import { useSelection, describeBulkResult } from '../useSelection'
-import { TYPE_LABELS, cityLabel, formatDate } from '../constants'
+import {
+  TYPE_LABELS,
+  cityLabel,
+  formatDate,
+  formatMoney,
+  isPlaceholderEmail,
+  realEmail,
+} from '../constants'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../ui/table'
@@ -15,57 +23,30 @@ import {
  * Listings submitted from the mobile app, waiting on a decision. This is the
  * queue that gates whether a business owner's hotel ever appears to tourists,
  * so it leads the panel's "needs action" list.
+ *
+ * A row opens the whole submission in a drawer — photos, description, price,
+ * contact — and the decision is taken there. Bulk decisions stay for clearing
+ * a queue already read.
  */
 export default function ContentApprovalTab() {
   const pending = useQuery(api.admin.queries.listPendingContent)
-  const approve = useMutation(api.admin.mutations.approveContent)
-  const reject = useMutation(api.admin.mutations.rejectContent)
   const bulkApprove = useMutation(api.admin.mutations.bulkApproveContent)
   const bulkReject = useMutation(api.admin.mutations.bulkRejectContent)
 
   const toast = useToast()
   const { confirm, confirmDialog } = useConfirm()
   const selection = useSelection(pending)
-  const [busyId, setBusyId] = useState(null)
   const [bulkBusy, setBulkBusy] = useState(false)
+  const [openId, setOpenId] = useState(null)
 
-  const handleApprove = async (listing) => {
-    setBusyId(listing._id)
-    try {
-      await approve({ id: listing._id })
-      toast.success(`تمت الموافقة على "${listing.name_ar || listing.name_en}"`)
-    } catch (error) {
-      toast.error(error)
-    } finally {
-      setBusyId(null)
-    }
-  }
-
-  const handleReject = async (listing) => {
-    const result = await confirm({
-      title: 'رفض هذا المحتوى؟',
-      message: `سيظهر سبب الرفض لصاحب "${listing.name_ar || listing.name_en}" في التطبيق، ويمكنه التعديل وإعادة الإرسال.`,
-      confirmLabel: 'تأكيد الرفض',
-      destructive: true,
-      reason: { label: 'سبب الرفض (اختياري)', placeholder: 'مثال: الصور غير واضحة، العنوان غير صحيح...' },
-    })
-    if (!result) return
-
-    setBusyId(listing._id)
-    try {
-      await reject({ id: listing._id, reason: result.reason || undefined })
-      toast.success('تم رفض المحتوى')
-    } catch (error) {
-      toast.error(error)
-    } finally {
-      setBusyId(null)
-    }
-  }
+  // Read from the live queue, so a place decided elsewhere (another admin,
+  // another tab) closes its drawer instead of offering a stale decision.
+  const open = openId ? pending?.find((listing) => listing._id === openId) : null
 
   const handleBulkApprove = async () => {
     const result = await confirm({
       title: `الموافقة على ${selection.count} عنصر؟`,
-      message: 'ستظهر كل هذه الأماكن في التطبيق فوراً.',
+      message: 'ستظهر كل هذه الأماكن في التطبيق فوراً، وسيتم إشعار أصحابها.',
       confirmLabel: 'موافقة على الكل',
     })
     if (!result) return
@@ -86,7 +67,7 @@ export default function ContentApprovalTab() {
   const handleBulkReject = async () => {
     const result = await confirm({
       title: `رفض ${selection.count} عنصر؟`,
-      message: 'سيتلقى كل صاحب محتوى نفس السبب.',
+      message: 'سيتلقى كل صاحب محتوى نفس السبب مع إشعار بالرفض.',
       confirmLabel: 'رفض الكل',
       destructive: true,
       reason: { label: 'سبب الرفض (اختياري)', placeholder: 'سبب واحد لكل العناصر المحددة' },
@@ -119,7 +100,7 @@ export default function ContentApprovalTab() {
           <p className="admin-page-subtitle">
             {pending.length === 0
               ? 'لا يوجد محتوى بانتظار المراجعة'
-              : `${pending.length} عنصر بانتظار قرارك`}
+              : `${pending.length} عنصر بانتظار قرارك — افتح المكان لمراجعته قبل الموافقة`}
           </p>
         </div>
       </div>
@@ -127,7 +108,7 @@ export default function ContentApprovalTab() {
       {pending.length === 0 ? (
         <EmptyState
           title="لا يوجد محتوى بانتظار المراجعة"
-          hint="الأماكن التي يضيفها أصحاب الأعمال من التطبيق تظهر هنا قبل نشرها."
+          hint="الأماكن التي يضيفها أصحاب المنشآت من التطبيق تظهر هنا قبل نشرها."
         />
       ) : (
         <>
@@ -161,80 +142,83 @@ export default function ContentApprovalTab() {
           )}
 
           <Table className="admin-table">
-              <TableHeader>
-                <TableRow>
-                  <TableHead style={{ width: '40px' }}>
+            <TableHeader>
+              <TableRow>
+                <TableHead style={{ width: '40px' }}>
+                  <input
+                    type="checkbox"
+                    checked={selection.allSelected}
+                    onChange={selection.toggleAll}
+                    aria-label="تحديد الكل"
+                  />
+                </TableHead>
+                <TableHead>الاسم</TableHead>
+                <TableHead>النوع</TableHead>
+                <TableHead>المدينة</TableHead>
+                <TableHead>المالك</TableHead>
+                <TableHead>تاريخ الإرسال</TableHead>
+                <TableHead style={{ textAlign: 'left' }}>الإجراءات</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pending.map((listing) => (
+                <TableRow key={listing._id} className={selection.isSelected(listing._id) ? 'is-selected' : ''}>
+                  <TableCell>
                     <input
                       type="checkbox"
-                      checked={selection.allSelected}
-                      onChange={selection.toggleAll}
-                      aria-label="تحديد الكل"
+                      checked={selection.isSelected(listing._id)}
+                      onChange={() => selection.toggle(listing._id)}
+                      aria-label={`تحديد ${listing.name_ar}`}
                     />
-                  </TableHead>
-                  <TableHead>الاسم</TableHead>
-                  <TableHead>النوع</TableHead>
-                  <TableHead>المدينة</TableHead>
-                  <TableHead>المالك</TableHead>
-                  <TableHead>تاريخ الإرسال</TableHead>
-                  <TableHead style={{ textAlign: 'left' }}>الإجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pending.map((listing) => (
-                  <TableRow key={listing._id} className={selection.isSelected(listing._id) ? 'is-selected' : ''}>
-                    <TableCell>
-                      <input
-                        type="checkbox"
-                        checked={selection.isSelected(listing._id)}
-                        onChange={() => selection.toggle(listing._id)}
-                        aria-label={`تحديد ${listing.name_ar}`}
-                      />
-                    </TableCell>
-                    <TableCell data-label="الاسم">
-                      <div className="admin-pending-name">
-                        {listing.images?.length ? (
-                          <img className="admin-row-thumb" src={listing.images[0]} alt="" loading="lazy" />
-                        ) : (
-                          <span className="admin-row-thumb empty" title="لا توجد صور">—</span>
+                  </TableCell>
+                  <TableCell data-label="الاسم">
+                    <div className="admin-pending-name">
+                      {listing.images?.length ? (
+                        <img className="admin-row-thumb" src={listing.images[0]} alt="" loading="lazy" />
+                      ) : (
+                        <span className="admin-row-thumb empty" title="لا توجد صور">—</span>
+                      )}
+                      <div>
+                        <div className="admin-table-name">{listing.name_ar}</div>
+                        <div className="admin-table-sub" dir="ltr">{listing.name_en}</div>
+                        {listing.pricePerNight != null && (
+                          <div className="admin-table-sub">{formatMoney(listing.pricePerNight)} / ليلة</div>
                         )}
-                        <div>
-                          <div className="admin-table-name">{listing.name_ar}</div>
-                          <div className="admin-table-sub" dir="ltr">{listing.name_en}</div>
-                        </div>
                       </div>
-                    </TableCell>
-                    <TableCell data-label="النوع">{TYPE_LABELS[listing.type] || listing.type}</TableCell>
-                    <TableCell data-label="المدينة">{cityLabel(listing.city)}</TableCell>
-                    <TableCell data-label="المالك">
-                      <div className="admin-table-name">{listing.ownerName || '—'}</div>
+                    </div>
+                  </TableCell>
+                  <TableCell data-label="النوع">{TYPE_LABELS[listing.type] || listing.type}</TableCell>
+                  <TableCell data-label="المدينة">{cityLabel(listing.city)}</TableCell>
+                  <TableCell data-label="المالك">
+                    <div className="admin-table-name">
+                      {isPlaceholderEmail(listing.ownerName) ? 'تسجيل بالهاتف' : listing.ownerName || '—'}
+                    </div>
+                    {realEmail(listing.ownerEmail) && (
                       <div className="admin-table-sub" dir="ltr">{listing.ownerEmail}</div>
-                    </TableCell>
-                    <TableCell data-label="تاريخ الإرسال">{formatDate(listing.createdAt)}</TableCell>
-                    <TableCell>
-                      <div className="admin-actions">
-                        <button
-                          onClick={() => handleApprove(listing)}
-                          className="admin-action-btn edit"
-                          disabled={busyId === listing._id}
-                        >
-                          {busyId === listing._id ? 'جاري...' : 'موافقة'}
-                        </button>
-                        <button
-                          onClick={() => handleReject(listing)}
-                          className="admin-action-btn delete"
-                          disabled={busyId === listing._id}
-                        >
-                          رفض
-                        </button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    )}
+                  </TableCell>
+                  <TableCell data-label="تاريخ الإرسال">{formatDate(listing.createdAt)}</TableCell>
+                  <TableCell>
+                    <div className="admin-actions">
+                      <button
+                        type="button"
+                        className="admin-action-btn edit"
+                        onClick={() => setOpenId(listing._id)}
+                      >
+                        مراجعة
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </>
       )}
 
+      {open && (
+        <ListingDrawer key={open._id} listing={open} onClose={() => setOpenId(null)} />
+      )}
       {confirmDialog}
     </motion.div>
   )

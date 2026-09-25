@@ -2311,7 +2311,8 @@
   padding-bottom: 0.25rem;
   overscroll-behavior-x: contain;
 }
-.admin-gallery a { position: relative; flex: 0 0 auto; display: block; }
+.admin-gallery a,
+.admin-gallery-item { position: relative; flex: 0 0 auto; display: block; }
 .admin-gallery img {
   display: block;
   width: 136px;

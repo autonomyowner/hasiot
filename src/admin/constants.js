@@ -232,6 +232,20 @@ export const isPlaceholderEmail = (email) =>
 /** An address someone can write to, or null. */
 export const realEmail = (email) => (email && !isPlaceholderEmail(email) ? email : null)
 
+/**
+ * A URL safe to put in an href, or null. Websites and image URLs are text a
+ * host or provider typed into the app; a "javascript:" one would run in the
+ * admin's session when clicked, so only http(s) becomes a link.
+ */
+export function safeHttpUrl(url) {
+  if (typeof url !== 'string') return null
+  const trimmed = url.trim()
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  // "www.example.com" — typed without the scheme, still meant as a website.
+  if (/^www\./i.test(trimmed)) return `https://${trimmed}`
+  return null
+}
+
 /** A person's name as the panel shows it; a phone sign-up has only a number. */
 export function personName(person) {
   if (!person) return UNKNOWN_LABEL

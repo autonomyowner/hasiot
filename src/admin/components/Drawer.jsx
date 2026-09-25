@@ -1,5 +1,6 @@
 import { XIcon } from 'lucide-react'
 import { Dialog as DialogPrimitive } from 'radix-ui'
+import { safeHttpUrl } from '../constants'
 
 /**
  * A detail panel that slides in from the page's end edge — the left, in this
@@ -82,17 +83,28 @@ export function Facts({ items }) {
   )
 }
 
-/** A strip of photos, each opening full size in a new tab. */
+/**
+ * A strip of photos, each opening full size in a new tab. The URLs came from
+ * the app, so only an http(s) one becomes a link (safeHttpUrl).
+ */
 export function Gallery({ images, emptyText = 'لا توجد صور.' }) {
   if (!images?.length) return <p className="admin-inline-hint">{emptyText}</p>
   return (
     <div className="admin-gallery">
-      {images.map((url, index) => (
-        <a key={`${url}-${index}`} href={url} target="_blank" rel="noopener noreferrer">
-          <img src={url} alt={`صورة ${index + 1}`} loading="lazy" />
-          {index === 0 && <span className="admin-gallery-cover">الغلاف</span>}
-        </a>
-      ))}
+      {images.map((url, index) => {
+        const photo = (
+          <>
+            <img src={url} alt={`صورة ${index + 1}`} loading="lazy" />
+            {index === 0 && <span className="admin-gallery-cover">الغلاف</span>}
+          </>
+        )
+        const href = safeHttpUrl(url)
+        return href ? (
+          <a key={`${url}-${index}`} href={href} target="_blank" rel="noopener noreferrer">{photo}</a>
+        ) : (
+          <span key={`${url}-${index}`} className="admin-gallery-item">{photo}</span>
+        )
+      })}
     </div>
   )
 }
