@@ -40,10 +40,18 @@ import { useFavorites } from "@/hooks/useConvexData";
 import type { TabKey } from "@/app/(tabs)/_layout";
 import { signOut as authSignOut } from "@/lib/auth";
 import { refreshAuth } from "@/lib/convex";
+import { forgetThisDeviceForPush } from "@/lib/push";
+import { askForPushNow } from "@/lib/pushPrompt";
+import { signOutWithPush, usePushSettingsRow } from "@/hooks/usePushRegistration";
 import { UserType } from "@/types";
 
-const PRIVACY_POLICY_URL = "https://www.hasio.xyz/privacy-policy.html";
-const TERMS_OF_SERVICE_URL = "https://www.hasio.xyz/terms-of-service.html";
+// hasio.net is the live site (design D2). The binaries already in the stores
+// open the hasio.xyz copies, which stay up until those binaries age out.
+const PRIVACY_POLICY_URL = "https://hasio.net/privacy-policy.html";
+const TERMS_OF_SERVICE_URL = "https://hasio.net/terms-of-service.html";
+// The one place the support address lives: it is on hasio.xyz, and may move
+// with that domain (design, open decision 3).
+const SUPPORT_EMAIL = "support@hasio.xyz";
 
 const ANDROID_PACKAGE = "com.hasio.travel";
 // "Hasio Travel" in App Store Connect (published under Nabil Hamici's team).
@@ -130,6 +138,8 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
     user ? { includeServices: true } : "skip"
   );
   const unreadCount = useQuery(api.notifications.queries.unreadCount, user ? {} : "skip");
+  // Hidden where push cannot arrive: a simulator, the web, a build without it.
+  const pushRow = usePushSettingsRow();
 
   const realName = [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim();
   // The address a phone sign-up is given is a placeholder that accepts no
@@ -199,7 +209,10 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
     leavingNow.current = true;
     setLeaving("signOut");
     try {
-      await authSignOut();
+      // Takes this phone off the account's push list first, while the
+      // session still exists — the next person to use the phone must not
+      // get this account's booking notices.
+      await signOutWithPush();
     } catch {
       leavingNow.current = false;
       setLeaving(null);
@@ -229,6 +242,22 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
     Linking.openURL(url).catch(() => appAlert(t("error"), t("couldNotOpenLink")));
   };
 
+  // The address is on the row as well, for a phone with no mail app set up.
+  const contactSupport = () => openLink(`mailto:${SUPPORT_EMAIL}`);
+
+  // Off: the app's explanation, then the system's prompt. On, or refused for
+  // good: only the phone's settings can change it now, so the row goes there
+  // — which is also the only way to turn notifications off. Before the
+  // permission has been read (a moment after opening) a tap does nothing.
+  const handlePushRow = () => {
+    if (pushRow.state === null) return;
+    if (pushRow.state === "off") {
+      askForPushNow(isBusinessOwner || isServiceProvider ? "host" : "guest");
+      return;
+    }
+    Linking.openSettings().catch(() => appAlert(t("error"), t("couldNotOpenLink")));
+  };
+
   const deleteMyAccount = useMutation(api.users.mutations.deleteMyAccount);
 
   const confirmDeleteAccount = async () => {
@@ -246,6 +275,9 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
     setDeleteOpen(false);
 
     try {
+      // While the session can still say whose token it is. Never throws, and
+      // gives up after a few seconds rather than hold the deletion.
+      await forgetThisDeviceForPush();
       await deleteMyAccount();
     } catch {
       await whenSheetGone(sheetGone);
@@ -561,6 +593,15 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
               {t("support")}
             </Text>
 
+            {/* A guest can need help too — above all one who cannot sign in. */}
+            <SettingRow
+              icon="mail"
+              label={t("contactSupport")}
+              subtitle={SUPPORT_EMAIL}
+              isRTL={isRTL}
+              onPress={contactSupport}
+            />
+
             <SettingRow
               icon="shield"
               label={t("privacyPolicy")}
@@ -795,6 +836,24 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
               onPress={() => router.push("/notifications")}
             />
 
+            {/* Push, beside the inbox it brings people back to. */}
+            {pushRow.available && (
+              <SettingRow
+                icon="smartphone"
+                label={t("pushNotifications")}
+                value={
+                  pushRow.state === "on"
+                    ? t("pushOn")
+                    : pushRow.state
+                      ? t("pushOff")
+                      : undefined
+                }
+                subtitle={pushRow.state === "blocked" ? t("pushTurnOnInSettings") : undefined}
+                isRTL={isRTL}
+                onPress={handlePushRow}
+              />
+            )}
+
             <SettingRow
               icon="heart"
               label={t("favorites")}
@@ -831,10 +890,13 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
               {t("support")}
             </Text>
 
-            {/* The notifications switch lived here. The app ships no push
-                notifications, so the toggle only flipped a local Zustand flag —
-                a control that does nothing. Restore it with the feature; the
-                `notificationsEnabled` state in appStore is kept for that. */}
+            <SettingRow
+              icon="mail"
+              label={t("contactSupport")}
+              subtitle={SUPPORT_EMAIL}
+              isRTL={isRTL}
+              onPress={contactSupport}
+            />
 
             <SettingRow
               icon="slash"
