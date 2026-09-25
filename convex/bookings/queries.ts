@@ -1,10 +1,17 @@
-import { query } from "../_generated/server";
-import type { Doc } from "../_generated/dataModel";
+import { query, type QueryCtx } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 import { isPlaceholderEmail } from "../lib/contact";
 import { riyadhMonthKey, todayRiyadhISO } from "../lib/dates";
 import { isBookableStay } from "../listings/pricing";
+import {
+  computeServiceQuote,
+  isBookableService,
+  isPublicService,
+  SERVICE_ERRORS,
+  type ServiceQuoteResult,
+} from "../services/logic";
 import {
   ACTIVE_STAY_STATUSES,
   BOOKING_ERRORS,
@@ -16,6 +23,7 @@ import {
 // Hard ceilings so no query can scan an unbounded number of documents.
 const MAX_LIST = 200;
 const MAX_OWNED_LISTINGS = 50;
+const MAX_OWNED_SERVICES = 200;
 
 /**
  * The rows a client that predates service bookings may see.
@@ -27,6 +35,135 @@ const MAX_OWNED_LISTINGS = 50;
  */
 export function visibleToLegacyClients<T extends Pick<Doc<"bookings">, "kind">>(rows: T[]): T[] {
   return rows.filter((row) => row.kind !== "service");
+}
+
+/**
+ * The service a booking row carries: what a card shows, and one image.
+ *
+ * Null for a listing booking — and for a service booking whose service was
+ * deleted since, so a reader must never assume `kind === "service"` means
+ * there is a service to show.
+ */
+export function serviceSummary(service: Doc<"services"> | null) {
+  if (!service) return null;
+  return {
+    _id: service._id,
+    title_en: service.title_en,
+    title_ar: service.title_ar,
+    serviceType: service.serviceType,
+    city: service.city,
+    // One image is all a list row needs.
+    images: service.images?.slice(0, 1) ?? [],
+    priceUnit: service.priceUnit,
+    contactPhone: service.contactPhone,
+  };
+}
+
+export type ServiceSummary = NonNullable<ReturnType<typeof serviceSummary>>;
+
+/** The place a guest's booking row carries, as the 1.0.2 app renders it. */
+function guestListingSummary(listing: Doc<"listings"> | null) {
+  if (!listing) return null;
+  return {
+    _id: listing._id,
+    name_en: listing.name_en,
+    name_ar: listing.name_ar,
+    category: listing.category,
+    category_ar: listing.category_ar,
+    address: listing.address,
+    phone: listing.phone,
+    city: listing.city,
+    // One image is all a list row needs; sending the whole array would put
+    // every photo of every booked place on the wire.
+    images: listing.images?.slice(0, 1) ?? [],
+    coordinates: listing.coordinates,
+    checkInTime: listing.checkInTime,
+    checkOutTime: listing.checkOutTime,
+  };
+}
+
+/**
+ * The traveller as a host or provider sees them in an inbox: someone to call.
+ * One shape for both inboxes.
+ */
+export function touristSummary(tourist: Doc<"users"> | null) {
+  if (!tourist) return null;
+  return {
+    _id: tourist._id,
+    firstName: tourist.firstName,
+    lastName: tourist.lastName,
+    // A phone sign-up's address is synthesised and undeliverable — showing
+    // it would invite the owner to email a black hole.
+    email: isPlaceholderEmail(tourist.email) ? null : tourist.email,
+    phone: tourist.phone,
+    phoneVerified: tourist.phoneVerified ?? false,
+  };
+}
+
+/**
+ * The provider as a traveller sees them on a service booking.
+ *
+ * The service's own contact number is public — it is on the service sheet
+ * already. The provider's personal number is theirs, and a traveller gets it
+ * only once the provider has said yes: confirmed, or completed afterwards.
+ */
+export function providerContact(
+  service: Pick<Doc<"services">, "contactPhone"> | null,
+  owner: Pick<Doc<"users">, "firstName" | "lastName" | "phone"> | null,
+  status: string
+): { firstName?: string; lastName?: string; phone?: string } | null {
+  if (!owner) return null;
+  const listed = service?.contactPhone?.trim();
+  const personal = status === "confirmed" || status === "completed" ? owner.phone : undefined;
+  return { firstName: owner.firstName, lastName: owner.lastName, phone: listed || personal };
+}
+
+type UserBookingRow = Doc<"bookings"> & {
+  listing: ReturnType<typeof guestListingSummary>;
+  /** Only with `includeServices`: absent for the apps that predate services. */
+  service?: ServiceSummary | null;
+};
+
+/**
+ * A traveller's bookings, newest first.
+ *
+ * Without `includeServices` this is exactly what the 1.0.2 and 1.0.0 apps
+ * have always received: no service bookings, and no `service` key.
+ */
+export async function userBookingsForUser(
+  ctx: QueryCtx,
+  user: Doc<"users">,
+  args: { status?: string; limit?: number; includeServices?: boolean }
+): Promise<UserBookingRow[]> {
+  const take = Math.min(args.limit ?? MAX_LIST, MAX_LIST);
+  const status = args.status;
+
+  let bookings = status
+    ? await ctx.db
+        .query("bookings")
+        .withIndex("by_userId_and_status", (q) => q.eq("userId", user._id).eq("status", status))
+        .order("desc")
+        .take(take)
+    : await ctx.db
+        .query("bookings")
+        .withIndex("by_userId", (q) => q.eq("userId", user._id))
+        .order("desc")
+        .take(take);
+
+  if (!args.includeServices) {
+    bookings = visibleToLegacyClients(bookings);
+  }
+
+  return await Promise.all(
+    bookings.map(async (booking): Promise<UserBookingRow> => {
+      const listing = booking.listingId ? await ctx.db.get(booking.listingId) : null;
+      const row = { ...booking, listing: guestListingSummary(listing) };
+      if (!args.includeServices) return row;
+
+      const service = booking.serviceId ? await ctx.db.get(booking.serviceId) : null;
+      return { ...row, service: serviceSummary(service) };
+    })
+  );
 }
 
 // Get current user's bookings
@@ -41,61 +178,82 @@ export const getUserBookings = query({
     if (!user) {
       return [];
     }
-
-    const take = Math.min(args.limit ?? MAX_LIST, MAX_LIST);
-
-    let bookings;
-    if (args.status) {
-      bookings = await ctx.db
-        .query("bookings")
-        .withIndex("by_userId_and_status", (q) =>
-          q.eq("userId", user._id).eq("status", args.status!)
-        )
-        .order("desc")
-        .take(take);
-    } else {
-      bookings = await ctx.db
-        .query("bookings")
-        .withIndex("by_userId", (q) => q.eq("userId", user._id))
-        .order("desc")
-        .take(take);
-    }
-
-    if (!args.includeServices) {
-      bookings = visibleToLegacyClients(bookings);
-    }
-
-    // Enrich with listing info
-    const enrichedBookings = await Promise.all(
-      bookings.map(async (booking) => {
-        const listing = booking.listingId ? await ctx.db.get(booking.listingId) : null;
-        return {
-          ...booking,
-          listing: listing
-            ? {
-                _id: listing._id,
-                name_en: listing.name_en,
-                name_ar: listing.name_ar,
-                category: listing.category,
-                category_ar: listing.category_ar,
-                address: listing.address,
-                phone: listing.phone,
-                city: listing.city,
-                // One image is all a list row needs; sending the whole array
-                // would put every photo of every booked place on the wire.
-                images: listing.images?.slice(0, 1) ?? [],
-                coordinates: listing.coordinates,
-                checkInTime: listing.checkInTime,
-                checkOutTime: listing.checkOutTime,
-              }
-            : null,
-        };
-      })
-    );
-
-    return enrichedBookings;
+    return await userBookingsForUser(ctx, user, args);
   },
 });
+
+type ViewerRole = "guest" | "host" | "provider" | "admin";
+
+type BookingDetail = Doc<"bookings"> & {
+  listing: Doc<"listings"> | null;
+  viewerRole: ViewerRole;
+  guest: { firstName?: string; lastName?: string; phone?: string; email: string | null } | null;
+  /** Only with `includeServices`; null on listing bookings and deleted services. */
+  service?: Doc<"services"> | null;
+  /** Only with `includeServices`; null on listing bookings. */
+  provider?: ReturnType<typeof providerContact>;
+};
+
+/**
+ * One booking, for the people allowed to see it: the traveller who made it,
+ * the host of its place or the provider of its service, and support.
+ *
+ * Without `includeServices` a service booking is not found — an old app
+ * tapping a service notification lands here, and "not found" is what it can
+ * render, a listing-less booking is not (visibleToLegacyClients) — and a
+ * listing booking has exactly the keys it always had.
+ */
+export async function bookingForViewer(
+  ctx: QueryCtx,
+  user: Doc<"users">,
+  args: { bookingId: Id<"bookings">; includeServices?: boolean }
+): Promise<BookingDetail | null> {
+  const booking = await ctx.db.get(args.bookingId);
+  if (!booking) return null;
+
+  if (booking.kind === "service" && !args.includeServices) return null;
+
+  const listing = booking.listingId ? await ctx.db.get(booking.listingId) : null;
+  const service = booking.serviceId ? await ctx.db.get(booking.serviceId) : null;
+  const isService = booking.kind === "service";
+
+  const isGuest = booking.userId === user._id;
+  const isHost = listing?.ownerId === user._id;
+  // The service's current owner, as for acting on the booking
+  // (requireBookingManager). Once the service is deleted, the booking's own
+  // record of who provided it is all there is.
+  const isProvider = isService && (service ? service.ownerId : booking.ownerId) === user._id;
+  if (!isGuest && !isHost && !isProvider && user.role !== "admin") {
+    return null;
+  }
+
+  const other = isGuest ? null : await ctx.db.get(booking.userId);
+  const viewerRole: ViewerRole = isGuest ? "guest" : isHost ? "host" : isProvider ? "provider" : "admin";
+
+  const detail: BookingDetail = {
+    ...booking,
+    listing,
+    viewerRole,
+    // A host or provider opening a booking needs to be able to reach the guest.
+    guest: other
+      ? {
+          firstName: other.firstName,
+          lastName: other.lastName,
+          phone: other.phone,
+          email: isPlaceholderEmail(other.email) ? null : other.email,
+        }
+      : null,
+  };
+  if (!args.includeServices) return detail;
+
+  const providerId = isService ? (service?.ownerId ?? booking.ownerId) : undefined;
+  const owner = providerId ? await ctx.db.get(providerId) : null;
+  return {
+    ...detail,
+    service,
+    provider: isService ? providerContact(service, owner, booking.status) : null,
+  };
+}
 
 // Get a single booking
 export const getBooking = query({
@@ -108,39 +266,7 @@ export const getBooking = query({
     if (!user) {
       return null;
     }
-
-    const booking = await ctx.db.get(args.bookingId);
-    if (!booking) return null;
-
-    // An old app tapping a service notification lands here; "not found" is
-    // what it can render, a listing-less booking is not (visibleToLegacyClients).
-    if (booking.kind === "service" && !args.includeServices) return null;
-
-    const listing = booking.listingId ? await ctx.db.get(booking.listingId) : null;
-
-    // The guest who booked, the host who has to honour it, and support.
-    const isGuest = booking.userId === user._id;
-    const isHost = listing?.ownerId === user._id;
-    if (!isGuest && !isHost && user.role !== "admin") {
-      return null;
-    }
-
-    const other = isGuest ? null : await ctx.db.get(booking.userId);
-
-    return {
-      ...booking,
-      listing,
-      viewerRole: isGuest ? ("guest" as const) : isHost ? ("host" as const) : ("admin" as const),
-      // A host opening a booking needs to be able to reach the guest.
-      guest: other
-        ? {
-            firstName: other.firstName,
-            lastName: other.lastName,
-            phone: other.phone,
-            email: isPlaceholderEmail(other.email) ? null : other.email,
-          }
-        : null,
-    };
+    return await bookingForViewer(ctx, user, args);
   },
 });
 
@@ -284,23 +410,132 @@ export const getBusinessBookings = query({
                 images: listing.images?.slice(0, 1) ?? [],
               }
             : null,
-          tourist: tourist
-            ? {
-                _id: tourist._id,
-                firstName: tourist.firstName,
-                lastName: tourist.lastName,
-                // A phone sign-up's address is synthesised and undeliverable —
-                // showing it to a host would invite them to email a black hole.
-                email: isPlaceholderEmail(tourist.email) ? null : tourist.email,
-                phone: tourist.phone,
-                phoneVerified: tourist.phoneVerified ?? false,
-              }
-            : null,
+          tourist: touristSummary(tourist),
         };
       })
     );
 
     return enriched;
+  },
+});
+
+/**
+ * A provider's booking inbox: their service bookings, newest first, each with
+ * the service and the traveller to call.
+ *
+ * Read off `by_ownerId`, like the host inbox, with the kind filtered inside
+ * the query so that a provider who also hosts a place still gets a full page
+ * of service bookings.
+ */
+export async function providerBookingsForUser(
+  ctx: QueryCtx,
+  user: Doc<"users">,
+  args: { status?: string }
+) {
+  if (user.role !== "service_provider") return [];
+
+  const status = args.status;
+  const rows = status
+    ? await ctx.db
+        .query("bookings")
+        .withIndex("by_ownerId_and_status", (q) => q.eq("ownerId", user._id).eq("status", status))
+        .order("desc")
+        .filter((q) => q.eq(q.field("kind"), "service"))
+        .take(MAX_LIST)
+    : await ctx.db
+        .query("bookings")
+        .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
+        .order("desc")
+        .filter((q) => q.eq(q.field("kind"), "service"))
+        .take(MAX_LIST);
+
+  return await Promise.all(
+    rows.map(async (booking) => {
+      const [tourist, service] = await Promise.all([
+        ctx.db.get(booking.userId),
+        booking.serviceId ? ctx.db.get(booking.serviceId) : null,
+      ]);
+      return { ...booking, service: serviceSummary(service), tourist: touristSummary(tourist) };
+    })
+  );
+}
+
+export const getProviderBookings = query({
+  args: {
+    status: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) return [];
+    return await providerBookingsForUser(ctx, user, args);
+  },
+});
+
+/** "Today" and "this month" for the provider dashboard, on the Riyadh clock. */
+export function providerStatsWindow(now: number): { today: string; month: string } {
+  return { today: todayRiyadhISO(now), month: riyadhMonthKey(now) };
+}
+
+type StatsRow = Pick<Doc<"bookings">, "date" | "checkIn" | "checkOut" | "totalAmount">;
+
+/**
+ * The provider dashboard's numbers, from their service bookings by status.
+ *
+ * Upcoming is confirmed work that has not ended (checkOut is exclusive, and
+ * the morning job completes it). A month is the month the service took place
+ * in, on the Riyadh calendar. Revenue counts confirmed and completed alike, as
+ * for hosts: the money is owed either way, and leaving completed out would
+ * make the figure fall as the month's work gets done.
+ */
+export function computeProviderStats(
+  rows: { pending: StatsRow[]; confirmed: StatsRow[]; completed: StatsRow[] },
+  services: number,
+  today: string,
+  month: string
+) {
+  const inMonth = (b: StatsRow) => (b.checkIn ?? b.date).startsWith(month);
+  return {
+    pending: rows.pending.length,
+    upcoming: rows.confirmed.filter((b) => (b.checkOut ?? b.date) >= today).length,
+    completedMonth: rows.completed.filter(inMonth).length,
+    revenueMonth: [...rows.confirmed, ...rows.completed]
+      .filter(inMonth)
+      .reduce((sum, b) => sum + (b.totalAmount ?? 0), 0),
+    services,
+    currency: "SAR" as const,
+  };
+}
+
+export async function providerStatsForUser(ctx: QueryCtx, user: Doc<"users">, now: number) {
+  if (user.role !== "service_provider") return null;
+
+  const byStatus = (status: BookingStatus) =>
+    ctx.db
+      .query("bookings")
+      .withIndex("by_ownerId_and_status", (q) => q.eq("ownerId", user._id).eq("status", status))
+      .filter((q) => q.eq(q.field("kind"), "service"))
+      .take(MAX_LIST);
+
+  const [pending, confirmed, completed, services] = await Promise.all([
+    byStatus("pending"),
+    byStatus("confirmed"),
+    byStatus("completed"),
+    ctx.db
+      .query("services")
+      .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
+      .take(MAX_OWNED_SERVICES),
+  ]);
+
+  const { today, month } = providerStatsWindow(now);
+  return computeProviderStats({ pending, confirmed, completed }, services.length, today, month);
+}
+
+export const getProviderStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) return null;
+    return await providerStatsForUser(ctx, user, Date.now());
   },
 });
 
@@ -415,6 +650,49 @@ export const quoteStay = query({
       checkInTime: listing.checkInTime,
       checkOutTime: listing.checkOutTime,
     };
+  },
+});
+
+/**
+ * The quote a service booking would get, or why there is none. Never throws.
+ */
+export function quoteServiceFor(
+  service: Doc<"services"> | null,
+  owner: Pick<Doc<"users">, "role" | "isApproved" | "isSuspended"> | null,
+  args: { date: string; time: string; quantity?: number; partySize?: number },
+  today: string,
+  now: number
+): ServiceQuoteResult {
+  if (!service || !isPublicService(service, owner)) {
+    return { ok: false, error: SERVICE_ERRORS.SERVICE_UNAVAILABLE };
+  }
+  if (!isBookableService(service, owner)) {
+    return { ok: false, error: SERVICE_ERRORS.NOT_BOOKABLE };
+  }
+  return computeServiceQuote(service, args, today, now);
+}
+
+/**
+ * Price a service booking without committing to it.
+ *
+ * Public and never throws, like quoteStay: the sheet calls it live while the
+ * traveller is still choosing a day and a start time. It runs the same
+ * computeServiceQuote as createServiceBooking, so the number shown is the
+ * number charged.
+ */
+export const quoteService = query({
+  args: {
+    serviceId: v.id("services"),
+    date: v.string(),
+    time: v.string(),
+    quantity: v.optional(v.number()),
+    partySize: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const service = await ctx.db.get(args.serviceId);
+    const owner = service ? await ctx.db.get(service.ownerId) : null;
+    const now = Date.now();
+    return quoteServiceFor(service, owner, args, todayRiyadhISO(now), now);
   },
 });
 

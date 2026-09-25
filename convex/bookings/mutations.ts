@@ -8,6 +8,7 @@ import {
   cancelAsTourist,
   completeAsManager,
   confirmAsManager,
+  createServiceForUser,
   createSlotForUser,
   createStayForUser,
   declineAsManager,
@@ -63,6 +64,31 @@ export const createStayBooking = mutation({
     }
 
     return await createStayForUser(ctx, user, args);
+  },
+});
+
+/**
+ * Request a service provider: a day, a start time, hours or days when the
+ * price unit asks for them, and how many people. The server prices it; the
+ * provider confirms or declines within 48 hours, or by the start time if that
+ * comes first. Rules and refusals: createServiceForUser.
+ */
+export const createServiceBooking = mutation({
+  args: {
+    serviceId: v.id("services"),
+    date: v.string(),
+    time: v.string(),
+    quantity: v.optional(v.number()),
+    partySize: v.optional(v.number()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) {
+      throw new ConvexError("Not authenticated");
+    }
+
+    return await createServiceForUser(ctx, user, args);
   },
 });
 
