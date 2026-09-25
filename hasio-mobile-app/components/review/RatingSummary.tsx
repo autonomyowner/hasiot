@@ -20,8 +20,18 @@ export interface RatingSummaryValue {
  * The bars matter more than the average: a 4.2 made of straight fours reads
  * very differently from a 4.2 made of fives and ones, and only the histogram
  * shows which one a place is.
+ *
+ * `emptyHint` is the line under "No reviews yet". It defaults to the place's
+ * ("Be the first to rate this place"); a service passes its own, since the
+ * same line under a guide or a driver named the wrong thing.
  */
-export function RatingSummary({ value }: { value: RatingSummaryValue }) {
+export function RatingSummary({
+  value,
+  emptyHint,
+}: {
+  value: RatingSummaryValue;
+  emptyHint?: string;
+}) {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
 
@@ -36,7 +46,7 @@ export function RatingSummary({ value }: { value: RatingSummaryValue }) {
           {t("reviewsNone")}
         </Text>
         <Text style={[styles.emptyBody, isRTL && styles.textRTL]}>
-          {t("reviewsBeFirst")}
+          {emptyHint ?? t("reviewsBeFirst")}
         </Text>
       </View>
     );

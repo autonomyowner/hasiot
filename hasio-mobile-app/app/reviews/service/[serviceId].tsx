@@ -4,7 +4,7 @@ import { useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "convex/react";
 import { api } from "@/backend";
-import type { Id } from "../../../convex/_generated/dataModel";
+import type { Id } from "../../../../convex/_generated/dataModel";
 import { BackButton } from "@/components/ui/BackButton";
 import { ReportSheet } from "@/components/ReportSheet";
 import {
@@ -21,37 +21,34 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { LIST_CONTAINER_PADDING } from "@/constants/layout";
 
 /**
- * Every review on one listing.
+ * Every review of one service — the service sheet shows the first three.
  *
- * Reached from the listing sheet, which shows the first three. The summary
- * rides in the list header rather than a fixed block so the whole page scrolls
- * as one — on a place with forty reviews the average is not what the reader
- * came for.
+ * The listing page's twin (app/reviews/[listingId].tsx), read from the
+ * service's own queries: the same summary, the same cards, the same one report
+ * sheet for the page. A static `service/` segment, so `/reviews/service/<id>`
+ * can never be taken for a listing id.
  */
-export default function ReviewsScreen() {
+export default function ServiceReviewsScreen() {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const { t, isRTL } = useLanguage();
-  const { listingId } = useLocalSearchParams<{ listingId: string }>();
+  const { serviceId } = useLocalSearchParams<{ serviceId: string }>();
 
-  const id = listingId ? (listingId as Id<"listings">) : null;
+  const id = serviceId ? (serviceId as Id<"services">) : null;
   const summary = useQuery(
-    api.reviews.queries.getSummary,
-    id ? { listingId: id } : "skip"
+    api.reviews.queries.getServiceSummary,
+    id ? { serviceId: id } : "skip"
   );
   const reviews = useQuery(
-    api.reviews.queries.listForListing,
-    id ? { listingId: id, limit: 100 } : "skip"
+    api.reviews.queries.listForService,
+    id ? { serviceId: id, limit: 100 } : "skip"
   );
-  // The page used to be blank until both arrived: a header over nothing.
   const loading = !!id && (summary === undefined || reviews === undefined);
-  // Nobody has reviewed it: said once, plainly, where it used to be a summary
-  // saying so in small type over an empty list. Reviews hidden only because
+  // Nobody has reviewed it — see the listing page. Reviews hidden only because
   // their authors are blocked still leave a count, so those keep the summary.
   const empty = !loading && (reviews?.length ?? 0) === 0 && (summary?.count ?? 0) === 0;
 
-  // One report sheet for the page. Each card used to hold its own — a Modal
-  // per review, mounted and idle. The id outlives the close, so the sheet is
+  // One report sheet for the page; the id outlives the close, so the sheet is
   // not re-pointed while it slides away.
   const [reportId, setReportId] = useState<string | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
@@ -87,14 +84,14 @@ export default function ReviewsScreen() {
           ListHeaderComponent={
             summary ? (
               <View style={styles.summaryWrap}>
-                <RatingSummary value={summary} />
+                <RatingSummary value={summary} emptyHint={t("reviewsEmptyHint")} />
               </View>
             ) : null
           }
           contentContainerStyle={[
             styles.list,
             // A pushed stack route, not inside the tab pager, so it clears the
-            // safe area rather than the floating tab bar.
+            // safe area rather than the tab bar.
             { paddingBottom: insets.bottom + 24 },
           ]}
           showsVerticalScrollIndicator={false}
@@ -114,9 +111,8 @@ export default function ReviewsScreen() {
 }
 
 /**
- * The summary block (score and five bars) and three review rows, at the
- * sizes of RatingSummary and ReviewCard, so the page does not shift when
- * they land.
+ * The summary block and three review rows at the sizes of RatingSummary and
+ * ReviewCard — the listing page's placeholder, so the two pages load alike.
  */
 function ReviewsSkeleton({ isRTL }: { isRTL: boolean }) {
   const styles = useThemedStyles(makeStyles);
@@ -164,7 +160,6 @@ const makeStyles = (fonts: AppFonts) =>
     title: { fontFamily: fonts.serif, fontSize: 26, color: colors.ink },
     list: { paddingHorizontal: LIST_CONTAINER_PADDING },
     summaryWrap: { paddingVertical: 16 },
-    // RatingSummary: score block beside five bars, 20 apart.
     skeletonSummary: {
       flexDirection: "row",
       alignItems: "center",
@@ -176,7 +171,6 @@ const makeStyles = (fonts: AppFonts) =>
     skeletonScoreStars: { width: 78, height: 14 },
     skeletonBars: { flex: 1, gap: 11 },
     skeletonBar: { height: 6 },
-    // ReviewCard: a hairline row, a 36pt avatar beside name and stars.
     skeletonCard: {
       paddingVertical: 16,
       borderBottomWidth: 1,
