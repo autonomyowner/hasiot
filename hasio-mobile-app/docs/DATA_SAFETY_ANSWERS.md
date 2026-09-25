@@ -23,8 +23,10 @@ Use these exact answers when filling out the Data Safety form in Google Play Con
   - All uploaded photos (listing, service, and verification images)
   - Day plans and saved items
   - Favorites and chat history
-- Travel moments are not covered because they are never collected: they live only
-  in local storage on the user's device and are removed by deleting the app
+  - Bookings, reviews, notifications and device push tokens (1.1.0)
+  - Travel moments saved with versions before 1.1.0 (1.1.0 no longer offers them)
+- Open bookings other travellers made with the user's listings or services are
+  cancelled first, and those travellers are notified
 - Note: Data previously shared with third parties (Convex, OpenRouter) is subject to their retention policies
 
 ---
@@ -75,8 +77,9 @@ Use these exact answers when filling out the Data Safety form in Google Play Con
 - **Ephemeral:** No
 - **Required:** No (optional - business listing images)
 - **Purpose:** App functionality (business listings, freelancer services, and verification documents)
-- **Note:** Travel moment photos are NOT collected — they are written to local
-  device storage only and never uploaded to our servers
+- **Note (corrected 2026-09-25):** versions before 1.1.0 uploaded travel-moment
+  photos to the user's own account (never shown to others); 1.1.0 removed
+  travel moments. The earlier note saying they stayed on the device was wrong.
 
 ---
 
@@ -106,6 +109,11 @@ Use these exact answers when filling out the Data Safety form in Google Play Con
 - **Ephemeral:** No
 - **Required:** Yes
 - **Purpose:** App functionality, Analytics
+- **Note (1.1.0):** includes the push notification token, collected only when the
+  user turns notifications on, used only to deliver booking and account notices,
+  and deleted on sign-out or account deletion. It is passed to Expo and Firebase
+  Cloud Messaging solely to deliver those notifications (service providers
+  acting for us, which Play does not count as "sharing").
 
 ---
 
