@@ -321,6 +321,24 @@ export function partitionGuestBookings<T extends BookingTiming>(
   return { upcoming, past };
 }
 
+/**
+ * Whether the guest is offered Cancel.
+ *
+ * Only while the booking is open and has not begun. A stay can be cancelled
+ * until its check-in day: from then the room was held and the night may be
+ * owed, which is a conversation with the host. A service until its start
+ * time on the Riyadh clock (design D11): from then the server refuses
+ * (SERVICE_STARTED) and the provider is already at the meeting point. A
+ * request nobody answered before its start is closing anyway — it expires at
+ * the start — so it is not offered either. The screen adds the other half of
+ * the rule: only the guest who made the booking may cancel it.
+ */
+export function guestCanCancel(booking: BookingTiming, now: number): boolean {
+  if (!isOpen(booking)) return false;
+  if (booking.kind === "service") return riyadhMoment(booking.date, booking.time ?? "") > now;
+  return startOf(booking) > todayRiyadhISO(now);
+}
+
 /** A service booking as the provider's inbox reads it. */
 export type ProviderTiming = BookingTiming & { expiresAt?: number };
 

@@ -6,6 +6,7 @@ import {
   bookingActionErrorKey,
   countLabel,
   displayTotalSar,
+  guestCanCancel,
   hostActionsFor,
   minuteNow,
   nightsLabel,
@@ -299,6 +300,38 @@ describe("partitionGuestBookings", () => {
     );
     expect(ids(upcoming)).toEqual(["driver-12th", "tour-15th-morning", "stay-15th"]);
     expect(ids(past)).toEqual(["guide-august", "stay-may"]);
+  });
+});
+
+describe("guestCanCancel", () => {
+  it("lets a stay be cancelled until its check-in day", () => {
+    expect(guestCanCancel(stay("s", "confirmed", "2026-09-11", "2026-09-13"), NOON_10_SEP)).toBe(
+      true
+    );
+    // The day has come: the room was held, and the night may be owed.
+    expect(guestCanCancel(stay("s", "pending", "2026-09-10", "2026-09-12"), NOON_10_SEP)).toBe(
+      false
+    );
+  });
+
+  it("lets a service be cancelled until its start time, not its day", () => {
+    const evening = service("s", "confirmed", "2026-09-10", "19:00");
+    const start = Date.UTC(2026, 8, 10, 16, 0);
+    expect(guestCanCancel(evening, NOON_10_SEP)).toBe(true);
+    expect(guestCanCancel(evening, start - 60_000)).toBe(true);
+    // From the start the server refuses (SERVICE_STARTED): the provider is
+    // at the meeting point, and it is a conversation with them.
+    expect(guestCanCancel(evening, start)).toBe(false);
+    expect(guestCanCancel(service("s", "pending", "2026-09-10", "19:00"), start)).toBe(false);
+  });
+
+  it("offers nothing on a closed booking", () => {
+    for (const status of ["completed", "cancelled", "declined", "expired", "no_show"]) {
+      expect(guestCanCancel(service("s", status, "2026-09-20", "10:00"), NOON_10_SEP)).toBe(false);
+      expect(guestCanCancel(stay("s", status, "2026-09-20", "2026-09-21"), NOON_10_SEP)).toBe(
+        false
+      );
+    }
   });
 });
 

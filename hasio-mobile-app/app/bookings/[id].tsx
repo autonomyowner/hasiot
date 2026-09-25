@@ -26,16 +26,16 @@ import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { cityLabel } from "@/constants/cities";
-import { formatISODate, todayRiyadhISO } from "@/lib/dates";
+import { formatISODate } from "@/lib/dates";
 import { SkeletonBookingDetail } from "@/components/ui/SkeletonScreens";
 import {
   bookingActionErrorKey,
   countLabel,
   displayTotalSar,
+  guestCanCancel,
   minuteNow,
   nightsLabel,
   providerActionsFor,
-  riyadhMoment,
   serviceWhen,
   telUrl,
   totalShownFor,
@@ -97,20 +97,12 @@ export default function BookingDetailScreen() {
   // on its start time.
   const now = minuteNow();
 
-  // Cancelling is only offered while it can still be honoured cleanly: before
-  // arrival, and while the booking is still open. After check-in the room was
-  // held and the night may be owed, so that is a conversation with the host.
-  // A service is the same from its start time (the server refuses after it,
-  // SERVICE_STARTED), which is a moment in Riyadh, not a day. And only to the
-  // guest: cancelBooking refuses anyone else, and a host or an admin viewing
-  // the booking here was offered a button that could only fail.
-  const canCancel =
-    !!booking &&
-    booking.viewerRole === "guest" &&
-    (booking.status === "pending" || booking.status === "confirmed") &&
-    (isService
-      ? riyadhMoment(booking.date, booking.time) > now
-      : (booking.checkIn ?? booking.date) > todayRiyadhISO(now));
+  // Cancelling is only offered while it can still be honoured cleanly: while
+  // the booking is open and before it begins — a stay's check-in day, a
+  // service's start time in Riyadh (guestCanCancel). And only to the guest:
+  // cancelBooking refuses anyone else, and a host or an admin viewing the
+  // booking here was offered a button that could only fail.
+  const canCancel = !!booking && booking.viewerRole === "guest" && guestCanCancel(booking, now);
 
   // The provider's own buttons on their service booking — the pair their
   // inbox card shows. A provider reached this screen from a notification
