@@ -139,11 +139,15 @@ function exactCity(city: string | undefined): string | null {
  * (suspension, blocks) need a second read and happen per page.
  */
 function approvedServices(ctx: QueryCtx, args: { serviceType?: string; city?: string }) {
+  // Both branches read approved rows only: a provider's pending or rejected
+  // submissions (as many as they like, each as large as they like) are never
+  // part of what an anonymous visitor's query has to scan.
   const base = args.serviceType
     ? ctx.db
         .query("services")
-        .withIndex("by_serviceType", (q) => q.eq("serviceType", args.serviceType!))
-        .filter((q) => q.eq(q.field("status"), "approved"))
+        .withIndex("by_status_and_serviceType", (q) =>
+          q.eq("status", "approved").eq("serviceType", args.serviceType!)
+        )
     : ctx.db.query("services").withIndex("by_status", (q) => q.eq("status", "approved"));
 
   const city = exactCity(args.city);

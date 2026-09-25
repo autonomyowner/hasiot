@@ -36,6 +36,7 @@ export const MAX_GROUP = 100;
 // ceiling as a nightly price in listings/pricing.ts.
 export const MAX_SERVICE_PRICE = 100_000;
 export const MAX_SERVICE_IMAGES = 5;
+export const MAX_IMAGE_URL = 1000;
 export const MAX_TITLE = 100;
 export const MAX_DESCRIPTION = 2000;
 
@@ -275,7 +276,9 @@ export function validateServiceInput(
 
   if (args.images !== undefined) {
     if (args.images.length > MAX_SERVICE_IMAGES) refuse(SERVICE_ERRORS.TOO_MANY_IMAGES);
-    out.images = args.images;
+    // Uploads are storage URLs of ~100 characters. Anything past this is not a
+    // photo the app uploaded, and dropping it keeps a document from ballooning.
+    out.images = args.images.filter((url) => url.length <= MAX_IMAGE_URL);
   }
 
   if (args.city !== undefined) {

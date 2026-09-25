@@ -157,6 +157,9 @@ export default defineSchema({
     .index("by_ownerId", ["ownerId"])
     .index("by_status", ["status"])
     .index("by_serviceType", ["serviceType"])
+    // The public list filtered by type reads approved rows only, never the
+    // pending and rejected ones behind them (by_serviceType alone would).
+    .index("by_status_and_serviceType", ["status", "serviceType"])
     .index("by_owner_and_status", ["ownerId", "status"])
     .searchIndex("search_services", {
       searchField: "title_en",

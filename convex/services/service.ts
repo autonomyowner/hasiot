@@ -80,20 +80,36 @@ type Checked = Partial<
 >;
 type CheckedForCreate = Checked & Pick<Doc<"services">, "serviceType" | "title_en" | "title_ar">;
 
+/**
+ * Ceilings for the fields the validator does not own. They are cut to size,
+ * not refused: the live apps send them as typed and would show a refusal as a
+ * generic failure. Without a ceiling one provider could store documents near
+ * Convex's 1 MiB limit and push every visitor's service list past the
+ * per-query read limit.
+ */
+const TEXT_LIMITS = {
+  priceRange: 60,
+  availability_en: 300,
+  availability_ar: 300,
+  contactPhone: 30,
+  contactEmail: 120,
+  region: 60,
+} as const;
+const MAX_LANGUAGES = 10;
+const MAX_LANGUAGE_LENGTH = 30;
+
 function passThrough(args: PassThrough): PassThrough {
   const out: Record<string, unknown> = {};
-  for (const key of [
-    "priceRange",
-    "availability_en",
-    "availability_ar",
-    "contactPhone",
-    "contactEmail",
-    "languages",
-    "region",
-    "coordinates",
-  ] as const) {
-    if (args[key] !== undefined) out[key] = args[key];
+  for (const key of Object.keys(TEXT_LIMITS) as Array<keyof typeof TEXT_LIMITS>) {
+    // "" still means "clear it" for the 1.0.2 app, so it passes through.
+    if (args[key] !== undefined) out[key] = args[key]!.slice(0, TEXT_LIMITS[key]);
   }
+  if (args.languages !== undefined) {
+    out.languages = args.languages
+      .slice(0, MAX_LANGUAGES)
+      .map((language) => language.slice(0, MAX_LANGUAGE_LENGTH));
+  }
+  if (args.coordinates !== undefined) out.coordinates = args.coordinates;
   return out as PassThrough;
 }
 

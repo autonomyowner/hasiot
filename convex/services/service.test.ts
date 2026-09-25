@@ -28,6 +28,60 @@ async function expectRefusal(promise: Promise<unknown>, message: string) {
 
 const BASE = { serviceType: "tour_guide", title_en: "Oasis walk", title_ar: "جولة الواحة" };
 
+describe("free-text fields have a ceiling", () => {
+  // A service document near Convex's 1 MiB limit, times a handful, would push
+  // every visitor's service list past the per-query read limit. The fields the
+  // validator does not own are cut to size (not refused: the live apps send
+  // them as typed), and oversized image URLs are dropped.
+  it("cuts contact, availability, languages and region to size, and drops absurd image URLs", async () => {
+    const t = makeT();
+    const me = await provider(t);
+    const huge = "x".repeat(100_000);
+
+    const id = await t.run((ctx) =>
+      submitServiceForUser(
+        ctx,
+        me,
+        {
+          ...BASE,
+          priceRange: huge,
+          availability_en: huge,
+          availability_ar: huge,
+          contactPhone: huge,
+          contactEmail: huge,
+          region: huge,
+          languages: Array.from({ length: 50 }, () => huge),
+          images: ["https://example.convex.cloud/api/storage/abc", `https://x/${huge}`],
+        },
+        NOW
+      )
+    );
+    const stored = (await t.run((ctx) => ctx.db.get(id)))!;
+
+    expect(stored.priceRange!.length).toBeLessThanOrEqual(60);
+    expect(stored.availability_en!.length).toBeLessThanOrEqual(300);
+    expect(stored.availability_ar!.length).toBeLessThanOrEqual(300);
+    expect(stored.contactPhone!.length).toBeLessThanOrEqual(30);
+    expect(stored.contactEmail!.length).toBeLessThanOrEqual(120);
+    expect(stored.region!.length).toBeLessThanOrEqual(60);
+    expect(stored.languages!.length).toBeLessThanOrEqual(10);
+    expect(stored.languages!.every((l) => l.length <= 30)).toBe(true);
+    expect(stored.images).toEqual(["https://example.convex.cloud/api/storage/abc"]);
+  });
+
+  it("still lets the 1.0.2 app clear a field by sending an empty string", async () => {
+    const t = makeT();
+    const me = await provider(t);
+    const id = await t.run((ctx) =>
+      submitServiceForUser(ctx, me, { ...BASE, contactEmail: "guide@example.com" }, NOW)
+    );
+
+    await t.run((ctx) => updateServiceForUser(ctx, me, { serviceId: id, contactEmail: "" }, NOW));
+
+    expect((await t.run((ctx) => ctx.db.get(id)))!.contactEmail).toBe("");
+  });
+});
+
 describe("submitServiceForUser", () => {
   it("stores a pending service with its price and the canonical city", async () => {
     const t = makeT();
