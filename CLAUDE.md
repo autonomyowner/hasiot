@@ -22,7 +22,7 @@ Three user roles: tourists (immediate access), business owners (post listings �
 
 **Brand:** Always use "Hasio" in English — never "هاسيو" in logos or brand display, even in Arabic mode.
 
-**Production:** https://www.hasio.xyz (Vercel, auto-deploys on push to `main`)
+**Production:** https://hasio.net (Cloudflare Workers, static assets from `dist/`, `wrangler.jsonc`). **hasio.net is the live site since 2026-09-25 (owner); hasio.xyz is dropped** but must keep serving `privacy-policy.html`, `terms-of-service.html` and `support.html` (or redirect them to hasio.net) until the live 1.0.2 / 1.0.0 binaries, which open those three by absolute hasio.xyz URL, have aged out and both store listings point at hasio.net. `hasio.xyz` is still on Vercel for that reason only; `phone.hasio.xyz` (the phone sign-up placeholder email domain) and the app's `Origin: https://www.hasio.xyz` auth header are identifiers, not links — never change them.
 **App Store:** https://apps.apple.com/sa/app/hasio-travel/id6800297588 — published under **Nabil Hamici's** Apple account, not ours (see *Stores, accounts & shipping*)
 **Play Store:** https://play.google.com/store/apps/details?id=com.hasio.travel — **stale: still the May 2026 1.0.0 binary** (see the same section)
 
@@ -75,9 +75,14 @@ npx convex deploy --yes          # Deploy Convex to production
 npx convex run <path> --prod     # Run a function against production
 ```
 
-**Development**: Run `npm run dev` and `npm run dev:convex` in separate terminals simultaneously.
+**Development**: Run `npm run dev` and `npm run dev:convex` in separate terminals simultaneously. `.env.local` points at the **development** deployment `limitless-mockingbird-449`; production is `hearty-ram-74` (both eu-west-1).
 
-**Deploy to production**: `npx convex deploy --yes` pushes Convex functions. Frontend deploys automatically via Vercel on git push to `main`. For manual Vercel deploy: `npx vercel --prod --yes`.
+**Deploy to production** (only on the owner's "ship it", backend first):
+1. `npx convex deploy --yes` — Convex functions to production.
+2. The website (landing page + `/admin`) to **hasio.net**: `npm run build -- --mode cloudflare` (reads `.env.cloudflare.local`, the production Convex URLs — `.env.local` would bake in the dev deployment), then `npx wrangler deploy`. Check `(Select-String -Path dist/index.html -Pattern modulepreload).Count` is 0 first.
+3. hasio.xyz (Vercel, from `main`) now only needs to keep the three legal pages alive; no feature work goes there.
+
+**End-to-end check on development**: `node scripts/smoke/services-e2e.mjs` — makes an admin, a provider and a traveller, runs the whole service booking path, and deletes them. Refuses to run unless `.env.local` is a `dev:` deployment.
 
 ## Architecture
 
@@ -219,7 +224,7 @@ convex/
 │   ├── queries.ts         # getMyTrips (hydrated stops), getTrip, getMyTripSummaries
 │   └── mutations.ts       # createTrip, addStopToTrip, updateStop, removeStop, reorderStops, updateTrip, deleteTrip, convertPlanToTrip
 └── travelPlanner/
-    ├── actions.ts         # planTravel (OpenRouter API with Claude 3.5 Haiku)
+    ├── actions.ts         # planTravel (OpenRouter, anthropic/claude-haiku-4.5)
     ├── queries.ts         # getMyPlans, getPlan
     └── mutations.ts       # storePlan
 ```
@@ -302,7 +307,7 @@ The Google Fonts stylesheet is a `<link>` in `index.html`, **not** an `@import` 
 - **React Native** with Expo (mobile app)
 - **Convex** — Serverless backend with real-time subscriptions
 - **Better-Auth** (`@convex-dev/better-auth`) — Email/password authentication
-- **OpenRouter** — AI API (Claude 3.5 Haiku for travel planning)
+- **OpenRouter** — AI API (`anthropic/claude-haiku-4.5` for travel planning)
 - **Mapbox GL JS** — Interactive maps and geocoding (mobile app only; `mapbox-gl` was removed from the website's dependencies 2026-08-29)
 - **Framer Motion** — Animations (website: admin panel only — the landing page uses `useReveal`)
 - **React Router DOM 7** — Client-side routing
