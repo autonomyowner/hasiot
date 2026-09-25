@@ -10,7 +10,7 @@ import type { TranslationKey } from "@/constants/translations";
 import type { Language } from "@/types";
 import { getBookingErrorKey } from "./bookingError";
 import { convertFromSar, SAR_PER_USD, type Currency } from "./currency";
-import { formatISODate, todayRiyadhISO } from "./dates";
+import { addDays, formatDateRange, formatISODate, todayRiyadhISO } from "./dates";
 import { toLatinDigits } from "./digits";
 import { serverErrorText } from "./serverError";
 
@@ -141,14 +141,32 @@ export function riyadhMoment(date: string, time: string): number {
 /**
  * "10 Sep at 19:00" — a service booking's day and its start time. The time is
  * the stored "HH:MM" as it is, never parsed into a Date (see riyadhMoment).
+ *
+ * A booking of several days (serviceDays) names its last day too: "10 – 12
+ * Sep at 09:00". The last day is counted in — three days from the 10th end on
+ * the 12th — where the stored checkOut, the 13th, is exclusive. Without it a
+ * driver booked for three days had to work out from "3 days" when to stop.
  */
 export function serviceWhen(
   date: string,
   time: string,
   language: Language,
-  t: (key: "dateAtTime") => string
+  t: (key: "dateAtTime") => string,
+  days: number = 1
 ): string {
-  return t("dateAtTime").replace("{date}", formatISODate(date, language)).replace("{time}", time);
+  const day =
+    days > 1
+      ? formatDateRange(date, addDays(date, days - 1), language)
+      : formatISODate(date, language);
+  return t("dateAtTime").replace("{date}", day).replace("{time}", time);
+}
+
+/**
+ * How many days a service booking covers: its quantity when the service is
+ * priced by the day, else one — hours are within the one day.
+ */
+export function serviceDays(booking: { priceUnit?: string; quantity?: number }): number {
+  return booking.priceUnit === "per_day" ? Math.max(1, booking.quantity ?? 1) : 1;
 }
 
 /**

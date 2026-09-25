@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { translations } from "@/constants/translations";
 import { formatPrice } from "./currency";
-import { formatISODate } from "./dates";
+import { formatDateRange, formatISODate } from "./dates";
 import {
   bookingActionErrorKey,
   countLabel,
@@ -18,6 +18,7 @@ import {
   quoteFooterState,
   riyadhMoment,
   serviceAmountLabel,
+  serviceDays,
   serviceWhen,
   shownStatus,
   telUrl,
@@ -532,6 +533,30 @@ describe("service booking words", () => {
     expect(serviceWhen("2026-09-10", "06:30", "ar", t("ar"))).toBe(
       `${formatISODate("2026-09-10", "ar")} الساعة 06:30`
     );
+  });
+
+  it("gives a booking of several days its last day, counted in", () => {
+    const t = (language: "en" | "ar") => (key: "dateAtTime") => translations[language][key];
+    // Three days from the 10th are the 10th, 11th and 12th — the server's
+    // checkOut, the 13th, is exclusive, and a driver reading it would turn up
+    // a day too many.
+    expect(serviceWhen("2026-09-10", "09:00", "en", t("en"), 3)).toBe(
+      `${formatDateRange("2026-09-10", "2026-09-12", "en")} at 09:00`
+    );
+    expect(serviceWhen("2026-09-10", "09:00", "ar", t("ar"), 2)).toBe(
+      `${formatDateRange("2026-09-10", "2026-09-11", "ar")} الساعة 09:00`
+    );
+    expect(serviceWhen("2026-09-10", "09:00", "en", t("en"), 1)).toBe(
+      `${formatISODate("2026-09-10", "en")} at 09:00`
+    );
+  });
+
+  it("counts days only for a service priced by the day", () => {
+    expect(serviceDays({ priceUnit: "per_day", quantity: 3 })).toBe(3);
+    expect(serviceDays({ priceUnit: "per_day" })).toBe(1);
+    // Hours are within the one day.
+    expect(serviceDays({ priceUnit: "per_hour", quantity: 5 })).toBe(1);
+    expect(serviceDays({ priceUnit: "fixed", quantity: 1 })).toBe(1);
   });
 });
 

@@ -1,5 +1,5 @@
 import { appAlert } from "@/stores/dialogStore";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -163,15 +163,12 @@ export function ServiceDetailSheet({ service, onClose }: ServiceDetailSheetProps
 
   // A press that waited for the account, carried out now that it is known.
   // Adjusted during render, like the resets above, so the sheet it opens comes
-  // up on the frame the spinner stops. Signed out after all, the press is
-  // dropped: navigating is a side effect, which has no place in render.
-  if (whenReady && !isUserLoading) {
+  // up on the frame the spinner stops.
+  if (whenReady && !isUserLoading && isAuthenticated) {
     setWhenReady(null);
-    if (isAuthenticated) {
-      if (whenReady === "rate") setReviewOpen(true);
-      else if (user?.phoneVerified) setBookingOpen(true);
-      else setVerifyOpen(true);
-    }
+    if (whenReady === "rate") setReviewOpen(true);
+    else if (user?.phoneVerified) setBookingOpen(true);
+    else setVerifyOpen(true);
   }
 
   // What to do once this sheet is off the screen: sign in, the booking list,
@@ -193,6 +190,19 @@ export function ServiceDetailSheet({ service, onClose }: ServiceDetailSheetProps
   };
 
   const goToSignIn = () => leaveThen(() => router.push("/auth"));
+
+  // Signed out after all: the waiting press is carried out as the traveller
+  // meant it, by taking them to sign in. It used to be dropped — the spinner
+  // stopped and nothing happened, and only a second tap opened sign-in.
+  // Leaving the sheet is a side effect, so it runs from an effect rather than
+  // from render like the outcomes above. `whenReady` stays set until the
+  // sheet lets go of this service (the resets above), which keeps the spinner
+  // up while the sheet leaves and the effect from firing twice.
+  const signInForPress = useEffectEvent(goToSignIn);
+  const signInWanted = whenReady !== null && !isUserLoading && !isAuthenticated;
+  useEffect(() => {
+    if (signInWanted) signInForPress();
+  }, [signInWanted]);
 
   // Three gates, in the order the traveller can do something about them: a
   // visitor signs in; an account with no verified number verifies one, since

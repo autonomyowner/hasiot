@@ -82,7 +82,8 @@ export default function MyBookingsScreen() {
     () => ({
       stay: (nights: number, guests?: number) => nightsLabel(nights, t, guests),
       formatTotal: (stay: StayTotal) => format(displayTotalSar(stay, currency)),
-      serviceWhen: (date: string, time: string) => serviceWhen(date, time, language, t),
+      serviceWhen: (date: string, time: string, days?: number) =>
+        serviceWhen(date, time, language, t, days),
       serviceAmount: (booking: ServiceAmount) => serviceAmountLabel(booking, t),
       serviceGone: t("serviceNoLongerListed"),
     }),

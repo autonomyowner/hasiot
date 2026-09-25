@@ -6,6 +6,7 @@ import { BookingStatusChip } from "./BookingStatusChip";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
 import {
+  serviceDays,
   shownStatus,
   totalShownFor,
   type ServiceAmount,
@@ -64,8 +65,11 @@ interface BookingRowProps {
      * guest was shown (lib/bookingDisplay `displayTotalSar`).
      */
     formatTotal: (stay: StayTotal) => string;
-    /** "10 Sep at 19:00" — lib/bookingDisplay `serviceWhen`, bound to the language. */
-    serviceWhen: (date: string, time: string) => string;
+    /**
+     * "10 Sep at 19:00", or "10 – 12 Sep at 09:00" over several days —
+     * lib/bookingDisplay `serviceWhen`, bound to the language.
+     */
+    serviceWhen: (date: string, time: string, days?: number) => string;
     /** "3 hours · 4 people" — lib/bookingDisplay `serviceAmountLabel`, bound to `t`. */
     serviceAmount: (booking: ServiceAmount) => string;
     /** The title of a service that has been deleted since it was booked. */
@@ -94,7 +98,7 @@ function BookingRowInner({ booking, now, language, isRTL, labels, onPress }: Boo
       : "—";
 
   const when = isService
-    ? labels.serviceWhen(booking.date, booking.time)
+    ? labels.serviceWhen(booking.date, booking.time, serviceDays(booking))
     : isStay
       ? formatDateRange(booking.checkIn!, booking.checkOut!, language)
       : `${formatISODate(booking.date, language)} · ${booking.time}`;

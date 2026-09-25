@@ -9,6 +9,7 @@ import { formatPhoneForDisplay, ltr } from "@/lib/phone";
 import {
   hostActionsFor,
   providerActionsFor,
+  serviceDays,
   shownStatus,
   totalShownFor,
   type ServiceAmount,
@@ -51,8 +52,11 @@ export type HostAction = "confirm" | "decline" | "noShow" | "complete";
 
 /** What a card needs to show a service booking. The host inbox has none. */
 export interface ServiceCardLabels {
-  /** "10 Sep at 19:00" — lib/bookingDisplay `serviceWhen`, bound to the language. */
-  when: (date: string, time: string) => string;
+  /**
+   * "10 Sep at 19:00", or "10 – 12 Sep at 09:00" over several days —
+   * lib/bookingDisplay `serviceWhen`, bound to the language.
+   */
+  when: (date: string, time: string, days?: number) => string;
   /** "3 hours · 4 people" — lib/bookingDisplay `serviceAmountLabel`, bound to `t`. */
   amount: (booking: ServiceAmount) => string;
   /** The title of a service deleted since it was booked. */
@@ -137,7 +141,7 @@ function HostBookingCardInner({
       : "—";
   const when =
     isService && labels.service
-      ? labels.service.when(booking.date, booking.time)
+      ? labels.service.when(booking.date, booking.time, serviceDays(booking))
       : isStay
         ? formatDateRange(booking.checkIn!, booking.checkOut!, language)
         : `${formatISODate(booking.date, language)} · ${booking.time}`;

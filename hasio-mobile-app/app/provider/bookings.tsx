@@ -181,7 +181,8 @@ export default function ProviderBookingsScreen() {
       // "complete the stay".
       complete: t("markServiceCompleted"),
       service: {
-        when: (date: string, time: string) => serviceWhen(date, time, language, t),
+        when: (date: string, time: string, days?: number) =>
+          serviceWhen(date, time, language, t, days),
         amount: (booking: ServiceAmount) => serviceAmountLabel(booking, t),
         gone: t("serviceNoLongerListed"),
       },

@@ -23,6 +23,7 @@ import { DeclineReasonSheet } from "@/components/booking/DeclineReasonSheet";
 import { HostActionButton, type HostAction } from "@/components/booking/HostBookingCard";
 import { ReviewSheet } from "@/components/review";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
+import { useConvexUser } from "@/hooks/useConvexUser";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { cityLabel } from "@/constants/cities";
@@ -36,6 +37,7 @@ import {
   minuteNow,
   nightsLabel,
   providerActionsFor,
+  serviceDays,
   serviceWhen,
   shownStatus,
   telUrl,
@@ -63,6 +65,7 @@ export default function BookingDetailScreen() {
   const busyRef = useRef(false);
   const [declineOpen, setDeclineOpen] = useState(false);
 
+  const { isSignedIn } = useConvexUser();
   // `includeServices`: without it a service booking is "not found", which is
   // what the 1.0.2 app, tapping a service notification, can render.
   const booking = useQuery(
@@ -217,7 +220,11 @@ export default function BookingDetailScreen() {
     }
   };
 
-  if (booking === undefined) {
+  // Null is "not found" only for someone signed in. Signed out — a
+  // notification tapped after signing out lands here — getBooking answers null
+  // too, and the layout is already on its way to the sign-in screen; saying
+  // "Booking not found" first told the person their booking was gone.
+  if (booking === undefined || (booking === null && !isSignedIn)) {
     return (
       <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
         <ScreenGradient />
@@ -441,7 +448,7 @@ export default function BookingDetailScreen() {
                 phone's zone, which moved it for a traveller abroad. */}
             <Row
               label={t("date")}
-              value={serviceWhen(booking.date, booking.time, language, t)}
+              value={serviceWhen(booking.date, booking.time, language, t, serviceDays(booking))}
               isRTL={isRTL}
             />
             {duration ? <Row label={t("bookingDuration")} value={duration} isRTL={isRTL} /> : null}
