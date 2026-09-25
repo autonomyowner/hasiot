@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { translations } from "@/constants/translations";
+import { formatPrice } from "./currency";
 import {
   firstBookableDate,
   filterServicesByQuery,
@@ -30,29 +31,38 @@ const at = (iso: string) => Date.parse(iso);
 const RIYADH_1010 = at("2026-09-25T07:10:00Z");
 
 describe("formatServicePrice", () => {
+  // Written the way a stay's price is ("650 SAR per night", «650 ر.س في
+  // الليلة»), because the Book tab shows the two side by side.
   it("prices each unit in English", () => {
-    expect(formatServicePrice({ price: 150, priceUnit: "per_hour" }, "en")).toBe("SAR 150 / hour");
-    expect(formatServicePrice({ price: 150, priceUnit: "per_day" }, "en")).toBe("SAR 150 / day");
-    expect(formatServicePrice({ price: 150, priceUnit: "per_event" }, "en")).toBe("SAR 150 / booking");
-    expect(formatServicePrice({ price: 150, priceUnit: "fixed" }, "en")).toBe("SAR 150 / booking");
+    expect(formatServicePrice({ price: 150, priceUnit: "per_hour" }, "en")).toBe("150 SAR per hour");
+    expect(formatServicePrice({ price: 150, priceUnit: "per_day" }, "en")).toBe("150 SAR per day");
+    expect(formatServicePrice({ price: 150, priceUnit: "per_event" }, "en")).toBe("150 SAR per booking");
+    expect(formatServicePrice({ price: 150, priceUnit: "fixed" }, "en")).toBe("150 SAR per booking");
   });
 
   it("prices each unit in Arabic, with Latin digits", () => {
-    expect(formatServicePrice({ price: 150, priceUnit: "per_hour" }, "ar")).toBe("150 ريال / للساعة");
-    expect(formatServicePrice({ price: 150, priceUnit: "per_day" }, "ar")).toBe("150 ريال / لليوم");
-    expect(formatServicePrice({ price: 150, priceUnit: "per_event" }, "ar")).toBe("150 ريال / للحجز");
-    expect(formatServicePrice({ price: 150, priceUnit: "fixed" }, "ar")).toBe("150 ريال / للحجز");
+    expect(formatServicePrice({ price: 150, priceUnit: "per_hour" }, "ar")).toBe("150 ر.س للساعة");
+    expect(formatServicePrice({ price: 150, priceUnit: "per_day" }, "ar")).toBe("150 ر.س لليوم");
+    expect(formatServicePrice({ price: 150, priceUnit: "per_event" }, "ar")).toBe("150 ر.س للحجز");
+    expect(formatServicePrice({ price: 150, priceUnit: "fixed" }, "ar")).toBe("150 ر.س للحجز");
     expect(formatServicePrice({ price: 2500, priceUnit: "per_day" }, "ar")).not.toMatch(/[٠-٩]/);
   });
 
+  it("uses the stays' riyal, not a second spelling of it", () => {
+    const stay = (lang: "en" | "ar") =>
+      formatPrice(650, "SAR", { sar: translations[lang].sar, usd: translations[lang].usd });
+    expect(formatServiceAmount(650, "en")).toBe(stay("en"));
+    expect(formatServiceAmount(650, "ar")).toBe(stay("ar"));
+  });
+
   it("groups thousands", () => {
-    expect(formatServicePrice({ price: 1500, priceUnit: "per_day" }, "en")).toBe("SAR 1,500 / day");
-    expect(formatServicePrice({ price: 1500, priceUnit: "per_day" }, "ar")).toBe("1,500 ريال / لليوم");
+    expect(formatServicePrice({ price: 1500, priceUnit: "per_day" }, "en")).toBe("1,500 SAR per day");
+    expect(formatServicePrice({ price: 1500, priceUnit: "per_day" }, "ar")).toBe("1,500 ر.س لليوم");
   });
 
   it("reads a missing or unknown unit as one price per booking, as the server does", () => {
-    expect(formatServicePrice({ price: 300 }, "en")).toBe("SAR 300 / booking");
-    expect(formatServicePrice({ price: 300, priceUnit: "per_person" }, "ar")).toBe("300 ريال / للحجز");
+    expect(formatServicePrice({ price: 300 }, "en")).toBe("300 SAR per booking");
+    expect(formatServicePrice({ price: 300, priceUnit: "per_person" }, "ar")).toBe("300 ر.س للحجز");
   });
 
   it("says the price is on request when there is none to multiply", () => {
@@ -62,30 +72,30 @@ describe("formatServicePrice", () => {
   });
 
   it("shows dollars to a traveller who chose them", () => {
-    expect(formatServicePrice({ price: 150, priceUnit: "per_hour" }, "en", "USD")).toBe("$40 / hour");
-    expect(formatServicePrice({ price: 150, priceUnit: "per_hour" }, "ar", "USD")).toBe("$40 / للساعة");
+    expect(formatServicePrice({ price: 150, priceUnit: "per_hour" }, "en", "USD")).toBe("$40 per hour");
+    expect(formatServicePrice({ price: 150, priceUnit: "per_hour" }, "ar", "USD")).toBe("$40 للساعة");
   });
 });
 
 describe("formatServiceAmount", () => {
   it("writes a riyal amount the way the price line does", () => {
-    expect(formatServiceAmount(450, "en")).toBe("SAR 450");
-    expect(formatServiceAmount(450, "ar")).toBe("450 ريال");
+    expect(formatServiceAmount(450, "en")).toBe("450 SAR");
+    expect(formatServiceAmount(450, "ar")).toBe("450 ر.س");
     expect(formatServiceAmount(450, "en", "USD")).toBe("$120");
   });
 });
 
 describe("priceUnitLabel", () => {
   it("names each unit in both languages", () => {
-    expect(priceUnitLabel("per_hour", "en")).toBe("hour");
-    expect(priceUnitLabel("per_day", "en")).toBe("day");
-    expect(priceUnitLabel("per_event", "en")).toBe("booking");
-    expect(priceUnitLabel("fixed", "en")).toBe("booking");
+    expect(priceUnitLabel("per_hour", "en")).toBe("per hour");
+    expect(priceUnitLabel("per_day", "en")).toBe("per day");
+    expect(priceUnitLabel("per_event", "en")).toBe("per booking");
+    expect(priceUnitLabel("fixed", "en")).toBe("per booking");
     expect(priceUnitLabel("per_hour", "ar")).toBe("للساعة");
     expect(priceUnitLabel("per_day", "ar")).toBe("لليوم");
     expect(priceUnitLabel("per_event", "ar")).toBe("للحجز");
     expect(priceUnitLabel("fixed", "ar")).toBe("للحجز");
-    expect(priceUnitLabel(undefined, "en")).toBe("booking");
+    expect(priceUnitLabel(undefined, "en")).toBe("per booking");
   });
 });
 
@@ -202,17 +212,17 @@ describe("quoteBreakdown and serviceTotalSar", () => {
   const hourly = { quantity: 3, unitPrice: 150, totalAmount: 450, priceUnit: "per_hour" };
 
   it("shows what an hourly or daily total is made of", () => {
-    expect(quoteBreakdown(hourly, "en")).toBe("3 hours × SAR 150");
-    expect(quoteBreakdown(hourly, "ar")).toBe("3 ساعات × 150 ريال");
+    expect(quoteBreakdown(hourly, "en")).toBe("3 hours × 150 SAR");
+    expect(quoteBreakdown(hourly, "ar")).toBe("3 ساعات × 150 ر.س");
     expect(
       quoteBreakdown({ quantity: 2, unitPrice: 800, totalAmount: 1600, priceUnit: "per_day" }, "en")
-    ).toBe("2 days × SAR 800");
+    ).toBe("2 days × 800 SAR");
   });
 
   it("shows a one-off price as the price per booking", () => {
     expect(
       quoteBreakdown({ quantity: 1, unitPrice: 300, totalAmount: 300, priceUnit: "fixed" }, "en")
-    ).toBe("SAR 300 / booking");
+    ).toBe("300 SAR per booking");
   });
 
   it("leaves a riyal total exactly as the server priced it", () => {

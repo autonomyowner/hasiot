@@ -15,7 +15,7 @@
 import type { Language } from "@/types";
 import { translations, type TranslationKey } from "@/constants/translations";
 import { cityLabel } from "@/constants/cities";
-import { convertFromSar, SAR_PER_USD, type Currency } from "./currency";
+import { convertFromSar, formatPrice, SAR_PER_USD, type Currency } from "./currency";
 import { addDays } from "./dates";
 import { countForm, matchesQuery, normalizeForSearch, searchableText } from "./searchText";
 
@@ -91,11 +91,11 @@ function unitOf(priceUnit: string | undefined): PriceUnit {
 }
 
 const UNIT_WORDS: Record<Language, Record<PriceUnit, string>> = {
-  en: { per_hour: "hour", per_day: "day", per_event: "booking", fixed: "booking" },
+  en: { per_hour: "per hour", per_day: "per day", per_event: "per booking", fixed: "per booking" },
   ar: { per_hour: "للساعة", per_day: "لليوم", per_event: "للحجز", fixed: "للحجز" },
 };
 
-/** What the price is per, as it follows the slash: "hour", «للساعة». */
+/** What the price is per, as it follows the amount: "per hour", «للساعة». */
 export function priceUnitLabel(priceUnit: string | undefined, lang: Language): string {
   return UNIT_WORDS[lang][unitOf(priceUnit)];
 }
@@ -103,22 +103,25 @@ export function priceUnitLabel(priceUnit: string | undefined, lang: Language): s
 /* ── Prices ──────────────────────────────────────────────────────────── */
 
 /**
- * A riyal amount as the service lines write it: "SAR 450", «450 ريال», or
- * "$120" for a traveller who chose dollars. Stored and charged in riyals
- * always; dollars are only ever the display, at the 3.75 peg.
+ * A riyal amount as the service lines write it — "450 SAR", «450 ر.س», or
+ * "$120" for a traveller who chose dollars — which is how a stay writes it:
+ * lib/currency's formatPrice, with the same unit words (translations
+ * `sar` / `usd`). The service lines used to spell it their own way ("SAR
+ * 450", «450 ريال») beside a stay's «650 ر.س» on the same Book tab. Stored
+ * and charged in riyals always; dollars are only ever the display.
  */
 export function formatServiceAmount(
   amountSar: number,
   lang: Language,
   currency: Currency = "SAR"
 ): string {
-  if (currency === "USD") return `$${convertFromSar(amountSar, "USD").toLocaleString("en-US")}`;
-  const amount = amountSar.toLocaleString("en-US");
-  return lang === "ar" ? `${amount} ريال` : `SAR ${amount}`;
+  const words = translations[lang];
+  return formatPrice(amountSar, currency, { sar: words.sar, usd: words.usd });
 }
 
 /**
- * A service's price line: "SAR 150 / hour", «150 ريال / للساعة».
+ * A service's price line: "150 SAR per hour", «150 ر.س للساعة» — the shape
+ * of a stay's "650 SAR per night", «650 ر.س في الليلة», shown beside it.
  *
  * A service with no price is shown, not hidden — posted before 1.1.0, or by a
  * provider who quotes per job — and offers Contact instead of Book (design
@@ -134,7 +137,7 @@ export function formatServicePrice(
   if (typeof price !== "number" || !(price > 0)) {
     return lang === "ar" ? "السعر عند التواصل" : "Price on request";
   }
-  return `${formatServiceAmount(price, lang, currency)} / ${priceUnitLabel(service.priceUnit, lang)}`;
+  return `${formatServiceAmount(price, lang, currency)} ${priceUnitLabel(service.priceUnit, lang)}`;
 }
 
 /* ── Counts ──────────────────────────────────────────────────────────── */
