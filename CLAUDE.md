@@ -51,7 +51,7 @@ How to do good work here:
   The backend's own suite (`npm run test` at the root, 518 across 36 files) must stay green too,
   and `npm run typecheck:convex` clean.
 - **Bookable services, push and the finished admin panel** (2026-09-25) were built on branch
-  `services-release` (from `sdk-57`) to the design `docs/superpowers/specs/2026-09-25-bookable-services-release-design.md`,
+  `services-release` and merged into `sdk-57` (`72f9efe`), to the design `docs/superpowers/specs/2026-09-25-bookable-services-release-design.md`,
   the plan `docs/superpowers/plans/2026-09-25-bookable-services-release.md` and the backend
   contract `docs/superpowers/contracts/2026-09-25-services-backend.md`. Device checks 25–45 in the
   UI-polish plan are the phone checks this work still owes.
@@ -611,7 +611,8 @@ map of *who owns what and what is broken*, verified live on 2026-09-14.
   - [ ] `SMS_PROVIDER` off `demo` in prod — **still `demoAuth: true` on 2026-09-14**; any six digits
         sign in as any phone number. `npx convex env set SMS_PROVIDER console --prod` is the
         stopgap (phone sign-in stops; email unaffected), `infobip` once a Saudi route works.
-  - [ ] `main` is not behind any feature branch; `services-release` merged into `sdk-57`, `sdk-57` merged.
+  - [x] `services-release` merged into `sdk-57` (`72f9efe`, 2026-09-25).
+  - [ ] `main` is not behind any feature branch: `sdk-57` merged into `main`.
   - [ ] **The backend goes first** (`npx convex deploy --yes`): besides the 1.1.0 functions it
         carries two fixes for bugs live in production today — the admin panel's hotel save was
         rejected by the validator, and deleting an account left its Better Auth sign-in behind.
