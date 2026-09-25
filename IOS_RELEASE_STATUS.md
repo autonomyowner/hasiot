@@ -56,6 +56,29 @@ in PREPARE_CREDENTIALS) → `POST /v1/profiles` (IOS_APP_STORE, bundleId interna
 At expiry, regenerate the same way (scripts pattern: ES256 JWT, `iss`=IssuerID, kid=KeyID,
 `dsaEncoding:"ieee-p1363"`).
 
+### Push notifications (1.1.0) — one sitting, because it invalidates the current profile
+
+1.1.0 ships `expo-notifications`. Until the steps below are done, keep `HASIO_IOS_PUSH: "off"` in
+`eas.json` → `build.production.env`. That makes `app.config.js` strip the `aps-environment` entitlement,
+so the build signs with the current profile `5X9G7JR3K5`. The app then never asks for notifications.
+
+1. **Nabil** (the one step that needs him): in the Apple Developer portal for team `W23759GRP4`,
+   go to Keys → + → enable **Apple Push Notifications service (APNs)**. Download the `.p8` once (it
+   cannot be downloaded again) and send it with its **Key ID**. Store it next to the ASC key as
+   `hasio-mobile-app/apns-key.p8`; `*.p8` is already gitignored.
+2. With the ASC API key and the same JWT script pattern, enable the capability on the App ID:
+   `POST /v1/bundleIdCapabilities` with `capabilityType: "PUSH_NOTIFICATIONS"` and the bundleId
+   relationship `THCRG443T9`. This **invalidates** profile `5X9G7JR3K5`.
+3. Immediately generate a new App Store profile: `POST /v1/profiles` (IOS_APP_STORE, same
+   certificate `5VG6M5UPU4`, bundleId `THCRG443T9`). Save it over
+   `credentials/hasio.mobileprovision`, and update the id in the inventory table above.
+4. Upload the APNs key to EAS: `npx eas credentials` → iOS → production → Push Notifications →
+   upload the `.p8` with its Key ID and team `W23759GRP4`. This is what lets the Expo push service
+   deliver to iPhones.
+5. Set `HASIO_IOS_PUSH` to `"on"` in `eas.json`. Check with
+   `npx expo config --type introspect` in `hasio-mobile-app/`: the iOS entitlements must now show
+   `aps-environment`.
+
 ## Traps that already burned us (do not repeat)
 
 1. **Directory name must stay `hasio-mobile-app`** — the old double-space name broke every iOS build
