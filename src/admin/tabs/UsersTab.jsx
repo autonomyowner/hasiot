@@ -229,8 +229,12 @@ export default function UsersTab({ currentUser }) {
                   </TableCell>
                   <TableCell data-label="الدور">
                     {roleLabel(user.role)}
+                    {/* The rule the drawer uses: a rejection stands while its
+                        reason is set, so the two never disagree. */}
                     {user.isApproved === false && (
-                      <div className="admin-table-sub">بانتظار الاعتماد</div>
+                      <div className="admin-table-sub" title={user.accountRejectionReason || ''}>
+                        {user.accountRejectionReason ? 'مرفوض' : 'بانتظار الاعتماد'}
+                      </div>
                     )}
                   </TableCell>
                   <TableCell data-label="الحالة">

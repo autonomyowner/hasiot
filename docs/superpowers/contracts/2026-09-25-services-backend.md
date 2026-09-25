@@ -55,6 +55,8 @@
 | 21 | A same-day request that expired at its start time is told "did not respond before the start time", not "within 48 hours" (`expiredAtStart`). | — |
 | 22 | `deleteMyAccount` deletes the sign-in too: Better Auth's sessions, linked accounts and user, via the internal adapter. If that fails, the whole deletion rolls back. Verified on development: the email no longer signs in, and the phone returns as a new, empty account. | — |
 | 23 | `markNoShow` on a booking that is already closed (cancelled, completed, declined, expired, no-show) is refused as closed, not as forbidden — the race where the guest cancels while the host's inbox still shows the booking confirmed. A pending request keeps `NOT_AUTHORIZED`. Stays and services alike. | "This booking is already closed." (existing) |
+| 24 | An admin's status change (`admin.mutations.updateBookingStatus`) drops `declineReason` when the booking leaves "declined" and `cancellationReason` when it leaves "cancelled". Both apps, the live ones included, show a decline reason whenever the field is set. | — |
+| 25 | Admin user rows (`adminListUsers`, `adminSearchUsers`, `adminGetUser`) carry `accountRejectionReason`, set while a business or provider account stands rejected. | — |
 
 ## 1. Shared constants
 

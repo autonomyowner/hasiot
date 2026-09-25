@@ -642,6 +642,10 @@ export function toAdminUserRow(user: Doc<"users">) {
     isSuspended: user.isSuspended ?? false,
     suspendedReason: user.suspendedReason,
     suspendedAt: user.suspendedAt,
+    // Set while a business or provider account stands rejected (cleared on
+    // approval and on a new document), as the drawer reads it: without it the
+    // table called a rejected account "awaiting approval".
+    accountRejectionReason: user.accountRejectionReason,
     createdAt: user.createdAt,
   };
 }
@@ -930,8 +934,12 @@ export async function applyBookingStatusAsAdmin(
   await ctx.db.patch(args.bookingId, {
     status: to,
     ...(to === "confirmed" || to === "declined" ? { respondedAt: now } : {}),
-    ...(to === "declined" ? { declineReason: reason ?? booking.declineReason } : {}),
-    ...(to === "cancelled" ? { cancellationReason: reason ?? booking.cancellationReason } : {}),
+    // A reason explains the status it came with, and goes when the booking
+    // leaves it. Both apps — the live 1.0.x ones too — show a decline reason
+    // whenever the field is set, so a declined booking support reopened read
+    // "Decline reason: …" beside "Confirmed". (Undefined removes the field.)
+    declineReason: to === "declined" ? (reason ?? booking.declineReason) : undefined,
+    cancellationReason: to === "cancelled" ? (reason ?? booking.cancellationReason) : undefined,
     ...(to === "completed" ? { completedAt: now } : {}),
     updatedAt: now,
   });
