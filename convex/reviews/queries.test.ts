@@ -25,6 +25,58 @@ function insertReview(
   );
 }
 
+describe("review lists never say which booking a review came from", () => {
+  // The provider being reviewed can see their own bookings, guest names and
+  // all. A bookingId on a public review row would let them match an anonymous
+  // review to the traveller who wrote it — exactly the person it hides.
+  it("drops bookingId from anonymous and named reviews alike, keeping the verified mark", async () => {
+    const t = makeT();
+    const { guestId, providerId, serviceId } = await scene(t);
+    const bookingId = await seedServiceBooking(t, {
+      userId: guestId,
+      serviceId,
+      ownerId: providerId,
+      date: "2026-09-01",
+      status: "completed",
+    });
+    const otherGuest = await seedUser(t, { firstName: "Omar" });
+    await t.run((ctx) =>
+      ctx.db.insert("reviews", {
+        userId: guestId,
+        serviceId,
+        bookingId,
+        rating: 2,
+        isAnonymous: true,
+        isVerified: true,
+        createdAt: NOW,
+        updatedAt: NOW,
+      })
+    );
+    await t.run((ctx) =>
+      ctx.db.insert("reviews", {
+        userId: otherGuest,
+        serviceId,
+        bookingId,
+        rating: 5,
+        isVerified: true,
+        createdAt: NOW + 1,
+        updatedAt: NOW + 1,
+      })
+    );
+
+    const rows = await t.query(api.reviews.queries.listForService, { serviceId });
+
+    expect(rows).toHaveLength(2);
+    for (const row of rows) {
+      expect("bookingId" in row).toBe(false);
+      expect(row.isVerified).toBe(true);
+    }
+    const anonymous = rows.find((r) => r.rating === 2)!;
+    expect("userId" in anonymous).toBe(false);
+    expect(anonymous.user).toBeNull();
+  });
+});
+
 describe("reviewableServiceBookings", () => {
   it("keeps service bookings whose service has not been reviewed, once per service", () => {
     const rows = [

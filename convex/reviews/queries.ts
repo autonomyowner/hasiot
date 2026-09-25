@@ -21,6 +21,12 @@ const MAX_REVIEWABLE = 50;
  * de-anonymises it for anyone reading the network response. The cost is that
  * an anonymous review cannot be blocked from the UI — it can still be
  * reported, and an admin sees the author on the report.
+ *
+ * `bookingId` is dropped from every row for the same reason: the host or
+ * provider being reviewed can see their own bookings with the guest's name,
+ * so a booking id on a public review would name its anonymous author. The
+ * verified mark it earned stays; only the author's own review (getMine,
+ * getMineForService) carries the id.
  */
 async function presentReviews(ctx: QueryCtx, reviews: Doc<"reviews">[]) {
   const blockedIds = await getBlockedIds(ctx);
@@ -28,13 +34,14 @@ async function presentReviews(ctx: QueryCtx, reviews: Doc<"reviews">[]) {
 
   return await Promise.all(
     visible.map(async (review) => {
+      const { bookingId: _bookingId, ...publicReview } = review;
       if (review.isAnonymous) {
-        const { userId: _userId, ...rest } = review;
+        const { userId: _userId, ...rest } = publicReview;
         return { ...rest, user: null };
       }
       const user = await ctx.db.get(review.userId);
       return {
-        ...review,
+        ...publicReview,
         user: user ? { firstName: user.firstName, lastName: user.lastName } : null,
       };
     })
