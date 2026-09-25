@@ -4,8 +4,8 @@ import { v } from "convex/values";
 import { requireAdmin } from "../auth";
 import { matchesCity } from "../lib/cities";
 import { isPlaceholderEmail } from "../lib/contact";
-import { riyadhMonthKey } from "../lib/dates";
 import {
+  computeDashboardStats,
   getServiceForAdmin,
   getUserForAdmin,
   listActivityPage,
@@ -18,167 +18,22 @@ import {
 } from "./views";
 
 // Hard ceilings so no admin query can scan an unbounded number of documents.
-// Convex fails a query outright past ~16k reads, and this dashboard used to
-// collect seven whole tables on every page load.
+// Convex fails a query outright past ~16k reads.
 const MAX_LIST = 200;
 const MAX_SCAN = 1000;
-const STATS_CAP = 5000;
 const MAX_SEARCH = 100;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-// Get dashboard statistics
+/**
+ * Dashboard statistics (computeDashboardStats). Additive since 1.1.0: every
+ * field the production panel reads keeps its name and meaning; `queues` /
+ * `queueTotal` count each piece of waiting work once, and `capped` says when
+ * a count stopped at its read cap.
+ */
 export const getDashboardStats = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    // Counts are exact below STATS_CAP. Past it the query reports `truncated`
-    // so the UI can render "5000+" rather than a silently wrong number.
-    const listings = await ctx.db.query("listings").take(STATS_CAP);
-    const bookings = await ctx.db.query("bookings").take(STATS_CAP);
-    const users = await ctx.db.query("users").take(STATS_CAP);
-    const knowledgeData = await ctx.db.query("travelKnowledge").take(STATS_CAP);
-    const travelPlans = await ctx.db.query("travelPlans").take(STATS_CAP);
-    const emailCaptures = await ctx.db.query("emailCaptures").take(STATS_CAP);
-    const services = await ctx.db.query("services").take(STATS_CAP);
-
-    // Everything below is derived from the rows already fetched above, apart
-    // from the two indexed counts — the point is to add the numbers the operator
-    // acts on without adding table scans.
-    const pendingReports = await ctx.db
-      .query("contentReports")
-      .withIndex("by_status", (q) => q.eq("status", "pending"))
-      .take(MAX_LIST);
-
-    const bookingsByStatus = {
-      pending: bookings.filter(b => b.status === "pending").length,
-      confirmed: bookings.filter(b => b.status === "confirmed").length,
-      completed: bookings.filter(b => b.status === "completed").length,
-      cancelled: bookings.filter(b => b.status === "cancelled").length,
-      no_show: bookings.filter(b => b.status === "no_show").length,
-      declined: bookings.filter(b => b.status === "declined").length,
-      expired: bookings.filter(b => b.status === "expired").length,
-    };
-
-    // The number the operator chases: stay requests a host has not answered.
-    // Distinct from bookingsByStatus.pending, which also counts restaurant
-    // slots nobody is waiting on.
-    const awaitingOwner = bookings.filter(
-      (b) => b.kind === "stay" && b.status === "pending"
-    ).length;
-
-    const thisMonth = riyadhMonthKey(Date.now());
-    const stayRevenueMonth = bookings
-      .filter(
-        (b) =>
-          b.kind === "stay" &&
-          (b.status === "confirmed" || b.status === "completed") &&
-          (b.checkIn ?? b.date).startsWith(thisMonth)
-      )
-      .reduce((sum, b) => sum + (b.totalAmount ?? 0), 0);
-
-    // Every listing sits in exactly one review state, which makes this a true
-    // part-to-whole — the shape the dashboard's segmented bar needs. Seed rows
-    // carry no status at all and are treated as published everywhere else.
-    const listingsByStatus = {
-      approved: listings.filter(l => l.status === "approved").length,
-      pending: listings.filter(l => l.status === "pending").length,
-      rejected: listings.filter(l => l.status === "rejected").length,
-      suspended: listings.filter(l => l.status === "suspended").length,
-      seed: listings.filter(l => l.status === undefined).length,
-    };
-
-    const listingsByType = {
-      hotel: listings.filter(l => l.type === "hotel").length,
-      restaurant: listings.filter(l => l.type === "restaurant").length,
-      attraction: listings.filter(l => l.type === "attraction").length,
-      event: listings.filter(l => l.type === "event").length,
-      tour: listings.filter(l => l.type === "tour").length,
-    };
-
-    const weekAgo = Date.now() - 7 * DAY_MS;
-    const today = new Date().toISOString().split("T")[0];
-    const inAWeek = new Date(Date.now() + 7 * DAY_MS).toISOString().split("T")[0];
-
-    // Daily buckets for the dashboard's trend charts. Built from the rows
-    // already fetched above by bucketing createdAt, so the charts cost nothing:
-    // no extra query, no extra document read.
-    const TREND_DAYS = 14;
-    const dayKeys: string[] = [];
-    for (let i = TREND_DAYS - 1; i >= 0; i--) {
-      dayKeys.push(new Date(Date.now() - i * DAY_MS).toISOString().split("T")[0]);
-    }
-    const bucket = (rows: { createdAt: number }[]) => {
-      const counts = new Map(dayKeys.map((d) => [d, 0]));
-      for (const row of rows) {
-        const key = new Date(row.createdAt).toISOString().split("T")[0];
-        const current = counts.get(key);
-        if (current !== undefined) counts.set(key, current + 1);
-      }
-      return dayKeys.map((d) => counts.get(d) ?? 0);
-    };
-
-    const trend = {
-      days: dayKeys,
-      listings: bucket(listings),
-      bookings: bucket(bookings),
-      users: bucket(users),
-    };
-
-    const pendingBusinesses = users.filter(
-      u => (u.role === "business_owner" || u.role === "service_provider") && u.isApproved === false
-    ).length;
-
-    return {
-      statsCap: STATS_CAP,
-      truncated: [listings, bookings, users, knowledgeData, travelPlans, emailCaptures, services]
-        .some((t) => t.length >= STATS_CAP),
-      totalListings: listings.length,
-      totalBookings: bookings.length,
-      totalUsers: users.length,
-      totalKnowledgeData: knowledgeData.length,
-      totalTravelPlans: travelPlans.length,
-      bookingsByStatus,
-      listingsByType,
-      listingsByStatus,
-      totalEmailCaptures: emailCaptures.length,
-      activeListings: listings.filter(l => l.isActive !== false).length,
-      verifiedListings: listings.filter(l => l.isVerified === true).length,
-      pendingContent: listings.filter(l => l.status === "pending").length,
-      totalServices: services.length,
-      pendingServices: services.filter(s => s.status === "pending").length,
-
-      // Work waiting on the operator, which is what the dashboard leads with.
-      pendingBusinesses,
-      pendingReports: pendingReports.length,
-      pendingBookings: bookingsByStatus.pending,
-      // Waiting on a *host*, not on us — the operator's job here is to chase
-      // the host, not to approve anything.
-      awaitingOwner,
-
-      // Accounts
-      verifiedUsers: users.filter(u => u.phoneVerified === true).length,
-      suspendedUsers: users.filter(u => u.isSuspended === true).length,
-      phoneSignups: users.filter(u => isPlaceholderEmail(u.email)).length,
-
-      // Money, for the month so far
-      stayRevenueMonth,
-      currency: "SAR",
-
-      // Content quality: a listing with no photo renders as a blank card in the
-      // app, and one with no working hours can never offer a booking slot.
-      listingsMissingImages: listings.filter(l => !l.images || l.images.length === 0).length,
-      listingsMissingHours: listings.filter(l => !l.workingHours || l.workingHours.length === 0).length,
-
-      // Momentum
-      newUsersThisWeek: users.filter(u => u.createdAt >= weekAgo).length,
-      newListingsThisWeek: listings.filter(l => l.createdAt >= weekAgo).length,
-      upcomingBookings: bookings.filter(
-        b => b.date >= today && b.date <= inAWeek && b.status !== "cancelled"
-      ).length,
-
-      trend,
-    };
+    return await computeDashboardStats(ctx);
   },
 });
 
