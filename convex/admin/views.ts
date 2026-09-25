@@ -189,9 +189,6 @@ export function cityFilter<TI extends GenericTableInfo>(
   return q.and(q.neq(field, undefined), ...elsewhere.map((name) => q.neq(field, name)));
 }
 
-type ServiceFilter = FilterBuilder<NamedTableInfo<DataModel, "services">>;
-type BookingFilter = FilterBuilder<NamedTableInfo<DataModel, "bookings">>;
-
 // === Listings, users and the activity log (the paged tables) ===
 
 type ListingFilter = FilterBuilder<NamedTableInfo<DataModel, "listings">>;
@@ -226,7 +223,11 @@ export async function listListingsPage(
     order?: string;
   }
 ): Promise<PaginationResult<Doc<"listings">>> {
-  const { type, city, status, hasImages, hasWorkingHours } = args;
+  const { hasImages, hasWorkingHours } = args;
+  // An empty string means "all", as it always did.
+  const type = args.type || undefined;
+  const city = args.city || undefined;
+  const status = args.status || undefined;
 
   // The narrowest index the filters allow; status wins because the pending
   // queue is the one that grows. A city with old sub-areas cannot use the
@@ -310,6 +311,8 @@ export async function listActivityPage(
 }
 
 // === Bookings (the bookings tab) ===
+
+type BookingFilter = FilterBuilder<NamedTableInfo<DataModel, "bookings">>;
 
 /** "slot" is the legacy restaurant booking: `kind` "slot", or no kind at all. */
 export type BookingKind = "stay" | "service" | "slot";
@@ -723,6 +726,8 @@ export async function getUserForAdmin(ctx: QueryCtx, userId: Id<"users">) {
 }
 
 // === Services (the live-services tab) ===
+
+type ServiceFilter = FilterBuilder<NamedTableInfo<DataModel, "services">>;
 
 export type AdminServiceRow = Doc<"services"> & { owner: ReturnType<typeof ownerSummary> | null };
 
