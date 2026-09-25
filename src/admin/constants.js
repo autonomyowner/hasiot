@@ -252,7 +252,8 @@ export function personName(person) {
   const name = [person.firstName, person.lastName].filter(Boolean).join(' ').trim()
   if (name) return name
   if (person.isPlaceholderEmail || isPlaceholderEmail(person.email)) {
-    return person.phone || UNKNOWN_LABEL
+    // Some rows (a reporter, a queue's owner) carry no phone field at all.
+    return person.phone || 'تسجيل بالهاتف'
   }
   return person.email || person.phone || UNKNOWN_LABEL
 }
