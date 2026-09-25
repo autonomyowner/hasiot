@@ -7,6 +7,12 @@ import { isPublicListing } from "../listings/queries";
 import { riyadhDateTimeToTimestamp, todayRiyadhISO } from "../lib/dates";
 import { notifyBookingEvent } from "../notifications/internal";
 import {
+  computeServiceQuote,
+  isBookableService,
+  isPublicService,
+  SERVICE_ERRORS,
+} from "../services/logic";
+import {
   ACTIVE_STAY_STATUSES,
   BOOKING_ERRORS,
   computeStayQuote,
@@ -30,6 +36,14 @@ import {
 // property with more than this many bookings on file needs the real
 // availability table that Phase 2 brings, not a bigger number here.
 const OVERLAP_SCAN_LIMIT = 500;
+
+// Shared by stays, slots and services: 30 requests a day per traveller,
+// whatever they are for.
+const DAILY_BOOKINGS = 30;
+const DAILY_BOOKINGS_MESSAGE =
+  "لقد وصلت إلى الحد اليومي للحجوزات. يرجى المحاولة غدًا. / You've reached today's booking limit. Please try again tomorrow.";
+
+const MAX_NOTES = 500;
 
 type StayArgs = {
   listingId: Id<"listings">;
@@ -59,12 +73,7 @@ export async function createStayForUser(
     throw new ConvexError(BOOKING_ERRORS.PHONE_REQUIRED);
   }
 
-  await enforceRateLimit(
-    ctx,
-    `booking:${user._id}`,
-    30,
-    "لقد وصلت إلى الحد اليومي للحجوزات. يرجى المحاولة غدًا. / You've reached today's booking limit. Please try again tomorrow."
-  );
+  await enforceRateLimit(ctx, `booking:${user._id}`, DAILY_BOOKINGS, DAILY_BOOKINGS_MESSAGE);
 
   const listing = await ctx.db.get(args.listingId);
   if (!listing) throw new ConvexError(BOOKING_ERRORS.LISTING_UNAVAILABLE);
@@ -160,12 +169,7 @@ export async function createSlotForUser(
   },
   now: number = Date.now()
 ): Promise<{ bookingId: Id<"bookings">; confirmationCode: null }> {
-  await enforceRateLimit(
-    ctx,
-    `booking:${user._id}`,
-    30,
-    "لقد وصلت إلى الحد اليومي للحجوزات. يرجى المحاولة غدًا. / You've reached today's booking limit. Please try again tomorrow."
-  );
+  await enforceRateLimit(ctx, `booking:${user._id}`, DAILY_BOOKINGS, DAILY_BOOKINGS_MESSAGE);
 
   const listing = await ctx.db.get(args.listingId);
   // Previously this checked only isActive, so a pending or rejected listing
@@ -209,6 +213,137 @@ export async function createSlotForUser(
   });
 
   return { bookingId, confirmationCode: null };
+}
+
+/**
+ * Why a traveller may not book this service, or null when they may.
+ *
+ * "No price" is said only when a price is all that is missing — an unpriced
+ * service of an approved provider, which shows Contact (design D16). When the
+ * provider is not an approved provider, pricing it would not help, and saying
+ * so would send the traveller to wait for something that is not coming.
+ */
+export function serviceBookingRefusal(
+  service: Doc<"services"> | null,
+  owner: Pick<Doc<"users">, "role" | "isApproved" | "isSuspended"> | null
+): string | null {
+  if (!service || !isPublicService(service, owner)) return SERVICE_ERRORS.SERVICE_UNAVAILABLE;
+  if (isBookableService(service, owner)) return null;
+  return isBookableService({ ...service, price: 1 }, owner)
+    ? SERVICE_ERRORS.NO_PRICE
+    : SERVICE_ERRORS.NOT_BOOKABLE;
+}
+
+/**
+ * Request a service: one day, a start time, and hours or days when the price
+ * unit asks for them.
+ *
+ * As for stays, the money is computed here from the service, never taken from
+ * the caller. The provider confirms or declines; nothing is paid in the app.
+ */
+export async function createServiceForUser(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  args: {
+    serviceId: Id<"services">;
+    date: string;
+    time: string;
+    quantity?: number;
+    partySize?: number;
+    notes?: string;
+  },
+  now: number = Date.now()
+): Promise<{ bookingId: Id<"bookings">; confirmationCode: string }> {
+  // The provider has to be able to reach the traveller: a guide waiting at a
+  // meeting point, a driver outside a hotel.
+  if (!user.phoneVerified) {
+    throw new ConvexError(BOOKING_ERRORS.PHONE_REQUIRED);
+  }
+
+  await enforceRateLimit(ctx, `booking:${user._id}`, DAILY_BOOKINGS, DAILY_BOOKINGS_MESSAGE);
+
+  const service = await ctx.db.get(args.serviceId);
+  if (!service) throw new ConvexError(SERVICE_ERRORS.SERVICE_UNAVAILABLE);
+  const refusal = serviceBookingRefusal(service, await ctx.db.get(service.ownerId));
+  if (refusal) throw new ConvexError(refusal);
+
+  if (service.ownerId === user._id) {
+    throw new ConvexError(SERVICE_ERRORS.OWN_SERVICE);
+  }
+
+  const quoted = computeServiceQuote(service, args, todayRiyadhISO(now), now);
+  if (!quoted.ok) throw new ConvexError(quoted.error);
+  const quote = quoted.quote;
+
+  // A double tap or a retry, not a second group: the same traveller asking for
+  // the same service on the same day while the first request is still alive.
+  // Other travellers are not blocked — there is no availability calendar, and
+  // two groups on one tour is normal (design D10).
+  if (await hasActiveRequest(ctx, user._id, service._id, quote.date)) {
+    throw new ConvexError(SERVICE_ERRORS.DUPLICATE);
+  }
+
+  const confirmationCode = await uniqueConfirmationCode(ctx);
+
+  const bookingId = await ctx.db.insert("bookings", {
+    userId: user._id,
+    serviceId: service._id,
+    ownerId: service.ownerId,
+    kind: "service",
+    type: "service",
+    // date/time for everything that reads a slot; checkIn/checkOut (the day
+    // after the last day, exclusive) for the expiry, reminder and completion
+    // jobs, which then run over service bookings unchanged.
+    date: quote.date,
+    time: quote.time,
+    checkIn: quote.checkIn,
+    checkOut: quote.checkOut,
+    quantity: quote.quantity,
+    unitPrice: quote.unitPrice,
+    priceUnit: quote.priceUnit,
+    totalAmount: quote.totalAmount,
+    currency: quote.currency,
+    guests: quote.partySize,
+    partySize: quote.partySize,
+    confirmationCode,
+    status: "pending",
+    notes: args.notes?.trim().slice(0, MAX_NOTES) || undefined,
+    // A request must not outlive the service it asks for. For a day far off
+    // the provider gets the usual 48 hours; for one sooner, the request closes
+    // at the start time, when an unanswered request can only be a no.
+    expiresAt: Math.min(expiryFor(now), riyadhDateTimeToTimestamp(quote.date, quote.time)),
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  const booking = await ctx.db.get(bookingId);
+  if (booking) await notifyBookingEvent(ctx, "booking.requested", booking, {}, now);
+
+  return { bookingId, confirmationCode };
+}
+
+/**
+ * Whether this traveller already has a pending or confirmed booking of this
+ * service on this day.
+ *
+ * Read from the traveller's own active bookings, which stay few, rather than
+ * from `by_serviceId`, which is the service's whole history and only grows.
+ */
+async function hasActiveRequest(
+  ctx: MutationCtx,
+  userId: Id<"users">,
+  serviceId: Id<"services">,
+  date: string
+): Promise<boolean> {
+  for (const status of ACTIVE_STAY_STATUSES) {
+    const match = await ctx.db
+      .query("bookings")
+      .withIndex("by_userId_and_status", (q) => q.eq("userId", userId).eq("status", status))
+      .filter((q) => q.and(q.eq(q.field("serviceId"), serviceId), q.eq(q.field("date"), date)))
+      .first();
+    if (match) return true;
+  }
+  return false;
 }
 
 export async function confirmAsManager(
