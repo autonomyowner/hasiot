@@ -352,6 +352,14 @@ export async function confirmAsManager(
   now: number = Date.now()
 ): Promise<void> {
   if (booking.status !== "pending") throw new ConvexError(BOOKING_ERRORS.NOT_PENDING);
+  // Past its expiry the request is dead, even if the hourly job has not marked
+  // it yet: a service request expires at its start time, and confirming one
+  // after that would promise the traveller something already under way — and,
+  // being confirmed and started, it could no longer be cancelled. Same text as
+  // "no longer pending", which the app already maps.
+  if (booking.expiresAt !== undefined && booking.expiresAt <= now) {
+    throw new ConvexError(BOOKING_ERRORS.NOT_PENDING);
+  }
 
   await ctx.db.patch(booking._id, {
     status: "confirmed",

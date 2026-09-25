@@ -337,6 +337,24 @@ describe("host responses", () => {
     ).rejects.toThrow(BOOKING_ERRORS.NOT_PENDING);
   });
 
+  it("will not confirm a request whose time is up, before the expiry job gets to it", async () => {
+    // The hourly job lags by up to an hour. A service request dies at its start
+    // time, and confirming it after that would promise a traveller something
+    // that already started without them — and stop them from cancelling.
+    const t = makeT();
+    const { bookingId } = await pendingStay(t);
+    const { expiresAt } = (await load(t, bookingId))!;
+
+    await expect(
+      t.run(async (ctx) => confirmAsManager(ctx, (await ctx.db.get(bookingId))!, expiresAt! + 1))
+    ).rejects.toThrow(BOOKING_ERRORS.NOT_PENDING);
+    expect(await load(t, bookingId)).toMatchObject({ status: "pending" });
+
+    // A second before, it still goes through.
+    await t.run(async (ctx) => confirmAsManager(ctx, (await ctx.db.get(bookingId))!, expiresAt! - 1000));
+    expect(await load(t, bookingId)).toMatchObject({ status: "confirmed" });
+  });
+
   it("completes a stay and refuses to complete a closed one", async () => {
     const t = makeT();
     const { bookingId } = await pendingStay(t);
