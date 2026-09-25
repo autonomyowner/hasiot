@@ -1,13 +1,17 @@
 /**
- * SMS delivery, behind an interface with two implementations.
+ * SMS delivery, behind an interface with one implementation per route.
  *
- * Why an interface: Twilio Verify is the right choice *today* because it sends
- * through Twilio's own sender IDs, which are already registered with Saudi
- * carriers — an unregistered alphanumeric sender is silently dropped by STC and
- * Mobily, and registering "HASIO" needs the operating company's CR and takes
- * days. Once that registration exists, a local provider (Unifonic, Msegat) is
- * roughly a fifth of the price per message, and swapping it in should be one
- * new object in this file rather than surgery on the auth config.
+ * Why an interface: the sender ID is the constraint, not the API. An
+ * unregistered alphanumeric sender is silently dropped by STC and Mobily, so
+ * the first route that worked was Twilio Verify — it sends through Twilio's
+ * own sender IDs, already registered with the Saudi carriers, which let sign-in
+ * work before "HASIO" was registered to us.
+ *
+ * Taqnyat is the intended production route: a Saudi provider registers the
+ * sender as part of onboarding, prices a message at a fraction of what routing
+ * in from outside the Kingdom costs, and answers to the CITC rules directly.
+ * The interface is what made that swap one new object in this file rather than
+ * surgery on the auth config, which was the point of building it this way.
  *
  * Why `fetch` and not the Twilio SDK: the Convex default runtime is not Node,
  * and this module is imported by auth.ts -> http.ts. Adding `"use node"` here
@@ -19,7 +23,7 @@
 export type SmsLocale = "ar" | "en";
 
 export interface SmsProvider {
-  name: "console" | "twilio-verify" | "infobip" | "demo";
+  name: "console" | "twilio-verify" | "infobip" | "taqnyat" | "demo";
   /**
    * Deliver `code` to `phone`.
    *
@@ -173,6 +177,81 @@ function infobipProvider(apiKey: string, baseUrl: string, from?: string): SmsPro
 }
 
 /**
+ * Taqnyat (تقنيات), plain SMS — the Saudi route.
+ *
+ * Why this one: an alphanumeric sender has to be registered with the Saudi
+ * carriers before STC and Mobily will carry it, and a local provider does that
+ * registration as part of onboarding rather than leaving us to it. Per-message
+ * cost is a fraction of routing in from outside the Kingdom, which matters when
+ * every sign-in is an SMS.
+ *
+ * Their Verify product is deliberately not used. It owns the code, which would
+ * fit `verifyOtp` — but generate and check are tied together by a `requestId`
+ * that the caller has to carry between the two requests, and this interface is
+ * keyed on the phone number alone, so there is nowhere to keep it. That is the
+ * same reason Infobip's 2FA API was passed over for their plain messaging one.
+ * Plain SMS keeps Better Auth as the one that generates and checks the code,
+ * so its expiry and attempt limiting still run.
+ *
+ * `sender` is required, unlike Infobip's optional `from`: Taqnyat has no
+ * account-default sender to fall back on, so a missing one is a startup error
+ * rather than something to discover on the first send.
+ */
+function taqnyatProvider(token: string, sender: string): SmsProvider {
+  const url = "https://api.taqnyat.sa/v1/messages";
+
+  return {
+    name: "taqnyat",
+
+    async sendOtp(phone, code, locale) {
+      const text =
+        locale === "ar"
+          ? `رمز التحقق الخاص بك في Hasio هو ${code}`
+          : `Your Hasio verification code is ${code}`;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          // International form with neither a leading plus nor the 00 trunk
+          // prefix — both are rejected.
+          recipients: [phone.replace(/^\+/, "").replace(/^00/, "")],
+          body: text,
+          sender,
+        }),
+      });
+
+      const raw = await res.text();
+      let json: Record<string, any> = {};
+      try {
+        json = JSON.parse(raw);
+      } catch {
+        // Non-JSON means an infrastructure error; `raw` is the only detail.
+      }
+
+      if (!res.ok) {
+        throw new Error(`Taqnyat ${res.status}: ${json?.message ?? raw}`);
+      }
+
+      // A well-formed request is a 201 whatever happened to the number itself;
+      // the per-recipient outcome is in the body. Reporting "code sent" for a
+      // rejected number leaves the guest waiting for a text that never comes.
+      // The published schema types `rejected` loosely, so accept either an
+      // array or a bare value and treat anything non-empty as a failure.
+      const rejected = json?.rejected;
+      const isRejected = Array.isArray(rejected) ? rejected.length > 0 : Boolean(rejected);
+      if (isRejected) {
+        throw new Error(`Taqnyat rejected: ${JSON.stringify(rejected)}`);
+      }
+    },
+  };
+}
+
+/**
  * DEMO MODE — every code verifies. Nothing is sent.
  *
  * Exists for one reason: a stage demo where the audience signs in on their own
@@ -230,6 +309,15 @@ export function getSmsProvider(
       throw new Error("SMS_PROVIDER=infobip requires INFOBIP_API_KEY and INFOBIP_BASE_URL");
     }
     return infobipProvider(apiKey, baseUrl, env.INFOBIP_FROM);
+  }
+
+  if (configured === "taqnyat") {
+    const token = env.TAQNYAT_BEARER_TOKEN;
+    const sender = env.TAQNYAT_SENDER;
+    if (!token || !sender) {
+      throw new Error("SMS_PROVIDER=taqnyat requires TAQNYAT_BEARER_TOKEN and TAQNYAT_SENDER");
+    }
+    return taqnyatProvider(token, sender);
   }
 
   throw new Error(`Unknown SMS_PROVIDER: ${configured}`);

@@ -231,3 +231,86 @@ describe("localeFromAcceptLanguage", () => {
     expect(localeFromAcceptLanguage(undefined)).toBe("en");
   });
 });
+
+const TAQNYAT_ENV = {
+  SMS_PROVIDER: "taqnyat",
+  TAQNYAT_BEARER_TOKEN: "tok-123",
+  TAQNYAT_SENDER: "Hasio",
+};
+
+describe("taqnyat", () => {
+  it("refuses to start without credentials", () => {
+    expect(() => getSmsProvider({ SMS_PROVIDER: "taqnyat" })).toThrow(/requires TAQNYAT_/);
+    expect(() => getSmsProvider({ ...TAQNYAT_ENV, TAQNYAT_SENDER: undefined })).toThrow(
+      /requires TAQNYAT_/
+    );
+  });
+
+  it("leaves verification to Better Auth", () => {
+    // Their /v1/messages endpoint only carries text, so the code is ours and
+    // so is the check. (Taqnyat also sell a Verify product that owns the code,
+    // but it keys on a requestId carried between the send and the check, which
+    // this interface — keyed on phone number — has nowhere to put.)
+    expect(getSmsProvider(TAQNYAT_ENV).verifyOtp).toBeUndefined();
+  });
+
+  it("posts the code with bearer auth and the registered sender", async () => {
+    const fetchMock = mockFetch(201, {
+      statusCode: 201,
+      messageId: "m-1",
+      accepted: ["966501234567"],
+      rejected: [],
+    });
+    await getSmsProvider(TAQNYAT_ENV).sendOtp("+966501234567", "482913", "en");
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("https://api.taqnyat.sa/v1/messages");
+    expect(init.method).toBe("POST");
+    expect((init.headers as Record<string, string>).Authorization).toBe("Bearer tok-123");
+
+    const body = JSON.parse(init.body as string);
+    // Taqnyat documents the number in international form with neither a
+    // leading plus nor the 00 prefix.
+    expect(body.recipients).toEqual(["966501234567"]);
+    expect(body.sender).toBe("Hasio");
+    expect(body.body).toContain("482913");
+  });
+
+  it("strips a 00 prefix as well as a plus", async () => {
+    const fetchMock = mockFetch(201, { statusCode: 201, rejected: [] });
+    await getSmsProvider(TAQNYAT_ENV).sendOtp("00966501234567", "111111", "en");
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(JSON.parse(init.body as string).recipients).toEqual(["966501234567"]);
+  });
+
+  it("writes the message in the caller's language", async () => {
+    const fetchMock = mockFetch(201, { statusCode: 201, rejected: [] });
+    await getSmsProvider(TAQNYAT_ENV).sendOtp("+966501234567", "555555", "ar");
+    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    const text: string = JSON.parse(init.body as string).body;
+    expect(text).toContain("555555");
+    expect(text).toMatch(/[؀-ۿ]/); // contains Arabic script
+  });
+
+  it("surfaces an HTTP failure with their message", async () => {
+    mockFetch(400, { statusCode: 400, message: "Sender name is not active" });
+    await expect(
+      getSmsProvider(TAQNYAT_ENV).sendOtp("+966501234567", "123456", "en")
+    ).rejects.toThrow("Taqnyat 400: Sender name is not active");
+  });
+
+  it("treats a rejected recipient as a failure even on 201", async () => {
+    // Same trap as Infobip: a well-formed request succeeds at the HTTP level
+    // and reports the per-number outcome in the body. Telling a guest the code
+    // is on its way when the number was rejected is the failure to avoid.
+    mockFetch(201, {
+      statusCode: 201,
+      totalCount: 0,
+      accepted: [],
+      rejected: ["1555"],
+    });
+    await expect(
+      getSmsProvider(TAQNYAT_ENV).sendOtp("+1555", "123456", "en")
+    ).rejects.toThrow(/Taqnyat rejected/);
+  });
+});
