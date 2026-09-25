@@ -1,4 +1,5 @@
 import { query } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 import { getBlockedIds } from "../listings/queries";
@@ -87,6 +88,23 @@ export const getMine = query({
 });
 
 /**
+ * Which completed bookings still owe a review of their place.
+ *
+ * Service bookings have no listing and are skipped: they are rated through
+ * listMyReviewableServices, and the 1.0.2 app that reads this list renders a
+ * place for every row.
+ */
+export function reviewablePlaceBookings<T extends Pick<Doc<"bookings">, "listingId">>(
+  bookings: T[],
+  reviewedListingIds: Set<string>
+): Array<T & { listingId: Id<"listings"> }> {
+  return bookings.filter(
+    (b): b is T & { listingId: Id<"listings"> } =>
+      b.listingId !== undefined && !reviewedListingIds.has(b.listingId as string)
+  );
+}
+
+/**
  * Completed stays the guest has not reviewed yet.
  *
  * This is what lets the booking detail screen ask "How was your stay?" and
@@ -112,10 +130,12 @@ export const listMyReviewablePlaces = query({
           .query("reviews")
           .withIndex("by_userId", (q) => q.eq("userId", user._id))
           .collect()
-      ).map((r) => r.listingId as string)
+      )
+        .filter((r) => r.listingId !== undefined)
+        .map((r) => r.listingId as string)
     );
 
-    const pending = bookings.filter((b) => !reviewed.has(b.listingId as string));
+    const pending = reviewablePlaceBookings(bookings, reviewed);
 
     return await Promise.all(
       pending.map(async (booking) => {

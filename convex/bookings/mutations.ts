@@ -123,6 +123,10 @@ export const rescheduleBooking = mutation({
     if (booking.kind === "stay") {
       throw new ConvexError(BOOKING_ERRORS.STAY_NO_RESCHEDULE);
     }
+    // Same for a service, which also has no listing for the slot check below.
+    if (booking.kind === "service" || !booking.listingId) {
+      throw new ConvexError(BOOKING_ERRORS.SERVICE_NO_RESCHEDULE);
+    }
 
     if (booking.status === "cancelled" || booking.status === "completed") {
       throw new ConvexError("Cannot reschedule this booking");
@@ -234,12 +238,17 @@ export const markNoShow = mutation({
 
 /**
  * Resolve a booking for a caller allowed to move it through the flow: an admin,
- * or the owner of the listing it belongs to.
+ * or the current owner of the listing — or, for a service booking, of the
+ * service — it belongs to.
  *
  * `confirmBooking` and `completeBooking` previously ran no auth check at all, so
  * any caller holding a booking id could confirm or complete it. The tourist who
  * made the booking is deliberately not included — they cancel and reschedule
  * through their own mutations above, but they do not get to confirm themselves.
+ *
+ * Ownership is read from the listing or service, not from the booking's
+ * denormalised `ownerId`: when an admin moves a listing to another host, the
+ * previous host must lose the ability to act on its bookings.
  */
 async function requireBookingManager(ctx: MutationCtx, bookingId: Id<"bookings">) {
   const user = await getAuthenticatedAppUser(ctx);
@@ -253,8 +262,12 @@ async function requireBookingManager(ctx: MutationCtx, bookingId: Id<"bookings">
   }
 
   if (user.role !== "admin") {
-    const listing = await ctx.db.get(booking.listingId);
-    if (!listing || listing.ownerId !== user._id) {
+    const owner = booking.serviceId
+      ? (await ctx.db.get(booking.serviceId))?.ownerId
+      : booking.listingId
+        ? (await ctx.db.get(booking.listingId))?.ownerId
+        : undefined;
+    if (!owner || owner !== user._id) {
       throw new ConvexError("Not authorized to manage this booking");
     }
   }

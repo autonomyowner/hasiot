@@ -29,6 +29,7 @@ import type * as http from "../http.js";
 import type * as lib_cities from "../lib/cities.js";
 import type * as lib_contact from "../lib/contact.js";
 import type * as lib_dates from "../lib/dates.js";
+import type * as lib_errors from "../lib/errors.js";
 import type * as listings_mutations from "../listings/mutations.js";
 import type * as listings_photoTools from "../listings/photoTools.js";
 import type * as listings_pricing from "../listings/pricing.js";
@@ -93,6 +94,7 @@ declare const fullApi: ApiFromModules<{
   "lib/cities": typeof lib_cities;
   "lib/contact": typeof lib_contact;
   "lib/dates": typeof lib_dates;
+  "lib/errors": typeof lib_errors;
   "listings/mutations": typeof listings_mutations;
   "listings/photoTools": typeof listings_photoTools;
   "listings/pricing": typeof listings_pricing;

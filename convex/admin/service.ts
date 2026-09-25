@@ -199,12 +199,16 @@ export async function applyBookingStatusAsAdmin(
     updatedAt: now,
   });
 
-  const listing = await ctx.db.get(booking.listingId);
+  const bookedThing = booking.serviceId
+    ? await ctx.db.get(booking.serviceId)
+    : booking.listingId
+      ? await ctx.db.get(booking.listingId)
+      : null;
   await logAdminAction(ctx, admin, {
     action: transition.forced ? "booking.force" : `booking.${to}`,
     targetType: "booking",
     targetId: args.bookingId,
-    summary: `${labelFor(listing) ?? "booking"} - ${booking.checkIn ?? booking.date}`,
+    summary: `${labelFor(bookedThing) ?? "booking"} - ${booking.checkIn ?? booking.date}`,
     details: `${from} → ${to}${reason ? ` — ${reason}` : ""}`,
   });
 

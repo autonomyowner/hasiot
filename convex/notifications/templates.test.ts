@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACCOUNT_EVENTS,
   NOTIFICATION_EVENTS,
+  renderAccountNotification,
   renderEmail,
   renderNotification,
   type TemplateInput,
@@ -146,5 +148,127 @@ describe("renderEmail", () => {
     expect(email.html).not.toContain("Check-in</td>");
     expect(email.html).not.toContain("undefined");
     expect(email.text).not.toContain("undefined");
+  });
+});
+
+const SERVICE: TemplateInput = {
+  kind: "service",
+  listingName_en: "Al Ahsa oasis day tour",
+  listingName_ar: "جولة يوم في واحة الأحساء",
+  checkIn: "2026-09-10",
+  checkOut: "2026-09-11",
+  startTime: "09:00",
+  quantity: 3,
+  priceUnit: "per_hour",
+  guests: 2,
+  totalAmount: 450,
+  currency: "SAR",
+  confirmationCode: "HSO-4TQ9Z",
+  guestName: "Sara Al Qahtani",
+};
+
+describe("renderNotification for a service booking", () => {
+  it("covers every event in both languages without nights or blanks", () => {
+    for (const event of NOTIFICATION_EVENTS) {
+      const r = renderNotification(event, SERVICE);
+      for (const value of [r.title_en, r.title_ar, r.body_en, r.body_ar]) {
+        expect(value.length).toBeGreaterThan(0);
+        expect(value).not.toContain("undefined");
+        expect(value).not.toContain("NaN");
+        // A service has no nights; the stay wording leaking in would say so.
+        expect(value).not.toMatch(/night|ليل/);
+        expect(value).not.toContain("هاسيو");
+      }
+      expect(r.body_ar).toMatch(/[؀-ۿ]/);
+    }
+  });
+
+  it("tells the provider who wants what, when, and for how long", () => {
+    const r = renderNotification("booking.requested", SERVICE);
+    expect(r.title_en).toBe("New booking request");
+    expect(r.body_en).toBe(
+      "Sara Al Qahtani requested Al Ahsa oasis day tour on 2026-09-10 at 09:00, 3 hours. 2 people. Total SAR 450. Code HSO-4TQ9Z."
+    );
+    expect(r.body_ar).toContain("3 ساعات");
+    expect(r.body_ar).toContain("شخصان");
+    expect(r.body_ar).toContain("الساعة 09:00");
+  });
+
+  it("counts days for a daily service and nothing for a fixed price", () => {
+    const daily = renderNotification("booking.requested", {
+      ...SERVICE,
+      priceUnit: "per_day",
+      quantity: 2,
+    });
+    expect(daily.body_en).toContain(", 2 days.");
+    expect(daily.body_ar).toContain("يومان");
+
+    const fixed = renderNotification("booking.requested", {
+      ...SERVICE,
+      priceUnit: "fixed",
+      quantity: 1,
+    });
+    expect(fixed.body_en).toContain("at 09:00. 2 people.");
+  });
+
+  it("pluralises people and hours in Arabic by count", () => {
+    const body = (over: Partial<TemplateInput>) =>
+      renderNotification("booking.requested", { ...SERVICE, ...over }).body_ar;
+    expect(body({ guests: 1 })).toContain("شخص واحد");
+    expect(body({ guests: 5 })).toContain("5 أشخاص");
+    expect(body({ guests: 12 })).toContain("12 شخصًا");
+    expect(body({ quantity: 1 })).toContain("ساعة واحدة");
+    expect(body({ quantity: 2 })).toContain("ساعتان");
+    expect(body({ quantity: 11 })).toContain("11 ساعة");
+  });
+
+  it("reminds the guest the day before with the start time", () => {
+    const r = renderNotification("booking.reminder", SERVICE);
+    expect(r.title_en).toBe("Your booking is tomorrow");
+    expect(r.body_en).toBe("Al Ahsa oasis day tour, 2026-09-10 at 09:00. Code HSO-4TQ9Z.");
+  });
+
+  it("emails a service with a date and time, and says the provider is paid directly", () => {
+    const email = renderEmail("booking.confirmed", SERVICE, "en");
+    expect(email.html).toContain("Service</td>");
+    expect(email.html).toContain("Time</td>");
+    expect(email.html).not.toContain("Check-out</td>");
+    expect(email.text).toContain("Payment is made directly to the provider.");
+    expect(renderEmail("booking.confirmed", SERVICE, "ar").text).toContain("لمقدم الخدمة");
+  });
+});
+
+describe("renderAccountNotification", () => {
+  it("covers every account event in both languages", () => {
+    for (const event of ACCOUNT_EVENTS) {
+      const r = renderAccountNotification(event, { name_en: "Corniche photo walk", name_ar: "جولة تصوير الكورنيش" });
+      for (const value of [r.title_en, r.title_ar, r.body_en, r.body_ar]) {
+        expect(value.length).toBeGreaterThan(0);
+        expect(value).not.toContain("undefined");
+        expect(value).not.toContain("هاسيو");
+      }
+      expect(r.title_ar).toMatch(/[؀-ۿ]/);
+    }
+  });
+
+  it("names the listing or service and carries the admin's reason", () => {
+    const r = renderAccountNotification("service.rejected", {
+      name_en: "Corniche photo walk",
+      name_ar: "جولة تصوير الكورنيش",
+      reason: "Add real photos",
+    });
+    expect(r.title_en).toBe("Your service needs changes");
+    expect(r.body_en).toBe("Corniche photo walk was not approved. Reason: Add real photos");
+    expect(r.body_ar).toBe("لم تُعتمد جولة تصوير الكورنيش. السبب: Add real photos");
+  });
+
+  it("reads correctly with no reason", () => {
+    const r = renderAccountNotification("listing.suspended", { name_en: "Al Koot", name_ar: "القوت" });
+    expect(r.body_en).not.toContain("Reason:");
+    expect(r.body_ar).not.toContain("السبب:");
+  });
+
+  it("keeps the brand in Latin script in Arabic", () => {
+    expect(renderAccountNotification("account.approved", {}).body_ar).toBe("يمكنك الآن النشر على Hasio.");
   });
 });

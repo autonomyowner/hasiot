@@ -46,6 +46,46 @@ export async function recomputeListingRating(
   });
 }
 
+/** The same rule for a service's score: from its reviews, cleared at zero. */
+export async function recomputeServiceRating(
+  ctx: MutationCtx,
+  serviceId: Id<"services">
+): Promise<void> {
+  const reviews = await ctx.db
+    .query("reviews")
+    .withIndex("by_serviceId", (q) => q.eq("serviceId", serviceId))
+    .order("desc")
+    .take(MAX_RATED_REVIEWS);
+
+  const summary = summariseRatings(reviews.map((r) => r.rating));
+
+  await ctx.db.patch(serviceId, {
+    rating: summary.average ?? undefined,
+    reviewCount: summary.count === 0 ? undefined : summary.count,
+    updatedAt: Date.now(),
+  });
+}
+
+/**
+ * Recompute whatever a review scores — its listing or its service.
+ *
+ * Callers that change or delete a review (the author, or an admin removing a
+ * reported one) go through here so none of them has to know which kind of
+ * target it was.
+ */
+export async function recomputeReviewTarget(
+  ctx: MutationCtx,
+  review: Pick<Doc<"reviews">, "listingId" | "serviceId">
+): Promise<void> {
+  if (review.serviceId) {
+    if (await ctx.db.get(review.serviceId)) await recomputeServiceRating(ctx, review.serviceId);
+    return;
+  }
+  if (review.listingId) {
+    if (await ctx.db.get(review.listingId)) await recomputeListingRating(ctx, review.listingId);
+  }
+}
+
 /**
  * Whether a review may claim to come from a real stay.
  *
@@ -133,7 +173,7 @@ export async function updateReviewForUser(
     updatedAt: Date.now(),
   });
 
-  await recomputeListingRating(ctx, review.listingId);
+  await recomputeReviewTarget(ctx, review);
 }
 
 export async function deleteReviewForUser(
@@ -145,7 +185,6 @@ export async function deleteReviewForUser(
   if (!review) throw new ConvexError(REVIEW_ERRORS.NOT_FOUND);
   if (review.userId !== user._id) throw new ConvexError(REVIEW_ERRORS.NOT_YOURS);
 
-  const listingId = review.listingId;
   await ctx.db.delete(reviewId);
-  await recomputeListingRating(ctx, listingId);
+  await recomputeReviewTarget(ctx, review);
 }

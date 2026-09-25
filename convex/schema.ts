@@ -22,10 +22,17 @@ export default defineSchema({
     // Mirrors the Better-Auth component's user.phoneNumberVerified. A verified
     // phone is required to book, so the host can reach the guest.
     phoneVerified: v.optional(v.boolean()),
-    pushTokens: v.optional(v.array(v.string())), // Expo push tokens, max 5
+    // Never written since 1.1.0: tokens live in the pushTokens table, where one
+    // token can be moved to whoever signs in on that phone. Kept so old rows
+    // still validate.
+    pushTokens: v.optional(v.array(v.string())),
     isSuspended: v.optional(v.boolean()), // set by an admin; blocks all authenticated access
     suspendedReason: v.optional(v.string()),
     suspendedAt: v.optional(v.number()),
+    // A business or provider account an admin turned down. Uploading a new
+    // document clears both, which puts the account back in the queue.
+    accountRejectionReason: v.optional(v.string()),
+    accountRejectedAt: v.optional(v.number()),
     // email + phone + name, lower-cased. Convex has no prefix scan, so admin
     // user search needs a search index over a concatenated field.
     searchText: v.optional(v.string()),
@@ -121,8 +128,13 @@ export default defineSchema({
     title_ar: v.string(),
     description_en: v.optional(v.string()),
     description_ar: v.optional(v.string()),
-    priceRange: v.optional(v.string()), // e.g., "100-200 SAR"
+    priceRange: v.optional(v.string()), // e.g., "100-200 SAR" — display only, cannot be multiplied
     priceUnit: v.optional(v.string()), // "per_hour" | "per_day" | "per_event" | "fixed"
+    // What makes a service bookable, as pricePerNight does for a stay: whole
+    // SAR per priceUnit. A service without it shows Contact instead of Book.
+    price: v.optional(v.number()),
+    maxGroupSize: v.optional(v.number()), // people per booking; undefined = 20
+    suspendedReason: v.optional(v.string()), // set when an admin suspends a live service
     availability_en: v.optional(v.string()),
     availability_ar: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
@@ -137,7 +149,7 @@ export default defineSchema({
     })),
     rating: v.optional(v.number()),
     reviewCount: v.optional(v.number()),
-    status: v.string(), // "pending" | "approved" | "rejected"
+    status: v.string(), // "pending" | "approved" | "rejected" | "suspended"
     rejectionReason: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -148,6 +160,11 @@ export default defineSchema({
     .index("by_owner_and_status", ["ownerId", "status"])
     .searchIndex("search_services", {
       searchField: "title_en",
+      filterFields: ["serviceType", "city"],
+    })
+    // A search index covers one field, and travellers search in Arabic too.
+    .searchIndex("search_services_ar", {
+      searchField: "title_ar",
       filterFields: ["serviceType", "city"],
     }),
 
@@ -166,7 +183,7 @@ export default defineSchema({
     .index("by_listingId", ["listingId"])
     .index("by_listingId_and_date", ["listingId", "date"]),
 
-  // Bookings — two shapes in one table.
+  // Bookings — three shapes in one table.
   //
   // A "slot" booking is the original restaurant-style reservation: one `date`
   // plus one `time`. A "stay" booking spans checkIn..checkOut and carries the
@@ -174,19 +191,31 @@ export default defineSchema({
   // check-in time) because those two fields are required and half the product
   // reads them — by_listingId_and_date, getUpcomingCount, the admin panel's
   // today/upcoming/past grouping. Dropping the mirror would break all of it.
+  //
+  // A "service" booking (1.1.0) books a provider rather than a place: it has a
+  // serviceId and no listingId. It fills date/time with the day and start
+  // time, and checkIn/checkOut with the day and the day after the last one
+  // (exclusive, as for a stay), which is what lets the expiry, reminder and
+  // completion crons run over it unchanged. The queries the 1.0.2 app calls
+  // never return one — see visibleToLegacyClients in bookings/queries.ts.
   bookings: defineTable({
     userId: v.id("users"),
-    listingId: v.id("listings"),
+    listingId: v.optional(v.id("listings")), // undefined only on kind "service"
+    serviceId: v.optional(v.id("services")), // set only on kind "service"
     date: v.string(),
     time: v.string(),
     status: v.string(), // "pending" | "confirmed" | "completed" | "cancelled" | "no_show" | "declined" | "expired"
-    type: v.optional(v.string()), // "reservation" | "tour_booking" | "event_ticket" | "stay"
+    type: v.optional(v.string()), // "reservation" | "tour_booking" | "event_ticket" | "stay" | "service"
     partySize: v.optional(v.number()),
     notes: v.optional(v.string()),
     travelPlanId: v.optional(v.id("travelPlans")),
     cancellationReason: v.optional(v.string()),
-    // --- stay fields (undefined on legacy slot bookings) ---
-    kind: v.optional(v.string()), // "stay" | "slot"; undefined = legacy slot
+    // --- stay and service fields (undefined on legacy slot bookings) ---
+    kind: v.optional(v.string()), // "stay" | "slot" | "service"; undefined = legacy slot
+    // --- service fields ---
+    quantity: v.optional(v.number()), // hours (per_hour), days (per_day), else 1
+    unitPrice: v.optional(v.number()), // SAR per priceUnit, frozen at booking time
+    priceUnit: v.optional(v.string()), // the service's unit at booking time
     checkIn: v.optional(v.string()), // "YYYY-MM-DD"
     checkOut: v.optional(v.string()), // "YYYY-MM-DD", exclusive
     nights: v.optional(v.number()),
@@ -211,6 +240,7 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_ownerId", ["ownerId"])
     .index("by_ownerId_and_status", ["ownerId", "status"])
+    .index("by_serviceId", ["serviceId"])
     .index("by_confirmationCode", ["confirmationCode"])
     // Cron sweeps. Each pairs the status with the timestamp it scans, so a
     // nightly job reads only the rows it can act on. Note that `undefined`
@@ -239,7 +269,12 @@ export default defineSchema({
       v.object({
         bookingId: v.optional(v.id("bookings")),
         listingId: v.optional(v.id("listings")),
-        audience: v.optional(v.string()), // "owner" | "tourist" — decides where a tap lands
+        serviceId: v.optional(v.id("services")),
+        audience: v.optional(v.string()), // "owner" | "tourist"
+        // Where a tap lands (1.1.0): "booking" | "host-inbox" | "provider-inbox"
+        // | "my-listings" | "my-services" | "verification". Rows written before
+        // it existed fall back to `audience` in the app.
+        target: v.optional(v.string()),
       })
     ),
     readAt: v.optional(v.number()),
@@ -298,10 +333,12 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_userId_and_status", ["userId", "status"]),
 
-  // Reviews
+  // Reviews — of a place (listingId) or, since 1.1.0, of a service
+  // (serviceId). Exactly one of the two is set; reviews/service.ts enforces it.
   reviews: defineTable({
     userId: v.id("users"),
-    listingId: v.id("listings"),
+    listingId: v.optional(v.id("listings")),
+    serviceId: v.optional(v.id("services")),
     bookingId: v.optional(v.id("bookings")),
     rating: v.number(), // 1-5
     content: v.optional(v.string()),
@@ -312,7 +349,22 @@ export default defineSchema({
   })
     .index("by_listingId", ["listingId"])
     .index("by_userId", ["userId"])
-    .index("by_listingId_and_rating", ["listingId", "rating"]),
+    .index("by_listingId_and_rating", ["listingId", "rating"])
+    .index("by_serviceId", ["serviceId"]),
+
+  // Expo push tokens, one row per device. A table rather than an array on the
+  // user because a phone changes hands: when someone else signs in on it, the
+  // token moves to them, and the previous account must stop receiving its
+  // bookings there. Finding the old owner needs the by_token index.
+  pushTokens: defineTable({
+    token: v.string(), // "ExponentPushToken[...]"
+    userId: v.id("users"),
+    platform: v.optional(v.string()), // "ios" | "android"
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_userId", ["userId"]),
 
   // Email captures (early access signups)
   emailCaptures: defineTable({

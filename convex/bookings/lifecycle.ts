@@ -107,7 +107,7 @@ export const backfillOwnerIds = internalMutation({
 
     let patched = 0;
     for (const booking of bookings) {
-      if (booking.ownerId) continue;
+      if (booking.ownerId || !booking.listingId) continue;
       const listing = await ctx.db.get(booking.listingId);
       if (!listing?.ownerId) continue;
 

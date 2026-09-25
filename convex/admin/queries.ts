@@ -409,23 +409,27 @@ export const listAllBookings = query({
 
     const enrichedBookings = await Promise.all(
       bookings.map(async (booking) => {
-        const listing = await ctx.db.get(booking.listingId);
+        const listing = booking.listingId ? await ctx.db.get(booking.listingId) : null;
+        // A service booking has no listing; the panel (including the build
+        // already on hasio.net) shows the service's title in the same column.
+        const service = booking.serviceId ? await ctx.db.get(booking.serviceId) : null;
         const user = await ctx.db.get(booking.userId);
         // The owner is who the admin has to phone when confirming on a
         // business's behalf, so it travels with the row.
-        const owner = listing?.ownerId ? await ctx.db.get(listing.ownerId) : null;
+        const ownerId = service?.ownerId ?? listing?.ownerId;
+        const owner = ownerId ? await ctx.db.get(ownerId) : null;
         return {
           ...booking,
-          listingName: listing?.name_en || "Unknown",
-          listingName_ar: listing?.name_ar || "غير معروف",
-          listingPhone: listing?.phone,
+          listingName: service?.title_en || listing?.name_en || "Unknown",
+          listingName_ar: service?.title_ar || listing?.name_ar || "غير معروف",
+          listingPhone: service?.contactPhone ?? listing?.phone,
           listingHasHours: (listing?.workingHours?.length ?? 0) > 0,
           ownerName: owner
             ? `${owner.firstName || ""} ${owner.lastName || ""}`.trim() || owner.email
             : null,
           ownerPhone: owner?.phone ?? null,
-          listingImage: listing?.images?.[0] ?? null,
-          listingType: listing?.type ?? null,
+          listingImage: service?.images?.[0] ?? listing?.images?.[0] ?? null,
+          listingType: service ? "service" : (listing?.type ?? null),
           userName: user
             ? `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
               // A phone sign-up has a synthesised address; showing it as a name

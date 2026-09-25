@@ -1,4 +1,5 @@
 import { query } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
 import { v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 import { isPlaceholderEmail } from "../lib/contact";
@@ -16,11 +17,24 @@ import {
 const MAX_LIST = 200;
 const MAX_OWNED_LISTINGS = 50;
 
+/**
+ * The rows a client that predates service bookings may see.
+ *
+ * The iOS 1.0.2 and Android 1.0.0 apps call these queries and cannot be
+ * updated. They render `booking.listing.name_en` without a null check, so a
+ * service booking — which has no listing — would crash them. They never ask
+ * for services, so they never get one; 1.1.0 passes `includeServices: true`.
+ */
+export function visibleToLegacyClients<T extends Pick<Doc<"bookings">, "kind">>(rows: T[]): T[] {
+  return rows.filter((row) => row.kind !== "service");
+}
+
 // Get current user's bookings
 export const getUserBookings = query({
   args: {
     status: v.optional(v.string()),
     limit: v.optional(v.number()),
+    includeServices: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
@@ -47,10 +61,14 @@ export const getUserBookings = query({
         .take(take);
     }
 
+    if (!args.includeServices) {
+      bookings = visibleToLegacyClients(bookings);
+    }
+
     // Enrich with listing info
     const enrichedBookings = await Promise.all(
       bookings.map(async (booking) => {
-        const listing = await ctx.db.get(booking.listingId);
+        const listing = booking.listingId ? await ctx.db.get(booking.listingId) : null;
         return {
           ...booking,
           listing: listing
@@ -81,7 +99,10 @@ export const getUserBookings = query({
 
 // Get a single booking
 export const getBooking = query({
-  args: { bookingId: v.id("bookings") },
+  args: {
+    bookingId: v.id("bookings"),
+    includeServices: v.optional(v.boolean()),
+  },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
@@ -91,7 +112,11 @@ export const getBooking = query({
     const booking = await ctx.db.get(args.bookingId);
     if (!booking) return null;
 
-    const listing = await ctx.db.get(booking.listingId);
+    // An old app tapping a service notification lands here; "not found" is
+    // what it can render, a listing-less booking is not (visibleToLegacyClients).
+    if (booking.kind === "service" && !args.includeServices) return null;
+
+    const listing = booking.listingId ? await ctx.db.get(booking.listingId) : null;
 
     // The guest who booked, the host who has to honour it, and support.
     const isGuest = booking.userId === user._id;
@@ -226,7 +251,7 @@ export const getBusinessBookings = query({
     }
 
     const status = args.status;
-    const bookings = status
+    const rows = status
       ? await ctx.db
           .query("bookings")
           .withIndex("by_ownerId_and_status", (q) => q.eq("ownerId", user._id).eq("status", status))
@@ -238,11 +263,15 @@ export const getBusinessBookings = query({
           .order("desc")
           .take(MAX_LIST);
 
+    // The host inbox is for places. A provider's service bookings have their
+    // own inbox (getProviderBookings), and the 1.0.2 app renders this one.
+    const bookings = visibleToLegacyClients(rows);
+
     const enriched = await Promise.all(
       bookings.map(async (booking) => {
         const [tourist, listing] = await Promise.all([
           ctx.db.get(booking.userId),
-          ctx.db.get(booking.listingId),
+          booking.listingId ? ctx.db.get(booking.listingId) : null,
         ]);
         return {
           ...booking,
@@ -290,7 +319,7 @@ export const getOwnerStats = query({
     const today = todayRiyadhISO();
     const month = riyadhMonthKey(Date.now());
 
-    const [pendingRows, confirmedRows, completedRows, listings] = await Promise.all([
+    const [pendingAll, confirmedAll, completedAll, listings] = await Promise.all([
       ctx.db
         .query("bookings")
         .withIndex("by_ownerId_and_status", (q) => q.eq("ownerId", user._id).eq("status", "pending"))
@@ -312,6 +341,11 @@ export const getOwnerStats = query({
         .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
         .take(MAX_OWNED_LISTINGS),
     ]);
+
+    // Place numbers only: a provider's services have getProviderStats.
+    const pendingRows = visibleToLegacyClients(pendingAll);
+    const confirmedRows = visibleToLegacyClients(confirmedAll);
+    const completedRows = visibleToLegacyClients(completedAll);
 
     const upcoming = confirmedRows.filter((b) => (b.checkOut ?? b.date) >= today).length;
 
