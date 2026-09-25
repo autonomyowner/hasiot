@@ -4,6 +4,8 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { getAuthenticatedAppUser, requireAdmin, authComponent, createAuth } from "../auth";
 import { enforceRateLimit } from "../rateLimit";
 import { approveBusinessAccountRecord } from "../admin/service";
+import { notifyBookingEvent } from "../notifications/internal";
+import { recomputeReviewTarget } from "../reviews/service";
 import { buildSearchTextFrom } from "./search";
 
 /**
@@ -220,91 +222,205 @@ export const approveBusinessAccount = mutation({
   },
 });
 
+/** Given to each guest whose booking dies with the host's account. */
+const HOST_CLOSED_ACCOUNT = "أُغلق حساب المضيف / The host closed their account";
+
+const isOpen = (booking: Doc<"bookings">) =>
+  booking.status === "pending" || booking.status === "confirmed";
+
+/**
+ * Everything an account leaves behind, removed — the Google Play and App
+ * Store deletion requirement. Better Auth's own records and the users row
+ * itself are deleted by deleteMyAccount afterwards, in that order, as before.
+ *
+ * Other people's plans come first. A host's open bookings are cancelled and
+ * each guest told why before the listing or service goes; left as they were,
+ * the guest kept a confirmed stay at a place that no longer existed and heard
+ * nothing. A guest's own open bookings are cancelled and each host told,
+ * before those bookings are deleted with the account. Then everything is
+ * deleted, and every place or service the account had rated is rescored.
+ */
+export async function deleteAccountData(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  now: number = Date.now()
+): Promise<void> {
+  const listings = await ctx.db
+    .query("listings")
+    .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
+    .collect();
+  const services = await ctx.db
+    .query("services")
+    .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
+    .collect();
+
+  // 1. As a host or provider: cancel what guests are still counting on, and
+  // tell them, while the listing or service still exists to name it.
+  const onTheirPlaces = [
+    ...(
+      await Promise.all(
+        listings.map((listing) =>
+          ctx.db
+            .query("bookings")
+            .withIndex("by_listingId", (q) => q.eq("listingId", listing._id))
+            .collect()
+        )
+      )
+    ).flat(),
+    ...(
+      await Promise.all(
+        services.map((service) =>
+          ctx.db
+            .query("bookings")
+            .withIndex("by_serviceId", (q) => q.eq("serviceId", service._id))
+            .collect()
+        )
+      )
+    ).flat(),
+  ].filter(isOpen);
+  for (const booking of onTheirPlaces) {
+    await ctx.db.patch(booking._id, {
+      status: "cancelled",
+      cancellationReason: HOST_CLOSED_ACCOUNT,
+      updatedAt: now,
+    });
+    if (booking.userId === user._id) continue;
+    const cancelled = await ctx.db.get(booking._id);
+    if (cancelled) {
+      await notifyBookingEvent(ctx, "booking.cancelled_admin", cancelled, { reason: HOST_CLOSED_ACCOUNT }, now);
+    }
+  }
+
+  // 2. As a guest: cancel their own open requests and stays, and tell each
+  // host, who is holding a room or a slot for someone who is leaving. The
+  // bookings themselves are deleted with the account below.
+  const theirBookings = await ctx.db
+    .query("bookings")
+    .withIndex("by_userId", (q) => q.eq("userId", user._id))
+    .collect();
+  for (const booking of theirBookings.filter(isOpen)) {
+    await ctx.db.patch(booking._id, { status: "cancelled", updatedAt: now });
+    // The same notices cancelAsTourist sends: stays and services. A legacy
+    // restaurant slot never notified anyone.
+    if (booking.kind !== "stay" && booking.kind !== "service") continue;
+    const cancelled = await ctx.db.get(booking._id);
+    if (cancelled && cancelled.ownerId !== user._id) {
+      await notifyBookingEvent(ctx, "booking.cancelled", cancelled, {}, now);
+    }
+  }
+
+  // 3. Delete, as before.
+  for (const listing of listings) {
+    // Delete availability schedules for this listing
+    const schedules = await ctx.db
+      .query("availabilitySchedules")
+      .withIndex("by_listingId", (q) => q.eq("listingId", listing._id))
+      .collect();
+    for (const schedule of schedules) {
+      await ctx.db.delete(schedule._id);
+    }
+    await ctx.db.delete(listing._id);
+  }
+
+  for (const service of services) {
+    await ctx.db.delete(service._id);
+  }
+
+  for (const booking of theirBookings) {
+    await ctx.db.delete(booking._id);
+  }
+
+  // Delete user's trips
+  const trips = await ctx.db
+    .query("trips")
+    .withIndex("by_userId", (q) => q.eq("userId", user._id))
+    .collect();
+  for (const trip of trips) {
+    await ctx.db.delete(trip._id);
+  }
+
+  // Delete user's travel plans
+  const travelPlans = await ctx.db
+    .query("travelPlans")
+    .withIndex("by_userId", (q) => q.eq("userId", user._id))
+    .collect();
+  for (const plan of travelPlans) {
+    await ctx.db.delete(plan._id);
+  }
+
+  // Delete user's reviews, then rescore what they rated: a deleted one-star
+  // review must stop dragging an average, and a place whose only review goes
+  // must stop showing a score nobody gave it.
+  const reviews = await ctx.db
+    .query("reviews")
+    .withIndex("by_userId", (q) => q.eq("userId", user._id))
+    .collect();
+  for (const review of reviews) {
+    await ctx.db.delete(review._id);
+  }
+  for (const review of reviews) {
+    await recomputeReviewTarget(ctx, review);
+  }
+
+  // Delete user's moments, and the stored image behind each one
+  const moments = await ctx.db
+    .query("moments")
+    .withIndex("by_userId", (q) => q.eq("userId", user._id))
+    .collect();
+  for (const moment of moments) {
+    await ctx.storage.delete(moment.storageId);
+    await ctx.db.delete(moment._id);
+  }
+
+  // Delete uploaded business document from storage
+  if (user.cvFileId) {
+    await ctx.storage.delete(user.cvFileId);
+  }
+
+  // Their devices, so a push meant for this account can never reach a phone.
+  const tokens = await ctx.db
+    .query("pushTokens")
+    .withIndex("by_userId", (q) => q.eq("userId", user._id))
+    .collect();
+  for (const token of tokens) await ctx.db.delete(token._id);
+
+  const notifications = await ctx.db
+    .query("notifications")
+    .withIndex("by_userId", (q) => q.eq("userId", user._id))
+    .collect();
+  for (const notification of notifications) await ctx.db.delete(notification._id);
+
+  // Blocks in both directions. There is no index on the blocked side, so that
+  // half scans the table; it is small (a row per block anyone ever made), and
+  // an index `by_blocked` would make this a range read.
+  const blocking = await ctx.db
+    .query("userBlocks")
+    .withIndex("by_blocker", (q) => q.eq("blockerId", user._id))
+    .collect();
+  const blockedBy = await ctx.db
+    .query("userBlocks")
+    .filter((q) => q.eq(q.field("blockedUserId"), user._id))
+    .collect();
+  for (const block of [...blocking, ...blockedBy]) await ctx.db.delete(block._id);
+
+  // The reports they filed. Reports about their content stay for the admins.
+  const reports = await ctx.db
+    .query("contentReports")
+    .withIndex("by_reporter", (q) => q.eq("reporterId", user._id))
+    .collect();
+  for (const report of reports) await ctx.db.delete(report._id);
+}
+
 // Delete user account and all associated data (Google Play requirement)
 export const deleteMyAccount = mutation({
   args: {},
   handler: async (ctx) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("Not authenticated");
+      throw new ConvexError(NOT_AUTHENTICATED);
     }
 
-    // Delete user's listings
-    const listings = await ctx.db
-      .query("listings")
-      .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
-      .collect();
-    for (const listing of listings) {
-      // Delete availability schedules for this listing
-      const schedules = await ctx.db
-        .query("availabilitySchedules")
-        .withIndex("by_listingId", (q) => q.eq("listingId", listing._id))
-        .collect();
-      for (const schedule of schedules) {
-        await ctx.db.delete(schedule._id);
-      }
-      await ctx.db.delete(listing._id);
-    }
-
-    // Delete user's services
-    const services = await ctx.db
-      .query("services")
-      .withIndex("by_ownerId", (q) => q.eq("ownerId", user._id))
-      .collect();
-    for (const service of services) {
-      await ctx.db.delete(service._id);
-    }
-
-    // Delete user's bookings
-    const bookings = await ctx.db
-      .query("bookings")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .collect();
-    for (const booking of bookings) {
-      await ctx.db.delete(booking._id);
-    }
-
-    // Delete user's trips
-    const trips = await ctx.db
-      .query("trips")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .collect();
-    for (const trip of trips) {
-      await ctx.db.delete(trip._id);
-    }
-
-    // Delete user's travel plans
-    const travelPlans = await ctx.db
-      .query("travelPlans")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .collect();
-    for (const plan of travelPlans) {
-      await ctx.db.delete(plan._id);
-    }
-
-    // Delete user's reviews
-    const reviews = await ctx.db
-      .query("reviews")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .collect();
-    for (const review of reviews) {
-      await ctx.db.delete(review._id);
-    }
-
-    // Delete user's moments, and the stored image behind each one
-    const moments = await ctx.db
-      .query("moments")
-      .withIndex("by_userId", (q) => q.eq("userId", user._id))
-      .collect();
-    for (const moment of moments) {
-      await ctx.storage.delete(moment.storageId);
-      await ctx.db.delete(moment._id);
-    }
-
-    // Delete uploaded business document from storage
-    if (user.cvFileId) {
-      await ctx.storage.delete(user.cvFileId);
-    }
+    await deleteAccountData(ctx, user);
 
     // Delete from Better-Auth internal tables (user, session, account)
     // so the email can be re-registered
