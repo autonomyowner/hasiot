@@ -20,6 +20,11 @@ import {
  * "no filter" get it mapped to a sentinel on the way in and back to '' on the
  * way out. That keeps the "all cities" option working without every caller
  * having to invent its own placeholder value.
+ *
+ * A list with no '' option ("choose the new status") passes '' through
+ * instead: that is Radix's own "nothing chosen yet", and it shows the
+ * placeholder. Mapped to the sentinel, which no item carries, the trigger
+ * rendered blank.
  */
 const ALL = '__all__'
 
@@ -33,10 +38,13 @@ export default function FilterSelect({
   ariaLabel,
   disabled,
 }) {
+  const hasAllOption = options.some((option) => option.value === '')
+  const empty = value === '' || value == null
+
   return (
     <Select
       dir="rtl"
-      value={value === '' || value == null ? ALL : String(value)}
+      value={empty ? (hasAllOption ? ALL : '') : String(value)}
       onValueChange={(next) => onChange(next === ALL ? '' : next)}
       disabled={disabled}
     >
