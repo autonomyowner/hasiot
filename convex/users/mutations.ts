@@ -186,6 +186,42 @@ export const toggleFavorite = mutation({
   },
 });
 
+/**
+ * A person choosing what their account is (the app's upgrade to host or
+ * provider). A business or provider account starts unapproved.
+ *
+ * Rebuilds searchText with the names it writes: it used to leave the old blob,
+ * so admin search could not find a new host by the name they had just given.
+ */
+export async function setOwnRoleForUser(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  args: { role: string; businessType?: string; firstName?: string; lastName?: string },
+  now: number = Date.now()
+): Promise<void> {
+  const updates: Record<string, unknown> = {
+    role: args.role,
+    updatedAt: now,
+  };
+
+  if (args.firstName !== undefined) updates.firstName = args.firstName;
+  if (args.lastName !== undefined) updates.lastName = args.lastName;
+
+  if (args.role === "business_owner" || args.role === "service_provider") {
+    updates.businessType = args.businessType;
+    updates.isApproved = false;
+  }
+
+  updates.searchText = buildSearchTextFrom({
+    email: user.email,
+    phone: user.phone,
+    firstName: args.firstName ?? user.firstName,
+    lastName: args.lastName ?? user.lastName,
+  });
+
+  await ctx.db.patch(user._id, updates);
+}
+
 // Set user role after signup
 export const setUserRole = mutation({
   args: {
@@ -205,21 +241,7 @@ export const setUserRole = mutation({
       throw new ConvexError(NOT_AUTHENTICATED);
     }
 
-    const updates: Record<string, unknown> = {
-      role: args.role,
-      updatedAt: Date.now(),
-    };
-
-    if (args.firstName !== undefined) updates.firstName = args.firstName;
-    if (args.lastName !== undefined) updates.lastName = args.lastName;
-
-    if (args.role === "business_owner" || args.role === "service_provider") {
-      updates.businessType = args.businessType;
-      updates.isApproved = false;
-    }
-
-    await ctx.db.patch(user._id, updates);
-
+    await setOwnRoleForUser(ctx, user, args);
     return { success: true };
   },
 });

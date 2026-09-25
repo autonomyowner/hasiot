@@ -12,7 +12,39 @@ import {
 import type { TestT } from "../test.utils";
 import type { Doc, Id } from "../_generated/dataModel";
 import { recomputeReviewTarget } from "../reviews/service";
-import { deleteAccountData, enforceUploadAllowance, saveBusinessDocForUser } from "./mutations";
+import {
+  deleteAccountData,
+  enforceUploadAllowance,
+  saveBusinessDocForUser,
+  setOwnRoleForUser,
+} from "./mutations";
+
+describe("setOwnRoleForUser", () => {
+  it("keeps admin search finding the person by the name they just gave", async () => {
+    // It wrote the names and left searchText as it was, so support searching
+    // for the new host by name found nothing.
+    const t = makeT();
+    const id = await seedUser(t, { email: "966501112222@phone.hasio.xyz", phone: "+966501112222" });
+    await t.run((ctx) => ctx.db.patch(id, { firstName: undefined, lastName: undefined, searchText: "old" }));
+
+    await t.run(async (ctx) =>
+      setOwnRoleForUser(
+        ctx,
+        (await ctx.db.get(id))!,
+        { role: "business_owner", businessType: "hotel", firstName: "Nora", lastName: "Salem" },
+        NOW
+      )
+    );
+
+    expect(await t.run((ctx) => ctx.db.get(id))).toMatchObject({
+      role: "business_owner",
+      businessType: "hotel",
+      isApproved: false,
+      firstName: "Nora",
+      searchText: "966501112222@phone.hasio.xyz +966501112222 nora salem",
+    });
+  });
+});
 
 describe("enforceUploadAllowance", () => {
   async function upload(t: TestT, id: Id<"users">) {
