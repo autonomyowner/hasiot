@@ -22,13 +22,14 @@ const sources = import.meta.glob(
     "../listings/mutations.ts",
     "../listings/queries.ts",
     "../listings/pricing.ts",
+    "../moderation/queries.ts",
   ],
   { query: "?raw", import: "default", eager: true }
 ) as Record<string, string>;
 
 describe("refusals a person can meet", () => {
   it("covers every module it names", () => {
-    expect(Object.keys(sources)).toHaveLength(11);
+    expect(Object.keys(sources)).toHaveLength(12);
   });
 
   it.each(Object.entries(sources))("%s throws no plain Error", (_path, source) => {
