@@ -23,6 +23,21 @@
 
 **Compatibility** (design 4.1): nothing below removes an argument, adds a required one, or changes an existing return shape. The functions the live 1.0.2 / 1.0.0 apps call (`getUserBookings`, `getBooking`, `getBusinessBookings`, `getOwnerStats`, `quoteStay`, `createStayBooking`, `cancelBooking`, `confirmBooking`, `declineBooking`, `completeBooking`, `markNoShow`, the reviews and notifications functions) behave exactly as before **unless a new optional argument asks otherwise**.
 
+## Changes from the design review (2026-09-25), which override the sections below
+
+1. **Expiry.** A service request expires at `min(createdAt + 48h, its start time)`, so a same-day request cannot sit pending, or be confirmed, after the service has begun.
+2. **Cancelling.** `SERVICE_STARTED` applies only to a **confirmed** service booking whose start has passed. A pending request can always be withdrawn.
+3. **Duplicates.** `DUPLICATE` is read from the traveller's own pending and confirmed bookings (`by_userId_and_status`), matching `serviceId` and `date`.
+4. **City filtering.** `searchServices` filters `city` after merging the two search indexes, with `matchesCity`. An index filter would miss rows stored as "Hofuf".
+5. **Completion.** `completeFinishedStays` also completes confirmed service bookings whose `checkOut` equals today, so "How was it?" arrives the morning after the service.
+6. **The server never requires `city`.** It is checked only when sent, because the live 1.0.2 and 1.0.0 forms never send it.
+7. **A deleted service.** `service` on a booking row is also `null` when the service was deleted.
+8. **Admin search** is its own array query, never an argument of a paginated one:
+   - `adminListServices({ paginationOpts, status?, serviceType?, city? })` plus `adminSearchServices({ search, status?, serviceType?, city? })`, at most 50;
+   - `adminListBookings({ paginationOpts, status?, kind? })` plus `adminSearchBookings({ search })`, at most 50.
+9. **`getDashboardStats` is additive.** The panel already in production reads its current fields, and the backend deploys first. New fields such as `capped` are added; nothing is renamed or removed.
+10. **Both sign-in refusals map to "session expired".** Clients map the old English-only `"Not authenticated"` and the new `"… / You need to be signed in."` to the same message.
+
 ## 1. Shared constants
 
 `convex/lib/errors.ts` (new):

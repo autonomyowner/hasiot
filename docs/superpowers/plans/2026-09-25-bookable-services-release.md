@@ -250,6 +250,18 @@ It must **not** touch B1's files. It may import from `convex/services/logic.ts` 
 
 ---
 
+### M0: shared pieces before Part 2 (coordinator, done in `68feacf`)
+
+- `expo-notifications`, `expo-system-ui` and `expo-device` are installed at their SDK 57 versions with `npx expo install`, **before** the agents start, so the push code is written against the real typings. No `--fix` later: it could move other native versions.
+- `lib/pushPrompt.ts` holds `maybeAskForPush`'s final signature with an empty body, so M1 and M2 can call it before M3 fills it in.
+- The `nothingChangedYet` string exists once. M2 and M3 both use it, and a duplicate key would not compile.
+- File ownership, from the design review:
+  - M1 owns `app/(tabs)/_layout.tsx` and a new `stores/bookTabStore.ts`;
+  - M3 owns a new `stores/pushStore.ts`;
+  - nobody edits `stores/appStore.ts`;
+  - M2 keeps `routeForNotificationData` exported while M3 moves `app/notifications.tsx` to `lib/notificationRoute.ts`.
+- The agents' full instructions are the prompt files in the session scratchpad (common rules, M1, M2, M3 and A), which carry these decisions.
+
 ## Part 2: the clients, in parallel (four Opus agents, one worktree each, launched in one message)
 
 **Every agent:**
@@ -544,7 +556,9 @@ It does not touch `src/App.jsx`, `src/main.jsx`, the landing page or `public/`.
 
 - [ ] **Review** every agent's diff in full. Decide on every risk an agent raises: fix it test-first, or record why not.
 - [ ] **Merge** M1, M2, M3 and A into `services-release` with `--no-ff`, one at a time. Resolve the translation blocks. Wire any `maybeAskForPush` call an agent could not.
-- [ ] **Install:** `cd hasio-mobile-app; npx expo install --fix; npm install`. `git diff package.json` should show only `expo-notifications` and `expo-system-ui` as new native modules.
+- [ ] **Install:** nothing new, because M0 installed the three native modules. Check `git diff 550462e -- hasio-mobile-app/package.json`: it should show only `expo-device`, `expo-notifications` and `expo-system-ui`.
+- [ ] **iOS push switch:** `npx expo config --type introspect` with `HASIO_IOS_PUSH=off` shows no `aps-environment`; without it, it shows the entitlement. With `EAS_BUILD_PROFILE=production` and no `google-services.json`, the config throws unless `HASIO_ANDROID_PUSH=off`.
+- [ ] **Development client:** the installed one (`af661805`) cannot load code that imports the new native modules. Any phone check needs a new development build, and that is an EAS build: only on the owner's word. Say so in the report.
 - [ ] **Checks,** one heavy process at a time, in the foreground. Expected: all green, and lint at no more than the documented 3 warnings.
   - root: `npx vitest run`, `npm run typecheck`, `npm run lint`, `npm run build`, and `(Select-String -Path dist/index.html -Pattern modulepreload).Count` = 0;
   - `hasio-mobile-app`: `npm run typecheck`, `npm run lint`, `npm run test`.
