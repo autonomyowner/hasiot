@@ -15,6 +15,7 @@ import type * as admin_mutations from "../admin/mutations.js";
 import type * as admin_queries from "../admin/queries.js";
 import type * as admin_service from "../admin/service.js";
 import type * as admin_users from "../admin/users.js";
+import type * as admin_views from "../admin/views.js";
 import type * as auth from "../auth.js";
 import type * as bookings_lifecycle from "../bookings/lifecycle.js";
 import type * as bookings_logic from "../bookings/logic.js";
@@ -83,6 +84,7 @@ declare const fullApi: ApiFromModules<{
   "admin/queries": typeof admin_queries;
   "admin/service": typeof admin_service;
   "admin/users": typeof admin_users;
+  "admin/views": typeof admin_views;
   auth: typeof auth;
   "bookings/lifecycle": typeof bookings_lifecycle;
   "bookings/logic": typeof bookings_logic;
