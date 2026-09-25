@@ -12,11 +12,18 @@ export default defineConfig([
   // hasio-mobile-app: Expo project, TypeScript, own eslint entry point.
   // convex/_generated: machine-written.
   // hasio v5: a legacy copy, already gitignored.
+  // .claude: agent worktrees are full checkouts of this repo (mobile app and
+  // generated code included), so linting them repeats every ignored file above
+  // once per worktree — 162 errors from six worktrees on 2026-09-25.
+  // design-assets: masters and design exports (some ship their own bundled
+  // JS), never served and never website source.
   globalIgnores([
     'dist',
     'hasio-mobile-app/**',
     'convex/_generated/**',
     'hasio v5/**',
+    '.claude/**',
+    'design-assets/**',
   ]),
   {
     files: ['**/*.{js,jsx}'],
