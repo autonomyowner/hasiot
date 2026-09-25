@@ -15,6 +15,7 @@ import { recomputeReviewTarget } from "../reviews/service";
 import {
   deleteAccountData,
   enforceUploadAllowance,
+  MAX_NAME,
   saveBusinessDocForUser,
   setOwnRoleForUser,
 } from "./mutations";
@@ -43,6 +44,24 @@ describe("setOwnRoleForUser", () => {
       firstName: "Nora",
       searchText: "966501112222@phone.hasio.xyz +966501112222 nora salem",
     });
+  });
+
+  it("trims and bounds the names, which are printed into other people's notifications", async () => {
+    const t = makeT();
+    const id = await seedUser(t);
+
+    await t.run(async (ctx) =>
+      setOwnRoleForUser(
+        ctx,
+        (await ctx.db.get(id))!,
+        { role: "service_provider", firstName: `  ${"A".repeat(500)}  `, lastName: " Salem " },
+        NOW
+      )
+    );
+
+    const after = (await t.run((ctx) => ctx.db.get(id)))!;
+    expect(after.firstName).toHaveLength(MAX_NAME);
+    expect(after.lastName).toBe("Salem");
   });
 });
 

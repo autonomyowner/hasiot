@@ -3,6 +3,7 @@ import type { Doc } from "../_generated/dataModel";
 import { ConvexError, v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 import { AUTH_ERRORS } from "../lib/errors";
+import { enforceRateLimit } from "../rateLimit";
 
 /**
  * The devices a person receives push notifications on.
@@ -23,8 +24,12 @@ export const PUSH_TOKEN_PATTERN = /^Expo(nent)?PushToken\[[^\]]{1,200}\]$/;
 /** Enough for a phone, a tablet and a couple of reinstalls. */
 export const MAX_DEVICES_PER_USER = 5;
 
+export const PUSH_REGISTRATIONS_PER_DAY = 20;
+
 export const PUSH_ERRORS = {
   INVALID_TOKEN: "رمز الإشعارات غير صالح. / Invalid push token.",
+  DAILY_LIMIT:
+    "لقد وصلت إلى الحد اليومي لتسجيل الأجهزة. يرجى المحاولة غدًا. / You've reached today's device registration limit. Please try again tomorrow.",
 } as const;
 
 export async function registerPushTokenForUser(
@@ -36,6 +41,11 @@ export async function registerPushTokenForUser(
   if (!PUSH_TOKEN_PATTERN.test(args.token)) {
     throw new ConvexError(PUSH_ERRORS.INVALID_TOKEN);
   }
+
+  // Registering moves a token to the caller (a phone changing hands). Bounded,
+  // so nobody can cycle tokens they learned onto their own account at no cost;
+  // the app registers once per sign-in, far below this.
+  await enforceRateLimit(ctx, `push:${user._id}`, PUSH_REGISTRATIONS_PER_DAY, PUSH_ERRORS.DAILY_LIMIT);
 
   // Normally zero or one row. More would be the leftovers of two
   // registrations racing; keep the first and fold the rest into it.

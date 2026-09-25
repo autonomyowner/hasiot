@@ -32,6 +32,17 @@ const USER_ERRORS = {
   INVALID_ROLE: "دور غير صالح. / Invalid role.",
 } as const;
 
+/**
+ * A person's first or last name as stored: trimmed and at most 50 characters.
+ * Names are printed into other people's notifications ("Sara requested…"),
+ * so an unbounded one could carry a paragraph of anything onto a stranger's
+ * lock screen.
+ */
+export const MAX_NAME = 50;
+export function cleanName(value: string): string {
+  return value.trim().slice(0, MAX_NAME);
+}
+
 export const UPLOADS_PER_DAY = 50;
 export const ADMIN_UPLOADS_PER_DAY = 500;
 
@@ -123,8 +134,10 @@ export const updateProfile = mutation({
       updatedAt: Date.now(),
     };
 
-    if (args.firstName !== undefined) updates.firstName = args.firstName;
-    if (args.lastName !== undefined) updates.lastName = args.lastName;
+    // Bounded: a name is printed into other people's notifications ("Sara
+    // requested…"), and unbounded it could carry a paragraph of anything.
+    if (args.firstName !== undefined) updates.firstName = cleanName(args.firstName);
+    if (args.lastName !== undefined) updates.lastName = cleanName(args.lastName);
     if (args.preferredLanguage !== undefined) updates.preferredLanguage = args.preferredLanguage;
     if (args.city !== undefined) updates.city = args.city;
 
@@ -204,8 +217,10 @@ export async function setOwnRoleForUser(
     updatedAt: now,
   };
 
-  if (args.firstName !== undefined) updates.firstName = args.firstName;
-  if (args.lastName !== undefined) updates.lastName = args.lastName;
+  const firstName = args.firstName === undefined ? undefined : cleanName(args.firstName);
+  const lastName = args.lastName === undefined ? undefined : cleanName(args.lastName);
+  if (firstName !== undefined) updates.firstName = firstName;
+  if (lastName !== undefined) updates.lastName = lastName;
 
   if (args.role === "business_owner" || args.role === "service_provider") {
     updates.businessType = args.businessType;
@@ -215,8 +230,8 @@ export async function setOwnRoleForUser(
   updates.searchText = buildSearchTextFrom({
     email: user.email,
     phone: user.phone,
-    firstName: args.firstName ?? user.firstName,
-    lastName: args.lastName ?? user.lastName,
+    firstName: firstName ?? user.firstName,
+    lastName: lastName ?? user.lastName,
   });
 
   await ctx.db.patch(user._id, updates);
@@ -536,8 +551,8 @@ export const createUser = mutation({
 
     const userId = await ctx.db.insert("users", {
       email: args.email,
-      firstName: args.firstName,
-      lastName: args.lastName,
+      firstName: args.firstName === undefined ? undefined : cleanName(args.firstName),
+      lastName: args.lastName === undefined ? undefined : cleanName(args.lastName),
       phone: args.phone,
       role: safeRole,
       businessType: safeRole === "business_owner" || safeRole === "service_provider" ? args.businessType : undefined,

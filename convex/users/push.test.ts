@@ -28,6 +28,20 @@ const devicesOf = (t: TestT, userId: Id<"users">) =>
       .collect()
   );
 
+describe("registerPushTokenForUser, rate", () => {
+  it("allows twenty registrations a day, then refuses readably", async () => {
+    // Registering moves a token to the caller. Unlimited, it would let someone
+    // who learned tokens cycle them onto their own account at no cost.
+    const t = makeT();
+    const me = await user(t);
+    for (let i = 0; i < 20; i++) await register(t, me, `ExponentPushToken[rate${i}]`);
+
+    await expect(register(t, me, "ExponentPushToken[rate20]")).rejects.toSatisfy(
+      (error: unknown) => error instanceof ConvexError && /limit/i.test(String(error.data))
+    );
+  });
+});
+
 describe("registerPushTokenForUser", () => {
   it("stores the device against the signed-in user", async () => {
     const t = makeT();
