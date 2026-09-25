@@ -1,5 +1,5 @@
 import { internalMutation, MutationCtx } from "./_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 const WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -39,6 +39,9 @@ async function bump(ctx: MutationCtx, key: string, limit: number) {
 /**
  * Consume one unit against `key`. Throws a bilingual, user-facing error when
  * the daily allowance is exhausted.
+ *
+ * A ConvexError, not an Error: production redacts a plain Error's message to
+ * "Server Error", so the person hitting the limit was never told why.
  */
 export async function enforceRateLimit(
   ctx: MutationCtx,
@@ -48,7 +51,7 @@ export async function enforceRateLimit(
 ) {
   const result = await bump(ctx, key, limit);
   if (!result.allowed) {
-    throw new Error(message);
+    throw new ConvexError(message);
   }
   return result;
 }
