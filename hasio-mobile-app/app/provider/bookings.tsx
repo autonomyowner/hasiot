@@ -59,7 +59,7 @@ const PUSH_PROMPT_DELAY_MS = 600;
  * nothing (setState with an equal value bails out).
  */
 function useMinuteClock(): number {
-  const [now, setNow] = useState(minuteNow);
+  const [now, setNow] = useState(() => minuteNow());
   useEffect(() => {
     const timer = setInterval(() => setNow(minuteNow()), CLOCK_TICK_MS);
     return () => clearInterval(timer);
