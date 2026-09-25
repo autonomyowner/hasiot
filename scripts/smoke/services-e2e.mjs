@@ -130,11 +130,14 @@ const TINY_PNG = Buffer.from(
 
 const stamp = Date.now().toString(36);
 const cleanup = [];
+const credentials = {};
 
 async function main() {
   // Accounts
   const adminEmail = `smoke-admin-${stamp}@example.com`;
-  const admin = await clientFor(await emailAccount(adminEmail, `Smoke-${stamp}-pw!`, "Smoke Admin"));
+  credentials.adminEmail = adminEmail;
+  credentials.adminPassword = `Smoke-${stamp}-pw!`;
+  const admin = await clientFor(await emailAccount(adminEmail, credentials.adminPassword, "Smoke Admin"));
   cleanup.push(["admin", admin]);
   convexRun("admin/devTools:grantAdmin", { email: adminEmail });
   ok("admin account", adminEmail);
@@ -154,9 +157,11 @@ async function main() {
   await admin.mutation(api.users.mutations.approveBusinessAccount, { userId: providerUser._id });
   ok("provider signed up, verified and approved");
 
-  const tourist = await clientFor(await phoneAccount(randomSaudiMobile()));
+  credentials.touristPhone = randomSaudiMobile();
+  const tourist = await clientFor(await phoneAccount(credentials.touristPhone));
   cleanup.push(["tourist", tourist]);
   const touristUser = await tourist.query(api.users.queries.getCurrentUser, {});
+  credentials.touristId = touristUser?._id;
   expect(touristUser?.phoneVerified === true, "traveller phone verified");
   ok("traveller signed up by phone");
 
@@ -300,8 +305,37 @@ async function tidy() {
       console.log(`   deleted ${who}`);
     } catch (error) {
       console.log(`   could not delete ${who}: ${String(error?.data ?? error?.message ?? error)}`);
+      process.exitCode = 1;
     }
   }
+}
+
+/**
+ * Account deletion must delete the sign-in too (App Store 5.1.1(v), and the
+ * privacy policy says so): the deleted admin's email and password no longer
+ * sign in, and the deleted traveller's phone comes back as a new, empty
+ * account rather than a login with no app row behind it.
+ */
+async function checkDeletionRemovedLogins() {
+  try {
+    await authPost("/sign-in/email", { email: credentials.adminEmail, password: credentials.adminPassword });
+    console.error("FAILED: the deleted admin can still sign in with email and password");
+    process.exitCode = 1;
+  } catch {
+    console.log("OK -- deleted email account no longer signs in");
+  }
+
+  if (!credentials.touristPhone) return;
+  const again = await clientFor(await phoneAccount(credentials.touristPhone));
+  const fresh = await again.query(api.users.queries.getCurrentUser, {});
+  const bookings = fresh ? await again.query(api.bookings.queries.getUserBookings, { includeServices: true }) : null;
+  if (fresh && fresh._id !== credentials.touristId && bookings.length === 0) {
+    console.log("OK -- deleted phone comes back as a new, empty account");
+  } else {
+    console.error(`FAILED: the deleted phone signed back into ${fresh ? "the old account" : "a login with no account"}`);
+    process.exitCode = 1;
+  }
+  await again.mutation(api.users.mutations.deleteMyAccount, {}).catch(() => {});
 }
 
 try {
@@ -312,4 +346,5 @@ try {
   process.exitCode = 1;
 } finally {
   await tidy();
+  await checkDeletionRemovedLogins();
 }

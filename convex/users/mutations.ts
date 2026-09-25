@@ -475,13 +475,24 @@ export const deleteMyAccount = mutation({
 
     await deleteAccountData(ctx, user);
 
-    // Delete from Better-Auth internal tables (user, session, account)
-    // so the email can be re-registered
-    try {
-      const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
-      await auth.api.deleteUser({ body: {}, headers });
-    } catch (e) {
-      console.error("Failed to delete Better-Auth user (continuing):", e);
+    // Delete the sign-in itself (Better Auth's user, its sessions and its
+    // linked accounts) so the email or phone number starts fresh.
+    //
+    // This used to call auth.api.deleteUser, which is disabled unless the
+    // Better Auth options enable it, and which even then demands a recently
+    // created session or a password — a phone sign-in signed in last week has
+    // neither. It failed on every call, caught and logged, so every "deleted"
+    // account kept its login: the privacy policy promised otherwise, and a
+    // returning phone signed into an account whose app row was gone. The
+    // internal adapter deletes server-side, with the caller already verified
+    // as the account holder above.
+    const authUser = await authComponent.safeGetAuthUser(ctx).catch(() => null);
+    const authUserId = authUser?._id ?? user.authId;
+    if (authUserId) {
+      const { internalAdapter } = await createAuth(ctx).$context;
+      await internalAdapter.deleteSessions(authUserId);
+      await internalAdapter.deleteAccounts(authUserId);
+      await internalAdapter.deleteUser(authUserId);
     }
 
     // Delete the app user record
