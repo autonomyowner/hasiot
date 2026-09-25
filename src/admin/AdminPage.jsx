@@ -9,6 +9,7 @@ import { SectionBoundary, TabErrorBoundary } from './components/States'
 import { pendingBookingsOf, queuesOf, queueTotalOf, useDashboardStats } from './stats'
 import DashboardTab from './tabs/DashboardTab'
 import ListingsTab from './tabs/ListingsTab'
+import ServicesTab from './tabs/ServicesTab'
 import ContentApprovalTab from './tabs/ContentApprovalTab'
 import ServiceApprovalTab from './tabs/ServiceApprovalTab'
 import PendingBusinessesTab from './tabs/PendingBusinessesTab'
@@ -26,8 +27,11 @@ import './admin.css'
 const TABS = [
   { id: 'dashboard', label: 'الرئيسية' },
   { id: 'listings', label: 'الأماكن' },
+  { id: 'liveServices', label: 'الخدمات المنشورة' },
   { id: 'content', label: 'المحتوى', count: (q) => q.content },
-  { id: 'services', label: 'الخدمات', count: (q) => q.services },
+  // Was «الخدمات». Beside «الخدمات المنشورة» that read as the same list twice;
+  // this one is the queue of submissions waiting for a decision.
+  { id: 'services', label: 'طلبات الخدمات', count: (q) => q.services },
   { id: 'pending', label: 'الحسابات', count: (q) => q.accounts },
   { id: 'reports', label: 'التبليغات', count: (q) => q.reports },
   { id: 'bookings', label: 'الحجوزات', count: pendingBookingsOf },
@@ -155,6 +159,7 @@ function TabContent({ tab, params, user, stats, statsError, onNavigate }) {
     case 'dashboard':
       return <DashboardTab onNavigate={onNavigate} user={user} stats={stats} statsError={statsError} />
     case 'listings': return <ListingsTab initialFilters={params} />
+    case 'liveServices': return <ServicesTab />
     case 'content': return <ContentApprovalTab />
     case 'services': return <ServiceApprovalTab />
     case 'pending': return <PendingBusinessesTab />

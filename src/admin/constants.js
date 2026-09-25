@@ -222,12 +222,22 @@ export function formatServicePrice(price, priceUnit) {
   return unit ? `${formatMoney(price)} ${unit.per}` : formatMoney(price)
 }
 
+/**
+ * The address a phone sign-up is given (convex/lib/contact.ts). It takes no
+ * mail and is nobody's name, so the panel never shows it as either.
+ */
+export const isPlaceholderEmail = (email) =>
+  typeof email === 'string' && email.toLowerCase().endsWith('@phone.hasio.xyz')
+
+/** An address someone can write to, or null. */
+export const realEmail = (email) => (email && !isPlaceholderEmail(email) ? email : null)
+
 /** A person's name as the panel shows it; a phone sign-up has only a number. */
 export function personName(person) {
   if (!person) return UNKNOWN_LABEL
   const name = [person.firstName, person.lastName].filter(Boolean).join(' ').trim()
   if (name) return name
-  if (person.isPlaceholderEmail || /@phone\.hasio\.xyz$/i.test(person.email || '')) {
+  if (person.isPlaceholderEmail || isPlaceholderEmail(person.email)) {
     return person.phone || UNKNOWN_LABEL
   }
   return person.email || person.phone || UNKNOWN_LABEL
