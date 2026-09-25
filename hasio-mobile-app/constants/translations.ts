@@ -15,6 +15,9 @@ export const translations = {
     signOut: "Sign Out",
     signOutSubtitle: "Sign out of your account",
     guest: "Guest",
+    // Shared by every edit form: Save stays a solid button, and this is the
+    // nudge when nothing has been changed yet (never a faded button).
+    nothingChangedYet: "Nothing has changed yet",
 
     // Navigation
     home: "Home",
@@ -22,7 +25,6 @@ export const translations = {
     food: "Food",
     events: "Events",
     planner: "Planner",
-    moments: "Moments",
     settings: "Settings",
 
     // Home
@@ -32,7 +34,6 @@ export const translations = {
     afternoonGreeting: "Good Afternoon",
     eveningGreeting: "Good Evening",
     heroTagline: "From oasis to Gulf shore",
-    lodgingEyebrow: "Stay in the East",
     foodEyebrow: "Taste the East",
     eventsEyebrow: "Happening in the East",
     featuredDestinations: "Featured Destinations",
@@ -78,7 +79,6 @@ export const translations = {
     filterApply: "Show results",
     filterNoMatch: "Nothing matches these filters",
     detailBook: "Book",
-    detailBookSoon: "Booking coming soon",
     sar: "SAR",
     pricePerNightLabel: "Price per night (SAR)",
     placeholderPricePerNight: "e.g. 450",
@@ -138,7 +138,6 @@ export const translations = {
     upcoming: "Upcoming",
     past: "Past",
     noBookings: "No bookings yet",
-    noBookingsHint: "Stays you book will appear here.",
     bookingDetails: "Booking details",
     cancelBooking: "Cancel booking",
     cancelBookingConfirm: "Cancel this booking?",
@@ -148,6 +147,7 @@ export const translations = {
     declineReason: "Reason from the host",
     hostContact: "Host",
     bookingStatusPending: "Awaiting host",
+    bookingStatusPendingProvider: "Awaiting provider",
     bookingStatusConfirmed: "Confirmed",
     bookingStatusCompleted: "Completed",
     bookingStatusCancelled: "Cancelled",
@@ -165,6 +165,7 @@ export const translations = {
     declineTitle: "Decline this request?",
     declineReasonLabel: "Tell the guest why (optional)",
     declineReasonPlaceholder: "Fully booked those dates…",
+    declineReasonPlaceholderService: "Not available that day…",
     bookingConfirmed: "Booking confirmed",
     bookingDeclined: "Request declined",
     callGuest: "Call guest",
@@ -184,7 +185,6 @@ export const translations = {
     notificationsSubtitle: "Booking updates and reminders appear here.",
     noNotifications: "No notifications yet",
     markAllRead: "Mark all read",
-    pushNotifications: "Push notifications",
 
     // Food
     restaurants: "Restaurants",
@@ -261,12 +261,8 @@ export const translations = {
     close: "Close",
     done: "Done",
 
-    // Moments
-    myMoments: "My Moments",
-    addMoment: "Add Moment",
+    // Photo picker (components/hosting/PhotoPickerField.tsx)
     selectPhoto: "Select Photo",
-    addLocation: "Add Location",
-    writeNote: "Write a note...",
 
     // Settings
     language: "Language",
@@ -321,9 +317,6 @@ export const translations = {
     emptyFoodMessage: "Try a different category",
     emptyEventsTitle: "No events available",
     emptyEventsMessage: "Check back later for upcoming events",
-    emptyMomentsTitle: "No memories yet",
-    emptyMomentsMessage: "Capture your first travel moment!",
-    emptyMomentsAction: "Add Moment",
     emptyPlannerTitle: "No plans yet",
     emptyPlannerMessage: "Start planning your Eastern Province adventure",
     emptyDestinationsTitle: "No destinations found",
@@ -331,7 +324,6 @@ export const translations = {
 
     // Auth
     signInRequired: "Sign in to continue",
-    signInRequiredMessage: "Create an account to save your moments and plans",
     guestProfileTitle: "Welcome to Hasio",
     guestProfileMessage: "Sign in to access your profile, save favorites, plan trips, and upgrade your account.",
     guestSignInButton: "Sign In or Create Account",
@@ -361,8 +353,6 @@ export const translations = {
       ", and you accept that abusive users and objectionable content are not tolerated.",
     back: "Back",
     saving: "Saving...",
-    momentSaveError: "Failed to save moment. Please try again.",
-    deleteMomentConfirm: "Are you sure you want to delete this moment?",
 
     // User Types
     selectAccountType: "Select Account Type",
@@ -402,6 +392,63 @@ export const translations = {
     // Business Dashboard
     businessDashboard: "Business Dashboard",
     postLodging: "Post Lodging",
+    // ── M2: service bookings and the provider side ──
+    // Counted in words like nights and guests: lib/bookingDisplay.ts
+    // `countLabel` picks the form, so every unit has all four.
+    hoursOne: "1 hour",
+    hoursTwo: "2 hours",
+    hoursFew: "{n} hours",
+    hoursMany: "{n} hours",
+    daysOne: "1 day",
+    daysTwo: "2 days",
+    daysFew: "{n} days",
+    daysMany: "{n} days",
+    peopleOne: "1 person",
+    peopleTwo: "2 people",
+    peopleFew: "{n} people",
+    peopleMany: "{n} people",
+    // A service booking's day and start time. The time is shown exactly as
+    // stored — Riyadh wall-clock time — never re-read in the phone's zone.
+    dateAtTime: "{date} at {time}",
+    serviceNoLongerListed: "Service no longer listed",
+    myBookingsEmptyHint: "Stays and services you book will appear here.",
+    noUpcomingBookings: "No upcoming bookings",
+    noUpcomingBookingsHint: "Your earlier bookings are under Past.",
+    noPastBookingsHint: "Bookings appear here once they're over.",
+    bookingProvider: "Provider",
+    callProvider: "Call provider",
+    bookingDuration: "Duration",
+    bookingNotesLabel: "Notes",
+    declineReasonProvider: "Reason from the provider",
+    servicePendingNote:
+      "The provider confirms within 48 hours, or before the start time if that's sooner. Nothing is paid in the app — you pay the provider directly.",
+    cancelRequestConfirm: "Cancel this request?",
+    cancelRequestMessage: "The provider will be told.",
+    errorServiceStarted: "A service can't be cancelled after it starts. Contact the provider.",
+    errorServiceNotStarted: "You can mark it completed once the service has started.",
+    howWasIt: "How was it?",
+    rateServiceButton: "Rate this service",
+    providerNoRequests: "No booking requests yet",
+    providerNoRequestsHint: "Requests for your services will appear here.",
+    markServiceCompleted: "Mark completed",
+    serviceCompletedToast: "Marked completed",
+    statPendingRequests: "Pending requests",
+    statCompletedMonth: "Completed this month",
+    statRevenueMonth: "Revenue this month",
+    servicePriceLabel: "Price (SAR)",
+    servicePriceHint: "Travellers book at this price. Leave it empty to show Contact instead.",
+    maxGroupSizeLabel: "Maximum group size",
+    invalidGroupSize: "Enter a group size from 1 to 100",
+    chooseServiceCity: "Choose the city you work in",
+    serviceSuspendedEditNotice:
+      "Our team took this service down. You can still save changes, but it stays hidden until it's reinstated.",
+    serviceChangesSaved: "Your changes were saved.",
+    errorServicePrice: "Enter a whole price between 1 and 100,000 SAR.",
+    errorServiceCity: "Choose a city from the list.",
+    errorServiceOpenBookings: "This service has open bookings, so it can't be deleted yet.",
+    accountRejectedTitle: "Your documents were not approved",
+    accountRejectedReason: "Reason: {reason}",
+    uploadNewDocument: "Upload a new document",
     postDestination: "Post Destination",
     myListings: "My Listings",
     pendingApproval: "Pending Approval",
@@ -535,7 +582,6 @@ export const translations = {
     placeholderNeighborhoodAr: "الحي بالعربية",
     placeholderPriceLodging: "e.g., 200-500 SAR",
     placeholderPriceFood: "e.g., 50-100 SAR",
-    placeholderPriceService: "e.g., 100-200 SAR",
     amenitiesHint: "Switch on everything guests can actually use.",
     placeholderAmenitiesEn: "WiFi, Pool, Spa, Parking",
     placeholderAmenitiesAr: "واي فاي، مسبح، سبا، موقف سيارات",
@@ -631,7 +677,59 @@ export const translations = {
     cat_tour: "Tour",
 
     // Tab bar labels — short, one word, under the icon
-    tabStay: "Stay",
+    tabStay: "Book",
+    // The Book tab (stays and services), the service sheets, and reviews of
+    // services. Price lines and counts ("SAR 150 / hour", "3 hours") are built
+    // in lib/serviceDisplay.ts, where the Arabic forms are picked by number.
+    bookEyebrow: "Stays and local services",
+    bookSegmentStays: "Stays",
+    bookSegmentServices: "Services",
+    searchStays: "Search stays",
+    searchServices: "Search services",
+    allCities: "All cities",
+    emptyStaysFilteredHint: "Try another city or kind, or change your search.",
+    noServicesTitle: "No services here yet",
+    noServicesHint: "Try another city or type.",
+    noServicesAnyHint: "Guides, drivers and photographers are joining. Check back soon.",
+    localServices: "Local services",
+    seeAllServices: "See all services",
+    serviceOfferedBy: "Offered by {name}",
+    rateThisService: "Rate this service",
+    serviceContact: "Contact",
+    serviceContactTitle: "Contact the provider",
+    serviceYours: "Your service",
+    serviceProviderFallback: "the provider",
+    bookService: "Book this service",
+    chooseDay: "Choose a day",
+    startTime: "Start time",
+    startTimeHint: "Times are in Saudi time.",
+    startTimesAfterDay: "The start times appear once you choose a day.",
+    pickDayFirst: "Pick a day first",
+    pickStartTime: "Pick a start time",
+    noTimesLeftToday: "No start times left today. Pick another day.",
+    serviceHours: "Hours",
+    serviceDays: "Days",
+    servicePeople: "People",
+    fewerHours: "Fewer hours",
+    moreHours: "More hours",
+    fewerDays: "Fewer days",
+    moreDays: "More days",
+    fewerPeople: "Fewer people",
+    morePeople: "More people",
+    serviceNotesLabel: "Anything the provider should know? (optional)",
+    serviceNotesPlaceholder: "Meeting point, languages, special requests…",
+    servicePayDirectNote: "You won't be charged in the app. You pay the provider directly.",
+    serviceRequestSentBody: "We'll tell you as soon as {provider} replies.",
+    errorServiceUnavailable: "This service isn't available right now.",
+    errorOwnService: "You can't book your own service.",
+    errorPastTime: "That time has passed. Pick a later time.",
+    errorDuplicateServiceRequest: "You already have a request for this service that day.",
+    errorTooManyPeople: "That's more people than this service takes.",
+    errorInvalidQuantity: "Choose a valid number of hours or days.",
+    errorRateOwnItem: "You can't rate your own place or service.",
+    errorAlreadyReviewedService: "You have already rated this service. Edit your review instead.",
+    reviewsEmptyHint: "Be the first to share how it went.",
+    reviewVerifiedService: "Verified booking",
     tabHome: "Home",
     tabPlan: "Plan",
     tabFavorites: "Favorites",
@@ -770,8 +868,6 @@ export const translations = {
     starsOutOfFive: "{n} out of 5 stars",
     noShowConfirmTitle: "Mark as a no-show?",
     noShowConfirmMessage: "Only if the guest never arrived. This can't be undone.",
-    noUpcomingStaysHint: "Your earlier stays are under Past.",
-    noPastStaysHint: "Stays appear here once they're over.",
     // Opening hours. The stored day is the key — lib/dates.ts weekdayLabelKey.
     day_sunday: "Sunday",
     day_monday: "Monday",
@@ -813,7 +909,6 @@ export const translations = {
     // Profile — shown in place of the page while the account is going away.
     accountSigningOut: "Signing you out…",
     accountDeleting: "Deleting your account…",
-    profileTrips: "Trips",
     profileGetStarted: "Get started",
     profileAddName: "Add your name",
     // Read by screen readers on the Notifications row's count.
@@ -826,6 +921,7 @@ export const translations = {
     invalidUnitCountRange: "Enter a number of rooms or units from 1 to 500",
     invalidContactPhone: "Enter a valid phone number",
     editCannotClear: "This can't be removed in the app yet. Saving keeps {value}.",
+    clearPriceNote: "Saving without a nightly price stops new bookings of this stay.",
     statusSuspended: "Suspended",
     reviewNoteLabel: "Note from our team",
     editToResubmit: "Edit and save to send it back for review.",
@@ -840,10 +936,6 @@ export const translations = {
     deleteBlockedOpenBookings:
       "It still has bookings that are waiting or confirmed. Once they are declined, completed or cancelled, you can delete it.",
     languagesCommaSeparated: "Languages (separate with commas)",
-    statServices: "Services",
-    statLive: "Live",
-    statInReview: "In review",
-    statAddFirstService: "Add your first service",
     editLiveConfirmTitle: "Send your changes for review?",
     editLiveStayMessage:
       "Until our team approves them, travellers won't see this listing or be able to book it.",
@@ -867,6 +959,29 @@ export const translations = {
     startAddingPlaces: "Add a place to stay or a destination to get started.",
 
     // ── ui-polish: app shell ──
+
+    // ── 1.1.0: push notifications, Settings, sign-in ──
+    // The in-context ask (components/PushPrompt.tsx, design D14).
+    pushPromptTitle: "Get booking updates?",
+    pushPromptGuestBody:
+      "We'll tell you the moment your request is confirmed, and remind you the day before.",
+    pushPromptHostBody:
+      "Get a notification the moment a booking request arrives, so it never expires unseen.",
+    pushTurnOn: "Turn on notifications",
+    pushNotNow: "Not now",
+    // The Settings row. Not a second "Notifications": the inbox row above it
+    // already has that name.
+    pushNotifications: "Push notifications",
+    pushOn: "On",
+    pushOff: "Off",
+    pushTurnOnInSettings: "Turn on in Settings",
+    // The Android notification channel, as the phone's settings list it.
+    pushChannelName: "Bookings",
+    contactSupport: "Contact support",
+    markReadFailed: "Couldn't update. Check your connection.",
+    // Said by a sign-in button pressed too early (never faded; see useNudge).
+    enterPhoneNudge: "Enter your phone number",
+    enterCodeNudge: "Enter the 6-digit code",
   },
 
   ar: {
@@ -885,6 +1000,7 @@ export const translations = {
     signOut: "تسجيل الخروج",
     signOutSubtitle: "الخروج من حسابك",
     guest: "ضيف",
+    nothingChangedYet: "لم تغيّر شيئًا بعد",
 
     // Navigation
     home: "الرئيسية",
@@ -892,7 +1008,6 @@ export const translations = {
     food: "الطعام",
     events: "الفعاليات",
     planner: "المخطط",
-    moments: "اللحظات",
     settings: "الإعدادات",
 
     // Home
@@ -902,7 +1017,6 @@ export const translations = {
     afternoonGreeting: "مساء الخير",
     eveningGreeting: "مساء الخير",
     heroTagline: "من الواحة إلى الساحل",
-    lodgingEyebrow: "أقم في الشرقية",
     foodEyebrow: "تذوق الشرقية",
     eventsEyebrow: "يحدث في الشرقية",
     featuredDestinations: "وجهات مميزة",
@@ -948,7 +1062,6 @@ export const translations = {
     filterApply: "عرض النتائج",
     filterNoMatch: "لا توجد نتائج مطابقة",
     detailBook: "احجز",
-    detailBookSoon: "الحجز قريبًا",
     sar: "ر.س",
     pricePerNightLabel: "سعر الليلة (ر.س)",
     placeholderPricePerNight: "مثال: 450",
@@ -1008,7 +1121,6 @@ export const translations = {
     upcoming: "القادمة",
     past: "السابقة",
     noBookings: "لا توجد حجوزات بعد",
-    noBookingsHint: "ستظهر هنا الإقامات التي تحجزها.",
     bookingDetails: "تفاصيل الحجز",
     cancelBooking: "إلغاء الحجز",
     cancelBookingConfirm: "إلغاء هذا الحجز؟",
@@ -1018,6 +1130,7 @@ export const translations = {
     declineReason: "سبب الرفض من المضيف",
     hostContact: "المضيف",
     bookingStatusPending: "بانتظار المضيف",
+    bookingStatusPendingProvider: "بانتظار مقدم الخدمة",
     bookingStatusConfirmed: "مؤكد",
     bookingStatusCompleted: "مكتمل",
     bookingStatusCancelled: "ملغى",
@@ -1035,6 +1148,7 @@ export const translations = {
     declineTitle: "رفض هذا الطلب؟",
     declineReasonLabel: "أخبر الضيف بالسبب (اختياري)",
     declineReasonPlaceholder: "لا توجد غرف متاحة في هذه التواريخ…",
+    declineReasonPlaceholderService: "غير متاح في ذلك اليوم…",
     bookingConfirmed: "تم تأكيد الحجز",
     bookingDeclined: "تم رفض الطلب",
     callGuest: "الاتصال بالضيف",
@@ -1054,7 +1168,6 @@ export const translations = {
     notificationsSubtitle: "تظهر هنا تحديثات الحجوزات والتذكيرات.",
     noNotifications: "لا توجد إشعارات بعد",
     markAllRead: "تحديد الكل كمقروء",
-    pushNotifications: "إشعارات التطبيق",
 
     // Food
     restaurants: "المطاعم",
@@ -1129,12 +1242,8 @@ export const translations = {
     close: "إغلاق",
     done: "تم",
 
-    // Moments
-    myMoments: "لحظاتي",
-    addMoment: "إضافة لحظة",
+    // Photo picker — see the English block.
     selectPhoto: "اختر صورة",
-    addLocation: "إضافة موقع",
-    writeNote: "اكتب ملاحظة...",
 
     // Settings
     language: "اللغة",
@@ -1189,9 +1298,6 @@ export const translations = {
     emptyFoodMessage: "جرب فئة مختلفة",
     emptyEventsTitle: "لا توجد فعاليات",
     emptyEventsMessage: "تحقق لاحقاً من الفعاليات القادمة",
-    emptyMomentsTitle: "لا توجد ذكريات",
-    emptyMomentsMessage: "احفظ ذكريات رحلتك الأولى!",
-    emptyMomentsAction: "إضافة ذكرى",
     emptyPlannerTitle: "لا توجد خطط",
     emptyPlannerMessage: "ابدأ التخطيط لمغامرتك في الشرقية",
     emptyDestinationsTitle: "لا توجد وجهات",
@@ -1199,7 +1305,6 @@ export const translations = {
 
     // Auth
     signInRequired: "سجل الدخول للمتابعة",
-    signInRequiredMessage: "أنشئ حساباً لحفظ لحظاتك وخططك",
     guestProfileTitle: "مرحباً بك في Hasio",
     guestProfileMessage: "سجل الدخول للوصول إلى ملفك الشخصي، حفظ المفضلات، تخطيط الرحلات، وترقية حسابك.",
     guestSignInButton: "تسجيل الدخول أو إنشاء حساب",
@@ -1228,8 +1333,6 @@ export const translations = {
     consentSuffix: "، وتقر بعدم التسامح مع المحتوى المخالف أو المستخدمين المسيئين.",
     back: "رجوع",
     saving: "جاري الحفظ...",
-    momentSaveError: "فشل في حفظ اللحظة. حاول مرة أخرى.",
-    deleteMomentConfirm: "هل أنت متأكد من حذف هذه اللحظة؟",
 
     // User Types
     selectAccountType: "اختر نوع الحساب",
@@ -1269,6 +1372,61 @@ export const translations = {
     // Business Dashboard
     businessDashboard: "لوحة تحكم الأعمال",
     postLodging: "إضافة إقامة",
+    // ── M2: service bookings and the provider side ──
+    // One is a word, two the dual, 3–10 the plural, 11 and up the singular
+    // again (accusative where it shows) — as the nights and guests forms.
+    hoursOne: "ساعة واحدة",
+    hoursTwo: "ساعتان",
+    hoursFew: "{n} ساعات",
+    hoursMany: "{n} ساعة",
+    daysOne: "يوم واحد",
+    daysTwo: "يومان",
+    daysFew: "{n} أيام",
+    daysMany: "{n} يومًا",
+    peopleOne: "شخص واحد",
+    peopleTwo: "شخصان",
+    peopleFew: "{n} أشخاص",
+    peopleMany: "{n} شخصًا",
+    dateAtTime: "{date} الساعة {time}",
+    serviceNoLongerListed: "لم تعد الخدمة متاحة",
+    myBookingsEmptyHint: "ستظهر هنا الإقامات والخدمات التي تحجزها.",
+    noUpcomingBookings: "لا توجد حجوزات قادمة",
+    noUpcomingBookingsHint: "حجوزاتك السابقة تجدها في «السابقة».",
+    noPastBookingsHint: "تظهر الحجوزات هنا بعد انتهائها.",
+    bookingProvider: "مقدم الخدمة",
+    callProvider: "اتصل بمقدم الخدمة",
+    bookingDuration: "المدة",
+    bookingNotesLabel: "ملاحظات",
+    declineReasonProvider: "سبب الرفض من مقدم الخدمة",
+    servicePendingNote:
+      "يؤكد مقدم الخدمة خلال 48 ساعة، أو قبل وقت البدء إن كان أقرب. لا يتم الدفع داخل التطبيق — تدفع لمقدم الخدمة مباشرة.",
+    cancelRequestConfirm: "إلغاء هذا الطلب؟",
+    cancelRequestMessage: "سيتم إبلاغ مقدم الخدمة.",
+    errorServiceStarted: "لا يمكن الإلغاء بعد بدء الخدمة. تواصل مع مقدم الخدمة.",
+    errorServiceNotStarted: "يمكنك تأكيد الإنجاز بعد بدء موعد الخدمة.",
+    howWasIt: "كيف كانت التجربة؟",
+    rateServiceButton: "قيّم هذه الخدمة",
+    providerNoRequests: "لا توجد طلبات حجز بعد",
+    providerNoRequestsHint: "ستظهر هنا طلبات الحجز لخدماتك.",
+    markServiceCompleted: "تم الإنجاز",
+    serviceCompletedToast: "تم تسجيل الخدمة كمكتملة",
+    statPendingRequests: "طلبات معلقة",
+    statCompletedMonth: "المكتملة هذا الشهر",
+    statRevenueMonth: "الإيرادات هذا الشهر",
+    servicePriceLabel: "السعر (ريال)",
+    servicePriceHint: "يحجز المسافرون بهذا السعر. اتركه فارغًا لإظهار زر التواصل بدلًا من الحجز.",
+    maxGroupSizeLabel: "أقصى عدد للأشخاص",
+    invalidGroupSize: "أدخل عددًا من 1 إلى 100",
+    chooseServiceCity: "اختر المدينة التي تعمل فيها",
+    serviceSuspendedEditNotice:
+      "أوقف فريقنا هذه الخدمة. يمكنك حفظ التعديلات، لكنها تبقى مخفية حتى يُعاد تفعيلها.",
+    serviceChangesSaved: "تم حفظ تعديلاتك.",
+    errorServicePrice: "أدخل سعرًا صحيحًا بين 1 و100٬000 ريال.",
+    errorServiceCity: "اختر مدينة من القائمة.",
+    errorServiceOpenBookings: "لا يمكن حذف هذه الخدمة لأن لديها حجوزات قائمة.",
+    accountRejectedTitle: "لم تُعتمد وثائقك",
+    accountRejectedReason: "السبب: {reason}",
+    uploadNewDocument: "ارفع وثيقة جديدة",
     postDestination: "إضافة وجهة",
     myListings: "إعلاناتي",
     pendingApproval: "في انتظار الموافقة",
@@ -1401,7 +1559,6 @@ export const translations = {
     placeholderNeighborhoodAr: "الحي بالعربية",
     placeholderPriceLodging: "مثال: ٢٠٠-٥٠٠ ريال",
     placeholderPriceFood: "مثال: ٥٠-١٠٠ ريال",
-    placeholderPriceService: "مثال: ١٠٠-٢٠٠ ريال",
     amenitiesHint: "فعّل كل ما يستطيع الضيف استخدامه فعلاً.",
     placeholderAmenitiesEn: "واي فاي، مسبح، سبا، موقف سيارات",
     placeholderAmenitiesAr: "واي فاي، مسبح، سبا، موقف سيارات",
@@ -1497,7 +1654,58 @@ export const translations = {
     cat_tour: "جولة",
 
     // Tab bar labels — short, one word, under the icon
-    tabStay: "الإقامة",
+    tabStay: "احجز",
+    // The Book tab, the service sheets, and reviews of services — see the
+    // English block.
+    bookEyebrow: "إقامة وخدمات محلية",
+    bookSegmentStays: "الإقامة",
+    bookSegmentServices: "الخدمات",
+    searchStays: "ابحث عن إقامة",
+    searchServices: "ابحث عن خدمة",
+    allCities: "كل المدن",
+    emptyStaysFilteredHint: "جرّب مدينة أو نوعًا آخر، أو غيّر كلمة البحث.",
+    noServicesTitle: "لا توجد خدمات هنا بعد",
+    noServicesHint: "جرّب مدينة أو نوعًا آخر.",
+    noServicesAnyHint: "ينضم إلينا مرشدون وسائقون ومصورون باستمرار. عد قريبًا.",
+    localServices: "خدمات محلية",
+    seeAllServices: "عرض كل الخدمات",
+    serviceOfferedBy: "تقدمها {name}",
+    rateThisService: "قيّم هذه الخدمة",
+    serviceContact: "تواصل",
+    serviceContactTitle: "تواصل مع مقدم الخدمة",
+    serviceYours: "خدمتك",
+    serviceProviderFallback: "مقدم الخدمة",
+    bookService: "احجز هذه الخدمة",
+    chooseDay: "اختر اليوم",
+    startTime: "وقت البدء",
+    startTimeHint: "الأوقات بتوقيت السعودية.",
+    startTimesAfterDay: "تظهر أوقات البدء بعد اختيار اليوم.",
+    pickDayFirst: "اختر اليوم أولًا",
+    pickStartTime: "اختر وقت البدء",
+    noTimesLeftToday: "لا توجد أوقات متبقية اليوم. اختر يومًا آخر.",
+    serviceHours: "عدد الساعات",
+    serviceDays: "عدد الأيام",
+    servicePeople: "عدد الأشخاص",
+    fewerHours: "إنقاص عدد الساعات",
+    moreHours: "زيادة عدد الساعات",
+    fewerDays: "إنقاص عدد الأيام",
+    moreDays: "زيادة عدد الأيام",
+    fewerPeople: "إنقاص عدد الأشخاص",
+    morePeople: "زيادة عدد الأشخاص",
+    serviceNotesLabel: "هل هناك ما يجب أن يعرفه مقدم الخدمة؟ (اختياري)",
+    serviceNotesPlaceholder: "مكان اللقاء، اللغة، طلبات خاصة…",
+    servicePayDirectNote: "لن يُخصم أي مبلغ في التطبيق. تدفع لمقدم الخدمة مباشرة.",
+    serviceRequestSentBody: "سنخبرك فور رد {provider}.",
+    errorServiceUnavailable: "هذه الخدمة غير متاحة حاليًا.",
+    errorOwnService: "لا يمكنك حجز خدمتك الخاصة.",
+    errorPastTime: "هذا الوقت مضى. اختر وقتًا لاحقًا.",
+    errorDuplicateServiceRequest: "لديك طلب قائم لهذه الخدمة في ذلك اليوم.",
+    errorTooManyPeople: "هذا العدد أكبر مما تسمح به الخدمة.",
+    errorInvalidQuantity: "اختر عددًا صحيحًا من الساعات أو الأيام.",
+    errorRateOwnItem: "لا يمكنك تقييم مكانك أو خدمتك.",
+    errorAlreadyReviewedService: "لقد قيّمت هذه الخدمة من قبل. يمكنك تعديل تقييمك.",
+    reviewsEmptyHint: "كن أول من يشارك تجربته.",
+    reviewVerifiedService: "حجز موثّق",
     tabHome: "الرئيسية",
     tabPlan: "خطط",
     tabFavorites: "المفضلة",
@@ -1633,8 +1841,6 @@ export const translations = {
     starsOutOfFive: "{n} من 5 نجوم",
     noShowConfirmTitle: "تسجيل عدم الحضور؟",
     noShowConfirmMessage: "فقط إذا لم يصل الضيف. لا يمكن التراجع عن ذلك.",
-    noUpcomingStaysHint: "إقاماتك السابقة تجدها في «السابقة».",
-    noPastStaysHint: "تظهر الإقامات هنا بعد انتهائها.",
     day_sunday: "الأحد",
     day_monday: "الإثنين",
     day_tuesday: "الثلاثاء",
@@ -1674,7 +1880,6 @@ export const translations = {
     // Profile — see the English block.
     accountSigningOut: "جارٍ تسجيل خروجك…",
     accountDeleting: "جارٍ حذف حسابك…",
-    profileTrips: "الرحلات",
     profileGetStarted: "ابدأ الآن",
     profileAddName: "أضف اسمك",
     profileUnread: "{n} غير مقروءة",
@@ -1686,6 +1891,7 @@ export const translations = {
     invalidUnitCountRange: "أدخل عدد غرف أو وحدات من 1 إلى 500",
     invalidContactPhone: "أدخل رقم هاتف صحيحًا",
     editCannotClear: "لا يمكن حذف هذه القيمة من التطبيق حاليًا. عند الحفظ تبقى {value}.",
+    clearPriceNote: "الحفظ بدون سعر لليلة يوقف الحجوزات الجديدة لهذه الإقامة.",
     statusSuspended: "موقوف",
     reviewNoteLabel: "ملاحظة من فريقنا",
     editToResubmit: "عدّل واحفظ لإعادة الإرسال إلى المراجعة.",
@@ -1700,10 +1906,6 @@ export const translations = {
     deleteBlockedOpenBookings:
       "لا تزال هناك حجوزات بانتظار الرد أو مؤكدة. يمكنك الحذف بعد رفضها أو إتمامها أو إلغائها.",
     languagesCommaSeparated: "اللغات (افصل بينها بفواصل)",
-    statServices: "الخدمات",
-    statLive: "منشورة",
-    statInReview: "قيد المراجعة",
-    statAddFirstService: "أضف خدمتك الأولى",
     editLiveConfirmTitle: "إرسال التعديلات للمراجعة؟",
     editLiveStayMessage:
       "لن يظهر هذا الإعلان للمسافرين ولن يمكن حجزه حتى يوافق فريقنا على التعديلات.",
@@ -1726,6 +1928,23 @@ export const translations = {
     startAddingPlaces: "أضف مكان إقامة أو وجهة لتبدأ.",
 
     // ── ui-polish: app shell ──
+
+    // ── 1.1.0: push notifications, Settings, sign-in — see the English block ──
+    pushPromptTitle: "هل تريد تنبيهات الحجز؟",
+    pushPromptGuestBody: "سنخبرك فور تأكيد طلبك، ونذكّرك قبل الموعد بيوم.",
+    pushPromptHostBody: "استلم تنبيهًا فور وصول طلب حجز، حتى لا تنتهي صلاحيته دون أن تراه.",
+    pushTurnOn: "تفعيل التنبيهات",
+    pushNotNow: "ليس الآن",
+    pushNotifications: "التنبيهات",
+    // Feminine, agreeing with «التنبيهات».
+    pushOn: "مفعّلة",
+    pushOff: "متوقفة",
+    pushTurnOnInSettings: "فعّلها من الإعدادات",
+    pushChannelName: "الحجوزات",
+    contactSupport: "تواصل مع الدعم",
+    markReadFailed: "تعذّر التحديث. تحقق من اتصالك.",
+    enterPhoneNudge: "أدخل رقم جوالك",
+    enterCodeNudge: "أدخل الرمز المكوّن من 6 أرقام",
   },
 } as const;
 

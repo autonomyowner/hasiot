@@ -55,6 +55,9 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     trustedOrigins: [
       "http://localhost:5173",
       "http://localhost:3000",
+      // Expo web (`npx expo start --web`), the browser smoke test of the app.
+      // A browser sends its page's origin, unlike the native app.
+      "http://localhost:8081",
       "https://www.hasio.xyz",
       "https://hasio.xyz",
       "https://hasio.vercel.app",

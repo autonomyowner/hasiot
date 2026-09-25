@@ -9,10 +9,12 @@ import {
   TextInput,
   View,
 } from "react-native";
+import Animated from "react-native-reanimated";
 import { api } from "@/backend";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useNudge } from "@/hooks/useNudge";
 import { sendPhoneOtp, verifyPhoneOtp } from "@/lib/auth";
 import {
   describeAuthError,
@@ -129,6 +131,12 @@ export function VerifyPhoneSheet({
 
   const normalizedPhone = normalizeKsaPhone(phone);
 
+  // Send code and Verify stay solid lime, as on the sign-in screen: faded out
+  // until the input was complete, they read as text on an Android phone (see
+  // hooks/useNudge.ts). Pressed too early, they shake the field.
+  const { style: phoneNudgeStyle, nudge: nudgePhone } = useNudge();
+  const { style: codeNudgeStyle, nudge: nudgeCode } = useNudge();
+
   useEffect(() => {
     if (resendIn <= 0) return;
     const timer = setTimeout(() => setResendIn((s) => s - 1), 1000);
@@ -189,7 +197,15 @@ export function VerifyPhoneSheet({
     if (busy.current) return;
     const target = normalizedPhone;
     if (!target) {
-      showFieldError(t("invalidPhone"));
+      // Empty: point at the field. Typed but not a Saudi mobile number: say
+      // what one looks like, under it.
+      if (phone.trim() === "") {
+        nudgePhone(t("enterPhoneNudge"));
+      } else {
+        showFieldError(t("invalidPhone"));
+        nudgePhone();
+      }
+      phoneRef.current?.focus();
       return;
     }
 
@@ -273,6 +289,18 @@ export function VerifyPhoneSheet({
     };
   });
 
+  // The code submits itself on its sixth digit, so Verify pressed before
+  // then means something is missing.
+  const handleVerifyPress = () => {
+    if (loading) return;
+    if (code.length !== CODE_LENGTH) {
+      nudgeCode(t("enterCodeNudge"));
+      codeRef.current?.focus();
+      return;
+    }
+    void verify(code);
+  };
+
   const fieldErrorText = fieldError ? (
     <Text
       style={[styles.fieldError, isRTL && styles.textRTL]}
@@ -282,8 +310,6 @@ export function VerifyPhoneSheet({
     </Text>
   ) : null;
 
-  const sendDisabled = loading || !normalizedPhone;
-  const verifyDisabled = loading || code.length !== CODE_LENGTH;
   const resendDisabled = resendIn > 0 || loading;
 
   return (
@@ -314,7 +340,7 @@ export function VerifyPhoneSheet({
           <>
             {/* A phone number reads left-to-right in both languages, so the
                 +966 chip and the digits keep their order in Arabic too. */}
-            <View style={styles.phoneRow}>
+            <Animated.View style={[styles.phoneRow, phoneNudgeStyle]}>
               <View style={styles.countryChip}>
                 <Text style={styles.countryChipText}>+966</Text>
               </View>
@@ -338,20 +364,21 @@ export function VerifyPhoneSheet({
                 onSubmitEditing={handleSendCode}
                 autoFocus
               />
-            </View>
+            </Animated.View>
             {fieldErrorText}
 
             <Pressable
               onPress={handleSendCode}
-              disabled={sendDisabled}
+              disabled={loading}
               style={({ pressed }) => [
                 styles.submitButton,
-                sendDisabled && styles.submitButtonDisabled,
+                loading && styles.submitButtonDisabled,
                 pressed && styles.pressed,
               ]}
               accessibilityRole="button"
               accessibilityLabel={t("sendCode")}
-              accessibilityState={{ disabled: sendDisabled, busy: loading }}
+              accessibilityHint={normalizedPhone ? undefined : t("enterPhoneNudge")}
+              accessibilityState={{ disabled: loading, busy: loading }}
             >
               {loading ? (
                 <ActivityIndicator color={colors.ink} />
@@ -362,36 +389,39 @@ export function VerifyPhoneSheet({
           </>
         ) : (
           <>
-            <ThemedTextInput
-              ref={codeRef}
-              style={[styles.input, styles.codeInput, CODE_TRACKING]}
-              isRTL={false}
-              value={code}
-              onChangeText={(next) => {
-                const digits = toLatinDigits(next).replace(/\D/g, "").slice(0, CODE_LENGTH);
-                setCode(digits);
-                if (fieldError) setFieldError(null);
-                if (digits.length === CODE_LENGTH) void verify(digits);
-              }}
-              keyboardType="number-pad"
-              textAlign="center"
-              textContentType="oneTimeCode"
-              autoComplete="sms-otp"
-              autoFocus
-            />
+            <Animated.View style={codeNudgeStyle}>
+              <ThemedTextInput
+                ref={codeRef}
+                style={[styles.input, styles.codeInput, CODE_TRACKING]}
+                isRTL={false}
+                value={code}
+                onChangeText={(next) => {
+                  const digits = toLatinDigits(next).replace(/\D/g, "").slice(0, CODE_LENGTH);
+                  setCode(digits);
+                  if (fieldError) setFieldError(null);
+                  if (digits.length === CODE_LENGTH) void verify(digits);
+                }}
+                keyboardType="number-pad"
+                textAlign="center"
+                textContentType="oneTimeCode"
+                autoComplete="sms-otp"
+                autoFocus
+              />
+            </Animated.View>
             {fieldErrorText}
 
             <Pressable
-              onPress={() => void verify(code)}
-              disabled={verifyDisabled}
+              onPress={handleVerifyPress}
+              disabled={loading}
               style={({ pressed }) => [
                 styles.submitButton,
-                verifyDisabled && styles.submitButtonDisabled,
+                loading && styles.submitButtonDisabled,
                 pressed && styles.pressed,
               ]}
               accessibilityRole="button"
               accessibilityLabel={t("verifyCode")}
-              accessibilityState={{ disabled: verifyDisabled, busy: loading }}
+              accessibilityHint={code.length === CODE_LENGTH ? undefined : t("enterCodeNudge")}
+              accessibilityState={{ disabled: loading, busy: loading }}
             >
               {loading ? (
                 <ActivityIndicator color={colors.ink} />

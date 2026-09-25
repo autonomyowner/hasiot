@@ -1,4 +1,4 @@
-import { canonicalCity, cityCoordinates } from "@/constants/cities";
+import { canonicalCity, CITIES, cityCoordinates } from "@/constants/cities";
 import type { TranslationKey } from "@/constants/translations";
 import { toLatinDigits } from "./digits";
 
@@ -236,6 +236,28 @@ export function isLive(status?: string | null): boolean {
   return ownerStatusOf(status) === "approved";
 }
 
+export type AccountReviewState = "approved" | "rejected" | "pending" | "unverified";
+
+/**
+ * Where a business or provider account stands with the review team.
+ *
+ * "Rejected" is new in 1.1.0: an admin can turn an account down with a
+ * reason, which stays on the account until a new document is uploaded
+ * (saveBusinessDoc clears it and the account goes back in the queue). The
+ * rejected document is still on file meanwhile, so without this the account
+ * read as "under review" — waiting on a decision that had already been made.
+ * `isApproved` is the app's own, which lets an admin through.
+ */
+export function accountReviewState(account: {
+  isApproved: boolean;
+  hasDocument: boolean;
+  rejectionReason?: string | null;
+}): AccountReviewState {
+  if (account.isApproved) return "approved";
+  if (account.rejectionReason?.trim()) return "rejected";
+  return account.hasDocument ? "pending" : "unverified";
+}
+
 // ── Validation ──────────────────────────────────────────────────────────────
 
 export type FieldErrors<K extends string> = Partial<Record<K, TranslationKey>>;
@@ -373,6 +395,51 @@ export function validateStayForm(form: StayFormValues): FieldErrors<StayField> {
   return errors;
 }
 
+/** A stay's booking fields as sent. `undefined` is "leave as stored". */
+export interface StayPricingArgs {
+  /** `null` in an edit clears the nightly price, and the currency with it. */
+  pricePerNight?: number | null;
+  currency?: string;
+  maxGuests?: number;
+  unitCount?: number;
+  checkInTime: string;
+  checkOutTime: string;
+}
+
+/**
+ * What a stay's form sends for its booking fields, parsed and checked
+ * (validateStayForm runs first).
+ *
+ * An emptied nightly price in an edit is sent as `null`. Left out, as it used
+ * to be, the server kept the old price — it skips undefined — so a host who
+ * emptied the field to stop taking bookings in the app was still bookable at
+ * the old rate. `updateMyListing` reads `null` as "clear the price and its
+ * currency", which makes the stay listed but not bookable. A new stay simply
+ * sends no price.
+ *
+ * The capacity is different: an emptied guest cap or unit count is left out,
+ * and so keeps what is stored. The server cannot clear those from the app,
+ * and an edit must never write the new-listing defaults over them (see
+ * stayFormFromListing).
+ */
+export function stayPricingArgs(
+  form: Pick<
+    StayFormValues,
+    "pricePerNight" | "maxGuests" | "unitCount" | "checkInTime" | "checkOutTime"
+  >,
+  mode: "create" | "edit"
+): StayPricingArgs {
+  const nightly = parseWholeNumber(form.pricePerNight);
+  return {
+    pricePerNight: nightly === undefined && mode === "edit" ? null : nightly,
+    currency: nightly !== undefined ? "SAR" : undefined,
+    maxGuests: parseWholeNumber(form.maxGuests),
+    unitCount: parseWholeNumber(form.unitCount),
+    checkInTime: normaliseTime(form.checkInTime),
+    checkOutTime: normaliseTime(form.checkOutTime),
+  };
+}
+
 export interface PlaceFormValues {
   /** A category key; seeded places carry others such as "natural_landmark". */
   category: string;
@@ -432,14 +499,66 @@ export function validatePlaceForm(form: PlaceFormValues): FieldErrors<PlaceField
   return errors;
 }
 
+// ── Services ────────────────────────────────────────────────────────────────
+
+// The server's lists and limits (convex/services/logic.ts), checked here first
+// so a provider hears about them before their photos upload.
+export const SERVICE_TYPE_KEYS = [
+  "tour_guide",
+  "photographer",
+  "driver",
+  "translator",
+  "event_planner",
+  "catering",
+  "equipment_rental",
+  "other",
+] as const;
+export const SERVICE_PRICE_UNITS = ["per_hour", "per_day", "per_event", "fixed"] as const;
+export const MAX_SERVICE_PRICE = 100_000;
+export const MAX_GROUP_SIZE = 100;
+
+type ServiceTypeKey = (typeof SERVICE_TYPE_KEYS)[number];
+
+const SERVICE_TYPE_LABELS: Record<ServiceTypeKey, TranslationKey> = {
+  tour_guide: "tourGuide",
+  photographer: "photographer",
+  driver: "driver",
+  translator: "translator",
+  event_planner: "eventPlanner",
+  catering: "catering",
+  equipment_rental: "equipmentRental",
+  other: "otherService",
+};
+
+const isServiceType = (value?: string | null): value is ServiceTypeKey =>
+  (SERVICE_TYPE_KEYS as readonly string[]).includes(value ?? "");
+
+/** A service type's label; anything the app does not know reads as Other. */
+export function serviceTypeLabelKey(type?: string | null): TranslationKey {
+  return isServiceType(type) ? SERVICE_TYPE_LABELS[type] : "otherService";
+}
+
+/**
+ * One of the thirteen city keys, exactly: what the server stores and what the
+ * city filter groups on. A stored alias ("Hofuf") has to be folded first.
+ */
+export function isProvinceCity(city: string): boolean {
+  const value = city.trim();
+  return CITIES.some((option) => option.key === value);
+}
+
 export interface ServiceFormValues {
   serviceType: string;
   title: string;
   titleAr: string;
   description: string;
   descriptionAr: string;
-  priceRange: string;
+  /** One of the thirteen keys, or "" until one is chosen. */
+  city: string;
+  /** Whole riyals per `priceUnit`, as typed. Empty lists the service with Contact. */
+  price: string;
   priceUnit: string;
+  maxGroupSize: string;
   availability: string;
   availabilityAr: string;
   contactPhone: string;
@@ -448,14 +567,22 @@ export interface ServiceFormValues {
   images: string[];
 }
 
+/**
+ * A new service's form. The free-text price range the form used to ask for
+ * is gone: it could not be multiplied, and a second "price" beside the one
+ * travellers book at would only compete with it. A stored one is left as it
+ * is — the form neither shows nor sends it.
+ */
 export const EMPTY_SERVICE_FORM: ServiceFormValues = {
   serviceType: "tour_guide",
   title: "",
   titleAr: "",
   description: "",
   descriptionAr: "",
-  priceRange: "",
+  city: "",
+  price: "",
   priceUnit: "per_hour",
+  maxGroupSize: "",
   availability: "",
   availabilityAr: "",
   contactPhone: "",
@@ -470,8 +597,10 @@ export interface StoredService {
   title_ar?: string;
   description_en?: string;
   description_ar?: string;
-  priceRange?: string;
+  city?: string;
+  price?: number;
   priceUnit?: string;
+  maxGroupSize?: number;
   availability_en?: string;
   availability_ar?: string;
   contactPhone?: string;
@@ -480,15 +609,32 @@ export interface StoredService {
   images?: string[];
 }
 
+/**
+ * The service form, filled from what is stored.
+ *
+ * Unset numbers stay empty, as on the stay form, so a save never writes a
+ * price or a group size the provider did not choose. The city is folded to
+ * its key ("Hofuf" is Al Ahsa); one outside the province — the old form let a
+ * provider type anything — is left unchosen, to be picked before saving. A
+ * type the app does not know is filed under Other, where it used to light no
+ * chip and fail on save. A missing or unknown unit shows as the fixed price
+ * the server quotes it at (unitOf in convex/services/logic.ts), rather than
+ * as "per hour", which saving would then have made true.
+ */
 export function serviceFormFromService(service: StoredService): ServiceFormValues {
+  const count = (value: number | undefined) => (value != null ? String(value) : "");
+  const city = canonicalCity(service.city ?? "");
+  const unit = service.priceUnit ?? "";
   return {
-    serviceType: service.serviceType || "other",
+    serviceType: isServiceType(service.serviceType) ? service.serviceType : "other",
     title: service.title_en ?? "",
     titleAr: service.title_ar ?? "",
     description: service.description_en ?? "",
     descriptionAr: service.description_ar ?? "",
-    priceRange: service.priceRange ?? "",
-    priceUnit: service.priceUnit ?? "per_hour",
+    city: isProvinceCity(city) ? city : "",
+    price: count(service.price),
+    priceUnit: (SERVICE_PRICE_UNITS as readonly string[]).includes(unit) ? unit : "fixed",
+    maxGroupSize: count(service.maxGroupSize),
     availability: service.availability_en ?? "",
     availabilityAr: service.availability_ar ?? "",
     contactPhone: service.contactPhone ?? "",
@@ -501,8 +647,11 @@ export function serviceFormFromService(service: StoredService): ServiceFormValue
 export type ServiceField =
   | "title"
   | "titleAr"
+  | "city"
   | "description"
   | "descriptionAr"
+  | "price"
+  | "maxGroupSize"
   | "contactPhone"
   | "contactEmail";
 
@@ -510,8 +659,21 @@ export function validateServiceForm(form: ServiceFormValues): FieldErrors<Servic
   const errors: FieldErrors<ServiceField> = {};
   if (!form.title.trim()) errors.title = "fieldRequired";
   if (!form.titleAr.trim()) errors.titleAr = "fieldRequired";
+  // Required, and one of the thirteen: travellers filter services by city,
+  // and the server refuses anything else.
+  if (!isProvinceCity(form.city)) errors.city = "chooseServiceCity";
   if (!form.description.trim()) errors.description = "fieldRequired";
   if (!form.descriptionAr.trim()) errors.descriptionAr = "fieldRequired";
+  // Optional — without a price the service shows Contact instead of Book —
+  // but a price given has to be one the server takes.
+  const price = parseWholeNumber(form.price);
+  if (price !== undefined && !isWholeInRange(price, 1, MAX_SERVICE_PRICE)) {
+    errors.price = "invalidPriceRange";
+  }
+  const group = parseWholeNumber(form.maxGroupSize);
+  if (group !== undefined && !isWholeInRange(group, 1, MAX_GROUP_SIZE)) {
+    errors.maxGroupSize = "invalidGroupSize";
+  }
   if (form.contactPhone.trim() && !isPlausiblePhone(form.contactPhone)) {
     errors.contactPhone = "invalidContactPhone";
   }
@@ -519,6 +681,98 @@ export function validateServiceForm(form: ServiceFormValues): FieldErrors<Servic
     errors.contactEmail = "invalidEmail";
   }
   return errors;
+}
+
+/** What `submitService` is sent for a new service. */
+export interface NewServiceArgs {
+  serviceType: string;
+  title_en: string;
+  title_ar: string;
+  description_en?: string;
+  description_ar?: string;
+  city: string;
+  price?: number;
+  priceUnit: string;
+  maxGroupSize?: number;
+  availability_en?: string;
+  availability_ar?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  languages?: string[];
+  images?: string[];
+}
+
+/**
+ * A new service, from a form that has passed validateServiceForm. Anything
+ * left empty is left out, the price included: without one the service is
+ * listed with Contact rather than Book. `images` are the stored URLs, in the
+ * provider's order (withUploadedPhotos).
+ */
+export function newServiceArgs(form: ServiceFormValues, images: string[]): NewServiceArgs {
+  const languages = splitList(form.languages);
+  return {
+    serviceType: form.serviceType,
+    title_en: form.title.trim(),
+    title_ar: form.titleAr.trim(),
+    description_en: form.description.trim() || undefined,
+    description_ar: form.descriptionAr.trim() || undefined,
+    city: form.city.trim(),
+    price: parseWholeNumber(form.price),
+    priceUnit: form.priceUnit,
+    maxGroupSize: parseWholeNumber(form.maxGroupSize),
+    availability_en: form.availability.trim() || undefined,
+    availability_ar: form.availabilityAr.trim() || undefined,
+    contactPhone: form.contactPhone.trim() || undefined,
+    contactEmail: form.contactEmail.trim() || undefined,
+    languages: languages.length > 0 ? languages : undefined,
+    images: images.length > 0 ? images : undefined,
+  };
+}
+
+/** What `updateMyService` is sent for an edit. */
+export interface EditedServiceArgs {
+  serviceType: string;
+  title_en: string;
+  title_ar: string;
+  description_en: string;
+  description_ar: string;
+  city: string;
+  price: number | null;
+  priceUnit: string;
+  maxGroupSize: number | null;
+  availability_en: string;
+  availability_ar: string;
+  contactPhone: string;
+  contactEmail: string;
+  languages: string[];
+  images: string[];
+}
+
+/**
+ * An edited service: every field, because the server skips undefined and an
+ * emptied one would otherwise be kept. Text goes as "" and lists as [], and
+ * an emptied price or group size as `null`, which the server reads as
+ * "remove" — a provider who stops taking bookings in the app empties the
+ * price, and the service goes back to Contact.
+ */
+export function editedServiceArgs(form: ServiceFormValues, images: string[]): EditedServiceArgs {
+  return {
+    serviceType: form.serviceType,
+    title_en: form.title.trim(),
+    title_ar: form.titleAr.trim(),
+    description_en: form.description.trim(),
+    description_ar: form.descriptionAr.trim(),
+    city: form.city.trim(),
+    price: parseWholeNumber(form.price) ?? null,
+    priceUnit: form.priceUnit,
+    maxGroupSize: parseWholeNumber(form.maxGroupSize) ?? null,
+    availability_en: form.availability.trim(),
+    availability_ar: form.availabilityAr.trim(),
+    contactPhone: form.contactPhone.trim(),
+    contactEmail: form.contactEmail.trim(),
+    languages: splitList(form.languages),
+    images,
+  };
 }
 
 /** The first field, in the order they appear on screen, that has an error. */

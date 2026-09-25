@@ -30,6 +30,7 @@ import Animated from "react-native-reanimated";
 import { enterFade, popIn } from "@/constants/motion";
 import { applyCalendarLocale } from "@/lib/calendarLocale";
 import { getBookingErrorKey } from "@/lib/bookingError";
+import { maybeAskForPush } from "@/lib/pushPrompt";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { ScreenGradient, SurfaceGradient } from "@/components/ui/Gradients";
@@ -164,6 +165,15 @@ export function BookingSheet({ visible, onClose, item, onViewBookings }: Booking
   // purpose: it is one tap to put back, and asking about it would turn every
   // idle look at the calendar into a dialog.
   const dirty = !confirmation && (checkIn !== null || notesWritten);
+
+  // The request went through and its confirmation has been closed — by View
+  // my bookings, Done, a swipe or Android's back button. That is when a guest
+  // can see why they would want to hear back (design D14). The prompt itself
+  // waits until nothing else is on screen, so this sheet and the listing
+  // under it are gone first (components/PushPrompt.tsx).
+  useEffect(() => {
+    if (!visible && confirmation) maybeAskForPush("guest");
+  }, [visible, confirmation]);
 
   // Android: lifts the form — notes box and pinned footer both — above the
   // keyboard, which an edge-to-edge window no longer resizes for. On iOS the

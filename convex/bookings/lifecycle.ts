@@ -84,7 +84,17 @@ export const completeFinishedStays = internalMutation({
       )
       .take(BATCH * 2);
 
-    for (const booking of finished) {
+    // A service's checkOut is the day after its last day, so one that ran
+    // yesterday has checkOut today. Unlike a guest leaving today, it is over:
+    // completing it this morning is what lets the traveller be asked "How was
+    // it?" the day after, not two days after.
+    const servicesEnded = await ctx.db
+      .query("bookings")
+      .withIndex("by_status_and_checkOut", (q) => q.eq("status", "confirmed").eq("checkOut", today))
+      .filter((q) => q.eq(q.field("kind"), "service"))
+      .take(BATCH * 2);
+
+    for (const booking of [...finished, ...servicesEnded]) {
       await ctx.db.patch(booking._id, {
         status: "completed",
         completedAt: now,
@@ -92,7 +102,7 @@ export const completeFinishedStays = internalMutation({
       });
     }
 
-    return { completed: finished.length };
+    return { completed: finished.length + servicesEnded.length };
   },
 });
 
@@ -107,7 +117,7 @@ export const backfillOwnerIds = internalMutation({
 
     let patched = 0;
     for (const booking of bookings) {
-      if (booking.ownerId) continue;
+      if (booking.ownerId || !booking.listingId) continue;
       const listing = await ctx.db.get(booking.listingId);
       if (!listing?.ownerId) continue;
 

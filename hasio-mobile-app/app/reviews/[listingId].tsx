@@ -7,7 +7,12 @@ import { api } from "@/backend";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { BackButton } from "@/components/ui/BackButton";
 import { ReportSheet } from "@/components/ReportSheet";
-import { RatingSummary, ReviewCard, type ReviewItem } from "@/components/review";
+import {
+  RatingSummary,
+  ReviewCard,
+  ReviewsEmptyState,
+  type ReviewItem,
+} from "@/components/review";
 import { ScreenGradient } from "@/components/ui/Gradients";
 import { Skeleton, SkeletonGroup, SkeletonLine, sweepPhase } from "@/components/ui/Skeleton";
 import { colors, type AppFonts } from "@/constants/colors";
@@ -40,6 +45,10 @@ export default function ReviewsScreen() {
   );
   // The page used to be blank until both arrived: a header over nothing.
   const loading = !!id && (summary === undefined || reviews === undefined);
+  // Nobody has reviewed it: said once, plainly, where it used to be a summary
+  // saying so in small type over an empty list. Reviews hidden only because
+  // their authors are blocked still leave a count, so those keep the summary.
+  const empty = !loading && (reviews?.length ?? 0) === 0 && (summary?.count ?? 0) === 0;
 
   // One report sheet for the page. Each card used to hold its own — a Modal
   // per review, mounted and idle. The id outlives the close, so the sheet is
@@ -68,6 +77,8 @@ export default function ReviewsScreen() {
         <SkeletonGroup>
           <ReviewsSkeleton isRTL={isRTL} />
         </SkeletonGroup>
+      ) : empty ? (
+        <ReviewsEmptyState />
       ) : (
         <FlatList
           data={reviews ?? []}

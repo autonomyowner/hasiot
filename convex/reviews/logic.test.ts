@@ -66,3 +66,15 @@ describe("validateReviewInput", () => {
     expect(validateReviewInput({ rating: 5, content: "  good  " })).toEqual({ content: "good" });
   });
 });
+
+describe("REVIEW_ERRORS", () => {
+  it("words the service refusals exactly as the contract does — the app matches the English", () => {
+    expect(REVIEW_ERRORS.TARGET_REQUIRED).toBe("اختر ما تريد تقييمه. / Choose what to review.");
+    expect(REVIEW_ERRORS.SERVICE_NOT_FOUND).toBe("الخدمة غير موجودة. / Service not found.");
+    expect(REVIEW_ERRORS.DUPLICATE_SERVICE).toBe(
+      "لقد قيّمت هذه الخدمة من قبل. / You have already reviewed this service."
+    );
+    // The place wording is unchanged.
+    expect(REVIEW_ERRORS.DUPLICATE).toBe("لقد قيّمت هذا المكان من قبل. / You have already reviewed this place.");
+  });
+});

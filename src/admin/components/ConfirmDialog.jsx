@@ -21,6 +21,8 @@ import { Textarea } from '../ui/textarea'
  * With `reason` it doubles as the reject/cancel prompt and resolves
  * `{ reason }`; without it, it resolves `{ reason: '' }`. Cancelling always
  * resolves `null`, so `if (!ok) return` is the single guard either way.
+ * `reason.initial` pre-fills the box, for a reason the operator will usually
+ * keep but may edit (a report's own reason, when taking content down).
  *
  * Built on Radix's AlertDialog rather than a hand-rolled modal. Two reasons that
  * are not cosmetic: AlertDialog is the correct role for a decision the operator
@@ -33,7 +35,7 @@ export function useConfirm() {
   const [reason, setReason] = useState('')
 
   const confirm = useCallback((options) => new Promise((resolve) => {
-    setReason('')
+    setReason(options?.reason?.initial ?? '')
     setRequest({ options, resolve })
   }), [])
 
@@ -81,11 +83,15 @@ export function useConfirm() {
             <AlertDialogCancel onClick={() => settle(null)}>
               {options.cancelLabel || 'إلغاء'}
             </AlertDialogCancel>
+            {/* The red goes through `variant`, not className. The action
+                renders via Radix Slot, which joins the Button's classes and
+                its own without tailwind-merge: a `bg-destructive` className
+                sat beside the default variant's `bg-primary`, and lost to it
+                in the stylesheet — so «حذف نهائي», «إيقاف» and every other
+                destructive confirmation showed the same green as «موافقة». */}
             <AlertDialogAction
               disabled={reasonRequired}
-              className={options.destructive
-                ? 'bg-destructive text-white hover:bg-destructive/90'
-                : undefined}
+              variant={options.destructive ? 'destructive' : 'default'}
               onClick={() => settle({ reason: reason.trim() })}
             >
               {options.confirmLabel || 'تأكيد'}

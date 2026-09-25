@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -24,26 +24,22 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { appAlert } from "@/stores/dialogStore";
 import { OwnerStatusBadge, ReviewNote } from "@/components/hosting/OwnerStatus";
-import { ownerStatusOf } from "@/lib/listingForm";
+import { ownerStatusOf, serviceTypeLabelKey } from "@/lib/listingForm";
+import { getSubmitErrorKey } from "@/lib/submitError";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { colors, type AppFonts } from "@/constants/colors";
 import { enterFade } from "@/constants/motion";
 import type { TranslationKey } from "@/constants/translations";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
-// Each service type's label, looked up rather than picked by an eight-deep
-// ternary.
-const SERVICE_TYPE_LABEL: Record<string, TranslationKey> = {
-  tour_guide: "tourGuide",
-  photographer: "photographer",
-  driver: "driver",
-  translator: "translator",
-  event_planner: "eventPlanner",
-  catering: "catering",
-  equipment_rental: "equipmentRental",
-};
-
 const FILTERS = ["all", "pending", "approved", "rejected"] as const;
+
+const STATUS_LABEL: Record<string, TranslationKey> = {
+  pending: "statusPending",
+  approved: "statusApproved",
+  rejected: "statusRejected",
+  suspended: "statusSuspended",
+};
 
 export default function MyServicesScreen() {
   const styles = useThemedStyles(makeStyles);
@@ -60,6 +56,20 @@ export default function MyServicesScreen() {
   const myServices = useQuery(api.services.queries.getMyServices, {});
   const isLoading = myServices === undefined;
 
+  // The services a traveller still holds a request or a booking for, which
+  // the server will not delete (HAS_OPEN_BOOKINGS) — known here, so the
+  // provider hears it before being asked to confirm a delete that cannot
+  // happen. The same subscription the provider's inbox holds.
+  const providerBookings = useQuery(api.bookings.queries.getProviderBookings, {});
+  const openBookingServiceIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const booking of providerBookings ?? []) {
+      const open = booking.status === "pending" || booking.status === "confirmed";
+      if (open && booking.serviceId) ids.add(booking.serviceId);
+    }
+    return ids;
+  }, [providerBookings]);
+
   const services = myServices ?? [];
   const hasAny = services.length > 0;
 
@@ -67,19 +77,39 @@ export default function MyServicesScreen() {
     ? services
     : services.filter((s) => ownerStatusOf(s.status) === filter);
 
+  // Suspended is rare, so it is offered only when there is something under
+  // it (or it is the filter already chosen) — as on My Listings.
+  const hasSuspended = services.some((s) => s.status === "suspended");
+  const filters: string[] = [...FILTERS];
+  if (hasSuspended || filter === "suspended") filters.push("suspended");
+
   // My Services used to be read-only: a provider could post a service but
   // never change or remove it. Delete is permanent, so it asks first.
   const remove = async (serviceId: string) => {
     setDeletingId(serviceId);
     try {
       await deleteMyService({ serviceId: serviceId as Id<"services"> });
-    } catch {
-      appAlert(t("error"), t("deleteFailed"));
+    } catch (error) {
+      // The server's reason, now that it arrives (ConvexError): a service
+      // with open bookings cannot go, and every failure used to read as
+      // "couldn't delete it, try again" — which would never work.
+      const key = getSubmitErrorKey(error);
+      if (key === "errorServiceOpenBookings") {
+        appAlert(t("deleteBlockedTitle"), t("errorServiceOpenBookings"));
+      } else {
+        appAlert(t("error"), t(key === "pleaseTryAgain" ? "deleteFailed" : key));
+      }
     } finally {
       setDeletingId(null);
     }
   };
   const confirmDelete = (serviceId: string) => {
+    if (openBookingServiceIds.has(serviceId)) {
+      appAlert(t("deleteBlockedTitle"), t("errorServiceOpenBookings"));
+      return;
+    }
+    // While the bookings are still loading this asks as usual; the server
+    // refuses with the same words if there are any.
     appAlert(t("deleteServiceTitle"), t("deleteForGoodMessage"), [
       { text: t("cancel"), style: "cancel" },
       { text: t("delete"), style: "destructive", onPress: () => void remove(serviceId) },
@@ -106,14 +136,10 @@ export default function MyServicesScreen() {
             entering={enterFade(1)}
             style={[styles.filterRow, isRTL && styles.rowRTL]}
           >
-            {FILTERS.map((status) => (
+            {filters.map((status) => (
               <FilterChip
                 key={status}
-                label={
-                  status === "all"
-                    ? t("all")
-                    : t(`status${status.charAt(0).toUpperCase() + status.slice(1)}` as any)
-                }
+                label={status === "all" ? t("all") : t(STATUS_LABEL[status] ?? "statusPending")}
                 selected={filter === status}
                 onPress={() => setFilter(status)}
               />
@@ -128,7 +154,9 @@ export default function MyServicesScreen() {
         >
         {filteredServices.length > 0 ? (
           <View style={styles.listingsContainer}>
-            {filteredServices.map((service: any) => (
+            {filteredServices.map((service) => {
+              const status = ownerStatusOf(service.status);
+              return (
               <View
                 key={service._id}
                 style={[styles.listingCard, deletingId === service._id && styles.cardBusy]}
@@ -153,15 +181,19 @@ export default function MyServicesScreen() {
                     {language === "ar" ? (service.title_ar || service.title_en || "—") : (service.title_en || "—")}
                   </Text>
                   <Text style={[styles.listingType, isRTL && styles.textRTL]}>
-                    {t(SERVICE_TYPE_LABEL[service.serviceType] ?? "otherService")}
+                    {t(serviceTypeLabelKey(service.serviceType))}
                   </Text>
+                  {/* A suspended service shows the reason the admin gave,
+                      and not "edit and save to send it back for review": the
+                      server keeps a suspended service suspended whatever is
+                      edited, so that hint would promise what cannot happen. */}
                   <ReviewNote
-                    status={ownerStatusOf(service.status)}
-                    reason={service.rejectionReason}
-                    canEdit
+                    status={status}
+                    reason={status === "suspended" ? service.suspendedReason : service.rejectionReason}
+                    canEdit={status !== "suspended"}
                   />
                   <View style={[styles.cardFoot, isRTL && styles.rowRTL]}>
-                    <OwnerStatusBadge status={ownerStatusOf(service.status)} />
+                    <OwnerStatusBadge status={status} />
                     <View style={[styles.actions, isRTL && styles.rowRTL]}>
                       <Pressable
                         onPress={() =>
@@ -200,7 +232,8 @@ export default function MyServicesScreen() {
                   </View>
                 </View>
               </View>
-            ))}
+              );
+            })}
           </View>
         ) : hasAny ? (
           /* Services exist, just none under this filter. */

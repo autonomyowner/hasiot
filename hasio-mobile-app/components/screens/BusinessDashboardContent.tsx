@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { VerificationBanner } from "@/components/VerificationBanner";
+import { maybeAskForPush } from "@/lib/pushPrompt";
 import { colors, type AppFonts } from "@/constants/colors";
 import { enterFade, pressSpring, PRESS_SCALE_CHIP } from "@/constants/motion";
 import type { TranslationKey } from "@/constants/translations";
@@ -28,6 +29,9 @@ import { ScreenGradient } from "@/components/ui/Gradients";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+// As on the provider dashboard: let the screen settle before asking.
+const PUSH_PROMPT_DELAY_MS = 600;
 
 type FeatherName = keyof typeof Feather.glyphMap;
 
@@ -51,6 +55,15 @@ export default function BusinessDashboardContent() {
   // and a permanent zero next to two live figures reads as a broken product.
   // Revenue is the number a host actually cares about anyway.
   const stats = useQuery(api.bookings.queries.getOwnerStats, isSignedIn ? {} : "skip");
+
+  // The same moment the provider dashboard and the host inbox use (design
+  // D14): a host opening their dashboard can see why a notice matters — a
+  // request left unanswered for two days is lost. maybeAskForPush decides
+  // whether to ask at all; the delay lets the screen settle first.
+  useEffect(() => {
+    const timer = setTimeout(() => maybeAskForPush("host"), PUSH_PROMPT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <View style={styles.container}>

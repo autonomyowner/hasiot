@@ -505,6 +505,75 @@ is also the test that tells the two apart.
 24. Verification: Submit before choosing a document → the two pickers shake. Report: Submit before
     choosing a reason → the reasons shake. Edit name: Save with the field empty → the field shakes.
 
+### Device checks added for 1.1.0: services, push and store build (2026-09-25)
+
+**Do these on a new development build first.** The installed dev client (`af661805`) has no push
+modules and cannot load 1.1.0's code. It needs a rebuild after `google-services.json` exists.
+Use two phones, or two accounts on one phone, one of them a provider.
+
+**Services, the traveller's side:**
+
+25. The left tab reads "Book" / «احجز». Its Stays | Services switch keeps its choice when you swipe
+    away and back.
+26. Services: type chips and the city filter work. In Arabic the chips start at the right edge and
+    swipe right to left. A service without a price shows **Contact**, which opens the dialer.
+27. Home's "Local services" row → "See all" lands on the Book tab, already on Services.
+28. Book a service with an **unverified** phone: the phone sheet comes first; once verified, the
+    booking sheet appears on top. On iPhone, nothing freezes and nothing is left behind.
+29. Booking sheet:
+    - today offers only start times at least an hour ahead, and tomorrow starts at 06:00;
+    - the hours stepper appears only for an hourly price;
+    - the total updates as you change it;
+    - "Send booking request" is solid lime, and tapped early it shakes the missing piece.
+30. A traveller whose phone is **not** on Saudi time (for example set to Algeria) sees the same days
+    and times as one in Riyadh. A booking for "today" is not refused as past.
+
+**The provider's side, and push:**
+
+31. After "Request sent" closes, the "Get booking updates?" sheet appears. Turn on → the system
+    dialog → allow. Settings → Notifications shows On.
+32. With the provider's app in the background, a new request arrives as a push within seconds.
+    Tapping it opens the provider's Bookings inbox.
+33. The provider confirms. The traveller's phone gets "Booking confirmed", and tapping it opens that
+    booking.
+34. Kill the app completely and tap a notification: the app opens straight on the right screen, not
+    on Home.
+35. The traveller cancels before the start time: the provider gets "Booking cancelled".
+36. Sign out, then sign in as a **different** account on the same phone: only the new account's
+    notifications arrive.
+37. The day after a completed service, the booking asks "How was it?". The review sheet opens, and
+    the review shows as verified.
+38. A provider with a rejected account sees the reason on the verification screen, uploads a new
+    document, and is back in the queue.
+
+**Store build:**
+
+39. **Android:**
+    - on a dark-mode phone the status and navigation bars stay light, with dark icons over the white
+      tab bar and inside every sheet;
+    - no white square at the splash;
+    - the launcher icon fills its mask, round or squircle;
+    - on Android 13+ with themed icons, the monochrome icon shows.
+40. **iPhone, in Arabic:** the photo-library permission prompt is in Arabic, and no Face ID prompt
+    ever appears.
+41. **An iOS build made with `HASIO_IOS_PUSH=off`** (before Nabil's APNs key exists) never asks for
+    notifications and hides the Notifications row. Everything else works.
+
+**From the final review (Fable 5.1, 2026-09-25) — fixed, never seen on a phone:**
+
+42. A service priced **by the day**, booked for three days from the 10th, reads "10 – 12 Sep at
+    09:00" in My bookings, in the provider's inbox and on the booking itself — not "10 Sep".
+43. A request nobody answers: from its expiry (a same-day request expires at its start time) it
+    shows **Expired** and sits under **Past** — in the traveller's list, the provider's inbox and a
+    host's inbox — with no Confirm, Decline or Cancel, even before the hourly job has marked it.
+    Quickest to see: request a service starting within the next two hours, leave it unanswered,
+    and look again just after the start time. The host inbox must move it without being reopened.
+44. The traveller cancels a confirmed booking while the provider's inbox still shows it; the
+    provider then taps No-show: the message says the booking is **already closed**, not "Please try
+    again".
+45. Signed out: tap an old booking notification → the sign-in screen, never "Booking not found".
+    Launch the app signed out, open a service at once and tap Book → sign-in opens on the first tap.
+
 ## Summary
 
 We looked through every screen of the app and listed about 150 things that felt broken, slow or unfinished.

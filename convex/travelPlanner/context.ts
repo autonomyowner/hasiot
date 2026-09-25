@@ -1,5 +1,5 @@
 import { internalQuery } from "../_generated/server";
-import { isPublicListing } from "../listings/queries";
+import { isPublicListing, withoutSuspendedOwners } from "../listings/queries";
 
 /**
  * What the AI planner is allowed to know about the real app.
@@ -29,8 +29,9 @@ export const getPlannerContext = internalQuery({
     // Only what the model needs to name a place and judge whether it fits.
     // Descriptions and image URLs are deliberately left out — they are the
     // bulk of a listing row and the model does not need them to recommend one.
-    const listings = scanned
-      .filter(isPublicListing)
+    // A suspended host's places are hidden everywhere else and cannot be
+    // booked, so the planner must not recommend them either.
+    const listings = (await withoutSuspendedOwners(ctx, scanned.filter(isPublicListing)))
       .slice(0, MAX_LISTINGS)
       .map((listing) => ({
         name_en: listing.name_en,

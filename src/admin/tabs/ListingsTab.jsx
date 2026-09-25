@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useMutation, usePaginatedQuery, useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import ListingForm from './ListingForm'
 import WorkingHoursModal from '../components/WorkingHoursModal'
@@ -9,17 +9,18 @@ import Switch from '../components/Switch'
 import FilterSelect from '../components/FilterSelect'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
-import { EmptyState, TableSkeleton } from '../components/States'
+import { EmptyState, KeepLooking, LoadMore, TableSkeleton } from '../components/States'
+import { usePagedList } from '../usePagedList'
 import { useDebounced } from '../../hooks/useDebounced'
 import {
-  CITIES,
-  CITY_LABELS,
+  CITY_OPTIONS,
   LISTING_STATUS_COLORS,
   LISTING_STATUS_LABELS,
   LISTING_TYPES,
   TYPE_LABELS,
   cityLabel,
   formatMoney,
+  isLiveListing,
 } from '../constants'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -84,14 +85,21 @@ export default function ListingsTab({ initialFilters }) {
     api.admin.queries.adminSearchListings,
     isSearching ? { searchQuery, ...filters } : 'skip'
   )
-  const browse = usePaginatedQuery(
+  const browse = usePagedList(
     api.admin.queries.adminListListings,
     isSearching ? 'skip' : { ...filters, order: sort === 'oldest' ? 'oldest' : 'newest' },
-    { initialNumItems: PAGE_SIZE }
+    PAGE_SIZE
   )
 
   const rows = isSearching ? searchResults : browse.results
-  const loading = isSearching ? searchResults === undefined : browse.status === 'LoadingFirstPage'
+  // Nothing on screen yet and a page on its way — the first one, or one that
+  // usePagedList asked for after an empty page — is still loading, not empty.
+  const loading = isSearching
+    ? searchResults === undefined
+    : browse.status === 'LoadingFirstPage' ||
+      (browse.results.length === 0 && browse.status === 'LoadingMore')
+  // Several empty pages in a row and still more to read: not "no results".
+  const stalled = !isSearching && browse.results.length === 0 && browse.status === 'CanLoadMore'
 
   // "newest"/"oldest" are resolved on the server by index order. Name and rating
   // can only be applied to what is already loaded, which the hint below says.
@@ -148,7 +156,7 @@ export default function ListingsTab({ initialFilters }) {
   const handleDelete = async (listing) => {
     const ok = await confirm({
       title: 'حذف هذا المكان؟',
-      message: `سيُحذف "${listing.name_ar || listing.name_en}" نهائياً من التطبيق. لا يمكن التراجع عن هذا الإجراء.`,
+      message: `سيُحذف "${listing.name_ar || listing.name_en}" نهائياً من التطبيق. لا يمكن التراجع عن هذا الإجراء. المكان الذي لديه حجوزات قائمة لا يُحذف حتى تُلغى أو تكتمل.`,
       confirmLabel: 'حذف نهائي',
       destructive: true,
     })
@@ -249,10 +257,7 @@ export default function ListingsTab({ initialFilters }) {
           value={city}
           onChange={setCity}
           placeholder="كل المدن"
-          options={[
-            { value: '', label: 'كل المدن' },
-            ...CITIES.map((c) => ({ value: c, label: CITY_LABELS[c] || c })),
-          ]}
+          options={[{ value: '', label: 'كل المدن' }, ...CITY_OPTIONS]}
         />
         <FilterSelect
           value={status}
@@ -311,6 +316,8 @@ export default function ListingsTab({ initialFilters }) {
 
       {loading ? (
         <TableSkeleton rows={6} cols={7} />
+      ) : stalled ? (
+        <KeepLooking onLoadMore={browse.loadMore} />
       ) : visibleRows.length === 0 ? (
         <EmptyState
           title={hasFilters ? 'لا توجد نتائج مطابقة' : 'لا توجد أماكن بعد'}
@@ -407,7 +414,11 @@ export default function ListingsTab({ initialFilters }) {
                         </button>
                         {/* Suspension, not deletion: the listing, its photos
                             and its bookings all stay put, so reinstating puts
-                            back exactly what was there. */}
+                            back exactly what was there. Only a live listing
+                            can be suspended — reinstating sets "approved", so
+                            suspending a submission would be a way to publish
+                            it unreviewed; the server refuses it, and a pending
+                            one is decided in «المحتوى» instead. */}
                         {listing.status === 'suspended' ? (
                           <button
                             onClick={() => handleReinstate(listing)}
@@ -416,7 +427,7 @@ export default function ListingsTab({ initialFilters }) {
                           >
                             إعادة
                           </button>
-                        ) : (
+                        ) : isLiveListing(listing) ? (
                           <button
                             onClick={() => handleSuspend(listing)}
                             className="admin-action-btn delete"
@@ -424,7 +435,7 @@ export default function ListingsTab({ initialFilters }) {
                           >
                             إيقاف
                           </button>
-                        )}
+                        ) : null}
                         <button
                           onClick={() => handleDelete(listing)}
                           className="admin-action-btn delete"
@@ -439,17 +450,9 @@ export default function ListingsTab({ initialFilters }) {
               </TableBody>
             </Table>
 
-          {!isSearching && browse.status === 'CanLoadMore' && (
-            <div className="admin-load-more">
-              <button
-                className="admin-btn admin-btn-secondary"
-                onClick={() => browse.loadMore(PAGE_SIZE)}
-              >
-                تحميل المزيد
-              </button>
-            </div>
+          {!isSearching && (
+            <LoadMore status={browse.status} onLoadMore={browse.loadMore} cols={7} />
           )}
-          {!isSearching && browse.status === 'LoadingMore' && <TableSkeleton rows={2} cols={7} />}
           {isSearching && visibleRows.length === 100 && (
             <p className="admin-inline-hint">تُعرض أول 100 نتيجة فقط. ضيّق البحث لنتائج أدق.</p>
           )}

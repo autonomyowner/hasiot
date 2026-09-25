@@ -36,6 +36,40 @@ const ALIASES: Record<string, string> = {
   Tarout: "Qatif",
 };
 
+/**
+ * The thirteen cities Hasio covers, as the English keys the database stores.
+ * Identical to the keys in hasio-mobile-app/constants/cities.ts.
+ */
+export const EASTERN_PROVINCE_CITIES = [
+  "Dammam",
+  "Al Khobar",
+  "Al Ahsa",
+  "Qatif",
+  "Jubail",
+  "Hafar Al Batin",
+  "Khafji",
+  "Ras Tanura",
+  "Abqaiq",
+  "Nairyah",
+  "Qaryat Al Ulya",
+  "Al Udayd",
+  "Al Bayda",
+] as const;
+
+export type ProvinceCity = (typeof EASTERN_PROVINCE_CITIES)[number];
+
+/**
+ * The canonical city for a submitted value, or null when it is not one of the
+ * thirteen once sub-areas are folded ("Hofuf" -> "Al Ahsa"). This is what the
+ * server validates a city against — the content must stay inside the province.
+ */
+export function toProvinceCity(city: string | undefined | null): ProvinceCity | null {
+  const canonical = canonicalCity(city?.trim());
+  return (EASTERN_PROVINCE_CITIES as readonly string[]).includes(canonical)
+    ? (canonical as ProvinceCity)
+    : null;
+}
+
 /** The city a stored value belongs to, or the value itself if it is unknown. */
 export function canonicalCity(city: string | undefined | null): string {
   if (!city) return "";

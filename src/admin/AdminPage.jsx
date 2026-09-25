@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { useQuery } from 'convex/react'
-import { api } from '../../convex/_generated/api'
 import { useCurrentUser } from '../hooks/useCurrentUser'
 import { useSyncHtmlLang } from '../hooks/useLanguage'
 import { authClient } from '../lib/auth-client'
 import { Toaster } from './ui/sonner'
-import { TabErrorBoundary } from './components/States'
+import { SectionBoundary, TabErrorBoundary } from './components/States'
+import { pendingBookingsOf, queuesOf, queueTotalOf, useDashboardStats } from './stats'
+import { personName, realEmail } from './constants'
 import DashboardTab from './tabs/DashboardTab'
 import ListingsTab from './tabs/ListingsTab'
+import ServicesTab from './tabs/ServicesTab'
 import ContentApprovalTab from './tabs/ContentApprovalTab'
 import ServiceApprovalTab from './tabs/ServiceApprovalTab'
 import PendingBusinessesTab from './tabs/PendingBusinessesTab'
@@ -22,14 +23,19 @@ import EmailCapturesTab from './tabs/EmailCapturesTab'
 import './tailwind.css'
 import './admin.css'
 
+// `count` reads the tab's badge off the dashboard queues, each piece of
+// waiting work counted in exactly one of them.
 const TABS = [
   { id: 'dashboard', label: 'الرئيسية' },
   { id: 'listings', label: 'الأماكن' },
-  { id: 'content', label: 'المحتوى', badge: 'pendingContent' },
-  { id: 'services', label: 'الخدمات', badge: 'pendingServices' },
-  { id: 'pending', label: 'الحسابات', badge: 'pendingBusinesses' },
-  { id: 'reports', label: 'التبليغات', badge: 'pendingReports' },
-  { id: 'bookings', label: 'الحجوزات', badge: 'pendingBookings' },
+  { id: 'liveServices', label: 'الخدمات المنشورة' },
+  { id: 'content', label: 'المحتوى', count: (q) => q.content },
+  // Was «الخدمات». Beside «الخدمات المنشورة» that read as the same list twice;
+  // this one is the queue of submissions waiting for a decision.
+  { id: 'services', label: 'طلبات الخدمات', count: (q) => q.services },
+  { id: 'pending', label: 'الحسابات', count: (q) => q.accounts },
+  { id: 'reports', label: 'التبليغات', count: (q) => q.reports },
+  { id: 'bookings', label: 'الحجوزات', count: pendingBookingsOf },
   { id: 'knowledge', label: 'المعرفة' },
   { id: 'activity', label: 'السجل' },
   { id: 'emails', label: 'البريد' },
@@ -38,8 +44,6 @@ const TABS = [
 
 export default function AdminPage() {
   const { user, isLoading, isAuthenticated } = useCurrentUser()
-  const [activeTab, setActiveTab] = useState('dashboard')
-  const [tabParams, setTabParams] = useState(null)
 
   // Admin panel is Arabic-only; the RTL rules key off html[dir].
   useSyncHtmlLang('ar')
@@ -49,14 +53,6 @@ export default function AdminPage() {
       window.location.href = '/sign-in?next=/admin'
     }
   }, [isLoading, isAuthenticated])
-
-  // Dashboard cards hand the operator straight into the tab that clears the
-  // work, carrying a filter where one applies.
-  const navigate = useCallback((tab, params = null) => {
-    setActiveTab(tab)
-    setTabParams(params)
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [])
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -68,7 +64,16 @@ export default function AdminPage() {
     )
   }
 
-  if (user?.role !== 'admin') {
+  // Better Auth's cached session still says "signed in", but the backend
+  // knows nobody: getCurrentUser is null when the Convex token could not be
+  // renewed (the session expired, or was ended elsewhere) and when the account
+  // is gone or suspended. This used to fall through to «غير مصرح» — "this
+  // account () has no access", with nothing between the parentheses — which
+  // replaced the whole panel, nav included, with a permissions message and
+  // no way back in but the home page.
+  if (user === null) return <SessionEnded />
+
+  if (user.role !== 'admin') {
     return (
       <div className="admin-page admin-page-centered" dir="rtl">
         <motion.div
@@ -79,7 +84,8 @@ export default function AdminPage() {
           <div className="admin-login-header">
             <h1 className="admin-login-title">غير مصرح</h1>
             <p className="admin-login-subtitle">
-              هذا الحساب ({user?.email}) لا يملك صلاحية الوصول إلى لوحة التحكم.
+              {/* A phone sign-up's address is a placeholder nobody knows it by. */}
+              هذا الحساب ({realEmail(user.email) || user.phone || personName(user)}) لا يملك صلاحية الوصول إلى لوحة التحكم.
             </p>
           </div>
           <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
@@ -90,6 +96,67 @@ export default function AdminPage() {
     )
   }
 
+  return <AdminShell user={user} />
+}
+
+/**
+ * The session behind the panel has ended. Every query would be refused, so
+ * rather than a dozen failing tabs this says what happened and offers the way
+ * back: signing in again, or reloading when it was only a failed renewal.
+ */
+function SessionEnded() {
+  return (
+    <div className="admin-page admin-page-centered" dir="rtl">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="admin-login-card"
+        role="alert"
+      >
+        <div className="admin-login-header">
+          <h1 className="admin-login-title">انتهت الجلسة</h1>
+          <p className="admin-login-subtitle">
+            لم يعد الخادم يتعرّف على جلستك: ربما انتهت صلاحيتها، أو سُجّل الخروج من مكان آخر، أو لم
+            يعد الحساب متاحًا. سجّل الدخول من جديد للمتابعة.
+          </p>
+        </div>
+        <div className="admin-session-actions">
+          {/* A full page load rather than a router link, so the panel comes
+              back with a fresh Convex client instead of the one that lost
+              its token. */}
+          <a href="/sign-in?next=/admin" className="admin-btn admin-btn-primary">
+            تسجيل الدخول من جديد
+          </a>
+          <button
+            type="button"
+            className="admin-btn admin-btn-secondary"
+            onClick={() => window.location.reload()}
+          >
+            إعادة تحميل الصفحة
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+/**
+ * The panel itself, rendered for an admin only — so the dashboard numbers are
+ * never asked for on behalf of an account that is about to be turned away.
+ */
+function AdminShell({ user }) {
+  const [activeTab, setActiveTab] = useState('dashboard')
+  const [tabParams, setTabParams] = useState(null)
+  const { stats, error: statsError } = useDashboardStats()
+
+  // Dashboard cards hand the operator straight into the tab that clears the
+  // work, carrying a filter where one applies.
+  const navigate = useCallback((tab, params = null) => {
+    setActiveTab(tab)
+    setTabParams(params)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
   return (
     <>
       {/* The panel is a single floating sheet on a neutral ground, rather than a
@@ -97,7 +164,23 @@ export default function AdminPage() {
           what makes a dense operator tool feel calm. */}
       <div className="admin-page" dir="rtl">
         <div className="admin-shell">
-          <AdminHeader user={user} activeTab={activeTab} onSelect={navigate} />
+          {/* The header has its own boundary: whatever goes wrong in it, the
+              fallback is the same bar without its counts, so the nav and the
+              sign-out button never disappear with them. */}
+          <SectionBoundary
+            name="header"
+            fallback={() => (
+              <AdminHeader user={user} activeTab={activeTab} onSelect={navigate} stats={null} countsFailed />
+            )}
+          >
+            <AdminHeader
+              user={user}
+              activeTab={activeTab}
+              onSelect={navigate}
+              stats={stats}
+              countsFailed={Boolean(statsError)}
+            />
+          </SectionBoundary>
 
           <main className="admin-main">
             {/* Keyed so a failure in one tab is cleared by moving to another,
@@ -109,6 +192,8 @@ export default function AdminPage() {
                   tab={activeTab}
                   params={tabParams}
                   user={user}
+                  stats={stats}
+                  statsError={statsError}
                   onNavigate={navigate}
                 />
               </AnimatePresence>
@@ -121,38 +206,51 @@ export default function AdminPage() {
   )
 }
 
-function TabContent({ tab, params, user, onNavigate }) {
+function TabContent({ tab, params, user, stats, statsError, onNavigate }) {
   switch (tab) {
-    case 'dashboard': return <DashboardTab onNavigate={onNavigate} user={user} />
+    case 'dashboard':
+      return <DashboardTab onNavigate={onNavigate} user={user} stats={stats} statsError={statsError} />
     case 'listings': return <ListingsTab initialFilters={params} />
+    case 'liveServices': return <ServicesTab />
     case 'content': return <ContentApprovalTab />
     case 'services': return <ServiceApprovalTab />
     case 'pending': return <PendingBusinessesTab />
     case 'reports': return <ReportsTab />
-    case 'bookings': return <BookingsTab />
+    case 'bookings': return <BookingsTab initialFilters={params} />
     case 'knowledge': return <KnowledgeTab />
     case 'activity': return <ActivityTab />
     case 'emails': return <EmailCapturesTab />
-    case 'users': return <UsersTab />
+    case 'users': return <UsersTab currentUser={user} />
     default: return null
   }
 }
 
-function AdminHeader({ user, activeTab, onSelect }) {
+function AdminHeader({ user, activeTab, onSelect, stats, countsFailed }) {
   const [signingOut, setSigningOut] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const navRef = useRef(null)
 
-  // Same query the dashboard runs, so Convex serves both from one subscription
-  // and the badges stay live as queues empty.
-  const stats = useQuery(api.admin.queries.getDashboardStats)
-  const waiting =
-    (stats?.pendingContent ?? 0) + (stats?.pendingServices ?? 0) +
-    (stats?.pendingBusinesses ?? 0) + (stats?.pendingReports ?? 0) +
-    (stats?.pendingBookings ?? 0)
+  // Below ~1150px the twelve tabs scroll sideways behind a hidden scrollbar.
+  // A tab opened from elsewhere — a dashboard row, the bell — could then be
+  // active out of sight, so the track brings it into view. scrollBy with the
+  // measured overlap, rather than scrollIntoView, so the page never moves.
+  useEffect(() => {
+    const nav = navRef.current
+    const pill = nav?.querySelector('.admin-pill.active')
+    if (!pill) return
+    const track = nav.getBoundingClientRect()
+    const box = pill.getBoundingClientRect()
+    if (box.left < track.left) nav.scrollBy({ left: box.left - track.left - 12, behavior: 'smooth' })
+    else if (box.right > track.right) nav.scrollBy({ left: box.right - track.right + 12, behavior: 'smooth' })
+  }, [activeTab])
+
+  const queues = queuesOf(stats)
+  const countFor = (tab) => (tab.count && queues ? tab.count(queues) : 0)
+  const waiting = queueTotalOf(stats)
 
   // Whichever queue the bell should open — the first one, in nav order, that
   // has anything in it.
-  const firstWaiting = TABS.find((tab) => tab.badge && (stats?.[tab.badge] ?? 0) > 0)
+  const firstWaiting = TABS.find((tab) => countFor(tab) > 0)
 
   const handleLogout = async () => {
     setSigningOut(true)
@@ -166,14 +264,17 @@ function AdminHeader({ user, activeTab, onSelect }) {
   }
 
   const initial = (user.firstName || user.email || '؟').trim().charAt(0)
+  const bellLabel = countsFailed
+    ? 'تعذّر تحميل أعداد الطلبات'
+    : waiting > 0 ? `${waiting} عنصر ينتظر إجراءً` : 'لا يوجد شيء بانتظارك'
 
   return (
     <header className="admin-topbar">
       <Link to="/" className="admin-brand">Hasio</Link>
 
-      <nav className="admin-pillnav" aria-label="أقسام لوحة التحكم">
+      <nav className="admin-pillnav" aria-label="أقسام لوحة التحكم" ref={navRef}>
         {TABS.map((tab) => {
-          const count = tab.badge ? stats?.[tab.badge] ?? 0 : 0
+          const count = countFor(tab)
           return (
             <button
               key={tab.id}
@@ -193,11 +294,11 @@ function AdminHeader({ user, activeTab, onSelect }) {
             first queue with work in it, and goes flat when there is none. */}
         <button
           type="button"
-          className={`admin-icon-btn ${waiting > 0 ? 'has-dot' : ''}`}
+          className={`admin-icon-btn ${waiting > 0 ? 'has-dot' : ''} ${countsFailed ? 'has-error' : ''}`}
           onClick={() => firstWaiting && onSelect(firstWaiting.id)}
           disabled={!firstWaiting}
-          title={waiting > 0 ? `${waiting} عنصر ينتظر إجراءً` : 'لا يوجد شيء بانتظارك'}
-          aria-label={waiting > 0 ? `${waiting} عنصر ينتظر إجراءً` : 'لا يوجد شيء بانتظارك'}
+          title={bellLabel}
+          aria-label={bellLabel}
         >
           <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M6 9a6 6 0 0112 0c0 3.5.8 5 1.5 5.8.4.4.1 1.2-.5 1.2h-14c-.6 0-.9-.8-.5-1.2C5.2 14 6 12.5 6 9Z"

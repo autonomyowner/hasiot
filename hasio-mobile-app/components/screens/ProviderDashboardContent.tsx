@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -17,8 +17,11 @@ import Animated, {
 import { useQuery } from "convex/react";
 import { api } from "@/backend";
 import { useLanguage } from "@/hooks/useLanguage";
-import { useConvexUser } from "@/hooks/useConvexUser";
+import { useCurrency } from "@/hooks/useCurrency";
+import { useConvexUser, type VerificationStatus } from "@/hooks/useConvexUser";
 import { VerificationBanner } from "@/components/VerificationBanner";
+import { accountReviewState } from "@/lib/listingForm";
+import { maybeAskForPush } from "@/lib/pushPrompt";
 import { colors, type AppFonts } from "@/constants/colors";
 import { enterFade, pressSpring, PRESS_SCALE_CARD } from "@/constants/motion";
 import { ScreenGradient } from "@/components/ui/Gradients";
@@ -26,26 +29,43 @@ import { useThemedStyles } from "@/hooks/useAppFonts";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
+// Long enough for the dashboard to have come in before the question does.
+const PUSH_PROMPT_DELAY_MS = 600;
+
 export default function ProviderDashboardContent() {
   const styles = useThemedStyles(makeStyles);
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const isFocused = useIsFocused();
   const { t, isRTL } = useLanguage();
-  const { verificationStatus, isApproved, isSignedIn } = useConvexUser();
+  const { format } = useCurrency();
+  const { verificationStatus, isApproved, isSignedIn, hasSubmittedDoc, user } = useConvexUser();
 
-  // Real counts of the provider's own services. The cards used to show a
-  // fixed "—" beside "0 · demo" requests and views: nothing counts either,
-  // and a dashboard of placeholders reads as a product that does not work.
-  // The same subscription My Services holds, so opening it costs nothing.
-  const myServices = useQuery(api.services.queries.getMyServices, isSignedIn ? {} : "skip");
-  const counts = myServices
-    ? {
-        total: myServices.length,
-        live: myServices.filter((service) => service.status === "approved").length,
-        inReview: myServices.filter((service) => service.status === "pending").length,
-      }
-    : null;
+  // The provider's booking numbers. The tiles used to count the provider's
+  // own services — posted, live, in review — because nothing could book a
+  // service; now that travellers can, what a provider opens this for is who
+  // is waiting on them and what the month has brought in. Null for anyone
+  // who is not a service provider (an admin passing through): "—".
+  const stats = useQuery(api.bookings.queries.getProviderStats, isSignedIn ? {} : "skip");
+
+  // A rejected account keeps its rejected document on file, so the hook's
+  // status reads "under review". It needs a new document instead, which is
+  // what the unverified banner asks for; the reason is on the screen it opens.
+  const review = accountReviewState({
+    isApproved,
+    hasDocument: hasSubmittedDoc,
+    rejectionReason: user?.accountRejectionReason,
+  });
+  const bannerStatus: VerificationStatus = review === "rejected" ? "unverified" : verificationStatus;
+
+  // Opening the dashboard is one of the moments a provider can see why
+  // notifications matter (design D14) — a request unanswered in time is lost,
+  // and the account's approval arrives as one too. maybeAskForPush decides
+  // whether to ask at all; this only says when.
+  useEffect(() => {
+    const timer = setTimeout(() => maybeAskForPush("host"), PUSH_PROMPT_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -86,23 +106,31 @@ export default function ProviderDashboardContent() {
             </Pressable>
           </View>
 
-          {/* Stat cards over the ink band, in reading order in Arabic too. */}
-          <View style={[styles.statsRow, isRTL && styles.rowRTL]}>
+          {/* Four tiles, two by two, in reading order in Arabic too. Upcoming
+              is confirmed work not yet over; completed and revenue count the
+              Riyadh month the service took place in (getProviderStats). */}
+          <View style={[styles.statsGrid, isRTL && styles.rowRTL]}>
             <StatCard
-              value={counts ? String(counts.total) : "—"}
-              label={t("statServices")}
-              delta={counts && counts.total === 0 ? t("statAddFirstService") : ""}
+              value={stats ? String(stats.pending) : "—"}
+              label={t("statPendingRequests")}
+              delta={stats && stats.pending > 0 ? t("statAwaitingYou") : ""}
               isRTL={isRTL}
             />
             <StatCard
-              value={counts ? String(counts.live) : "—"}
-              label={t("statLive")}
+              value={stats ? String(stats.upcoming) : "—"}
+              label={t("upcoming")}
               delta=""
               isRTL={isRTL}
             />
             <StatCard
-              value={counts ? String(counts.inReview) : "—"}
-              label={t("statInReview")}
+              value={stats ? String(stats.completedMonth) : "—"}
+              label={t("statCompletedMonth")}
+              delta=""
+              isRTL={isRTL}
+            />
+            <StatCard
+              value={stats ? format(stats.revenueMonth) : "—"}
+              label={t("statRevenueMonth")}
               delta=""
               isRTL={isRTL}
             />
@@ -111,14 +139,14 @@ export default function ProviderDashboardContent() {
 
         <Animated.View entering={enterFade(1)}>
           <VerificationBanner
-            status={verificationStatus}
+            status={bannerStatus}
             onPress={() => router.push("/provider/verification")}
             isRTL={isRTL}
           />
         </Animated.View>
 
         {/* Only while nothing is posted yet — see the business dashboard. */}
-        {isApproved && counts?.total === 0 && (
+        {isApproved && stats?.services === 0 && (
           <Animated.View entering={enterFade(1)} style={styles.noteContainer}>
             <Text style={[styles.noteText, isRTL && styles.textRTL]}>
               {t("postsReviewedNote")}
@@ -137,6 +165,15 @@ export default function ProviderDashboardContent() {
             primary
             locked={!isApproved}
             lockedLabel={t("verificationLocked")}
+          />
+          {/* The requests waiting on the provider, one tap from the inbox.
+              Not gated on approval, as posting is: a request for a service
+              an admin already approved must not wait on an unrelated queue. */}
+          <ActionButton
+            label={t("bookingRequests")}
+            onPress={() => router.push("/provider/bookings")}
+            isRTL={isRTL}
+            badge={stats?.pending}
           />
           {/* Always reachable — providers need to see the status of what they
               posted, including while the account itself is still pending. */}
@@ -168,6 +205,8 @@ function StatCard({
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.statCard, isRTL && styles.alignEnd]}>
+      {/* One line, shrinking to fit: a month's revenue in half the band must
+          not wrap and push its label out of line with the other tiles'. */}
       <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.55}>
         {value}
       </Text>
@@ -186,6 +225,7 @@ function ActionButton({
   primary,
   locked,
   lockedLabel,
+  badge,
 }: {
   label: string;
   onPress: () => void;
@@ -193,10 +233,13 @@ function ActionButton({
   primary?: boolean;
   locked?: boolean;
   lockedLabel?: string;
+  /** A count beside the label — the requests waiting — shown when above 0. */
+  badge?: number;
 }) {
   const styles = useThemedStyles(makeStyles);
   const scale = useSharedValue(1);
   const animatedStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const count = badge && badge > 0 ? badge : 0;
   return (
     <AnimatedPressable
       style={[
@@ -208,12 +251,21 @@ function ActionButton({
       onPress={onPress}
       disabled={locked}
       accessibilityRole="button"
-      accessibilityLabel={locked ? `${label} — ${lockedLabel}` : label}
+      accessibilityLabel={
+        locked ? `${label} — ${lockedLabel}` : count ? `${label}, ${count}` : label
+      }
       accessibilityState={{ disabled: !!locked }}
       onPressIn={() => { if (!locked) scale.value = withSpring(PRESS_SCALE_CARD, pressSpring); }}
       onPressOut={() => { if (!locked) scale.value = withSpring(1, pressSpring); }}
     >
-      <Text style={[styles.actionButtonText, primary && !locked && styles.actionButtonTextPrimary, isRTL && styles.textRTL]}>{label}</Text>
+      <View style={[styles.actionLabelRow, isRTL && styles.rowRTL]}>
+        <Text style={[styles.actionButtonText, primary && !locked && styles.actionButtonTextPrimary, isRTL && styles.textRTL]}>{label}</Text>
+        {count ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{count}</Text>
+          </View>
+        ) : null}
+      </View>
       {locked && lockedLabel ? (
         <Text style={styles.actionButtonLockedLabel}>{lockedLabel}</Text>
       ) : null}
@@ -269,9 +321,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   swapIcon: { fontSize: 14, color: "#FFFFFF" },
   travellingText: { fontFamily: fonts.medium, fontSize: 13, color: "#FFFFFF" },
 
-  statsRow: { flexDirection: "row", gap: 10, marginTop: 24 },
+  // Two tiles a row: each grows from just under half, so the gap between
+  // them is the only thing that decides their width.
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 24 },
   statCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "45%",
     backgroundColor: "rgba(255,255,255,0.1)",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.08)",
@@ -337,6 +392,11 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
   },
+  actionLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   actionButtonText: {
     fontFamily: fonts.semibold,
     fontSize: 16,
@@ -345,6 +405,22 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   // Ink, not white: lime is a light fill and white on it is 1.39:1 — the
   // "Post Service" label on the one button that matters could not be read.
   actionButtonTextPrimary: { color: colors.ink },
+  // The waiting requests. Ink on lime, as on the business dashboard: white on
+  // the lime fill is 1.39:1 and the count would disappear.
+  badge: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    backgroundColor: colors.primary.DEFAULT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  badgeText: {
+    fontSize: 12,
+    fontFamily: fonts.bold,
+    color: colors.ink,
+  },
   actionButtonLocked: {
     backgroundColor: colors.surface.variant,
     borderColor: colors.border,

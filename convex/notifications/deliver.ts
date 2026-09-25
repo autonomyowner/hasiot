@@ -6,9 +6,10 @@ import {
 } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
-import type { Id } from "../_generated/dataModel";
+import type { Doc } from "../_generated/dataModel";
 import { isPlaceholderEmail } from "../lib/contact";
-import { renderEmail, type NotificationEvent } from "./templates";
+import { renderEmail, type NotificationEvent, type TemplateInput } from "./templates";
+import { closedAtStart } from "./internal";
 
 /**
  * Fanning a notification out to push and email.
@@ -33,6 +34,60 @@ const EMAILED_EVENTS: NotificationEvent[] = [
   "booking.reminder",
 ];
 
+// A user keeps their newest five devices (users/push.ts); this only bounds
+// the read should that ever be bypassed.
+const MAX_DEVICES = 10;
+
+/**
+ * What an email about a booking says, or null when there is nothing to name —
+ * the place or service it was for no longer exists.
+ *
+ * A service booking is described by its service, its day and its start time,
+ * rather than a place and a range of nights.
+ */
+export function emailInputFor(
+  booking: Doc<"bookings"> | null,
+  listing: Doc<"listings"> | null,
+  service: Doc<"services"> | null
+): TemplateInput | null {
+  const reason = booking?.declineReason ?? booking?.cancellationReason;
+
+  if (booking?.kind === "service") {
+    if (!service) return null;
+    return {
+      kind: "service",
+      listingName_en: service.title_en,
+      listingName_ar: service.title_ar,
+      checkIn: booking.date,
+      startTime: booking.time,
+      quantity: booking.quantity,
+      priceUnit: booking.priceUnit,
+      guests: booking.partySize ?? booking.guests,
+      totalAmount: booking.totalAmount,
+      currency: booking.currency ?? "SAR",
+      confirmationCode: booking.confirmationCode,
+      reason,
+      expiredAtStart: closedAtStart(booking),
+    };
+  }
+
+  if (!listing) return null;
+  return {
+    listingName_en: listing.name_en,
+    listingName_ar: listing.name_ar,
+    checkIn: booking?.checkIn ?? booking?.date,
+    checkOut: booking?.checkOut,
+    nights: booking?.nights,
+    guests: booking?.guests ?? booking?.partySize,
+    totalAmount: booking?.totalAmount,
+    currency: booking?.currency ?? "SAR",
+    confirmationCode: booking?.confirmationCode,
+    reason,
+    checkInTime: listing.checkInTime,
+    address: listing.address,
+  };
+}
+
 export const loadPayload = internalQuery({
   args: { notificationId: v.id("notifications") },
   handler: async (ctx, args) => {
@@ -45,9 +100,17 @@ export const loadPayload = internalQuery({
     const booking = notification.data?.bookingId
       ? await ctx.db.get(notification.data.bookingId)
       : null;
-    const listing = notification.data?.listingId
-      ? await ctx.db.get(notification.data.listingId)
-      : null;
+    const listingId = notification.data?.listingId ?? booking?.listingId;
+    const serviceId = notification.data?.serviceId ?? booking?.serviceId;
+    const listing = listingId ? await ctx.db.get(listingId) : null;
+    const service = serviceId ? await ctx.db.get(serviceId) : null;
+
+    // The devices come from the pushTokens table, which follows a phone to
+    // whoever signed in on it last. users.pushTokens is never written.
+    const devices = await ctx.db
+      .query("pushTokens")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .take(MAX_DEVICES);
 
     return {
       notification,
@@ -55,25 +118,29 @@ export const loadPayload = internalQuery({
         _id: user._id,
         email: user.email,
         preferredLanguage: user.preferredLanguage === "en" ? ("en" as const) : ("ar" as const),
-        pushTokens: user.pushTokens ?? [],
+        pushTokens: devices.map((d) => d.token),
       },
       booking,
       listing,
+      service,
     };
   },
 });
 
+/**
+ * Forget devices Expo reported as DeviceNotRegistered: the app was removed,
+ * and the token will never work again for anyone, whoever it belonged to.
+ */
 export const pruneTokens = internalMutation({
-  args: { userId: v.id("users"), tokens: v.array(v.string()) },
+  args: { tokens: v.array(v.string()) },
   handler: async (ctx, args) => {
-    const user = await ctx.db.get(args.userId);
-    if (!user?.pushTokens?.length) return;
-
-    const dead = new Set(args.tokens);
-    const kept = user.pushTokens.filter((token) => !dead.has(token));
-    if (kept.length === user.pushTokens.length) return;
-
-    await ctx.db.patch(args.userId, { pushTokens: kept, updatedAt: Date.now() });
+    for (const token of new Set(args.tokens)) {
+      const rows = await ctx.db
+        .query("pushTokens")
+        .withIndex("by_token", (q) => q.eq("token", token))
+        .collect();
+      for (const row of rows) await ctx.db.delete(row._id);
+    }
   },
 });
 
@@ -94,20 +161,22 @@ export const send = internalAction({
     });
     if (!payload) return;
 
-    const { notification, user, listing, booking } = payload;
+    const { notification, user, listing, service, booking } = payload;
     const isArabic = user.preferredLanguage === "ar";
 
     await sendPush(ctx, {
-      userId: user._id,
       tokens: user.pushTokens,
       title: isArabic ? notification.title_ar : notification.title_en,
       body: isArabic ? notification.body_ar : notification.body_en,
       data: notification.data ?? {},
     });
 
+    // A service booking has no listing; it used to be skipped here for that
+    // reason alone.
+    const emailInput = emailInputFor(booking, listing, service);
     if (
       EMAILED_EVENTS.includes(notification.type as NotificationEvent) &&
-      listing !== null &&
+      emailInput !== null &&
       // Phone sign-ups get a synthesised address on a domain that accepts no
       // mail. Sending there is a guaranteed bounce, and bounces are what cost
       // a sending domain its reputation.
@@ -117,20 +186,7 @@ export const send = internalAction({
         to: user.email,
         locale: user.preferredLanguage,
         event: notification.type as NotificationEvent,
-        input: {
-          listingName_en: listing.name_en,
-          listingName_ar: listing.name_ar,
-          checkIn: booking?.checkIn ?? booking?.date,
-          checkOut: booking?.checkOut,
-          nights: booking?.nights,
-          guests: booking?.guests ?? booking?.partySize,
-          totalAmount: booking?.totalAmount,
-          currency: booking?.currency ?? "SAR",
-          confirmationCode: booking?.confirmationCode,
-          reason: booking?.declineReason ?? booking?.cancellationReason,
-          checkInTime: listing.checkInTime,
-          address: listing.address,
-        },
+        input: emailInput,
       });
     }
 
@@ -143,7 +199,6 @@ export const send = internalAction({
 async function sendPush(
   ctx: ActionCtx,
   args: {
-    userId: Id<"users">;
     tokens: string[];
     title: string;
     body: string;
@@ -171,6 +226,14 @@ async function sendPush(
           body: args.body,
           data: args.data,
           sound: "default",
+          // Deliver now rather than when the phone next wakes on its own: a
+          // request is answered within hours, and a same-day one expires at
+          // its start time.
+          priority: "high",
+          // The Android channel the app creates at high importance, so the
+          // notice shows as a banner. Without one, Android files it silently
+          // under a default channel.
+          channelId: "default",
         }))
       ),
     });
@@ -193,10 +256,7 @@ async function sendPush(
       .filter((token): token is string => token !== null);
 
     if (dead.length > 0) {
-      await ctx.runMutation(internal.notifications.deliver.pruneTokens, {
-        userId: args.userId,
-        tokens: dead,
-      });
+      await ctx.runMutation(internal.notifications.deliver.pruneTokens, { tokens: dead });
     }
   } catch (error) {
     console.error("Expo push error:", error);

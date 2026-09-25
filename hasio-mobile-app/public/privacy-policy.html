@@ -79,7 +79,7 @@
 
     <h1>Privacy Policy</h1>
     <p class="effective-date">Effective Date: April 5, 2026</p>
-    <p class="effective-date">Last Updated: August 8, 2026</p>
+    <p class="effective-date">Last Updated: September 25, 2026</p>
 
     <p>Welcome to Hasio ("we," "our," or "us"). This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application and website Hasio (the "App"), your guide to travel and explore Saudi Arabia.</p>
 
@@ -88,31 +88,34 @@
     <h3>1.1 Information You Provide</h3>
     <ul>
         <li><strong>Account Information:</strong> When you create an account, we collect your name, email address, and password.</li>
-        <li><strong>Profile Information:</strong> Optional profile details such as your preferred language (English/Arabic) and phone number.</li>
+        <li><strong>Phone Number:</strong> Signing in uses your phone number and a one-time code sent by SMS, so we collect and store the number as your account identifier. You can sign in with an email address instead if you prefer.</li>
+        <li><strong>Profile Information:</strong> Optional profile details such as your preferred language (English/Arabic).</li>
         <li><strong>User Content:</strong> Photos, notes, reviews, and trip itineraries you create in the app.</li>
-        <li><strong>Photo Library Access:</strong> The App asks permission to access your photo library so you can attach pictures to listings, travel moments, and verification documents. We receive only the images you actually select — never your whole library, and never access without your permission.</li>
+        <li><strong>Photo Library Access:</strong> The App asks permission to access your photo library so you can attach pictures to listings, services, and verification documents. We receive only the images you actually select — never your whole library, and never access without your permission.</li>
         <li><strong>Business/Service Provider Information:</strong> If you register as a business owner or service provider, we collect business documents, service descriptions, pricing, and portfolio images for verification and listing purposes.</li>
-        <li><strong>Booking Information:</strong> Details of reservations and bookings you make through the platform.</li>
+        <li><strong>Booking Information:</strong> Details of the stays and services you book through the platform — dates, start times, number of people, and any note you add.</li>
     </ul>
 
     <h3>1.2 Information Collected Automatically</h3>
     <ul>
         <li><strong>Device Information:</strong> Device type, operating system version, and an app installation identifier used solely to deliver over-the-air app updates.</li>
+        <li><strong>Push Notification Token:</strong> Only if you turn on notifications, your device gives us a push token (issued through Expo, Apple Push Notification service or Firebase Cloud Messaging) so we can tell you about your bookings. It identifies the App on your device, not you. It is deleted when you sign out, when you delete your account, or when your device stops accepting notifications, and if someone else signs in on the same device it moves to their account so you stop receiving notices there.</li>
         <li><strong>Usage Data:</strong> Basic technical logs generated when your device communicates with our backend, such as which features were requested and when.</li>
     </ul>
     <p><strong>We do not collect your device location.</strong> The App does not request location permission and contains no location tracking. Any place or city associated with a listing, trip, or travel moment is information you type or select yourself, not a reading taken from your device.</p>
     <p><strong>We do not track you across other apps or websites</strong>, and we do not use your data for advertising. The App contains no advertising SDKs and no third-party analytics.</p>
 
-    <h3>1.3 Travel Moments Stay On Your Device</h3>
-    <p><strong>Travel moments are not collected by us at all.</strong> The photos, notes, and place names you save as travel moments are stored only in the App's local storage on your own device. They are never uploaded to our servers, never visible to other users, and never sent to any third party. Because they live only on your device, deleting the App or clearing its data removes them permanently, and they do not transfer to a new device.</p>
-    <p>This is different from photos you attach to a <em>listing</em>, a <em>freelancer service</em>, or a <em>verification document</em> — those are uploaded to our servers so they can be reviewed and displayed.</p>
+    <h3>1.3 Travel Moments (earlier versions)</h3>
+    <p>Versions of the App before 1.1.0 let you save travel moments — a photo with a note and a place name. Those were stored in your account on our servers, visible only to you and never to other users or third parties, and they are deleted with your account. Version 1.1.0 no longer offers travel moments.</p>
+    <p>Photos you attach to a <em>listing</em>, a <em>service</em>, or a <em>verification document</em> are uploaded to our servers so they can be reviewed and, for listings and services, displayed.</p>
 
     <h2>2. How We Use Your Information</h2>
     <ul>
         <li>To provide and maintain the App's features and functionality</li>
         <li>To process AI-powered travel planning queries and provide recommendations</li>
         <li>To save your favorite places, travel moments, and trip itineraries</li>
-        <li>To process bookings and reservations</li>
+        <li>To process bookings and reservations of stays and services</li>
+        <li>To notify you about your bookings, and about your listings, services and account — in the App, and by push notification if you allow it</li>
         <li>To authenticate your account and provide personalized experiences</li>
         <li>To verify business owner and service provider accounts</li>
         <li>To display listings and services to users</li>
@@ -127,7 +130,7 @@
         <li><strong>When you post a listing or a freelancer service:</strong> everything in that listing — including the contact details and pricing you enter and the photos you upload — is shown publicly to all users once approved.</li>
         <li><strong>When you write a review:</strong> your review is shown publicly on the listing you reviewed, along with your first and last name. If you mark the review as anonymous, your name is not attached to it.</li>
     </ul>
-    <p>If you would rather a business not have your phone number, leave the optional phone field on your profile empty; bookings will still work.</p>
+    <p>Making a booking requires a verified phone number, because the business or service provider you book needs to be able to reach you — a host expecting you late, or a guide waiting at a meeting point. Your number is shown only to the business or provider of a booking you make, never publicly.</p>
 
     <h2>4. Third-Party Services</h2>
     <p>We use the following third-party services to operate the App:</p>
@@ -135,9 +138,11 @@
         <li><strong>Convex:</strong> For real-time backend database and serverless functions</li>
         <li><strong>Better Auth:</strong> For secure user authentication and session management</li>
         <li><strong>OpenRouter (Claude AI):</strong> For AI-powered travel planning and recommendations</li>
-        <li><strong>Mapbox:</strong> For the interactive map on our website, which plots the fixed coordinates of listings. It is not supplied with your device location.</li>
-        <li><strong>Expo (EAS):</strong> For mobile app builds and over-the-air updates</li>
-        <li><strong>Vercel:</strong> For website hosting and deployment</li>
+        <li><strong>SMS providers (Taqnyat, Infobip or Twilio):</strong> To text you one-time sign-in codes. They receive your phone number and the code, nothing else.</li>
+        <li><strong>Expo (EAS):</strong> For mobile app builds, over-the-air updates, and relaying push notifications</li>
+        <li><strong>Apple Push Notification service and Firebase Cloud Messaging:</strong> To deliver the push notifications you allow. They receive your device's push token and the text of the notification.</li>
+        <li><strong>Resend:</strong> To email booking updates, when email is enabled. It receives your email address and the booking details in the message.</li>
+        <li><strong>Cloudflare and Vercel:</strong> For website hosting</li>
     </ul>
     <p>These services have their own privacy policies, and we encourage you to review them.</p>
 
@@ -165,13 +170,13 @@
         <li>You can delete your account and its data yourself at any time from inside the app, or ask us to do it for you — see <strong>Section 8, Account Deletion</strong>, below</li>
         <li>Booking records may be retained for legal and business purposes</li>
         <li>Business documents submitted for verification are retained while the account is active</li>
-        <li>Travel moments are never held by us at all, because they never leave your device (see Section 1.3)</li>
+        <li>Travel moments saved with earlier versions of the App are deleted with your account (see Section 1.3)</li>
     </ul>
 
     <h2>8. Account Deletion</h2>
     <p>You can delete your account and all associated data at any time:</p>
     <ul>
-        <li><strong>In-App:</strong> Go to Settings &gt; Delete Account. This permanently removes your profile, listings, services, bookings, trips, travel plans, reviews, and uploaded files from our servers, and deletes your login credentials so the email address can be registered again.</li>
+        <li><strong>In-App:</strong> Go to Settings &gt; Delete Account. This permanently removes your profile, listings, services, bookings, trips, travel plans, reviews, notifications, device push tokens, and uploaded files from our servers, and deletes your login credentials so the email address or phone number can be registered again. Open bookings that other people made with your listings or services are cancelled first, and those travellers are told.</li>
         <li><strong>By Request:</strong> Email <a href="mailto:support@hasio.xyz" style="color: #0D7A5F;">support@hasio.xyz</a> to request account deletion.</li>
     </ul>
     <p>Please note that data previously shared with third-party services (Convex, OpenRouter) is subject to their respective retention policies.</p>

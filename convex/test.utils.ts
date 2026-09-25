@@ -143,6 +143,99 @@ export async function seedStay(
   );
 }
 
+/**
+ * A bookable service: an approved tour guide in Al Ahsa at 150 SAR an hour,
+ * unless told otherwise. Pass `price: null` for a service that shows Contact.
+ */
+export async function seedService(
+  t: TestT,
+  opts: {
+    ownerId: Id<"users">;
+    status?: string;
+    price?: number | null;
+    priceUnit?: string;
+    maxGroupSize?: number;
+    city?: string;
+    title_en?: string;
+    title_ar?: string;
+    serviceType?: string;
+    contactPhone?: string;
+  }
+): Promise<Id<"services">> {
+  return await t.run(async (ctx) =>
+    ctx.db.insert("services", {
+      ownerId: opts.ownerId,
+      serviceType: opts.serviceType ?? "tour_guide",
+      title_en: opts.title_en ?? "Al Ahsa oasis tour",
+      title_ar: opts.title_ar ?? "جولة واحة الأحساء",
+      price: opts.price === null ? undefined : (opts.price ?? 150),
+      priceUnit: opts.priceUnit ?? "per_hour",
+      maxGroupSize: opts.maxGroupSize,
+      city: opts.city ?? "Al Ahsa",
+      contactPhone: opts.contactPhone,
+      status: opts.status ?? "approved",
+      createdAt: NOW,
+      updatedAt: NOW,
+    })
+  );
+}
+
+/**
+ * A service booking as createServiceForUser writes it: date/time for the
+ * legacy readers, checkIn/checkOut mirrored so the crons see it.
+ */
+export async function seedServiceBooking(
+  t: TestT,
+  opts: {
+    userId: Id<"users">;
+    serviceId: Id<"services">;
+    ownerId: Id<"users">;
+    date: string;
+    time?: string;
+    status?: string;
+    quantity?: number;
+    unitPrice?: number;
+    priceUnit?: string;
+    expiresAt?: number;
+    partySize?: number;
+    confirmationCode?: string;
+  }
+): Promise<Id<"bookings">> {
+  const priceUnit = opts.priceUnit ?? "per_hour";
+  const quantity = opts.quantity ?? 2;
+  const unitPrice = opts.unitPrice ?? 150;
+  const span = priceUnit === "per_day" ? quantity : 1;
+  const checkOut = new Date(Date.parse(`${opts.date}T00:00:00Z`) + span * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+  return await t.run(async (ctx) =>
+    ctx.db.insert("bookings", {
+      userId: opts.userId,
+      serviceId: opts.serviceId,
+      ownerId: opts.ownerId,
+      kind: "service",
+      type: "service",
+      date: opts.date,
+      time: opts.time ?? "09:00",
+      checkIn: opts.date,
+      checkOut,
+      quantity,
+      unitPrice,
+      priceUnit,
+      totalAmount: unitPrice * (priceUnit === "per_hour" || priceUnit === "per_day" ? quantity : 1),
+      currency: "SAR",
+      guests: opts.partySize ?? 2,
+      partySize: opts.partySize ?? 2,
+      confirmationCode:
+        opts.confirmationCode ?? `HSO-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+      status: opts.status ?? "pending",
+      expiresAt: opts.expiresAt,
+      createdAt: NOW,
+      updatedAt: NOW,
+    })
+  );
+}
+
 /** A legacy restaurant-style slot booking, for regression coverage. */
 export async function seedSlot(
   t: TestT,

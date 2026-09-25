@@ -16,15 +16,17 @@ interface DeclineReasonSheetProps {
    * failed. On false the sheet stays up with the reason as typed.
    */
   onSubmit: (reason: string) => Promise<boolean>;
+  /** A service request gets an example reason about the day, not about rooms. */
+  kind?: string;
 }
 
 /**
- * Collect a reason when a host turns a request down.
+ * Collect a reason when a host or provider turns a request down.
  *
  * Optional, but asked for: "declined" on its own tells a guest nothing and
  * invites a phone call. "Fully booked those dates" lets them move on.
  */
-export function DeclineReasonSheet({ visible, onClose, onSubmit }: DeclineReasonSheetProps) {
+export function DeclineReasonSheet({ visible, onClose, onSubmit, kind }: DeclineReasonSheetProps) {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
 
@@ -78,7 +80,7 @@ export function DeclineReasonSheet({ visible, onClose, onSubmit }: DeclineReason
         isRTL={isRTL}
         value={reason}
         onChangeText={setReason}
-        placeholder={t("declineReasonPlaceholder")}
+        placeholder={t(kind === "service" ? "declineReasonPlaceholderService" : "declineReasonPlaceholder")}
         placeholderTextColor={colors.onSurface.muted}
         multiline
         numberOfLines={3}

@@ -1,7 +1,16 @@
 import { mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
-import { enforceRateLimit } from "../rateLimit";
+import { AUTH_ERRORS } from "../lib/errors";
+import { deleteServiceForUser, submitServiceForUser, updateServiceForUser } from "./service";
+
+/**
+ * Thin wrappers: resolve the provider, hand off to the seam. Every rule lives
+ * in `service.ts` so it can be tested — convex-test cannot get past
+ * `getAuthenticatedAppUser`.
+ */
+
+const coordinates = v.optional(v.object({ lat: v.number(), lng: v.number() }));
 
 // Submit a new service (service provider only)
 export const submitService = mutation({
@@ -13,6 +22,9 @@ export const submitService = mutation({
     description_ar: v.optional(v.string()),
     priceRange: v.optional(v.string()),
     priceUnit: v.optional(v.string()),
+    // 1.1.0: whole SAR per priceUnit. Without it the service shows Contact.
+    price: v.optional(v.number()),
+    maxGroupSize: v.optional(v.number()),
     availability_en: v.optional(v.string()),
     availability_ar: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
@@ -21,45 +33,16 @@ export const submitService = mutation({
     images: v.optional(v.array(v.string())),
     city: v.optional(v.string()),
     region: v.optional(v.string()),
-    coordinates: v.optional(v.object({
-      lat: v.number(),
-      lng: v.number(),
-    })),
+    coordinates,
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user) throw new Error("Not authenticated");
-
-    if (user.role !== "service_provider") {
-      throw new Error("Only service providers can submit services");
-    }
-    if (!user.isApproved) {
-      throw new Error("Your account must be approved before submitting services");
-    }
-
-    await enforceRateLimit(
-      ctx,
-      `service:${user._id}`,
-      20,
-      "لقد وصلت إلى الحد اليومي لإضافة الخدمات. يرجى المحاولة غدًا. / You've reached today's limit for new services. Please try again tomorrow."
-    );
-
-    const now = Date.now();
-    const serviceId = await ctx.db.insert("services", {
-      ...args,
-      ownerId: user._id,
-      status: "pending",
-      rating: 0,
-      reviewCount: 0,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    return serviceId;
+    if (!user) throw new ConvexError(AUTH_ERRORS.NOT_AUTHENTICATED);
+    return await submitServiceForUser(ctx, user, args);
   },
 });
 
-// Update own service (resets status to pending)
+// Update own service (back to review, unless an admin suspended it)
 export const updateMyService = mutation({
   args: {
     serviceId: v.id("services"),
@@ -70,6 +53,9 @@ export const updateMyService = mutation({
     description_ar: v.optional(v.string()),
     priceRange: v.optional(v.string()),
     priceUnit: v.optional(v.string()),
+    // null clears: a provider who stops taking bookings goes back to Contact.
+    price: v.optional(v.union(v.number(), v.null())),
+    maxGroupSize: v.optional(v.union(v.number(), v.null())),
     availability_en: v.optional(v.string()),
     availability_ar: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
@@ -78,50 +64,23 @@ export const updateMyService = mutation({
     images: v.optional(v.array(v.string())),
     city: v.optional(v.string()),
     region: v.optional(v.string()),
-    coordinates: v.optional(v.object({
-      lat: v.number(),
-      lng: v.number(),
-    })),
+    coordinates,
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user) throw new Error("Not authenticated");
-
-    const service = await ctx.db.get(args.serviceId);
-    if (!service) throw new Error("Service not found");
-    if (service.ownerId !== user._id) throw new Error("Not your service");
-
-    const { serviceId, ...updates } = args;
-    const filteredUpdates: Record<string, unknown> = {
-      updatedAt: Date.now(),
-      status: "pending",
-      rejectionReason: undefined,
-    };
-    for (const [key, value] of Object.entries(updates)) {
-      if (value !== undefined) {
-        filteredUpdates[key] = value;
-      }
-    }
-
-    await ctx.db.patch(serviceId, filteredUpdates);
-    return { success: true };
+    if (!user) throw new ConvexError(AUTH_ERRORS.NOT_AUTHENTICATED);
+    return await updateServiceForUser(ctx, user, args);
   },
 });
 
-// Delete own service
+// Delete own service, once nothing is booked on it
 export const deleteMyService = mutation({
   args: {
     serviceId: v.id("services"),
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user) throw new Error("Not authenticated");
-
-    const service = await ctx.db.get(args.serviceId);
-    if (!service) throw new Error("Service not found");
-    if (service.ownerId !== user._id) throw new Error("Not your service");
-
-    await ctx.db.delete(args.serviceId);
-    return { success: true };
+    if (!user) throw new ConvexError(AUTH_ERRORS.NOT_AUTHENTICATED);
+    return await deleteServiceForUser(ctx, user, args.serviceId);
   },
 });

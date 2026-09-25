@@ -1,9 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { internal } from "../_generated/api";
-import { makeT, NOW, seedHotel, seedSlot, seedStay, seedUser, TODAY } from "../test.utils";
+import {
+  makeT,
+  NOW,
+  seedHotel,
+  seedService,
+  seedServiceBooking,
+  seedSlot,
+  seedStay,
+  seedUser,
+  TODAY,
+} from "../test.utils";
+import type { TestT } from "../test.utils";
+import { riyadhDateTimeToTimestamp } from "../lib/dates";
 import { PENDING_TTL_MS } from "./logic";
 
 const LATER = NOW + PENDING_TTL_MS + 1000;
+
+/** A provider's "Oasis day tour" and a traveller, for the service cases. */
+async function tour(t: TestT) {
+  const ownerId = await seedUser(t, { role: "service_provider", isApproved: true, email: "p@example.com" });
+  const userId = await seedUser(t, { phoneVerified: true, email: "t@example.com" });
+  const serviceId = await seedService(t, { ownerId, title_en: "Oasis day tour", title_ar: "جولة الواحة" });
+  return { ownerId, userId, serviceId };
+}
 
 describe("expirePendingRequests", () => {
   it("expires a request the host never answered, and tells the guest", async () => {
@@ -194,6 +214,136 @@ describe("completeFinishedStays", () => {
     expect(
       await t.mutation(internal.bookings.lifecycle.completeFinishedStays, { today: TODAY, now: NOW })
     ).toEqual({ completed: 0 });
+  });
+});
+
+describe("service bookings through the same jobs", () => {
+  it("expires a request the provider never answered, and tells the traveller in service words", async () => {
+    const t = makeT();
+    const { ownerId, userId, serviceId } = await tour(t);
+    const bookingId = await seedServiceBooking(t, {
+      userId,
+      serviceId,
+      ownerId,
+      date: "2026-09-20",
+      expiresAt: NOW + PENDING_TTL_MS,
+    });
+
+    expect(
+      await t.mutation(internal.bookings.lifecycle.expirePendingRequests, { now: LATER })
+    ).toEqual({ expired: 1 });
+    expect(await t.run((ctx) => ctx.db.get(bookingId))).toMatchObject({ status: "expired" });
+
+    const [notice] = await t.run((ctx) => ctx.db.query("notifications").collect());
+    expect(notice).toMatchObject({ userId, type: "booking.expired", title_en: "Request expired" });
+    expect(notice.body_en).toContain("The provider of Oasis day tour did not respond within 48 hours");
+    expect(notice.data).toMatchObject({ bookingId, serviceId, target: "booking" });
+  });
+
+  it("closes a same-day request at the start time it was never answered by", async () => {
+    const t = makeT();
+    const { ownerId, userId, serviceId } = await tour(t);
+    const start = riyadhDateTimeToTimestamp(TODAY, "10:00");
+    const bookingId = await seedServiceBooking(t, {
+      userId,
+      serviceId,
+      ownerId,
+      date: TODAY,
+      time: "10:00",
+      // What createServiceForUser writes when the start comes before 48 hours.
+      expiresAt: start,
+    });
+
+    expect(
+      await t.mutation(internal.bookings.lifecycle.expirePendingRequests, { now: start - 60_000 })
+    ).toEqual({ expired: 0 });
+    expect(
+      await t.mutation(internal.bookings.lifecycle.expirePendingRequests, { now: start + 60_000 })
+    ).toEqual({ expired: 1 });
+    expect(await t.run((ctx) => ctx.db.get(bookingId))).toMatchObject({ status: "expired" });
+  });
+
+  it("reminds the traveller the day before, naming the service and its start time", async () => {
+    const t = makeT();
+    const { ownerId, userId, serviceId } = await tour(t);
+    const bookingId = await seedServiceBooking(t, {
+      userId,
+      serviceId,
+      ownerId,
+      date: "2026-09-04", // tomorrow, given TODAY
+      time: "09:00",
+      status: "confirmed",
+      confirmationCode: "HSO-TOUR2",
+    });
+
+    expect(
+      await t.mutation(internal.bookings.lifecycle.sendCheckInReminders, { today: TODAY, now: NOW })
+    ).toEqual({ sent: 1 });
+
+    const [reminder] = await t.run((ctx) => ctx.db.query("notifications").collect());
+    expect(reminder).toMatchObject({
+      userId,
+      type: "booking.reminder",
+      title_en: "Your booking is tomorrow",
+      title_ar: "موعدك غدًا",
+      body_en: "Oasis day tour, 2026-09-04 at 09:00. Code HSO-TOUR2.",
+    });
+    expect(await t.run((ctx) => ctx.db.get(bookingId))).toMatchObject({ reminderSentAt: NOW });
+  });
+
+  it("completes a service once its checkOut has passed", async () => {
+    const t = makeT();
+    const { ownerId, userId, serviceId } = await tour(t);
+    // 1 September, so checkOut is 2 September, before TODAY.
+    const bookingId = await seedServiceBooking(t, {
+      userId,
+      serviceId,
+      ownerId,
+      date: "2026-09-01",
+      status: "confirmed",
+    });
+
+    expect(
+      await t.mutation(internal.bookings.lifecycle.completeFinishedStays, { today: TODAY, now: NOW })
+    ).toEqual({ completed: 1 });
+    expect(await t.run((ctx) => ctx.db.get(bookingId))).toMatchObject({ status: "completed", completedAt: NOW });
+  });
+
+  it("completes yesterday's service this morning, so 'How was it?' is asked the next day", async () => {
+    const t = makeT();
+    const { ownerId, userId, serviceId } = await tour(t);
+    // Yesterday's tour: its checkOut (the day after, exclusive) is today. A
+    // stay leaving today is still in its room; a tour that ran yesterday is
+    // over, and waiting for `checkOut < today` would ask a day late.
+    const yesterday = await seedServiceBooking(t, {
+      userId,
+      serviceId,
+      ownerId,
+      date: "2026-09-02",
+      status: "confirmed",
+    });
+    const today = await seedServiceBooking(t, { userId, serviceId, ownerId, date: TODAY, status: "confirmed" });
+    const unanswered = await seedServiceBooking(t, { userId, serviceId, ownerId, date: "2026-09-02" });
+
+    expect(
+      await t.mutation(internal.bookings.lifecycle.completeFinishedStays, { today: TODAY, now: NOW })
+    ).toEqual({ completed: 1 });
+    expect(await t.run((ctx) => ctx.db.get(yesterday))).toMatchObject({ status: "completed" });
+    expect(await t.run((ctx) => ctx.db.get(today))).toMatchObject({ status: "confirmed" });
+    // Only confirmed work completes; a request nobody answered expires instead.
+    expect(await t.run((ctx) => ctx.db.get(unanswered))).toMatchObject({ status: "pending" });
+  });
+
+  it("still leaves a stay whose checkOut is today", async () => {
+    const t = makeT();
+    const { userId } = await tour(t);
+    const listingId = await seedHotel(t);
+    const stayId = await seedStay(t, { userId, listingId, checkIn: "2026-09-01", checkOut: TODAY, status: "confirmed" });
+
+    expect(
+      await t.mutation(internal.bookings.lifecycle.completeFinishedStays, { today: TODAY, now: NOW })
+    ).toEqual({ completed: 0 });
+    expect(await t.run((ctx) => ctx.db.get(stayId))).toMatchObject({ status: "confirmed" });
   });
 });
 

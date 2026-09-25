@@ -46,6 +46,46 @@ export async function recomputeListingRating(
   });
 }
 
+/** The same rule for a service's score: from its reviews, cleared at zero. */
+export async function recomputeServiceRating(
+  ctx: MutationCtx,
+  serviceId: Id<"services">
+): Promise<void> {
+  const reviews = await ctx.db
+    .query("reviews")
+    .withIndex("by_serviceId", (q) => q.eq("serviceId", serviceId))
+    .order("desc")
+    .take(MAX_RATED_REVIEWS);
+
+  const summary = summariseRatings(reviews.map((r) => r.rating));
+
+  await ctx.db.patch(serviceId, {
+    rating: summary.average ?? undefined,
+    reviewCount: summary.count === 0 ? undefined : summary.count,
+    updatedAt: Date.now(),
+  });
+}
+
+/**
+ * Recompute whatever a review scores — its listing or its service.
+ *
+ * Callers that change or delete a review (the author, or an admin removing a
+ * reported one) go through here so none of them has to know which kind of
+ * target it was.
+ */
+export async function recomputeReviewTarget(
+  ctx: MutationCtx,
+  review: Pick<Doc<"reviews">, "listingId" | "serviceId">
+): Promise<void> {
+  if (review.serviceId) {
+    if (await ctx.db.get(review.serviceId)) await recomputeServiceRating(ctx, review.serviceId);
+    return;
+  }
+  if (review.listingId) {
+    if (await ctx.db.get(review.listingId)) await recomputeListingRating(ctx, review.listingId);
+  }
+}
+
 /**
  * Whether a review may claim to come from a real stay.
  *
@@ -68,25 +108,65 @@ async function isVerifiedStay(
   );
 }
 
+/**
+ * The same rule for a service: the booking must be this traveller's, of this
+ * service, and completed — which the morning job does the day after.
+ */
+async function isVerifiedService(
+  ctx: QueryCtx,
+  bookingId: Id<"bookings"> | undefined,
+  userId: Id<"users">,
+  serviceId: Id<"services">
+): Promise<boolean> {
+  if (!bookingId) return false;
+  const booking = await ctx.db.get(bookingId);
+  return (
+    !!booking &&
+    booking.userId === userId &&
+    booking.serviceId === serviceId &&
+    booking.status === "completed"
+  );
+}
+
+type ReviewArgs = {
+  rating: number;
+  content?: string;
+  bookingId?: Id<"bookings">;
+  isAnonymous?: boolean;
+};
+
+/**
+ * Review a place (`listingId`) or, since 1.1.0, a service (`serviceId`) —
+ * exactly one of them. Anyone signed in may review; the verified badge needs
+ * a completed booking of that very place or service (design D12).
+ */
 export async function addReviewForUser(
   ctx: MutationCtx,
   user: Doc<"users">,
-  args: {
-    listingId: Id<"listings">;
-    rating: number;
-    content?: string;
-    bookingId?: Id<"bookings">;
-    isAnonymous?: boolean;
-  }
+  args: ReviewArgs & { listingId?: Id<"listings">; serviceId?: Id<"services"> }
 ): Promise<Id<"reviews">> {
+  // Both, or neither, is a client that does not know what it is reviewing;
+  // storing it would put one rating on two scores, or on none.
+  if ((args.listingId === undefined) === (args.serviceId === undefined)) {
+    throw new ConvexError(REVIEW_ERRORS.TARGET_REQUIRED);
+  }
+
   const { content } = validateReviewInput(args);
 
-  const listing = await ctx.db.get(args.listingId);
+  if (args.serviceId !== undefined) {
+    return await addServiceReview(ctx, user, { ...args, serviceId: args.serviceId }, content);
+  }
+
+  const listingId = args.listingId!;
+  const listing = await ctx.db.get(listingId);
   if (!listing) throw new ConvexError(REVIEW_ERRORS.LISTING_NOT_FOUND);
+  if (listing.ownerId && listing.ownerId === user._id) {
+    throw new ConvexError(REVIEW_ERRORS.OWN_ITEM);
+  }
 
   const existing = await ctx.db
     .query("reviews")
-    .withIndex("by_listingId", (q) => q.eq("listingId", args.listingId))
+    .withIndex("by_listingId", (q) => q.eq("listingId", listingId))
     .filter((q) => q.eq(q.field("userId"), user._id))
     .first();
   if (existing) throw new ConvexError(REVIEW_ERRORS.DUPLICATE);
@@ -96,17 +176,55 @@ export async function addReviewForUser(
   const now = Date.now();
   const reviewId = await ctx.db.insert("reviews", {
     userId: user._id,
-    listingId: args.listingId,
+    listingId,
     bookingId: args.bookingId,
     rating: args.rating,
     content,
     isAnonymous: args.isAnonymous ?? false,
-    isVerified: await isVerifiedStay(ctx, args.bookingId, user._id, args.listingId),
+    isVerified: await isVerifiedStay(ctx, args.bookingId, user._id, listingId),
     createdAt: now,
     updatedAt: now,
   });
 
-  await recomputeListingRating(ctx, args.listingId);
+  await recomputeReviewTarget(ctx, { listingId });
+  return reviewId;
+}
+
+async function addServiceReview(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  args: ReviewArgs & { serviceId: Id<"services"> },
+  content: string | undefined
+): Promise<Id<"reviews">> {
+  const service = await ctx.db.get(args.serviceId);
+  if (!service) throw new ConvexError(REVIEW_ERRORS.SERVICE_NOT_FOUND);
+  if (service.ownerId === user._id) throw new ConvexError(REVIEW_ERRORS.OWN_ITEM);
+
+  // Looked up among the traveller's own reviews, which stay few, rather than
+  // among a popular service's.
+  const existing = await ctx.db
+    .query("reviews")
+    .withIndex("by_userId", (q) => q.eq("userId", user._id))
+    .filter((q) => q.eq(q.field("serviceId"), args.serviceId))
+    .first();
+  if (existing) throw new ConvexError(REVIEW_ERRORS.DUPLICATE_SERVICE);
+
+  await enforceRateLimit(ctx, `review:${user._id}`, REVIEWS_PER_DAY);
+
+  const now = Date.now();
+  const reviewId = await ctx.db.insert("reviews", {
+    userId: user._id,
+    serviceId: args.serviceId,
+    bookingId: args.bookingId,
+    rating: args.rating,
+    content,
+    isAnonymous: args.isAnonymous ?? false,
+    isVerified: await isVerifiedService(ctx, args.bookingId, user._id, args.serviceId),
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await recomputeReviewTarget(ctx, { serviceId: args.serviceId });
   return reviewId;
 }
 
@@ -133,7 +251,7 @@ export async function updateReviewForUser(
     updatedAt: Date.now(),
   });
 
-  await recomputeListingRating(ctx, review.listingId);
+  await recomputeReviewTarget(ctx, review);
 }
 
 export async function deleteReviewForUser(
@@ -145,7 +263,6 @@ export async function deleteReviewForUser(
   if (!review) throw new ConvexError(REVIEW_ERRORS.NOT_FOUND);
   if (review.userId !== user._id) throw new ConvexError(REVIEW_ERRORS.NOT_YOURS);
 
-  const listingId = review.listingId;
   await ctx.db.delete(reviewId);
-  await recomputeListingRating(ctx, listingId);
+  await recomputeReviewTarget(ctx, review);
 }

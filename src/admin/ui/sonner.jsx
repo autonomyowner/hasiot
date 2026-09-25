@@ -21,6 +21,10 @@ const Toaster = ({ ...props }) => {
       richColors
       closeButton
       className="toaster group"
+      // Sonner's own labels are English ("Notifications", "Close toast"),
+      // which is what a screen reader announced over an Arabic panel.
+      containerAriaLabel="الإشعارات"
+      toastOptions={{ closeButtonAriaLabel: "إغلاق الإشعار" }}
       icons={{
         success: <CircleCheckIcon className="size-4" />,
         info: <InfoIcon className="size-4" />,

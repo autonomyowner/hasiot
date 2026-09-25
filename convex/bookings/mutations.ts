@@ -8,9 +8,11 @@ import {
   cancelAsTourist,
   completeAsManager,
   confirmAsManager,
+  createServiceForUser,
   createSlotForUser,
   createStayForUser,
   declineAsManager,
+  markNoShowAsManager,
 } from "./service";
 
 /**
@@ -63,6 +65,31 @@ export const createStayBooking = mutation({
     }
 
     return await createStayForUser(ctx, user, args);
+  },
+});
+
+/**
+ * Request a service provider: a day, a start time, hours or days when the
+ * price unit asks for them, and how many people. The server prices it; the
+ * provider confirms or declines within 48 hours, or by the start time if that
+ * comes first. Rules and refusals: createServiceForUser.
+ */
+export const createServiceBooking = mutation({
+  args: {
+    serviceId: v.id("services"),
+    date: v.string(),
+    time: v.string(),
+    quantity: v.optional(v.number()),
+    partySize: v.optional(v.number()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) {
+      throw new ConvexError("Not authenticated");
+    }
+
+    return await createServiceForUser(ctx, user, args);
   },
 });
 
@@ -122,6 +149,10 @@ export const rescheduleBooking = mutation({
     // an edit. The app cancels and rebooks instead.
     if (booking.kind === "stay") {
       throw new ConvexError(BOOKING_ERRORS.STAY_NO_RESCHEDULE);
+    }
+    // Same for a service, which also has no listing for the slot check below.
+    if (booking.kind === "service" || !booking.listingId) {
+      throw new ConvexError(BOOKING_ERRORS.SERVICE_NO_RESCHEDULE);
     }
 
     if (booking.status === "cancelled" || booking.status === "completed") {
@@ -218,28 +249,24 @@ export const markNoShow = mutation({
   args: { bookingId: v.id("bookings") },
   handler: async (ctx, args) => {
     const booking = await requireBookingManager(ctx, args.bookingId);
-
-    if (booking.status !== "confirmed") {
-      throw new ConvexError(BOOKING_ERRORS.NOT_AUTHORIZED);
-    }
-
-    await ctx.db.patch(args.bookingId, {
-      status: "no_show",
-      updatedAt: Date.now(),
-    });
-
+    await markNoShowAsManager(ctx, booking);
     return { success: true };
   },
 });
 
 /**
  * Resolve a booking for a caller allowed to move it through the flow: an admin,
- * or the owner of the listing it belongs to.
+ * or the current owner of the listing — or, for a service booking, of the
+ * service — it belongs to.
  *
  * `confirmBooking` and `completeBooking` previously ran no auth check at all, so
  * any caller holding a booking id could confirm or complete it. The tourist who
  * made the booking is deliberately not included — they cancel and reschedule
  * through their own mutations above, but they do not get to confirm themselves.
+ *
+ * Ownership is read from the listing or service, not from the booking's
+ * denormalised `ownerId`: when an admin moves a listing to another host, the
+ * previous host must lose the ability to act on its bookings.
  */
 async function requireBookingManager(ctx: MutationCtx, bookingId: Id<"bookings">) {
   const user = await getAuthenticatedAppUser(ctx);
@@ -253,8 +280,12 @@ async function requireBookingManager(ctx: MutationCtx, bookingId: Id<"bookings">
   }
 
   if (user.role !== "admin") {
-    const listing = await ctx.db.get(booking.listingId);
-    if (!listing || listing.ownerId !== user._id) {
+    const owner = booking.serviceId
+      ? (await ctx.db.get(booking.serviceId))?.ownerId
+      : booking.listingId
+        ? (await ctx.db.get(booking.listingId))?.ownerId
+        : undefined;
+    if (!owner || owner !== user._id) {
       throw new ConvexError("Not authorized to manage this booking");
     }
   }

@@ -25,12 +25,22 @@ function buildSchedule(workingHours) {
 }
 
 /**
+ * A day that closes after midnight: 18:00 → 02:00. "HH:MM" strings compare in
+ * clock order, so a close earlier than the open can only mean the next day.
+ */
+const isOvernight = (day) => !day.isClosed && day.close < day.open
+
+/**
  * Weekly opening hours for a listing.
  *
  * This is the only place these can be set now — the web business dashboard was
  * removed and the mobile app never had the screen. It matters more than it
  * looks: bookings/queries.ts:getAvailableSlots generates slots from these hours,
  * so a listing without them can never offer a bookable time.
+ *
+ * A close earlier than the open is accepted and means after midnight — the
+ * cafés and restaurants that stay open late could not be entered at all while
+ * the form insisted the close came later on the same day.
  */
 export default function WorkingHoursModal({ listing, onClose }) {
   const saveWorkingHours = useMutation(api.listings.mutations.saveWorkingHours)
@@ -53,10 +63,11 @@ export default function WorkingHoursModal({ listing, onClose }) {
   }
 
   const handleSave = async () => {
-    const invalid = schedule.find((d) => !d.isClosed && d.open >= d.close)
+    // Equal times are the one ambiguous case: open all day, or not at all.
+    const invalid = schedule.find((d) => !d.isClosed && (!d.open || !d.close || d.open === d.close))
     if (invalid) {
       const label = WEEK_DAYS.find((d) => d.key === invalid.day)?.label
-      toast.error(`وقت الإغلاق يجب أن يكون بعد وقت الفتح (${label}).`)
+      toast.error(`حدّد وقتين مختلفين للفتح والإغلاق (${label}).`)
       return
     }
 
@@ -98,9 +109,19 @@ export default function WorkingHoursModal({ listing, onClose }) {
         <div className="admin-info-box">
           <p>
             مواعيد الحجز في التطبيق تُبنى من هذه الأوقات بفواصل نصف ساعة.
-            المكان بدون أوقات عمل لا يمكن الحجز فيه.
+            المكان بدون أوقات عمل لا يمكن الحجز فيه. إذا كان وقت الإغلاق قبل وقت
+            الفتح فهو بعد منتصف الليل (مثال: 18:00 — 02:00).
           </p>
         </div>
+
+        {/* getAvailableSlots walks from open to close on one day, so it finds
+            no slot at all in a day that ends after midnight. The hours are
+            still right to save; the operator should know what they cost. */}
+        {schedule.some(isOvernight) && (
+          <p className="admin-form-warning">
+            تنبيه: التطبيق لا يعرض مواعيد حجز بالفترات في الأيام التي يمتد دوامها بعد منتصف الليل.
+          </p>
+        )}
 
         <div className="admin-hours-toolbar">
           <button
@@ -145,6 +166,9 @@ export default function WorkingHoursModal({ listing, onClose }) {
                       onChange={(e) => updateDay(index, { close: e.target.value })}
                       aria-label={`وقت إغلاق ${label}`}
                     />
+                    {isOvernight(day) && (
+                      <span className="admin-hours-overnight">(بعد منتصف الليل)</span>
+                    )}
                   </div>
                 )}
               </div>

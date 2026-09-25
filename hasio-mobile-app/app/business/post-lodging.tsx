@@ -15,6 +15,7 @@ import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useNudge } from "@/hooks/useNudge";
 import Animated from "react-native-reanimated";
 import { enterFade } from "@/constants/motion";
 import { PhotoPickerField } from "@/components/hosting/PhotoPickerField";
@@ -31,16 +32,16 @@ import {
   isLive,
   isLocalPhoto,
   newStayLocation,
-  normaliseTime,
   ownerStatusOf,
-  parseWholeNumber,
   sameValues,
   stayFormFromListing,
+  stayPricingArgs,
   validateStayForm,
   withUploadedPhotos,
   type FieldErrors,
   type StayField,
   type StayFormValues,
+  type StayPricingArgs,
 } from "@/lib/listingForm";
 import { toLatinDigits } from "@/lib/digits";
 import { BackButton, Button } from "@/components/ui";
@@ -71,16 +72,6 @@ const FIELD_ORDER: readonly StayField[] = [
   "checkInTime",
   "checkOutTime",
 ];
-
-/** The booking fields as sent: parsed and checked, `undefined` = not sent. */
-type Pricing = {
-  pricePerNight?: number;
-  currency?: string;
-  maxGuests?: number;
-  unitCount?: number;
-  checkInTime: string;
-  checkOutTime: string;
-};
 
 export default function PostLodgingScreen() {
   const styles = useThemedStyles(makeStyles);
@@ -206,11 +197,12 @@ export default function PostLodgingScreen() {
     ? form.type
     : lodgingTypeOf(form.type);
 
-  // The server skips an undefined number and its validator rejects null, so a
-  // stored nightly price, guest cap or unit count cannot be cleared from here
-  // (open item: a backend change). When the host empties one, the form says
-  // it will be kept rather than pretending the save removed it.
-  const cannotClear = (key: "pricePerNight" | "maxGuests" | "unitCount") =>
+  // A nightly price can be cleared: an emptied one is sent as null and the
+  // server removes it, which makes the stay un-bookable (stayPricingArgs). A
+  // guest cap or unit count still cannot — the server skips an undefined
+  // number — so when the host empties one of those, the form says it will be
+  // kept rather than pretending the save removed it.
+  const cannotClear = (key: "maxGuests" | "unitCount") =>
     isEditing && saved[key] !== "" && form[key].trim() === "";
 
   // The editor used to open as an empty "new listing" form that filled in a
@@ -229,7 +221,14 @@ export default function PostLodgingScreen() {
   // for a second look.
   const status = ownerStatusOf(existing?.status);
   const canResubmit = status === "rejected" || status === "suspended";
-  const saveDisabled = isEditing && !dirty && !canResubmit;
+  const nothingToSave = isEditing && !dirty && !canResubmit;
+
+  // Save used to sit faded out while there was nothing to save, and a faded
+  // lime button reads as text on an Android screen (see hooks/useNudge.ts).
+  // It stays a button; pressed with nothing changed, it says so under itself.
+  const { style: unchangedNudgeStyle, nudge: nudgeUnchanged } = useNudge();
+  const [unchangedShown, setUnchangedShown] = useState(false);
+  if (unchangedShown && !nothingToSave) setUnchangedShown(false);
 
   const revealField = (field: StayField) => {
     const y = formY.current + (fieldY.current[field] ?? 0);
@@ -243,6 +242,11 @@ export default function PostLodgingScreen() {
 
   const handleSubmit = () => {
     if (isLoading) return;
+    if (nothingToSave) {
+      setUnchangedShown(true);
+      nudgeUnchanged(t("nothingChangedYet"));
+      return;
+    }
 
     // Checked here, before any photo uploads: the server enforces the same
     // limits (lib/listingForm.ts mirrors convex/listings/pricing.ts), and
@@ -255,18 +259,10 @@ export default function PostLodgingScreen() {
       return;
     }
 
-    // Undefined is "leave as stored" to the server, so an empty booking
-    // field is simply not sent. The price cannot be cleared that way; the
-    // form says so under the field instead of pretending it was.
-    const nightly = parseWholeNumber(form.pricePerNight);
-    const pricing: Pricing = {
-      pricePerNight: nightly,
-      currency: nightly !== undefined ? "SAR" : undefined,
-      maxGuests: parseWholeNumber(form.maxGuests),
-      unitCount: parseWholeNumber(form.unitCount),
-      checkInTime: normaliseTime(form.checkInTime),
-      checkOutTime: normaliseTime(form.checkOutTime),
-    };
+    // Undefined is "leave as stored" to the server, so an empty guest cap or
+    // unit count is simply not sent; an emptied nightly price in an edit is
+    // sent as null, which clears it (lib/listingForm.ts, stayPricingArgs).
+    const pricing = stayPricingArgs(form, isEditing ? "edit" : "create");
 
     // Any edit sends the listing back to review, and a listing under review
     // is hidden: fixing a price used to take a bookable hotel off the app
@@ -281,7 +277,7 @@ export default function PostLodgingScreen() {
     void save(pricing);
   };
 
-  const save = async (pricing: Pricing) => {
+  const save = async (pricing: StayPricingArgs) => {
     setIsLoading(true);
     const thisAttempt = ++attempt.current;
 
@@ -342,6 +338,9 @@ export default function PostLodgingScreen() {
           amenities: form.amenities.length > 0 ? form.amenities : undefined,
           images: images.length > 0 ? images : undefined,
           ...pricing,
+          // A new listing has nothing to clear; stayPricingArgs never sends
+          // null in create mode, and submitListing does not accept it.
+          pricePerNight: pricing.pricePerNight ?? undefined,
         });
       }
 
@@ -634,9 +633,11 @@ export default function PostLodgingScreen() {
               <Text style={[styles.fieldError, isRTL && styles.textRTL]}>
                 {t(errors.pricePerNight)}
               </Text>
-            ) : cannotClear("pricePerNight") ? (
+            ) : isEditing && saved.pricePerNight !== "" && form.pricePerNight.trim() === "" ? (
+              // Emptying the price now clears it, and a stay without a nightly
+              // price cannot be booked — worth saying before the host saves.
               <Text style={[styles.clearNote, isRTL && styles.textRTL]}>
-                {t("editCannotClear").replace("{value}", `${saved.pricePerNight} ${t("sar")}`)}
+                {t("clearPriceNote")}
               </Text>
             ) : null}
           </View>
@@ -850,9 +851,17 @@ export default function PostLodgingScreen() {
             onPress={handleSubmit}
             fullWidth
             loading={isLoading}
-            disabled={saveDisabled}
+            accessibilityHint={nothingToSave ? t("nothingChangedYet") : undefined}
             style={styles.submitButton}
           />
+
+          {unchangedShown && (
+            <Animated.View style={unchangedNudgeStyle}>
+              <Text style={styles.progressText} accessibilityLiveRegion="polite">
+                {t("nothingChangedYet")}
+              </Text>
+            </Animated.View>
+          )}
 
           {isLoading && (
             <Text style={styles.progressText} accessibilityLiveRegion="polite">

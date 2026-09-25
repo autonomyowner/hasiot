@@ -96,6 +96,26 @@ Also for iOS: `eas.json` sets `EXPO_NO_CAPABILITY_SYNC: "1"` and
 Anything needing a new capability (push, for example) requires enabling it on the
 App ID and regenerating the provisioning profile by hand.
 
+### Push notifications (from 1.1.0)
+
+1.1.0 is the first binary with `expo-notifications`. Two switches in `hasio-mobile-app/app.config.js` decide whether a build can receive push. They are read on the **EAS build server**, so they live in `eas.json` `build.<profile>.env`, not in your shell.
+
+| Switch | Default | Meaning |
+|---|---|---|
+| `HASIO_IOS_PUSH` | `"off"` in `eas.json` until the steps below are done | `off` strips the `aps-environment` entitlement, so the build signs with today's profile and the app never asks for notifications. |
+| `HASIO_ANDROID_PUSH` | unset | A production build **fails on purpose** when `google-services.json` is missing, so a push-less Android build can never happen by accident. `off` builds without push knowingly. |
+
+**Turning iOS push on** (once, in one sitting, because enabling the capability invalidates the current profile):
+1. **Nabil** creates an APNs key (`.p8`) in the Apple Developer portal for team `W23759GRP4` and sends the file and its Key ID. This is the only step that needs him.
+2. With the existing ASC API key, run the Windows recipe in `IOS_RELEASE_STATUS.md`: enable `PUSH_NOTIFICATIONS` on the App ID (`POST /v1/bundleIdCapabilities`), then generate a new App Store profile into `credentials/hasio.mobileprovision`.
+3. Upload the APNs key to EAS with `npx eas credentials` → iOS → Push Notifications, then set `HASIO_IOS_PUSH` to `"on"` in `eas.json`.
+
+**Turning Android push on:**
+1. Create a Firebase project, add the Android app `com.hasio.travel`, and download `google-services.json` into `hasio-mobile-app/` (it holds no secret and is committed).
+2. In Google Cloud, create a service-account key for FCM V1 and upload it with `npx eas credentials` → Android → FCM V1.
+
+**A new development client is needed** too. The installed one (`af661805`) has no push modules and cannot run 1.1.0's code: `npx eas build -p android --profile development`, after `google-services.json` exists.
+
 Full detail: `docs/PHASE1_RELEASE_CHECKLIST.md`.
 
 ---
@@ -132,11 +152,19 @@ that `main` is not behind a feature branch.**
 
 ## Deploying the website
 
-Vercel deploys automatically on push to `main`. That means **merging to `main`
-publishes the website**, including the admin panel.
+**hasio.net on Cloudflare is the live site since 2026-09-25** (landing page + `/admin`). It deploys by hand, from the repo root:
 
-So: if the admin panel gains a feature that calls a new Convex function, deploy
-Convex *before* merging, or the live panel breaks.
+```bash
+npm run build -- --mode cloudflare   # reads .env.cloudflare.local: the PRODUCTION Convex URLs
+(Select-String -Path dist/index.html -Pattern modulepreload).Count   # must be 0
+npx wrangler deploy                  # wrangler.jsonc: static assets, hasio.net + www.hasio.net
+```
+
+`.env.local` points at the development deployment, which is why the build needs `--mode cloudflare`.
+
+If the admin panel gains a feature that calls a new Convex function, deploy Convex **first**, or the live panel breaks.
+
+hasio.xyz (Vercel, still auto-deploying from `main`) is dropped. It only has to keep serving `privacy-policy.html`, `terms-of-service.html` and `support.html` for the live 1.0.2 / 1.0.0 binaries, which open them by absolute URL. The App Store's Support URL points there too, until Nabil changes it.
 
 ---
 
@@ -146,7 +174,8 @@ Convex *before* merging, or the live panel breaks.
 |---|---|
 | Convex prod | `hearty-ram-74.eu-west-1` — what the store apps talk to |
 | Convex dev | `limitless-mockingbird-449.eu-west-1` — for testing |
-| Website | Vercel, from `main` → https://www.hasio.xyz |
+| Website | Cloudflare Workers (static assets) → https://hasio.net, deployed by hand (above) |
+| Legacy website | Vercel, from `main` → https://www.hasio.xyz — only the three legal pages still matter |
 | Secrets | Convex dashboard env vars — `npx convex env set NAME value [--prod]` |
 
 Dev and prod env vars are **separate stores**. Setting one does not set the other.
@@ -163,3 +192,9 @@ console forms — **no build needed**, and they can be updated any time:
 - The privacy policy at `public/privacy-policy.html` (deploys with the website)
 
 Adding phone-number login means adding "Phone number" to all three.
+
+1.1.0 adds two more:
+- **Push tokens.** In Data Safety: "Device or other IDs", collected, not shared, for App functionality (notifications).
+- **Service bookings**, which share the traveller's name and phone with the service provider, the same way stay bookings do with the host.
+
+Update the privacy policy's three copies (`public/`, `hasio-mobile-app/assets/`, `hasio-mobile-app/docs/`) in the same change.

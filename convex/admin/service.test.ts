@@ -38,6 +38,17 @@ describe("toAdminUserRow", () => {
     const user = (await t.run((ctx) => ctx.db.get(id)))!;
     expect(toAdminUserRow(user).isPlaceholderEmail).toBe(false);
   });
+
+  it("carries an account rejection, so the table can tell it from one still waiting", async () => {
+    // The drawer said «مرفوض» from this field while the table, without it,
+    // said «بانتظار الاعتماد» for the same provider.
+    const t = makeT();
+    const id = await seedUser(t, { role: "service_provider", isApproved: false });
+    await t.run((ctx) => ctx.db.patch(id, { accountRejectionReason: "Blurred document" }));
+    const user = (await t.run((ctx) => ctx.db.get(id)))!;
+
+    expect(toAdminUserRow(user)).toMatchObject({ accountRejectionReason: "Blurred document" });
+  });
 });
 
 describe("suspendUserRecord", () => {
@@ -138,6 +149,24 @@ describe("listing suspension", () => {
     const restored = (await t.run((ctx) => ctx.db.get(listingId)))!;
     expect(restored.status).toBe("approved");
     expect(restored.suspendedReason).toBeUndefined();
+  });
+
+  it("will not suspend a listing that is not live, so reinstating cannot skip review", async () => {
+    // Suspending a pending listing and reinstating it used to approve it
+    // without anyone reviewing it. A submission is rejected instead.
+    const t = makeT();
+    const acting = await admin(t);
+    for (const status of ["pending", "rejected"]) {
+      const listingId = await seedHotel(t, { status });
+      await expect(
+        t.run((ctx) => suspendListingRecord(ctx, acting, listingId, "Reported", NOW))
+      ).rejects.toThrow(/Only a live listing can be suspended/);
+      expect((await t.run((ctx) => ctx.db.get(listingId)))!.status).toBe(status);
+    }
+    // Seed rows have no status and are live.
+    const seeded = await seedHotel(t, { status: "" });
+    await t.run((ctx) => suspendListingRecord(ctx, acting, seeded, "Closed", NOW));
+    expect((await t.run((ctx) => ctx.db.get(seeded)))!.status).toBe("suspended");
   });
 
   it("refuses to reinstate something that was never suspended", async () => {
@@ -245,6 +274,57 @@ describe("applyBookingStatusAsAdmin", () => {
       action: "booking.force",
       details: "cancelled → confirmed",
     });
+  });
+
+  it("drops the reason a booking was closed with once support reopens it", async () => {
+    // The apps — the live 1.0.x ones included — show a decline reason
+    // whenever the field is set, so a declined booking support confirmed
+    // after all read "Decline reason: …" beside "Confirmed".
+    const t = makeT();
+    const acting = await admin(t);
+    const userId = await seedUser(t);
+    const listingId = await seedHotel(t);
+    const stay = (checkIn: string, checkOut: string, status: string) =>
+      seedStay(t, { userId, listingId, checkIn, checkOut, status });
+    const declined = await stay("2026-09-10", "2026-09-13", "declined");
+    const cancelled = await stay("2026-09-20", "2026-09-21", "cancelled");
+    await t.run(async (ctx) => {
+      await ctx.db.patch(declined, { declineReason: "Fully booked" });
+      await ctx.db.patch(cancelled, { cancellationReason: "Changed plans" });
+    });
+
+    for (const bookingId of [declined, cancelled]) {
+      await t.run((ctx) =>
+        applyBookingStatusAsAdmin(ctx, acting, { bookingId, status: "confirmed" }, NOW)
+      );
+    }
+
+    const reopenedDecline = (await t.run((ctx) => ctx.db.get(declined)))!;
+    const reopenedCancel = (await t.run((ctx) => ctx.db.get(cancelled)))!;
+    expect(reopenedDecline.status).toBe("confirmed");
+    expect(reopenedDecline.declineReason).toBeUndefined();
+    expect(reopenedCancel.status).toBe("confirmed");
+    expect(reopenedCancel.cancellationReason).toBeUndefined();
+  });
+
+  it("keeps a closing reason while the booking stays closed that way", async () => {
+    const t = makeT();
+    const acting = await admin(t);
+    const userId = await seedUser(t);
+    const listingId = await seedHotel(t);
+    const bookingId = await seedStay(t, {
+      userId,
+      listingId,
+      checkIn: "2026-09-10",
+      checkOut: "2026-09-13",
+      status: "confirmed",
+    });
+
+    // Cancelled by support with a reason: it stays the booking's reason.
+    await t.run((ctx) =>
+      applyBookingStatusAsAdmin(ctx, acting, { bookingId, status: "cancelled", reason: "Host asked" }, NOW)
+    );
+    expect((await t.run((ctx) => ctx.db.get(bookingId)))!.cancellationReason).toBe("Host asked");
   });
 
   it("rejects a status that does not exist", async () => {

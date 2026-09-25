@@ -4,12 +4,11 @@ import ImageUploader from '../components/ImageUploader'
 import FilterSelect from '../components/FilterSelect'
 import {
   AMENITIES, CATEGORIES, CATEGORIES_BY_TYPE, CATEGORY_LABELS,
-  CITIES, CITY_LABELS, LISTING_TYPES, PRICE_RANGES, canonicalCity,
+  CITY_LABELS, CITY_OPTIONS, LISTING_TYPES, PIN_WARNING_KM, PRICE_RANGES,
+  SAUDI_BOUNDS, canonicalCity, cityCentre, defaultPin, distanceKm, insideSaudiArabia,
 } from '../constants'
 
-// Al-Ahsa oasis, so a new listing starts on the map where the app is centred
-// rather than at 0,0 in the Gulf of Guinea.
-const DEFAULT_COORDS = { lat: 25.3854, lng: 49.5683 }
+const DEFAULT_CITY = 'Al Ahsa'
 
 /** Empty string means "not set", which is different from zero. */
 function numberOrUndefined(value) {
@@ -18,7 +17,27 @@ function numberOrUndefined(value) {
   return Number.isFinite(parsed) ? parsed : NaN
 }
 
+/**
+ * How far the pin is from its city's centre, when both are known. Null for a
+ * pin that is not a number yet, or a city with no confirmed centre (Al Udayd,
+ * Al Bayda).
+ */
+function pinDistance(form) {
+  const lat = parseFloat(form.lat)
+  const lng = parseFloat(form.lng)
+  const centre = cityCentre(form.city)
+  if (!centre || Number.isNaN(lat) || Number.isNaN(lng)) return null
+  return distanceKm({ lat, lng }, centre)
+}
+
 export default function ListingForm({ initialData, onSubmit, onClose }) {
+  const isEdit = Boolean(initialData)
+  // Folded to the city above it: listings predating the Eastern Province list
+  // carry an Al-Ahsa village, which is no longer one of the options. Saving
+  // then writes the canonical name, which is the migration.
+  const initialCity = canonicalCity(initialData?.city) || DEFAULT_CITY
+  const initialPin = initialData?.coordinates ?? defaultPin(initialCity)
+
   const [form, setForm] = useState({
     type: initialData?.type || 'hotel',
     category: initialData?.category || 'luxury_hotel',
@@ -28,13 +47,10 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
     description_en: initialData?.description_en || '',
     description_ar: initialData?.description_ar || '',
     address: initialData?.address || '',
-    // Folded to the city above it: listings predating the Eastern Province list
-    // carry an Al-Ahsa village, which is no longer one of the options. Saving
-    // then writes the canonical name, which is the migration.
-    city: canonicalCity(initialData?.city) || 'Al Ahsa',
+    city: initialCity,
     region: initialData?.region || 'Eastern Province',
-    lat: initialData?.coordinates?.lat ?? DEFAULT_COORDS.lat,
-    lng: initialData?.coordinates?.lng ?? DEFAULT_COORDS.lng,
+    lat: initialPin.lat,
+    lng: initialPin.lng,
     phone: initialData?.phone || '',
     email: initialData?.email || '',
     website: initialData?.website || '',
@@ -86,6 +102,22 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
     set({ type, category, category_ar: CATEGORY_LABELS[category] || '' })
   }
 
+  // A pin still sitting on the old city's centre was never placed by hand, so
+  // it follows the city. One the operator typed stays where they put it.
+  const handleCityChange = (city) => {
+    const previous = defaultPin(form.city)
+    const untouched =
+      Number(form.lat) === previous.lat && Number(form.lng) === previous.lng
+    const next = defaultPin(city)
+    set(untouched ? { city, lat: next.lat, lng: next.lng } : { city })
+  }
+
+  // A warning, not a block: a resort between two cities, or a desert camp,
+  // can legitimately be far from the centre of the city it is listed under.
+  const distance = pinDistance(form)
+  const farFromCity = distance !== null && distance > PIN_WARNING_KM
+  const noCentre = !cityCentre(form.city)
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (saving) return
@@ -96,35 +128,67 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
       setError('الإحداثيات غير صحيحة.')
       return
     }
-    // Al-Ahsa sits well inside this box. Catching a swapped lat/lng here saves a
-    // pin dropped in the sea and a support message from a confused owner.
-    if (lat < 24 || lat > 27 || lng < 48 || lng > 51) {
-      setError('الإحداثيات خارج نطاق الأحساء. تحقق من خط العرض وخط الطول.')
+    // Every city Hasio covers is well inside this box. A point outside it is
+    // a typo or a swapped latitude and longitude — a pin dropped in the sea,
+    // and a confused owner.
+    if (!insideSaudiArabia(lat, lng)) {
+      setError(
+        `الإحداثيات خارج المملكة العربية السعودية. خط العرض بين ${SAUDI_BOUNDS.minLat} و${SAUDI_BOUNDS.maxLat}، وخط الطول بين ${SAUDI_BOUNDS.minLng} و${SAUDI_BOUNDS.maxLng} — تحقق أنهما غير معكوسين.`
+      )
       return
     }
 
     // Catch these here rather than letting the server reject after the form
     // has been filled in — the same rules as convex/listings/pricing.ts.
-    const price = numberOrUndefined(form.pricePerNight)
-    if (price !== undefined && (!Number.isInteger(price) || price <= 0 || price > 100000)) {
-      setError('سعر الليلة يجب أن يكون رقمًا صحيحًا بين 1 و 100000 ريال.')
-      return
+    if (isHotel) {
+      const price = numberOrUndefined(form.pricePerNight)
+      if (price !== undefined && (!Number.isInteger(price) || price <= 0 || price > 100000)) {
+        setError('سعر الليلة يجب أن يكون رقمًا صحيحًا بين 1 و 100000 ريال.')
+        return
+      }
+      const guests = numberOrUndefined(form.maxGuests)
+      if (guests !== undefined && (!Number.isInteger(guests) || guests < 1 || guests > 20)) {
+        setError('الحد الأقصى للضيوف يجب أن يكون بين 1 و 20.')
+        return
+      }
+      const units = numberOrUndefined(form.unitCount)
+      if (units !== undefined && (!Number.isInteger(units) || units < 1 || units > 500)) {
+        setError('عدد الوحدات يجب أن يكون بين 1 و 500.')
+        return
+      }
+      const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/
+      if (!hhmm.test(form.checkInTime) || !hhmm.test(form.checkOutTime)) {
+        setError('أوقات الوصول والمغادرة يجب أن تكون بصيغة HH:MM.')
+        return
+      }
     }
-    const guests = numberOrUndefined(form.maxGuests)
-    if (guests !== undefined && (!Number.isInteger(guests) || guests < 1 || guests > 20)) {
-      setError('الحد الأقصى للضيوف يجب أن يكون بين 1 و 20.')
-      return
-    }
-    const units = numberOrUndefined(form.unitCount)
-    if (units !== undefined && (!Number.isInteger(units) || units < 1 || units > 500)) {
-      setError('عدد الوحدات يجب أن يكون بين 1 و 500.')
-      return
-    }
-    const hhmm = /^([01]\d|2[0-3]):[0-5]\d$/
-    if (isHotel && (!hhmm.test(form.checkInTime) || !hhmm.test(form.checkOutTime))) {
-      setError('أوقات الوصول والمغادرة يجب أن تكون بصيغة HH:MM.')
-      return
-    }
+
+    // A blank field means "not set". An edit says so with null, which the
+    // server's updateListing takes as "remove this field"; leaving it out
+    // would keep the old value, so a phone number or a nightly rate could never
+    // be taken off. A new listing simply leaves the field out.
+    const blank = isEdit ? null : undefined
+    const text = (value) => value.trim() || blank
+    const number = (value) => numberOrUndefined(value) ?? blank
+
+    // Only a hotel carries booking terms. Anything else has them cleared: a
+    // hotel changed into a restaurant must not keep a nightly rate it can no
+    // longer be booked at.
+    const pricing = isHotel
+      ? {
+          pricePerNight: number(form.pricePerNight),
+          maxGuests: number(form.maxGuests),
+          unitCount: number(form.unitCount),
+          checkInTime: form.checkInTime || blank,
+          checkOutTime: form.checkOutTime || blank,
+        }
+      : {
+          pricePerNight: blank,
+          maxGuests: blank,
+          unitCount: blank,
+          checkInTime: blank,
+          checkOutTime: blank,
+        }
 
     setError('')
     setSaving(true)
@@ -135,25 +199,20 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
         category_ar: form.category_ar || CATEGORY_LABELS[form.category] || undefined,
         name_en: form.name_en.trim(),
         name_ar: form.name_ar.trim(),
-        description_en: form.description_en.trim() || undefined,
-        description_ar: form.description_ar.trim() || undefined,
+        description_en: text(form.description_en),
+        description_ar: text(form.description_ar),
         address: form.address.trim(),
         city: form.city,
         region: form.region.trim() || undefined,
         coordinates: { lat, lng },
-        phone: form.phone.trim() || undefined,
-        email: form.email.trim() || undefined,
-        website: form.website.trim() || undefined,
-        priceRange: form.priceRange || undefined,
-        // Blank means "leave it unset", which is why these are undefined
-        // rather than 0 — a listing with no nightly price is not bookable,
-        // and 0 would be a free room.
-        pricePerNight: numberOrUndefined(form.pricePerNight),
-        currency: numberOrUndefined(form.pricePerNight) === undefined ? undefined : 'SAR',
-        maxGuests: numberOrUndefined(form.maxGuests),
-        unitCount: numberOrUndefined(form.unitCount),
-        checkInTime: isHotel ? form.checkInTime || undefined : undefined,
-        checkOutTime: isHotel ? form.checkOutTime || undefined : undefined,
+        phone: text(form.phone),
+        email: text(form.email),
+        website: text(form.website),
+        priceRange: form.priceRange || blank,
+        ...pricing,
+        // The server attaches SAR to a price and drops it with a cleared one;
+        // saying so here keeps the two in step on a create too.
+        currency: typeof pricing.pricePerNight === 'number' ? 'SAR' : undefined,
         images,
         amenities,
         isVerified: form.isVerified,
@@ -244,10 +303,10 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
                 <label className="admin-form-label">المدينة *</label>
                 <FilterSelect
                   value={form.city}
-                  onChange={(v) => set({ city: v })}
+                  onChange={handleCityChange}
                   placeholder="المدينة"
                   className="w-full"
-                  options={CITIES.map((c) => ({ value: c, label: CITY_LABELS[c] || c }))}
+                  options={CITY_OPTIONS}
                 />
               </div>
               <div className="admin-form-group">
@@ -276,6 +335,19 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
               </div>
             </div>
 
+            {farFromCity && (
+              <p className="admin-form-warning" role="status">
+                هذه النقطة تبعد نحو {Math.round(distance)} كم عن مركز {CITY_LABELS[form.city] || form.city}.
+                تأكد أن الإحداثيات تخص هذا المكان وأن المدينة صحيحة — يمكنك الحفظ على أي حال.
+              </p>
+            )}
+            {noCentre && (
+              <p className="admin-form-hint">
+                لا يوجد مركز مؤكد لمدينة {CITY_LABELS[form.city] || form.city}، فلا يمكن التحقق من
+                بُعد النقطة عنها. أدخل إحداثيات المكان الفعلية.
+              </p>
+            )}
+
             <div className="admin-form-row">
               <div className="admin-form-group">
                 <label className="admin-form-label">المنطقة</label>
@@ -300,7 +372,8 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
             </div>
 
             {/* Booking & pricing — stays only. Leaving the nightly price blank
-                keeps the listing in the directory without a Book button. */}
+                keeps the listing in the directory without a Book button;
+                emptying it on an edit takes the Book button away. */}
             {isHotel && (
               <>
                 <div className="admin-form-row-3">
@@ -309,7 +382,8 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
                     <input
                       className="admin-form-input"
                       type="number"
-                      min="0"
+                      min="1"
+                      max="100000"
                       step="1"
                       dir="ltr"
                       value={form.pricePerNight}
@@ -346,6 +420,9 @@ export default function ListingForm({ initialData, onSubmit, onClose }) {
                     />
                   </div>
                 </div>
+                <p className="admin-form-hint">
+                  بدون سعر لليلة يظهر الفندق في الدليل دون زر الحجز. لإزالة السعر امسح الحقل واحفظ.
+                </p>
 
                 <div className="admin-form-row">
                   <div className="admin-form-group">
