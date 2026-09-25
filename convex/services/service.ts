@@ -1,5 +1,5 @@
 import { ConvexError } from "convex/values";
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { enforceRateLimit } from "../rateLimit";
 import { SERVICE_ERRORS, validateServiceInput } from "./logic";
@@ -59,6 +59,27 @@ export type UpdateServiceArgs = Validated &
     maxGroupSize?: number | null;
   };
 
+/**
+ * What validateServiceInput hands back, typed from the schema: in create mode
+ * the type and both titles are always there; any other key only when sent.
+ */
+type Checked = Partial<
+  Pick<
+    Doc<"services">,
+    | "serviceType"
+    | "title_en"
+    | "title_ar"
+    | "description_en"
+    | "description_ar"
+    | "priceUnit"
+    | "price"
+    | "maxGroupSize"
+    | "images"
+    | "city"
+  >
+>;
+type CheckedForCreate = Checked & Pick<Doc<"services">, "serviceType" | "title_en" | "title_ar">;
+
 function passThrough(args: PassThrough): PassThrough {
   const out: Record<string, unknown> = {};
   for (const key of [
@@ -87,7 +108,7 @@ export async function submitServiceForUser(
 
   // Before the rate limit, so a typo does not spend one of the day's twenty.
   // The city is checked only when sent: the live apps never send one.
-  const checked = validateServiceInput(args, "create");
+  const checked = validateServiceInput(args, "create") as CheckedForCreate;
 
   await enforceRateLimit(
     ctx,
@@ -100,7 +121,7 @@ export async function submitServiceForUser(
   // used to store would render as a one-star service.
   return await ctx.db.insert("services", {
     ...passThrough(args),
-    ...(checked as Validated & { serviceType: string; title_en: string; title_ar: string }),
+    ...checked,
     ownerId: user._id,
     status: "pending",
     createdAt: now,
@@ -122,7 +143,7 @@ export async function updateServiceForUser(
   const service = await ownService(ctx, user, args.serviceId);
 
   const { serviceId, ...fields } = args;
-  const checked = validateServiceInput(fields, "update");
+  const checked = validateServiceInput(fields, "update") as Checked;
 
   await ctx.db.patch(serviceId, {
     ...passThrough(fields),
@@ -174,7 +195,7 @@ async function ownService(
  * another owner.
  */
 export async function hasOpenBookings(
-  ctx: MutationCtx,
+  ctx: QueryCtx,
   service: Pick<Doc<"services">, "_id" | "ownerId">
 ): Promise<boolean> {
   for (const status of OPEN_BOOKING_STATUSES) {
