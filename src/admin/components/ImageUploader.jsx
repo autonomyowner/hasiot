@@ -5,6 +5,11 @@ import { useToast } from './toast-context'
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024
 
+// A failure this component words itself, as opposed to one the server raised.
+// toast.error only shows a server error's own Arabic sentence, so these carry
+// theirs and are passed on as text.
+class UploadError extends Error {}
+
 /**
  * Photo upload for the admin listing form.
  *
@@ -17,7 +22,12 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024
  * `images` is an array of URL strings and index 0 is the cover, so ordering is
  * a real editing operation, not decoration.
  */
-export default function ImageUploader({ images, onChange, max = 8 }) {
+export default function ImageUploader({
+  images,
+  onChange,
+  max = 8,
+  emptyHint = 'لا توجد صور. الأماكن بدون صور تظهر فارغة في التطبيق.',
+}) {
   const generateUploadUrl = useMutation(api.users.mutations.generateUploadUrl)
   const convex = useConvex()
   const toast = useToast()
@@ -63,12 +73,12 @@ export default function ImageUploader({ images, onChange, max = 8 }) {
           body: file,
         })
         if (!response.ok) {
-          throw new Error(`فشل رفع "${file.name}" (${response.status})`)
+          throw new UploadError(`فشل رفع "${file.name}" (${response.status})`)
         }
 
         const { storageId } = await response.json()
         const url = await convex.query(api.users.queries.getStorageUrl, { storageId })
-        if (!url) throw new Error(`تعذّر الحصول على رابط الصورة "${file.name}"`)
+        if (!url) throw new UploadError(`تعذّر الحصول على رابط الصورة "${file.name}"`)
 
         uploaded.push(url)
         // Commit after each file: if the fourth upload fails, the first three
@@ -79,7 +89,7 @@ export default function ImageUploader({ images, onChange, max = 8 }) {
         uploaded.length === 1 ? 'تم رفع الصورة' : `تم رفع ${uploaded.length} صور`
       )
     } catch (error) {
-      toast.error(error)
+      toast.error(error instanceof UploadError ? error.message : error)
     } finally {
       setProgress(null)
     }
@@ -165,9 +175,7 @@ export default function ImageUploader({ images, onChange, max = 8 }) {
       </div>
 
       {images.length === 0 && !progress && (
-        <p className="admin-uploader-empty">
-          لا توجد صور. الأماكن بدون صور تظهر فارغة في التطبيق.
-        </p>
+        <p className="admin-uploader-empty">{emptyHint}</p>
       )}
     </div>
   )
