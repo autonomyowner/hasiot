@@ -2381,6 +2381,40 @@
   .admin-drawer, .admin-drawer-overlay { animation: none; }
 }
 
+/* --- Segmented choice (الكل / إقامات / خدمات) ------------------------------ */
+.admin-segmented {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--ar-r-pill);
+  background: var(--ar-line-soft);
+}
+.admin-segmented button {
+  min-height: 30px;
+  padding: 0.3125rem 0.875rem;
+  border: none;
+  border-radius: var(--ar-r-pill);
+  background: none;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ar-ink-2);
+  cursor: pointer;
+  transition: background-color 0.14s var(--ar-ease), color 0.14s var(--ar-ease);
+}
+.admin-segmented button:hover { color: var(--ar-ink); }
+.admin-segmented button[aria-pressed="true"] {
+  background: var(--ar-surface);
+  color: var(--ar-ink);
+  box-shadow: 0 1px 2px rgba(20, 32, 28, 0.1);
+}
+.admin-segmented button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 45%, transparent);
+}
+
 /* "The figures are approximate": the counts hit their read cap. */
 .ar-capped {
   display: inline-flex;
