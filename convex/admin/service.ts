@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { logAdminAction, labelFor } from "./activity";
@@ -9,6 +10,14 @@ import {
   TERMINAL_STATUSES,
   type BookingStatus,
 } from "../bookings/logic";
+import {
+  listingEditPatch,
+  pricingToValidate,
+  validatePricing,
+  withPricingDefaults,
+  type PricingArgs,
+} from "../listings/pricing";
+import { LISTING_ERRORS } from "../listings/queries";
 
 /**
  * Admin operations, with the acting admin already resolved.
@@ -16,7 +25,124 @@ import {
  * Same reasoning as bookings/service.ts: convex-test cannot reach anything
  * behind requireAdmin, so the rules live here where a test can call them
  * directly and the mutations stay thin.
+ *
+ * Every refusal is a ConvexError in the house format (Arabic, " / ",
+ * English): production redacts a plain Error to "Server Error", and the panel
+ * is Arabic, so an admin must be able to read why something was refused.
  */
+
+export const ADMIN_ERRORS = {
+  USER_NOT_FOUND: "المستخدم غير موجود. / User not found.",
+  BOOKING_NOT_FOUND: "الحجز غير موجود. / Booking not found.",
+  SUSPEND_REASON_REQUIRED: "سبب الإيقاف مطلوب. / A suspension reason is required.",
+  REJECT_REASON_REQUIRED: "سبب الرفض مطلوب. / A rejection reason is required.",
+  CANNOT_SUSPEND_SELF: "لا يمكنك إيقاف حسابك. / You cannot suspend your own account.",
+  CANNOT_SUSPEND_ADMIN: "لا يمكن إيقاف حساب مسؤول. / An admin account cannot be suspended.",
+  LISTING_NOT_SUSPENDED: "هذا المكان ليس موقوفًا. / This listing is not suspended.",
+} as const;
+
+function refuse(message: string): never {
+  throw new ConvexError(message);
+}
+
+type ListingText = {
+  type: string;
+  name_en: string;
+  name_ar: string;
+  category: string;
+  category_ar?: string;
+  description_en?: string;
+  description_ar?: string;
+  address: string;
+  city: string;
+  region?: string;
+  coordinates: { lat: number; lng: number };
+  phone?: string;
+  email?: string;
+  website?: string;
+  priceRange?: string;
+  amenities?: string[];
+  languages?: string[];
+  images?: string[];
+  isVerified?: boolean;
+  isActive?: boolean;
+};
+
+export type AdminListingInput = ListingText & PricingArgs;
+
+type Nullable<T> = { [K in keyof T]?: T[K] | null };
+
+/**
+ * An admin edit: any subset of the fields, where `null` clears one. Only the
+ * fields a person can meaningfully empty are nullable — a listing without a
+ * name, an address or a pin is not a listing.
+ */
+export type AdminListingUpdate = { id: Id<"listings"> } & Partial<
+  Omit<
+    ListingText,
+    "phone" | "email" | "website" | "priceRange" | "description_en" | "description_ar"
+  >
+> &
+  Nullable<
+    Pick<ListingText, "phone" | "email" | "website" | "priceRange" | "description_en" | "description_ar">
+  > &
+  Nullable<PricingArgs>;
+
+/**
+ * Create a listing from the panel. Published straight away: the admin is the
+ * reviewer, so there is no queue to send it to.
+ */
+export async function createListingAsAdmin(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  args: AdminListingInput,
+  now: number = Date.now()
+): Promise<Id<"listings">> {
+  validatePricing(args);
+
+  const id = await ctx.db.insert("listings", {
+    ...withPricingDefaults(args),
+    status: "approved",
+    rating: 0,
+    reviewCount: 0,
+    isActive: args.isActive ?? true,
+    isVerified: args.isVerified ?? false,
+    createdAt: now,
+    updatedAt: now,
+  });
+
+  await logAdminAction(ctx, admin, {
+    action: "listing.create",
+    targetType: "listing",
+    targetId: id,
+    summary: args.name_ar || args.name_en,
+  });
+  return id;
+}
+
+/** Edit a listing from the panel. Its review status is the admin's to keep. */
+export async function updateListingAsAdmin(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  args: AdminListingUpdate,
+  now: number = Date.now()
+): Promise<Id<"listings">> {
+  const { id, ...updates } = args;
+  validatePricing(pricingToValidate(updates));
+
+  const existing = await ctx.db.get(id);
+  if (!existing) refuse(LISTING_ERRORS.NOT_FOUND);
+
+  await ctx.db.patch(id, { ...listingEditPatch(updates), updatedAt: now });
+
+  await logAdminAction(ctx, admin, {
+    action: "listing.update",
+    targetType: "listing",
+    targetId: id,
+    summary: labelFor(existing),
+  });
+  return id;
+}
 
 /** Shape the admin panel's user table renders. */
 export function toAdminUserRow(user: Doc<"users">) {

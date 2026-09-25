@@ -4,11 +4,14 @@ import { requireAdmin } from "../auth";
 import { logAdminAction, labelFor } from "./activity";
 import {
   applyBookingStatusAsAdmin,
+  createListingAsAdmin,
   reinstateListingRecord,
   suspendListingRecord,
   suspendUserRecord,
   unsuspendUserRecord,
+  updateListingAsAdmin,
 } from "./service";
+import { CLEARABLE_PRICING_ARGS, PRICING_ARGS } from "../listings/pricing";
 import type { Id } from "../_generated/dataModel";
 
 // One bulk call may not touch more documents than this. Convex transactions are
@@ -37,6 +40,9 @@ export const createListing = mutation({
     email: v.optional(v.string()),
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
+    // The nightly price and stay terms the form has sent since 2449fbf. Until
+    // these were accepted every hotel save was rejected by the validator.
+    ...PRICING_ARGS,
     amenities: v.optional(v.array(v.string())),
     languages: v.optional(v.array(v.string())),
     // Convex storage URLs in display order — index 0 is the cover. Same shape
@@ -47,29 +53,11 @@ export const createListing = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const now = Date.now();
-    const id = await ctx.db.insert("listings", {
-      ...args,
-      status: "approved",
-      rating: 0,
-      reviewCount: 0,
-      isActive: args.isActive ?? true,
-      isVerified: args.isVerified ?? false,
-      createdAt: now,
-      updatedAt: now,
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: "listing.create",
-      targetType: "listing",
-      targetId: id,
-      summary: args.name_ar || args.name_en,
-    });
-    return id;
+    return await createListingAsAdmin(ctx, admin, args);
   },
 });
 
-// Update a listing
+// Update a listing. `null` clears a field; a field left out is not touched.
 export const updateListing = mutation({
   args: {
     id: v.id("listings"),
@@ -78,8 +66,8 @@ export const updateListing = mutation({
     name_ar: v.optional(v.string()),
     category: v.optional(v.string()),
     category_ar: v.optional(v.string()),
-    description_en: v.optional(v.string()),
-    description_ar: v.optional(v.string()),
+    description_en: v.optional(v.union(v.string(), v.null())),
+    description_ar: v.optional(v.union(v.string(), v.null())),
     address: v.optional(v.string()),
     city: v.optional(v.string()),
     region: v.optional(v.string()),
@@ -87,10 +75,11 @@ export const updateListing = mutation({
       lat: v.number(),
       lng: v.number(),
     })),
-    phone: v.optional(v.string()),
-    email: v.optional(v.string()),
-    website: v.optional(v.string()),
-    priceRange: v.optional(v.string()),
+    phone: v.optional(v.union(v.string(), v.null())),
+    email: v.optional(v.union(v.string(), v.null())),
+    website: v.optional(v.union(v.string(), v.null())),
+    priceRange: v.optional(v.union(v.string(), v.null())),
+    ...CLEARABLE_PRICING_ARGS,
     amenities: v.optional(v.array(v.string())),
     languages: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
@@ -99,24 +88,7 @@ export const updateListing = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const { id, ...updates } = args;
-    const existing = await ctx.db.get(id);
-    if (!existing) {
-      throw new Error("Listing not found");
-    }
-
-    await ctx.db.patch(id, {
-      ...updates,
-      updatedAt: Date.now(),
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: "listing.update",
-      targetType: "listing",
-      targetId: id,
-      summary: labelFor(existing),
-    });
-    return id;
+    return await updateListingAsAdmin(ctx, admin, args);
   },
 });
 

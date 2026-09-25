@@ -28,6 +28,57 @@ export type PricingArgs = {
   checkOutTime?: string;
 };
 
+/**
+ * PRICING_ARGS for an edit, where `null` clears a field. `undefined` still
+ * means "not sent, leave it alone" — the only way a form can say "remove the
+ * nightly rate" without also saying "set it to something".
+ */
+export const CLEARABLE_PRICING_ARGS = {
+  pricePerNight: v.optional(v.union(v.number(), v.null())),
+  currency: v.optional(v.string()),
+  maxGuests: v.optional(v.union(v.number(), v.null())),
+  unitCount: v.optional(v.union(v.number(), v.null())),
+  checkInTime: v.optional(v.union(v.string(), v.null())),
+  checkOutTime: v.optional(v.union(v.string(), v.null())),
+};
+
+type Clearable<T> = { [K in keyof T]?: T[K] | null };
+
+/** The values an edit asks to set, for validatePricing: a `null` has nothing to check. */
+export function pricingToValidate(args: Clearable<PricingArgs>): PricingArgs {
+  return {
+    pricePerNight: args.pricePerNight ?? undefined,
+    currency: args.currency ?? undefined,
+    maxGuests: args.maxGuests ?? undefined,
+    unitCount: args.unitCount ?? undefined,
+    checkInTime: args.checkInTime ?? undefined,
+    checkOutTime: args.checkOutTime ?? undefined,
+  };
+}
+
+/**
+ * The patch a listing edit writes.
+ *
+ * A field that was not sent is left out, so an edit never blanks what it did
+ * not mention; `null` becomes `undefined`, which a Convex patch treats as
+ * "remove the field". The currency follows the price both ways — attached
+ * when a price is set, removed when it is cleared — so a listing never shows
+ * a currency with no rate, or a rate with no currency.
+ */
+export function listingEditPatch(updates: Record<string, unknown>): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(updates)) {
+    if (value === undefined) continue;
+    patch[key] = value === null ? undefined : value;
+  }
+  if (updates.pricePerNight === null) {
+    patch.currency = undefined;
+  } else if (updates.pricePerNight !== undefined && updates.currency === undefined) {
+    patch.currency = "SAR";
+  }
+  return patch;
+}
+
 // A nightly rate above this is far likelier to be a typo (an extra zero, or a
 // monthly figure) than a real price, and a guest should not be quoted it.
 const MAX_PRICE_PER_NIGHT = 100_000;

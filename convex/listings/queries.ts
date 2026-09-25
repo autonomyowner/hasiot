@@ -10,6 +10,35 @@ import { Id } from "../_generated/dataModel";
 const MAX_SCAN = 1000;
 const MAX_LIST = 200;
 
+/**
+ * Refusals about a listing, Arabic first then English. The app matches the
+ * English half (lib/submitError.ts: /not found|Not your listing/), so that
+ * wording is an API. Shared by the owner's mutations and the admin panel.
+ */
+export const LISTING_ERRORS = {
+  NOT_FOUND: "المكان غير موجود. / Listing not found.",
+  NOT_YOURS: "هذا المكان ليس لك. / Not your listing.",
+  HAS_OPEN_BOOKINGS:
+    "لا يمكن حذف مكان لديه حجوزات قائمة. / A listing with open bookings cannot be deleted.",
+} as const;
+
+/**
+ * Whether anyone is still waiting on this listing: a request the host has not
+ * answered, or a stay they have promised. Deleting it then would strand a
+ * guest with a booking for a place that no longer exists.
+ */
+export async function listingHasOpenBookings(
+  ctx: QueryCtx,
+  listingId: Id<"listings">
+): Promise<boolean> {
+  const open = await ctx.db
+    .query("bookings")
+    .withIndex("by_listingId", (q) => q.eq("listingId", listingId))
+    .filter((q) => q.or(q.eq(q.field("status"), "pending"), q.eq(q.field("status"), "confirmed")))
+    .first();
+  return open !== null;
+}
+
 // Helper: check if listing is publicly visible (approved or no status = seed data)
 export function isPublicListing(listing: { isActive?: boolean; status?: string }) {
   if (listing.isActive === false) return false;
