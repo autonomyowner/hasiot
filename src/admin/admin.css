@@ -2087,3 +2087,62 @@
 .admin-host-name {
   font-weight: 600;
 }
+
+/* ==========================================================================
+   1.1.0 — errors, drawers, and the pieces the new tabs share
+   ========================================================================== */
+
+/* A failure leads with its Arabic sentence; the raw message is folded under
+   it for whoever debugs, rather than being the first thing an operator reads. */
+.admin-error-details {
+  margin-top: 0.75rem;
+  width: 100%;
+  max-width: 60ch;
+  text-align: start;
+}
+.admin-error-details summary {
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: var(--ar-ink-3);
+}
+.admin-error-details pre {
+  margin: 0.5rem 0 0;
+  padding: 0.75rem;
+  max-height: 12rem;
+  overflow: auto;
+  border-radius: var(--ar-r-sm);
+  background: var(--ar-line-soft);
+  font-size: 0.75rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  text-align: left;
+}
+
+/* The bell when the counts could not be loaded: a hollow ring instead of the
+   gold dot, so it never claims there is nothing waiting. */
+.admin-icon-btn.has-error::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  inset-inline-end: 9px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 2px solid var(--ar-danger);
+  background: #fdfcf7;
+}
+
+/* "The figures are approximate": the counts hit their read cap. */
+.ar-capped {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--ar-r-pill);
+  background: #fdf3d9;
+  color: #8a6100;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: help;
+}

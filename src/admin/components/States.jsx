@@ -1,4 +1,5 @@
 import { Component } from 'react'
+import { readableError } from './toast-context'
 
 /**
  * The four states every tab in this panel now renders explicitly. Before this,
@@ -50,15 +51,26 @@ export function EmptyState({ title, hint, action }) {
   )
 }
 
-export function ErrorState({ message, onRetry }) {
+/**
+ * A failure, in Arabic, with the technical detail folded away.
+ *
+ * `error` is the thrown value: its readable sentence leads (the Arabic half of
+ * a server refusal, or a named session / deployment problem), and the raw
+ * message sits behind «التفاصيل التقنية» for whoever debugs it, instead of
+ * being the first thing an operator reads.
+ */
+export function ErrorState({ title = 'تعذّر تحميل البيانات', error, message, onRetry }) {
+  const readable = message ?? (error ? readableError(error, { log: false }) : null)
+  const detail = error ? String(error?.message || error).slice(0, 2000) : null
+
   return (
-    <div className="admin-empty admin-empty-error">
+    <div className="admin-empty admin-empty-error" role="alert">
       <svg className="admin-empty-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
         <path d="M12 7.5v5M12 16h.01" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
-      <p className="admin-empty-title">تعذّر تحميل البيانات</p>
-      {message && <p className="admin-empty-hint">{message}</p>}
+      <p className="admin-empty-title">{title}</p>
+      {readable && <p className="admin-empty-hint">{readable}</p>}
       <div className="admin-empty-action">
         <button
           type="button"
@@ -68,21 +80,26 @@ export function ErrorState({ message, onRetry }) {
           إعادة المحاولة
         </button>
       </div>
+      {detail && (
+        <details className="admin-error-details">
+          <summary>التفاصيل التقنية</summary>
+          <pre dir="ltr">{detail}</pre>
+        </details>
+      )}
     </div>
   )
 }
 
 /**
- * A Convex `useQuery` that throws — an expired session hitting requireAdmin, for
- * instance — throws during render. Without a boundary here the root
- * ErrorBoundary catches it and replaces the whole panel with an English "reload"
- * screen. Mount one per tab (keyed by tab id) so the failure stays in the tab
- * that caused it and the nav still works.
+ * Catch a render failure in one part of the panel and draw `fallback` in its
+ * place, so the rest keeps working. `fallback(error, retry)`; `retry` renders
+ * the children again.
  */
-export class TabErrorBoundary extends Component {
+export class SectionBoundary extends Component {
   constructor(props) {
     super(props)
     this.state = { error: null }
+    this.retry = () => this.setState({ error: null })
   }
 
   static getDerivedStateFromError(error) {
@@ -90,18 +107,66 @@ export class TabErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('Admin tab error:', error, info)
+    console.error(`[admin] ${this.props.name || 'section'} failed:`, error, info)
   }
 
   render() {
-    if (this.state.error) {
-      return (
-        <ErrorState
-          message={this.state.error?.message?.slice(0, 300)}
-          onRetry={() => this.setState({ error: null })}
-        />
-      )
-    }
+    if (this.state.error) return this.props.fallback(this.state.error, this.retry)
     return this.props.children
   }
+}
+
+/**
+ * A Convex `useQuery` that throws — an expired session hitting requireAdmin, for
+ * instance — throws during render. Without a boundary here the root
+ * ErrorBoundary catches it and replaces the whole panel with the site's English
+ * "reload" screen. Mount one per tab (keyed by tab id) so the failure stays in
+ * the tab that caused it, reads in Arabic, and the nav still works.
+ */
+export function TabErrorBoundary({ children }) {
+  return (
+    <SectionBoundary
+      name="tab"
+      fallback={(error, retry) => (
+        <ErrorState title="تعذّر تحميل هذا القسم" error={error} onRetry={retry} />
+      )}
+    >
+      {children}
+    </SectionBoundary>
+  )
+}
+
+/**
+ * The foot of a paged table: a button while more pages exist, placeholder rows
+ * while one is on its way, nothing once the list is complete.
+ */
+export function LoadMore({ status, onLoadMore, cols = 5 }) {
+  if (status === 'LoadingMore') return <TableSkeleton rows={2} cols={cols} />
+  if (status !== 'CanLoadMore') return null
+  return (
+    <div className="admin-load-more">
+      <button type="button" className="admin-btn admin-btn-secondary" onClick={onLoadMore}>
+        تحميل المزيد
+      </button>
+    </div>
+  )
+}
+
+/**
+ * A paged list with nothing on screen yet but more pages left to read: the
+ * automatic follow-up stopped after several empty pages (see usePagedList).
+ * Saying "no results" here would be false, so it offers to keep looking.
+ */
+export function KeepLooking({ onLoadMore }) {
+  return (
+    <EmptyState
+      title="لا نتائج في ما تمت قراءته حتى الآن"
+      hint="بقيت سجلات أخرى لم تُقرأ بعد، وقد تحتوي على نتائج مطابقة."
+      action={
+        <button type="button" className="admin-btn admin-btn-secondary" onClick={onLoadMore}>
+          متابعة البحث
+        </button>
+      }
+    />
+  )
 }

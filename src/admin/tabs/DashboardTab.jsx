@@ -4,7 +4,14 @@ import { api } from '../../../convex/_generated/api'
 import { Skeleton } from '../ui/skeleton'
 import { DotMatrix, Donut, LineChart, SegmentBar } from '../components/Charts'
 import { STATUS_COLORS, formatNumber } from '../components/chart-tokens'
-import { BOOKING_STATUS_COLORS, BOOKING_STATUS_LABELS, TYPE_LABELS } from '../constants'
+import { ErrorState } from '../components/States'
+import { queuesOf, queueTotalOf } from '../stats'
+import {
+  BOOKING_STATUS_COLORS,
+  TYPE_LABELS,
+  bookingStatusLabel,
+  orUnknown,
+} from '../constants'
 
 const GOLD = '#D4AF37'
 const BRAND = '#0D7A5F'
@@ -16,25 +23,54 @@ const BRAND = '#0D7A5F'
  * Reading order is work → movement → health. The old version opened on eleven
  * identical counters, which made "3 accounts have been waiting since Tuesday"
  * look exactly like "56 listings exist".
+ *
+ * `stats` comes from the shell, which subscribes once for the header and this
+ * tab together (stats.js).
  */
-export default function DashboardTab({ onNavigate, user }) {
-  const stats = useQuery(api.admin.queries.getDashboardStats)
+export default function DashboardTab({ onNavigate, user, stats, statsError }) {
   const recentBookings = useQuery(api.admin.queries.listAllBookings, { limit: 4 })
 
+  if (statsError) {
+    return <ErrorState title="تعذّر تحميل لوحة المعلومات" error={statsError} />
+  }
   if (stats === undefined) return <DashboardSkeleton />
 
+  // One row per queue, each piece of work counted once. The old list had a
+  // row for stay requests and another for every pending booking, which
+  // counted each stay twice — in the rows and in the total above them.
+  const q = queuesOf(stats)
   const queues = [
-    { label: 'محتوى بانتظار المراجعة', value: stats.pendingContent, tab: 'content' },
-    { label: 'خدمات بانتظار المراجعة', value: stats.pendingServices, tab: 'services' },
-    { label: 'حسابات بانتظار الاعتماد', value: stats.pendingBusinesses, tab: 'pending' },
-    { label: 'تبليغات مفتوحة', value: stats.pendingReports, tab: 'reports' },
-    // Waiting on the host, not on us. Listed here because an unanswered
-    // request expires after 48 hours and the guest loses the booking, so it is
-    // work someone should chase even though nobody here can approve it.
-    { label: 'طلبات حجز بانتظار المالك', value: stats.awaitingOwner ?? 0, tab: 'bookings' },
-    { label: 'حجوزات بانتظار التأكيد', value: stats.pendingBookings, tab: 'bookings' },
+    { key: 'content', label: 'أماكن بانتظار المراجعة', value: q.content, tab: 'content' },
+    { key: 'services', label: 'خدمات بانتظار المراجعة', value: q.services, tab: 'services' },
+    { key: 'accounts', label: 'حسابات جاهزة للاعتماد', value: q.accounts, tab: 'pending' },
+    { key: 'reports', label: 'تبليغات مفتوحة', value: q.reports, tab: 'reports' },
+    // The three below wait on a host or a provider, not on us. They are listed
+    // because an unanswered request expires after 48 hours and the guest loses
+    // the booking, so it is work someone should chase even though nobody here
+    // can approve it.
+    {
+      key: 'stayRequests',
+      label: 'طلبات إقامة بانتظار المضيف',
+      value: q.stayRequests,
+      tab: 'bookings',
+      params: { kind: 'stay', status: 'pending' },
+    },
+    {
+      key: 'serviceRequests',
+      label: 'طلبات خدمات بانتظار مقدم الخدمة',
+      value: q.serviceRequests,
+      tab: 'bookings',
+      params: { kind: 'service', status: 'pending' },
+    },
+    {
+      key: 'slotBookings',
+      label: 'حجوزات مواعيد بانتظار التأكيد',
+      value: q.slotBookings,
+      tab: 'bookings',
+      params: { kind: 'slot', status: 'pending' },
+    },
   ]
-  const openQueues = queues.filter((q) => q.value > 0)
+  const openQueues = queues.filter((queue) => queue.value > 0)
 
   const trend = stats.trend || { days: [], listings: [], bookings: [], users: [] }
   const total = stats.totalListings || 0
@@ -64,6 +100,16 @@ export default function DashboardTab({ onNavigate, user }) {
         <div className="ar-hero-main">
           <h2 className="ar-hero-title">مرحباً {user?.firstName || 'بك'}</h2>
           <SegmentBar segments={segments} total={total} />
+          {/* Every count stops at a read cap on the server. Past it the figures
+              are floors, not totals, and saying so beats showing them as exact. */}
+          {stats.capped && (
+            <p
+              className="ar-capped"
+              title={`بعض الجداول تجاوزت حد القراءة (${formatNumber(stats.statsCap ?? 5000)} سجل)، فالأعداد المعروضة أقل من الحقيقية.`}
+            >
+              الأرقام تقريبية
+            </p>
+          )}
         </div>
 
         <div className="ar-hero-figures">
@@ -82,11 +128,12 @@ export default function DashboardTab({ onNavigate, user }) {
           <HeroFigure value={stats.totalBookings} label="حجز" icon="calendar" />
           {/* Revenue from confirmed and completed stays this month. Confirmed
               counts because the host is owed it either way — dropping it as
-              stays finish would make the figure fall through the month. */}
+              stays finish would make the figure fall through the month.
+              Stays only: the label says so now that services are booked too. */}
           <HeroFigure
             value={stats.stayRevenueMonth ?? 0}
             unit="ر.س"
-            label="إيرادات الشهر"
+            label="إيرادات الإقامات هذا الشهر"
             icon="calendar"
           />
         </div>
@@ -99,7 +146,7 @@ export default function DashboardTab({ onNavigate, user }) {
         <article className="ar-card ar-bento-queue">
           <header className="ar-card-head">
             <h3 className="ar-card-title">يحتاج إجراءً</h3>
-            <span className="ar-card-count">{formatNumber(openQueues.reduce((s, q) => s + q.value, 0))}</span>
+            <span className="ar-card-count">{formatNumber(queueTotalOf(stats))}</span>
           </header>
 
           {openQueues.length === 0 ? (
@@ -118,14 +165,14 @@ export default function DashboardTab({ onNavigate, user }) {
           ) : (
             <ul className="ar-tasks">
               {openQueues.map((queue, i) => (
-                <li key={queue.tab}>
+                <li key={queue.key}>
                   {/* The first row is the one to do next, so it carries the ink
                       fill — the same emphasis the rest of the panel reserves for
                       "act on this". */}
                   <button
                     type="button"
                     className={`ar-task ${i === 0 ? 'primary' : ''}`}
-                    onClick={() => onNavigate(queue.tab)}
+                    onClick={() => onNavigate(queue.tab, queue.params)}
                   >
                     <span className="ar-task-count">{formatNumber(queue.value)}</span>
                     <span className="ar-task-label">{queue.label}</span>
@@ -159,24 +206,31 @@ export default function DashboardTab({ onNavigate, user }) {
             <p className="ar-chart-empty">لا توجد حجوزات بعد.</p>
           ) : (
             <ul className="ar-minirows">
-              {recentBookings.map((booking) => (
-                <li key={booking._id} className="ar-minirow">
-                  <span className="ar-minirow-avatar" aria-hidden="true">
-                    {(booking.userName || '؟').trim().charAt(0)}
-                  </span>
-                  <span className="ar-minirow-main">
-                    <span className="ar-minirow-name">{booking.userName}</span>
-                    <span className="ar-minirow-sub">{booking.listingName_ar}</span>
-                  </span>
-                  <span className="ar-minirow-date" dir="ltr">{booking.date}</span>
-                  <span
-                    className="ar-chip"
-                    style={{ '--chip': STATUS_COLORS[booking.status] || BOOKING_STATUS_COLORS[booking.status] }}
-                  >
-                    {BOOKING_STATUS_LABELS[booking.status] || booking.status}
-                  </span>
-                </li>
-              ))}
+              {recentBookings.map((booking) => {
+                // The server writes "Unknown" when the guest's account is gone.
+                const guest = orUnknown(booking.userName)
+                return (
+                  <li key={booking._id} className="ar-minirow">
+                    <span className="ar-minirow-avatar" aria-hidden="true">
+                      {guest.trim().charAt(0)}
+                    </span>
+                    <span className="ar-minirow-main">
+                      <span className="ar-minirow-name">{guest}</span>
+                      <span className="ar-minirow-sub">
+                        {booking.listingType === 'service' ? 'خدمة · ' : ''}
+                        {orUnknown(booking.listingName_ar)}
+                      </span>
+                    </span>
+                    <span className="ar-minirow-date" dir="ltr">{booking.date}</span>
+                    <span
+                      className="ar-chip"
+                      style={{ '--chip': STATUS_COLORS[booking.status] || BOOKING_STATUS_COLORS[booking.status] }}
+                    >
+                      {bookingStatusLabel(booking.status, booking.kind)}
+                    </span>
+                  </li>
+                )
+              })}
             </ul>
           )}
         </article>
@@ -331,7 +385,7 @@ function DashboardSkeleton() {
           <Skeleton className="h-9 w-full max-w-xl rounded-full" />
         </div>
         <div className="ar-hero-figures">
-          {[0, 1, 2].map((i) => (
+          {[0, 1, 2, 3].map((i) => (
             <div key={i} className="ar-figure">
               <Skeleton className="h-12 w-20" />
               <Skeleton className="h-3 w-14 mt-2" />
