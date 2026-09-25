@@ -470,18 +470,5 @@ export function bookingActionErrorKey(error: unknown, kind?: string): Translatio
   return kind === "service" && key === "errorStayStarted" ? "errorServiceStarted" : key;
 }
 
-/**
- * Where tapping a notification should land.
- *
- * Lives here rather than in a push module because it is pure routing and the
- * in-app inbox needs it whether or not push exists — push is only how a
- * notification reaches someone who is not already looking at the app.
- */
-export function routeForNotificationData(
-  data: { bookingId?: string; audience?: string } | undefined,
-  isHost: boolean
-): string {
-  if (data?.audience === "owner" && isHost) return "/business/bookings";
-  if (data?.bookingId) return `/bookings/${data.bookingId}`;
-  return "/notifications";
-}
+// Where a notification tap lands is lib/notificationRoute.ts
+// (routeForNotification), shared by the inbox and push taps since 1.1.0.
