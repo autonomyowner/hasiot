@@ -1,6 +1,7 @@
 import { query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
+import { AUTH_ERRORS } from "../lib/errors";
 
 // Get the current authenticated user
 export const getCurrentUser = query({
@@ -46,7 +47,7 @@ export const getBusinessDocUrl = query({
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user || user.role !== "admin") {
-      throw new Error("Not authorized");
+      throw new ConvexError(AUTH_ERRORS.NOT_AUTHORIZED);
     }
     return await ctx.storage.getUrl(args.fileId);
   },
@@ -58,7 +59,8 @@ export const getStorageUrl = query({
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("Not authenticated");
+      // English only: the app maps this exact text to "session expired".
+      throw new ConvexError("Not authenticated");
     }
     return await ctx.storage.getUrl(args.storageId);
   },

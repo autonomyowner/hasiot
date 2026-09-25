@@ -26,12 +26,15 @@ import {
   updateServiceAsAdmin,
 } from "./service";
 import { CLEARABLE_PRICING_ARGS, PRICING_ARGS } from "../listings/pricing";
+import { LISTING_ERRORS } from "../listings/queries";
 import type { Id } from "../_generated/dataModel";
 
 // One bulk call may not touch more documents than this. Convex transactions are
 // bounded, and a runaway "approve everything" is exactly the kind of action that
 // should happen in reviewable batches.
 const MAX_BULK = 50;
+
+const KNOWLEDGE_NOT_FOUND = "المعلومة غير موجودة. / Knowledge data not found.";
 
 // Create a new listing
 export const createListing = mutation({
@@ -124,7 +127,7 @@ export const setListingActive = mutation({
     const admin = await requireAdmin(ctx);
     const listing = await ctx.db.get(args.id);
     if (!listing) {
-      throw new Error("Listing not found");
+      throw new ConvexError(LISTING_ERRORS.NOT_FOUND);
     }
 
     await ctx.db.patch(args.id, {
@@ -211,7 +214,7 @@ export const updateKnowledgeData = mutation({
     const { id, ...updates } = args;
     const existing = await ctx.db.get(id);
     if (!existing) {
-      throw new Error("Knowledge data not found");
+      throw new ConvexError(KNOWLEDGE_NOT_FOUND);
     }
 
     await ctx.db.patch(id, {
@@ -236,7 +239,7 @@ export const deleteKnowledgeData = mutation({
     const admin = await requireAdmin(ctx);
     const existing = await ctx.db.get(args.id);
     if (!existing) {
-      throw new Error("Knowledge data not found");
+      throw new ConvexError(KNOWLEDGE_NOT_FOUND);
     }
 
     await ctx.db.delete(args.id);

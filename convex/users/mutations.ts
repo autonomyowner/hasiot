@@ -4,6 +4,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { getAuthenticatedAppUser, requireAdmin, authComponent, createAuth } from "../auth";
 import { enforceRateLimit } from "../rateLimit";
 import { approveBusinessAccountRecord } from "../admin/service";
+import { LISTING_ERRORS } from "../listings/queries";
 import { notifyBookingEvent } from "../notifications/internal";
 import { recomputeReviewTarget } from "../reviews/service";
 import { buildSearchTextFrom } from "./search";
@@ -16,31 +17,50 @@ import { buildSearchTextFrom } from "./search";
  */
 const NOT_AUTHENTICATED = "Not authenticated";
 
-const USER_ERRORS = {
-  ONLY_BUSINESS_UPLOADS:
-    "يمكن لحسابات الأعمال فقط رفع الوثائق. / Only business accounts can upload documents.",
-} as const;
-
 // Maximum favorites a single user can hold. Bounds both the user document and
 // the Promise.all fan-out in users/queries.ts:getFavorites.
 const MAX_FAVORITES = 200;
 
-// Generate an upload URL for business document
+const USER_ERRORS = {
+  ONLY_BUSINESS_UPLOADS:
+    "يمكن لحسابات الأعمال فقط رفع الوثائق. / Only business accounts can upload documents.",
+  UPLOAD_LIMIT:
+    "لقد وصلت إلى الحد اليومي لرفع الملفات. يرجى المحاولة غدًا. / Daily upload limit reached. Please try again tomorrow.",
+  PHONE_NEEDS_OTP:
+    "لتغيير رقم الجوال يلزم التحقق برمز. / Changing a phone number requires OTP verification.",
+  TOO_MANY_FAVORITES: `لا يمكن حفظ أكثر من ${MAX_FAVORITES} مفضلة. / You can save at most ${MAX_FAVORITES} favorites.`,
+  INVALID_ROLE: "دور غير صالح. / Invalid role.",
+} as const;
+
+export const UPLOADS_PER_DAY = 50;
+export const ADMIN_UPLOADS_PER_DAY = 500;
+
+/**
+ * Count one signed upload URL against the caller's daily allowance.
+ *
+ * Each URL is a write into file storage, so one account cannot be allowed to
+ * run up unbounded storage cost. An admin gets ten times the allowance: every
+ * photo the panel adds to a listing is one URL, and at 50 an admin filling in
+ * the seeded catalogue ran out partway through a morning.
+ */
+export async function enforceUploadAllowance(ctx: MutationCtx, user: Doc<"users">): Promise<void> {
+  await enforceRateLimit(
+    ctx,
+    `upload:${user._id}`,
+    user.role === "admin" ? ADMIN_UPLOADS_PER_DAY : UPLOADS_PER_DAY,
+    USER_ERRORS.UPLOAD_LIMIT
+  );
+}
+
+// Generate an upload URL (business documents, listing and service photos)
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("Not authenticated");
+      throw new ConvexError(NOT_AUTHENTICATED);
     }
-    // Each URL is a signed write into file storage — cap them per user per day
-    // so one account cannot run up unbounded storage cost.
-    await enforceRateLimit(
-      ctx,
-      `upload:${user._id}`,
-      50,
-      "لقد وصلت إلى الحد اليومي لرفع الملفات. يرجى المحاولة غدًا. / Daily upload limit reached. Please try again tomorrow."
-    );
+    await enforceUploadAllowance(ctx, user);
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -96,7 +116,7 @@ export const updateProfile = mutation({
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("Not authenticated");
+      throw new ConvexError(NOT_AUTHENTICATED);
     }
 
     const updates: Record<string, unknown> = {
@@ -114,9 +134,7 @@ export const updateProfile = mutation({
     // disagrees with the verified one. Changing a phone goes through the OTP
     // flow (/phone-number/verify with updatePhoneNumber).
     if (args.phone !== undefined && args.phone !== user.phone) {
-      throw new Error(
-        "لتغيير رقم الجوال يلزم التحقق برمز. / Changing a phone number requires OTP verification."
-      );
+      throw new ConvexError(USER_ERRORS.PHONE_NEEDS_OTP);
     }
 
     updates.searchText = buildSearchTextFrom({
@@ -138,12 +156,12 @@ export const toggleFavorite = mutation({
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("Not authenticated");
+      throw new ConvexError(NOT_AUTHENTICATED);
     }
 
     const listing = await ctx.db.get(args.listingId);
     if (!listing) {
-      throw new Error("Listing not found");
+      throw new ConvexError(LISTING_ERRORS.NOT_FOUND);
     }
 
     const currentFavorites = user.favoriteListingIds || [];
@@ -154,9 +172,7 @@ export const toggleFavorite = mutation({
       newFavorites = currentFavorites.filter((id) => id !== args.listingId);
     } else {
       if (currentFavorites.length >= MAX_FAVORITES) {
-        throw new Error(
-          `لا يمكن حفظ أكثر من ${MAX_FAVORITES} مفضلة. / You can save at most ${MAX_FAVORITES} favorites.`
-        );
+        throw new ConvexError(USER_ERRORS.TOO_MANY_FAVORITES);
       }
       newFavorites = [...currentFavorites, args.listingId];
     }
@@ -181,12 +197,12 @@ export const setUserRole = mutation({
   handler: async (ctx, args) => {
     const ALLOWED_ROLES = ["tourist", "business_owner", "service_provider"];
     if (!ALLOWED_ROLES.includes(args.role)) {
-      throw new Error("Invalid role");
+      throw new ConvexError(USER_ERRORS.INVALID_ROLE);
     }
 
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("Not authenticated");
+      throw new ConvexError(NOT_AUTHENTICATED);
     }
 
     const updates: Record<string, unknown> = {

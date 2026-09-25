@@ -12,7 +12,48 @@ import {
 import type { TestT } from "../test.utils";
 import type { Doc, Id } from "../_generated/dataModel";
 import { recomputeReviewTarget } from "../reviews/service";
-import { deleteAccountData, saveBusinessDocForUser } from "./mutations";
+import { deleteAccountData, enforceUploadAllowance, saveBusinessDocForUser } from "./mutations";
+
+describe("enforceUploadAllowance", () => {
+  async function upload(t: TestT, id: Id<"users">) {
+    await t.run(async (ctx) => enforceUploadAllowance(ctx, (await ctx.db.get(id))!));
+  }
+  async function usedToday(t: TestT, id: Id<"users">, count: number) {
+    await t.run((ctx) =>
+      ctx.db.insert("rateLimits", { key: `upload:${id}`, windowStart: Date.now(), count })
+    );
+  }
+
+  it("keeps everyone else to 50 a day", async () => {
+    const t = makeT();
+    const id = await seedUser(t, { role: "business_owner" });
+    await usedToday(t, id, 49);
+
+    await upload(t, id); // the 50th
+    await expect(upload(t, id)).rejects.toSatisfy(
+      (error: unknown) =>
+        error instanceof ConvexError && /Daily upload limit reached/.test(String(error.data))
+    );
+  });
+
+  it("gives an admin 500, enough to photograph a catalogue in a day", async () => {
+    // Every hotel photo the panel uploads is one signed URL; at 50 an admin
+    // filling in the seeded catalogue ran out before lunch.
+    const t = makeT();
+    const id = await seedUser(t, { role: "admin" });
+    await usedToday(t, id, 50);
+
+    await upload(t, id); // the 51st, which everyone else is refused
+    await t.run(async (ctx) => {
+      const row = (await ctx.db
+        .query("rateLimits")
+        .withIndex("by_key", (q) => q.eq("key", `upload:${id}`))
+        .first())!;
+      await ctx.db.patch(row._id, { count: 500 });
+    });
+    await expect(upload(t, id)).rejects.toThrow(ConvexError);
+  });
+});
 
 async function load(t: TestT, id: Doc<"users">["_id"]): Promise<Doc<"users">> {
   return (await t.run((ctx) => ctx.db.get(id)))!;
