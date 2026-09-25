@@ -83,11 +83,15 @@ export function useConfirm() {
             <AlertDialogCancel onClick={() => settle(null)}>
               {options.cancelLabel || 'إلغاء'}
             </AlertDialogCancel>
+            {/* The red goes through `variant`, not className. The action
+                renders via Radix Slot, which joins the Button's classes and
+                its own without tailwind-merge: a `bg-destructive` className
+                sat beside the default variant's `bg-primary`, and lost to it
+                in the stylesheet — so «حذف نهائي», «إيقاف» and every other
+                destructive confirmation showed the same green as «موافقة». */}
             <AlertDialogAction
               disabled={reasonRequired}
-              className={options.destructive
-                ? 'bg-destructive text-white hover:bg-destructive/90'
-                : undefined}
+              variant={options.destructive ? 'destructive' : 'default'}
               onClick={() => settle({ reason: reason.trim() })}
             >
               {options.confirmLabel || 'تأكيد'}

@@ -97,6 +97,16 @@
 }
 .admin-link:hover { text-decoration: underline; }
 
+/* The ended-session card's two ways out, side by side. */
+.admin-session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+.admin-session-actions a { text-decoration: none; }
+
 /* --- Page frame ---------------------------------------------------------- */
 .admin-main {
   max-width: 1360px;
@@ -1173,7 +1183,8 @@
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.5rem 0.9375rem;
+  /* 0.75rem, not the 0.9375rem it had with ten tabs: see the 1459px rule. */
+  padding: 0.5rem 0.75rem;
   border: none;
   border-radius: var(--ar-r-pill);
   background: none;
@@ -1737,6 +1748,26 @@
    Responsive
    ========================================================================== */
 
+/* Twelve tabs do not fit between the brand and the actions for long. At the
+   old pill padding the track needed ~1150px with three badges, so a fourth
+   waiting queue pushed «المستخدمون» out of sight even on a wide screen, and a
+   1366px laptop hid it with no badge at all — behind a hidden scrollbar, with
+   nothing to say it was there. With the pills at 0.75rem the track takes
+   ~1140px with five two-digit badges and ~1170px with three-digit ones; the
+   middle column only reaches that once the sheet is at its full 1420px, in a
+   1460px window. Below that the nav gets a row of its own under the brand and
+   the actions. Phones keep the 900px rules further down. */
+@media (max-width: 1459px) {
+  .admin-topbar {
+    grid-template-columns: auto auto;
+    grid-template-areas: 'brand actions' 'nav nav';
+    row-gap: 0.75rem;
+  }
+  .admin-brand { grid-area: brand; justify-self: start; }
+  .admin-topbar-actions { grid-area: actions; justify-self: end; }
+  .admin-pillnav { grid-area: nav; }
+}
+
 @media (max-width: 1200px) {
   .ar-bento-queue    { grid-column: span 4; }
   .ar-bento-table    { grid-column: span 8; }
@@ -1750,15 +1781,13 @@
   .admin-page { padding: 0.625rem; }
   .admin-shell { border-radius: 26px; min-height: calc(100vh - 1.25rem); }
 
+  /* The two-row layout itself comes from the 1459px rule; a phone only
+     tightens it and lets the track span the row and scroll from its start. */
   .admin-topbar {
-    grid-template-columns: auto auto;
-    grid-template-areas: 'brand actions' 'nav nav';
     gap: 0.75rem;
     padding: 0.875rem 1rem;
   }
-  .admin-brand { grid-area: brand; justify-self: start; }
-  .admin-topbar-actions { grid-area: actions; justify-self: end; }
-  .admin-pillnav { grid-area: nav; justify-self: stretch; justify-content: flex-start; }
+  .admin-pillnav { justify-self: stretch; justify-content: flex-start; }
 
   .admin-main { padding: 0.25rem 1rem 2rem; }
 

@@ -110,8 +110,17 @@ export const defaultPin = (city) => cityCentre(city) || PROVINCE_CENTRE
 // Qaryat Al Ulya, Khafji and Hafar Al Batin.
 export const SAUDI_BOUNDS = { minLat: 16, maxLat: 33, minLng: 34, maxLng: 56 }
 
-/** Beyond this the pin is probably in the wrong city, so the form says so. */
-export const PIN_WARNING_KM = 150
+/**
+ * Beyond this the pin is probably in the wrong city, so the form says so.
+ *
+ * It was 150 km, which let the likeliest mistake through: Dammam, Al Khobar
+ * and Qatif are 118–133 km from the Al-Ahsa centre that the posting forms used
+ * to hardcode, so a Hofuf pin under any of them passed without a word (25 of
+ * the 55 pairs of city centres are closer than 150 km). 100 km still leaves
+ * room for a place far out in a large governorate — Al-Uqair is about 70 km
+ * from the Al-Ahsa centre — and it only ever warns, never blocks.
+ */
+export const PIN_WARNING_KM = 100
 
 export function insideSaudiArabia(lat, lng) {
   return (

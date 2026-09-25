@@ -451,11 +451,19 @@ function BookingRow({ booking, today, busy, onConfirm, onDecline, onComplete, on
           </>
         )}
         {booking.notes && <div className="admin-table-sub">ملاحظة الضيف: {booking.notes}</div>}
+        {/* A reopened booking keeps the reason it was closed with (the
+            forced change leaves the field in place), so beside «مؤكد» a bare
+            «سبب الإلغاء» read as if the booking were still cancelled. The
+            reason is only "the" reason while the status still says so. */}
         {booking.declineReason && (
-          <div className="admin-table-sub">سبب الرفض: {booking.declineReason}</div>
+          <div className="admin-table-sub">
+            {booking.status === 'declined' ? 'سبب الرفض' : 'سبب رفض سابق'}: {booking.declineReason}
+          </div>
         )}
         {booking.cancellationReason && (
-          <div className="admin-table-sub">سبب الإلغاء: {booking.cancellationReason}</div>
+          <div className="admin-table-sub">
+            {booking.status === 'cancelled' ? 'سبب الإلغاء' : 'سبب إلغاء سابق'}: {booking.cancellationReason}
+          </div>
         )}
       </TableCell>
 

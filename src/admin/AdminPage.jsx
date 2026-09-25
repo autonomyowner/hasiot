@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { useCurrentUser } from '../hooks/useCurrentUser'
@@ -7,6 +7,7 @@ import { authClient } from '../lib/auth-client'
 import { Toaster } from './ui/sonner'
 import { SectionBoundary, TabErrorBoundary } from './components/States'
 import { pendingBookingsOf, queuesOf, queueTotalOf, useDashboardStats } from './stats'
+import { personName, realEmail } from './constants'
 import DashboardTab from './tabs/DashboardTab'
 import ListingsTab from './tabs/ListingsTab'
 import ServicesTab from './tabs/ServicesTab'
@@ -63,7 +64,16 @@ export default function AdminPage() {
     )
   }
 
-  if (user?.role !== 'admin') {
+  // Better Auth's cached session still says "signed in", but the backend
+  // knows nobody: getCurrentUser is null when the Convex token could not be
+  // renewed (the session expired, or was ended elsewhere) and when the account
+  // is gone or suspended. This used to fall through to «غير مصرح» — "this
+  // account () has no access", with nothing between the parentheses — which
+  // replaced the whole panel, nav included, with a permissions message and
+  // no way back in but the home page.
+  if (user === null) return <SessionEnded />
+
+  if (user.role !== 'admin') {
     return (
       <div className="admin-page admin-page-centered" dir="rtl">
         <motion.div
@@ -74,7 +84,8 @@ export default function AdminPage() {
           <div className="admin-login-header">
             <h1 className="admin-login-title">غير مصرح</h1>
             <p className="admin-login-subtitle">
-              هذا الحساب ({user?.email}) لا يملك صلاحية الوصول إلى لوحة التحكم.
+              {/* A phone sign-up's address is a placeholder nobody knows it by. */}
+              هذا الحساب ({realEmail(user.email) || user.phone || personName(user)}) لا يملك صلاحية الوصول إلى لوحة التحكم.
             </p>
           </div>
           <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
@@ -86,6 +97,47 @@ export default function AdminPage() {
   }
 
   return <AdminShell user={user} />
+}
+
+/**
+ * The session behind the panel has ended. Every query would be refused, so
+ * rather than a dozen failing tabs this says what happened and offers the way
+ * back: signing in again, or reloading when it was only a failed renewal.
+ */
+function SessionEnded() {
+  return (
+    <div className="admin-page admin-page-centered" dir="rtl">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="admin-login-card"
+        role="alert"
+      >
+        <div className="admin-login-header">
+          <h1 className="admin-login-title">انتهت الجلسة</h1>
+          <p className="admin-login-subtitle">
+            لم يعد الخادم يتعرّف على جلستك: ربما انتهت صلاحيتها، أو سُجّل الخروج من مكان آخر، أو لم
+            يعد الحساب متاحًا. سجّل الدخول من جديد للمتابعة.
+          </p>
+        </div>
+        <div className="admin-session-actions">
+          {/* A full page load rather than a router link, so the panel comes
+              back with a fresh Convex client instead of the one that lost
+              its token. */}
+          <a href="/sign-in?next=/admin" className="admin-btn admin-btn-primary">
+            تسجيل الدخول من جديد
+          </a>
+          <button
+            type="button"
+            className="admin-btn admin-btn-secondary"
+            onClick={() => window.location.reload()}
+          >
+            إعادة تحميل الصفحة
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
 }
 
 /**
@@ -176,6 +228,21 @@ function TabContent({ tab, params, user, stats, statsError, onNavigate }) {
 function AdminHeader({ user, activeTab, onSelect, stats, countsFailed }) {
   const [signingOut, setSigningOut] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const navRef = useRef(null)
+
+  // Below ~1150px the twelve tabs scroll sideways behind a hidden scrollbar.
+  // A tab opened from elsewhere — a dashboard row, the bell — could then be
+  // active out of sight, so the track brings it into view. scrollBy with the
+  // measured overlap, rather than scrollIntoView, so the page never moves.
+  useEffect(() => {
+    const nav = navRef.current
+    const pill = nav?.querySelector('.admin-pill.active')
+    if (!pill) return
+    const track = nav.getBoundingClientRect()
+    const box = pill.getBoundingClientRect()
+    if (box.left < track.left) nav.scrollBy({ left: box.left - track.left - 12, behavior: 'smooth' })
+    else if (box.right > track.right) nav.scrollBy({ left: box.right - track.right + 12, behavior: 'smooth' })
+  }, [activeTab])
 
   const queues = queuesOf(stats)
   const countFor = (tab) => (tab.count && queues ? tab.count(queues) : 0)
@@ -205,7 +272,7 @@ function AdminHeader({ user, activeTab, onSelect, stats, countsFailed }) {
     <header className="admin-topbar">
       <Link to="/" className="admin-brand">Hasio</Link>
 
-      <nav className="admin-pillnav" aria-label="أقسام لوحة التحكم">
+      <nav className="admin-pillnav" aria-label="أقسام لوحة التحكم" ref={navRef}>
         {TABS.map((tab) => {
           const count = countFor(tab)
           return (
