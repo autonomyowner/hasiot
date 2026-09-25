@@ -27,6 +27,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useNudge } from "@/hooks/useNudge";
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { uploadDocumentToConvex } from "@/lib/convexUpload";
+import { accountReviewState } from "@/lib/listingForm";
 import { getSubmitErrorKey } from "@/lib/submitError";
 
 /**
@@ -35,7 +36,10 @@ import { getSubmitErrorKey } from "@/lib/submitError";
  * Mirrors the web `/business` flow: pick a document → upload to Convex storage
  * → `saveBusinessDoc` stores the storageId on the user record → an admin
  * reviews it at /admin and calls `approveBusinessAccount`, which flips
- * `isApproved` and unlocks `submitListing` / `submitService`.
+ * `isApproved` and unlocks `submitListing` / `submitService` — or
+ * `rejectBusinessAccount`, with a reason this screen shows. Uploading a new
+ * document clears the rejection on the server and puts the account back in
+ * the queue, so the upload itself is the same either way.
  */
 export default function VerificationScreenContent() {
   const styles = useThemedStyles(makeStyles);
@@ -44,7 +48,18 @@ export default function VerificationScreenContent() {
   const navigation = useNavigation();
   const isFocused = useIsFocused();
   const { t, isRTL } = useLanguage();
-  const { verificationStatus, isUserLoading } = useConvexUser();
+  const { verificationStatus, isUserLoading, isApproved: accountApproved, hasSubmittedDoc, user } =
+    useConvexUser();
+
+  // Turned down, with a reason. The rejected document stays on file, which
+  // made this screen say "Under review" about a decision already made.
+  const rejectionReason = user?.accountRejectionReason?.trim();
+  const isRejected =
+    accountReviewState({
+      isApproved: accountApproved,
+      hasDocument: hasSubmittedDoc,
+      rejectionReason,
+    }) === "rejected";
 
   const saveBusinessDoc = useMutation(api.users.mutations.saveBusinessDoc);
 
@@ -57,7 +72,7 @@ export default function VerificationScreenContent() {
   const [docSource, setDocSource] = useState<"photo" | "file">("file");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isPending = verificationStatus === "pending";
+  const isPending = verificationStatus === "pending" && !isRejected;
   const isApproved = verificationStatus === "approved";
   // PDFs and other non-images can't go through <Image>, so they get a
   // filename chip preview instead of a thumbnail.
@@ -201,46 +216,64 @@ export default function VerificationScreenContent() {
                 isRTL && styles.rowRTL,
                 isApproved && styles.statusCardApproved,
                 isPending && styles.statusCardPending,
+                isRejected && styles.statusCardRejected,
               ]}
             >
               <Feather
-                name={isApproved ? "check-circle" : isPending ? "clock" : "alert-circle"}
+                name={
+                  isApproved
+                    ? "check-circle"
+                    : isRejected
+                      ? "x-circle"
+                      : isPending
+                        ? "clock"
+                        : "alert-circle"
+                }
                 size={20}
                 // The dark lime for the tick: the `success` token is the lime
                 // fill, which on the mint card could not be seen.
                 color={
                   isApproved
                     ? colors.primary.deep
-                    : isPending
-                      ? colors.warning
-                      : colors.attention
+                    : isRejected
+                      ? colors.signOut
+                      : isPending
+                        ? colors.warning
+                        : colors.attention
                 }
               />
               <View style={styles.statusTextWrap}>
                 <Text style={[styles.statusTitle, isRTL && styles.textRTL]}>
                   {isApproved
                     ? t("statusApproved")
-                    : isPending
-                      ? t("verificationPendingTitle")
-                      : t("verificationUnverifiedTitle")}
+                    : isRejected
+                      ? t("accountRejectedTitle")
+                      : isPending
+                        ? t("verificationPendingTitle")
+                        : t("verificationUnverifiedTitle")}
                 </Text>
                 <Text style={[styles.statusBody, isRTL && styles.textRTL]}>
                   {/* Approved said "Your first listing requires approval" —
-                      the opposite of the news. */}
+                      the opposite of the news. Rejected gives the reason the
+                      admin wrote, which is what the provider has to fix. */}
                   {isApproved
                     ? t("verificationApprovedBody")
-                    : isPending
-                      ? t("verificationPendingBody")
-                      : t("verificationUnverifiedBody")}
+                    : isRejected
+                      ? t("accountRejectedReason").replace("{reason}", rejectionReason ?? "")
+                      : isPending
+                        ? t("verificationPendingBody")
+                        : t("verificationUnverifiedBody")}
                 </Text>
               </View>
             </Animated.View>
 
-            {/* Upload — hidden once approved, since there is nothing left to do */}
+            {/* Upload — hidden once approved, since there is nothing left to
+                do. After a rejection it asks for a new document; the flow is
+                the same, and the server clears the rejection on upload. */}
             {!isApproved && (
               <Animated.View entering={enterFade(2)}>
                 <Text style={[styles.sectionTitle, isRTL && styles.textRTL]}>
-                  {t("verificationDocLabel")}
+                  {isRejected ? t("uploadNewDocument") : t("verificationDocLabel")}
                 </Text>
                 <Text style={[styles.hint, isRTL && styles.textRTL]}>
                   {t("verificationDocHint")}
@@ -398,6 +431,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   statusCardPending: { backgroundColor: "#FDF6EC", borderColor: "#F0DFC4" },
   statusCardApproved: { backgroundColor: colors.mint, borderColor: "#E1E4CF" },
+  // The destructive token at a tenth of its weight, as on the booking and
+  // review badges: a tint of the red its icon is drawn in.
+  statusCardRejected: {
+    backgroundColor: "rgba(176, 73, 63, 0.08)",
+    borderColor: "rgba(176, 73, 63, 0.25)",
+  },
   statusTextWrap: { flex: 1 },
   statusTitle: {
     fontFamily: fonts.semibold,

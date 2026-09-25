@@ -33,6 +33,9 @@ export default function ProviderLayout() {
       <Stack.Screen name="verification" />
       <Stack.Screen name="post-service" />
       <Stack.Screen name="my-services" />
+      {/* The booking inbox for the provider's services; a push about a
+          request for one lands here (target "provider-inbox"). */}
+      <Stack.Screen name="bookings" />
     </Stack>
   );
 }

@@ -1,18 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { cityCoordinates } from "@/constants/cities";
 import {
+  accountReviewState,
   addPhotos,
+  EMPTY_SERVICE_FORM,
   editedPlaceLocation,
+  editedServiceArgs,
   editedStayLocation,
   firstError,
   isHHMM,
   isLive,
   isPlausibleEmail,
   isPlausiblePhone,
+  isProvinceCity,
   isProvinceWideRegion,
   isWholeInRange,
   makeCover,
   newPlaceLocation,
+  newServiceArgs,
   newStayLocation,
   normaliseTime,
   ownerStatusOf,
@@ -20,8 +25,10 @@ import {
   placeFormFromListing,
   sameValues,
   serviceFormFromService,
+  serviceTypeLabelKey,
   splitList,
   stayFormFromListing,
+  stayPricingArgs,
   validatePlaceForm,
   validateServiceForm,
   validateStayForm,
@@ -313,8 +320,10 @@ describe("validation", () => {
       titleAr: "توصيل المطار",
       description: "Day and night",
       descriptionAr: "ليلًا ونهارًا",
-      priceRange: "",
+      city: "Dammam",
+      price: "",
       priceUnit: "per_hour",
+      maxGroupSize: "",
       availability: "",
       availabilityAr: "",
       contactPhone: "",
@@ -327,6 +336,249 @@ describe("validation", () => {
       contactPhone: "invalidContactPhone",
       contactEmail: "invalidEmail",
     });
+  });
+});
+
+// A service as its provider fills the form in, ready to send.
+const filledService: ServiceFormValues = {
+  ...EMPTY_SERVICE_FORM,
+  serviceType: "tour_guide",
+  title: " Oasis walk ",
+  titleAr: "جولة في الواحة",
+  description: "Two hours through the palm groves",
+  descriptionAr: "ساعتان بين بساتين النخيل",
+  city: "Al Ahsa",
+  priceUnit: "per_hour",
+};
+
+describe("the service form, filled from what is stored", () => {
+  it("shows the price and group size, and the city under its canonical key", () => {
+    expect(
+      serviceFormFromService({
+        serviceType: "tour_guide",
+        city: "Hofuf",
+        price: 150,
+        priceUnit: "per_hour",
+        maxGroupSize: 8,
+      })
+    ).toMatchObject({ price: "150", maxGroupSize: "8", city: "Al Ahsa", priceUnit: "per_hour" });
+  });
+
+  it("leaves an unset price and group size empty, and a city outside the province unchosen", () => {
+    // Services posted before 1.1.0 have neither, and the old form sent no
+    // city at all; a typed one may be anywhere.
+    expect(serviceFormFromService({ serviceType: "driver", city: "Riyadh" })).toMatchObject({
+      price: "",
+      maxGroupSize: "",
+      city: "",
+    });
+    expect(serviceFormFromService({ serviceType: "driver" }).city).toBe("");
+  });
+
+  it("files an unknown type under Other, and reads a missing unit as the server does", () => {
+    const form = serviceFormFromService({ serviceType: "guide", priceUnit: "per_person" });
+    expect(form.serviceType).toBe("other");
+    // convex/services/logic.ts quotes an unknown or missing unit as a fixed
+    // price, so the editor shows the unit travellers are actually charged by.
+    expect(form.priceUnit).toBe("fixed");
+    expect(serviceFormFromService({ serviceType: "driver" }).priceUnit).toBe("fixed");
+  });
+
+  it("opens a new service on a price per hour", () => {
+    expect(EMPTY_SERVICE_FORM).toMatchObject({ priceUnit: "per_hour", price: "", city: "" });
+  });
+});
+
+describe("validateServiceForm — price, group size and city", () => {
+  it("passes a service with no price: it is listed with Contact instead of Book", () => {
+    expect(validateServiceForm(filledService)).toEqual({});
+  });
+
+  it("requires one of the thirteen cities", () => {
+    expect(validateServiceForm({ ...filledService, city: "" })).toEqual({
+      city: "chooseServiceCity",
+    });
+    expect(validateServiceForm({ ...filledService, city: "Riyadh" })).toEqual({
+      city: "chooseServiceCity",
+    });
+  });
+
+  it("holds the price and group size to the server's limits", () => {
+    expect(validateServiceForm({ ...filledService, price: "100001", maxGroupSize: "101" })).toEqual(
+      { price: "invalidPriceRange", maxGroupSize: "invalidGroupSize" }
+    );
+    expect(validateServiceForm({ ...filledService, price: "0", maxGroupSize: "0" })).toEqual({
+      price: "invalidPriceRange",
+      maxGroupSize: "invalidGroupSize",
+    });
+    expect(validateServiceForm({ ...filledService, price: "12.5" })).toEqual({
+      price: "invalidPriceRange",
+    });
+  });
+
+  it("reads what an Arabic keypad types", () => {
+    expect(validateServiceForm({ ...filledService, price: "١٥٠", maxGroupSize: "٨" })).toEqual({});
+  });
+
+  it("names the city among the fields in screen order", () => {
+    const errors = validateServiceForm({ ...filledService, title: "", city: "" });
+    expect(firstError(errors, ["title", "titleAr", "city"] as const)).toBe("title");
+    expect(firstError({ city: "chooseServiceCity" }, ["title", "titleAr", "city"] as const)).toBe(
+      "city"
+    );
+  });
+});
+
+describe("newServiceArgs — what a new service sends", () => {
+  it("sends the price, group size and city as numbers and a key", () => {
+    const args = newServiceArgs(
+      { ...filledService, price: "١٥٠", maxGroupSize: "8", languages: "Arabic، English" },
+      ["https://cdn/a.jpg"]
+    );
+    expect(args).toMatchObject({
+      serviceType: "tour_guide",
+      title_en: "Oasis walk",
+      price: 150,
+      maxGroupSize: 8,
+      city: "Al Ahsa",
+      priceUnit: "per_hour",
+      languages: ["Arabic", "English"],
+      images: ["https://cdn/a.jpg"],
+    });
+  });
+
+  it("leaves out what is empty, a price included", () => {
+    const args = newServiceArgs(filledService, []);
+    expect(args.price).toBeUndefined();
+    expect(args.maxGroupSize).toBeUndefined();
+    expect(args.contactPhone).toBeUndefined();
+    expect(args.languages).toBeUndefined();
+    expect(args.images).toBeUndefined();
+  });
+
+  it("no longer sends the free-text price range, which cannot be multiplied", () => {
+    expect(newServiceArgs(filledService, [])).not.toHaveProperty("priceRange");
+  });
+});
+
+describe("editedServiceArgs — what an edit sends", () => {
+  it("clears an emptied price and group size with null, which the server reads as remove", () => {
+    // Omitting them would keep the old price: the server skips undefined.
+    const args = editedServiceArgs({ ...filledService, price: " ", maxGroupSize: "" }, []);
+    expect(args.price).toBeNull();
+    expect(args.maxGroupSize).toBeNull();
+  });
+
+  it("sends a changed price and group size as numbers", () => {
+    const args = editedServiceArgs({ ...filledService, price: "200", maxGroupSize: "12" }, []);
+    expect(args.price).toBe(200);
+    expect(args.maxGroupSize).toBe(12);
+  });
+
+  it("sends every text field, emptied ones as empty, so nothing is silently kept", () => {
+    const args = editedServiceArgs({ ...filledService, contactPhone: "  ", languages: "" }, []);
+    expect(args.contactPhone).toBe("");
+    expect(args.languages).toEqual([]);
+    expect(args.images).toEqual([]);
+    expect(args.city).toBe("Al Ahsa");
+  });
+});
+
+describe("stayPricingArgs — the booking fields a stay sends", () => {
+  const blank = {
+    pricePerNight: "",
+    maxGuests: "",
+    unitCount: "",
+    checkInTime: "15:00",
+    checkOutTime: "12:00",
+  };
+
+  it("sends no price for a new stay left unpriced", () => {
+    expect(stayPricingArgs(blank, "create")).toEqual({
+      pricePerNight: undefined,
+      currency: undefined,
+      maxGuests: undefined,
+      unitCount: undefined,
+      checkInTime: "15:00",
+      checkOutTime: "12:00",
+    });
+  });
+
+  it("clears a nightly price emptied in an edit with null, and sends no currency", () => {
+    // The server skips undefined, so leaving the price out kept the old one —
+    // and with it a stay the host meant to stop taking bookings for.
+    const args = stayPricingArgs({ ...blank, pricePerNight: "  " }, "edit");
+    expect(args).toHaveProperty("pricePerNight", null);
+    expect(args.currency).toBeUndefined();
+  });
+
+  it("sends a typed price in whole riyals, from Arabic digits too", () => {
+    expect(stayPricingArgs({ ...blank, pricePerNight: "٤٥٠" }, "edit")).toMatchObject({
+      pricePerNight: 450,
+      currency: "SAR",
+    });
+    expect(stayPricingArgs({ ...blank, pricePerNight: "1,200" }, "create")).toMatchObject({
+      pricePerNight: 1200,
+      currency: "SAR",
+    });
+  });
+
+  it("never clears the capacity: an emptied guest cap or unit count keeps what is stored", () => {
+    const args = stayPricingArgs({ ...blank, maxGuests: " ", unitCount: "" }, "edit");
+    expect(args.maxGuests).toBeUndefined();
+    expect(args.unitCount).toBeUndefined();
+    expect(stayPricingArgs({ ...blank, maxGuests: "6", unitCount: "12" }, "edit")).toMatchObject({
+      maxGuests: 6,
+      unitCount: 12,
+    });
+  });
+
+  it("normalises the times", () => {
+    expect(
+      stayPricingArgs({ ...blank, checkInTime: "9:00", checkOutTime: "١١:٠٠" }, "edit")
+    ).toMatchObject({ checkInTime: "09:00", checkOutTime: "11:00" });
+  });
+});
+
+describe("isProvinceCity", () => {
+  it("accepts the thirteen keys exactly", () => {
+    expect(isProvinceCity("Al Bayda")).toBe(true);
+    expect(isProvinceCity(" Qatif ")).toBe(true);
+    expect(isProvinceCity("Hofuf")).toBe(false);
+    expect(isProvinceCity("Riyadh")).toBe(false);
+    expect(isProvinceCity("")).toBe(false);
+  });
+});
+
+describe("serviceTypeLabelKey", () => {
+  it("names each type, and anything else as Other", () => {
+    expect(serviceTypeLabelKey("tour_guide")).toBe("tourGuide");
+    expect(serviceTypeLabelKey("equipment_rental")).toBe("equipmentRental");
+    expect(serviceTypeLabelKey("other")).toBe("otherService");
+    expect(serviceTypeLabelKey("guide")).toBe("otherService");
+    expect(serviceTypeLabelKey(undefined)).toBe("otherService");
+  });
+});
+
+describe("accountReviewState", () => {
+  it("is approved once approved, whatever else is on file", () => {
+    expect(
+      accountReviewState({ isApproved: true, hasDocument: true, rejectionReason: "Blurry scan" })
+    ).toBe("approved");
+  });
+
+  it("is rejected while a rejection reason stands, though the document is still on file", () => {
+    // It used to read as "under review": the rejected document is kept.
+    expect(
+      accountReviewState({ isApproved: false, hasDocument: true, rejectionReason: "Blurry scan" })
+    ).toBe("rejected");
+  });
+
+  it("is under review with a document and no rejection, and unverified without one", () => {
+    expect(accountReviewState({ isApproved: false, hasDocument: true })).toBe("pending");
+    expect(accountReviewState({ isApproved: false, hasDocument: false, rejectionReason: " " })).toBe(
+      "unverified"
+    );
   });
 });
 
