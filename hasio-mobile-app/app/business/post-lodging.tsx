@@ -15,6 +15,7 @@ import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import { useLeaveGuard } from "@/hooks/useLeaveGuard";
+import { useNudge } from "@/hooks/useNudge";
 import Animated from "react-native-reanimated";
 import { enterFade } from "@/constants/motion";
 import { PhotoPickerField } from "@/components/hosting/PhotoPickerField";
@@ -229,7 +230,14 @@ export default function PostLodgingScreen() {
   // for a second look.
   const status = ownerStatusOf(existing?.status);
   const canResubmit = status === "rejected" || status === "suspended";
-  const saveDisabled = isEditing && !dirty && !canResubmit;
+  const nothingToSave = isEditing && !dirty && !canResubmit;
+
+  // Save used to sit faded out while there was nothing to save, and a faded
+  // lime button reads as text on an Android screen (see hooks/useNudge.ts).
+  // It stays a button; pressed with nothing changed, it says so under itself.
+  const { style: unchangedNudgeStyle, nudge: nudgeUnchanged } = useNudge();
+  const [unchangedShown, setUnchangedShown] = useState(false);
+  if (unchangedShown && !nothingToSave) setUnchangedShown(false);
 
   const revealField = (field: StayField) => {
     const y = formY.current + (fieldY.current[field] ?? 0);
@@ -243,6 +251,11 @@ export default function PostLodgingScreen() {
 
   const handleSubmit = () => {
     if (isLoading) return;
+    if (nothingToSave) {
+      setUnchangedShown(true);
+      nudgeUnchanged(t("nothingChangedYet"));
+      return;
+    }
 
     // Checked here, before any photo uploads: the server enforces the same
     // limits (lib/listingForm.ts mirrors convex/listings/pricing.ts), and
@@ -850,9 +863,17 @@ export default function PostLodgingScreen() {
             onPress={handleSubmit}
             fullWidth
             loading={isLoading}
-            disabled={saveDisabled}
+            accessibilityHint={nothingToSave ? t("nothingChangedYet") : undefined}
             style={styles.submitButton}
           />
+
+          {unchangedShown && (
+            <Animated.View style={unchangedNudgeStyle}>
+              <Text style={styles.progressText} accessibilityLiveRegion="polite">
+                {t("nothingChangedYet")}
+              </Text>
+            </Animated.View>
+          )}
 
           {isLoading && (
             <Text style={styles.progressText} accessibilityLiveRegion="polite">

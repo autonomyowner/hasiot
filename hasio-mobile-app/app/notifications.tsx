@@ -10,7 +10,8 @@ import { SkeletonGroup, SkeletonLine, sweepPhase } from "@/components/ui/Skeleto
 import { useConvexUser } from "@/hooks/useConvexUser";
 import { useLanguage } from "@/hooks/useLanguage";
 import { relativeTime } from "@/lib/dates";
-import { routeForNotificationData } from "@/lib/bookingDisplay";
+import { routeForNotification } from "@/lib/notificationRoute";
+import { appAlert } from "@/stores/dialogStore";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { ScreenGradient } from "@/components/ui/Gradients";
@@ -24,19 +25,27 @@ const SKELETON_ROWS = 5;
  * granted permission, email needs a real address, but a row written in the
  * same transaction as the booking change is visible the moment the app is
  * open. Everything else is a way of getting someone to open it.
+ *
+ * A row opens the same place its push notice does (lib/notificationRoute.ts):
+ * the server says where, and only a verification notice needs the account's
+ * role. Rows with nowhere better to go are simply marked read.
  */
 export default function NotificationsScreen() {
   const styles = useThemedStyles(makeStyles);
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { t, isRTL, language } = useLanguage();
-  const { isBusinessOwner } = useConvexUser();
+  const { user } = useConvexUser();
 
   const notifications = useQuery(api.notifications.queries.listMine, {});
   const markRead = useMutation(api.notifications.mutations.markRead);
   const markAllRead = useMutation(api.notifications.mutations.markAllRead);
 
   const hasUnread = (notifications ?? []).some((n) => !n.readAt);
+
+  // A failed mark-read used to be swallowed, so the row stayed bold with no
+  // word why. The dialog comes from the root host, wherever the row led.
+  const reportUpdateFailed = () => appAlert(t("markReadFailed"));
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
@@ -48,7 +57,7 @@ export default function NotificationsScreen() {
         <Text style={[styles.title, isRTL && styles.textRTL]}>{t("notifications")}</Text>
         {hasUnread ? (
           <Pressable
-            onPress={() => markAllRead({}).catch(() => {})}
+            onPress={() => markAllRead({}).catch(reportUpdateFailed)}
             hitSlop={{ left: 8, right: 8 }}
             style={({ pressed }) => [styles.markAll, pressed && styles.pressed]}
             accessibilityRole="button"
@@ -77,8 +86,9 @@ export default function NotificationsScreen() {
             return (
               <Pressable
                 onPress={() => {
-                  if (unread) markRead({ notificationId: item._id }).catch(() => {});
-                  router.push(routeForNotificationData(item.data, isBusinessOwner) as never);
+                  if (unread) markRead({ notificationId: item._id }).catch(reportUpdateFailed);
+                  const route = routeForNotification(item.data, user?.role);
+                  if (route) router.push(route as never);
                 }}
                 style={({ pressed }) => [
                   styles.row,

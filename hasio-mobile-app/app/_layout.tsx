@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
-import { Stack } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { Platform } from "react-native";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as Notifications from "expo-notifications";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import { InstrumentSerif_400Regular } from "@expo-google-fonts/instrument-serif";
@@ -25,14 +27,76 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ConvexProviderWithAuth } from "convex/react";
 import { convex, useAuthFromSecureStore } from "@/lib/convex";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PushPrompt } from "@/components/PushPrompt";
 import { AppDialogHost } from "@/components/ui/AppDialog";
+import { useConvexUser } from "@/hooks/useConvexUser";
 import { useLanguage } from "@/hooks/useLanguage";
+import { usePushRegistration } from "@/hooks/usePushRegistration";
+import { notificationDataOf, routeForNotification } from "@/lib/notificationRoute";
+import { showNotificationsInForeground } from "@/lib/push";
 import { useAppStore } from "@/stores/appStore";
 
 import "../global.css";
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
+
+// A notice that arrives while the app is open shows as a banner, with sound.
+// Without a handler expo-notifications drops it, and a host looking at the
+// app would never see a request come in.
+showNotificationsInForeground();
+
+/**
+ * Taps on push notices, routed like the inbox's rows (lib/notificationRoute.ts).
+ *
+ * A tap that launched the app is read once, when this mounts; taps while it
+ * runs arrive through the listener. Routing waits for two things:
+ * - the launch redirect. The bare index screen (no segments) only sends the
+ *   app on to the tabs or onboarding with `replace`, and a screen pushed
+ *   before that lands would be replaced by it;
+ * - the account's role, which decides where a verification notice goes.
+ *
+ * Each tap is handled once (by its notification's id), and the saved launch
+ * tap is cleared so a remount cannot route it again. With nowhere specific to
+ * go, the inbox holds the notice.
+ */
+function useNotificationTaps() {
+  const router = useRouter();
+  const segments = useSegments();
+  const { user, isUserLoading } = useConvexUser();
+  const [tapped, setTapped] = useState<Notifications.NotificationResponse | null>(() =>
+    Platform.OS === "web" ? null : Notifications.getLastNotificationResponse()
+  );
+  const handled = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (Platform.OS === "web") return;
+    const subscription = Notifications.addNotificationResponseReceivedListener(setTapped);
+    return () => subscription.remove();
+  }, []);
+
+  const launchRedirectDone = segments.length > 0;
+  const role = user?.role;
+
+  useEffect(() => {
+    if (!tapped || !launchRedirectDone || isUserLoading) return;
+    if (tapped.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
+    const id = tapped.notification.request.identifier;
+    if (handled.current.has(id)) return;
+    handled.current.add(id);
+    Notifications.clearLastNotificationResponse();
+    const data = notificationDataOf(tapped.notification.request.content.data);
+    const route = routeForNotification(data, role) ?? "/notifications";
+    router.push(route as never);
+  }, [tapped, launchRedirectDone, isUserLoading, role, router]);
+}
+
+/** Registration, the Android channel and taps. Renders nothing. */
+function PushWiring() {
+  usePushRegistration();
+  useNotificationTaps();
+  return null;
+}
 
 /**
  * True once the persisted settings (language, onboarding, currency) are back.
@@ -130,6 +194,10 @@ function InnerLayout() {
       {/* Branded alert dialog (appAlert). Native Modals that fire alerts while
           open mount their own AppDialogHost inside the modal. */}
       <AppDialogHost />
+      {/* "Get booking updates?" — asked for through maybeAskForPush, shown
+          only once nothing else is on screen (components/PushPrompt.tsx). */}
+      <PushPrompt />
+      <PushWiring />
     </>
   );
 }

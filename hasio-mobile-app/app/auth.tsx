@@ -21,6 +21,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
+import { useNudge } from "@/hooks/useNudge";
 import { api } from "@/backend";
 import { sendPhoneOtp, signIn, signOut, verifyPhoneOtp } from "@/lib/auth";
 import {
@@ -36,9 +37,11 @@ import { colors, type AppFonts } from "@/constants/colors";
 import type { TranslationKey } from "@/constants/translations";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
-// Served from the website's public/ — the same pair Settings links to.
-const PRIVACY_POLICY_URL = "https://www.hasio.xyz/privacy-policy.html";
-const TERMS_OF_SERVICE_URL = "https://www.hasio.xyz/terms-of-service.html";
+// The same pair Settings links to, on hasio.net, the live site (design D2).
+// Binaries already in the stores open the hasio.xyz copies, which stay up
+// until those binaries have aged out.
+const PRIVACY_POLICY_URL = "https://hasio.net/privacy-policy.html";
+const TERMS_OF_SERVICE_URL = "https://hasio.net/terms-of-service.html";
 
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 60;
@@ -136,9 +139,15 @@ export default function AuthScreen() {
   const codeRound = useRef(0);
   useEffect(() => () => { if (demoFill.current) clearTimeout(demoFill.current); }, []);
 
-  // The E.164 form, or null while the number is still incomplete. Doubles as
-  // the enabled/disabled state for the button.
+  // The E.164 form, or null while the number is still incomplete.
   const normalizedPhone = normalizeKsaPhone(phone);
+
+  // Send code and Verify stay solid lime whatever has been typed. They used to
+  // fade out until the number or the code was complete, and at that opacity a
+  // lime button reads as text on an Android screen (see hooks/useNudge.ts).
+  // Pressed too early, they shake the field that is missing something.
+  const { style: phoneNudgeStyle, nudge: nudgePhone } = useNudge();
+  const { style: codeNudgeStyle, nudge: nudgeCode } = useNudge();
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -232,7 +241,15 @@ export default function AuthScreen() {
     if (busy.current) return;
     const target = normalizedPhone;
     if (!target) {
-      showFieldError(t("invalidPhone"));
+      // Nothing typed yet: point at the field. Something typed that is not a
+      // Saudi mobile number: say what one looks like, under the field.
+      if (phone.trim() === "") {
+        nudgePhone(t("enterPhoneNudge"));
+      } else {
+        showFieldError(t("invalidPhone"));
+        nudgePhone();
+      }
+      phoneRef.current?.focus();
       return;
     }
 
@@ -304,6 +321,18 @@ export default function AuthScreen() {
       void verify(submitted, target);
     };
   });
+
+  // Verify before all six digits are in: the code submits itself on the
+  // sixth, so a press now means something is missing.
+  const handleVerifyPress = () => {
+    if (loading) return;
+    if (code.length !== CODE_LENGTH) {
+      nudgeCode(t("enterCodeNudge"));
+      codeRef.current?.focus();
+      return;
+    }
+    void verify(code);
+  };
 
   const handleEmailSignIn = async () => {
     if (busy.current) return;
@@ -412,8 +441,6 @@ export default function AuthScreen() {
     </Text>
   ) : null;
 
-  const sendDisabled = loading || !normalizedPhone;
-  const verifyDisabled = loading || code.length !== CODE_LENGTH;
   const resendDisabled = resendIn > 0 || loading;
 
   return (
@@ -461,7 +488,7 @@ export default function AuthScreen() {
                       the text, so the guest types the number they know. It
                       stays on the left of the digits in both languages,
                       because that is where it belongs in the number itself. */}
-                  <View style={styles.phoneRow}>
+                  <Animated.View style={[styles.phoneRow, phoneNudgeStyle]}>
                     <View style={styles.countryChip}>
                       <Text style={styles.countryChipText}>+966</Text>
                     </View>
@@ -489,7 +516,7 @@ export default function AuthScreen() {
                       onSubmitEditing={handleSendCode}
                       autoFocus
                     />
-                  </View>
+                  </Animated.View>
                   {fieldErrorText}
                 </View>
 
@@ -518,15 +545,16 @@ export default function AuthScreen() {
 
                 <Pressable
                   onPress={handleSendCode}
-                  disabled={sendDisabled}
+                  disabled={loading}
                   style={({ pressed }) => [
                     styles.submitButton,
-                    sendDisabled && styles.submitButtonDisabled,
+                    loading && styles.submitButtonDisabled,
                     pressed && styles.pressed,
                   ]}
                   accessibilityRole="button"
                   accessibilityLabel={t("sendCode")}
-                  accessibilityState={{ disabled: sendDisabled, busy: loading }}
+                  accessibilityHint={normalizedPhone ? undefined : t("enterPhoneNudge")}
+                  accessibilityState={{ disabled: loading, busy: loading }}
                 >
                   {loading ? (
                     <ActivityIndicator color={colors.ink} />
@@ -561,43 +589,46 @@ export default function AuthScreen() {
                       making it read-only took the keyboard away after every
                       wrong code, and maxLength cut a pasted "Your Hasio code
                       is 123456" to "Your H" before the digits could be found. */}
-                  <ThemedTextInput
-                    ref={codeRef}
-                    style={[styles.input, styles.codeInput, CODE_TRACKING]}
-                    isRTL={false}
-                    value={code}
-                    onChangeText={(next) => {
-                      // Latin digits, then only digits, then the first six: an
-                      // Arabic keypad, a pasted message and iOS pasting the
-                      // autofilled code twice all come out as the code.
-                      const digits = toLatinDigits(next).replace(/\D/g, "").slice(0, CODE_LENGTH);
-                      setCode(digits);
-                      if (fieldError) setFieldError(null);
-                      // Submit as soon as the code is complete. Asking someone
-                      // to tap a button after typing the last digit is a step
-                      // with nothing behind it.
-                      if (digits.length === CODE_LENGTH) void verify(digits);
-                    }}
-                    keyboardType="number-pad"
-                    textAlign="center"
-                    textContentType="oneTimeCode"
-                    autoComplete="sms-otp"
-                    autoFocus
-                  />
+                  <Animated.View style={codeNudgeStyle}>
+                    <ThemedTextInput
+                      ref={codeRef}
+                      style={[styles.input, styles.codeInput, CODE_TRACKING]}
+                      isRTL={false}
+                      value={code}
+                      onChangeText={(next) => {
+                        // Latin digits, then only digits, then the first six: an
+                        // Arabic keypad, a pasted message and iOS pasting the
+                        // autofilled code twice all come out as the code.
+                        const digits = toLatinDigits(next).replace(/\D/g, "").slice(0, CODE_LENGTH);
+                        setCode(digits);
+                        if (fieldError) setFieldError(null);
+                        // Submit as soon as the code is complete. Asking someone
+                        // to tap a button after typing the last digit is a step
+                        // with nothing behind it.
+                        if (digits.length === CODE_LENGTH) void verify(digits);
+                      }}
+                      keyboardType="number-pad"
+                      textAlign="center"
+                      textContentType="oneTimeCode"
+                      autoComplete="sms-otp"
+                      autoFocus
+                    />
+                  </Animated.View>
                   {fieldErrorText}
                 </View>
 
                 <Pressable
-                  onPress={() => void verify(code)}
-                  disabled={verifyDisabled}
+                  onPress={handleVerifyPress}
+                  disabled={loading}
                   style={({ pressed }) => [
                     styles.submitButton,
-                    verifyDisabled && styles.submitButtonDisabled,
+                    loading && styles.submitButtonDisabled,
                     pressed && styles.pressed,
                   ]}
                   accessibilityRole="button"
                   accessibilityLabel={t("verifyCode")}
-                  accessibilityState={{ disabled: verifyDisabled, busy: loading }}
+                  accessibilityHint={code.length === CODE_LENGTH ? undefined : t("enterCodeNudge")}
+                  accessibilityState={{ disabled: loading, busy: loading }}
                 >
                   {loading ? (
                     <ActivityIndicator color={colors.ink} />

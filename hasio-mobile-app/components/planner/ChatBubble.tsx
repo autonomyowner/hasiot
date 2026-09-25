@@ -1,5 +1,5 @@
 import { appAlert } from "@/stores/dialogStore";
-import React, { memo, useCallback, useMemo, useState } from "react";
+import React, { memo, useCallback, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,13 @@ import {
   type AccessibilityActionEvent,
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import { useConvexAuth, useMutation } from "convex/react";
+import { api } from "@/backend";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
-import { matchPlaces, type NamedListing } from "@/lib/plannerChat";
+import { matchPlaces, messageContent, type NamedListing } from "@/lib/plannerChat";
+import { serverErrorText } from "@/lib/serverError";
 import type { TranslationKey } from "@/constants/translations";
 import type { ChatMessage, Language } from "@/types";
 import { PlanCard, type PlanPlace } from "./PlanCard";
@@ -38,6 +42,16 @@ function formatTime(iso: string, language: Language): string {
   }
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? "" : formatter.format(date);
+}
+
+/**
+ * The server's two ways of saying "not signed in": the English-only one the
+ * older functions throw, and the bilingual one the newer ones do. Either means
+ * the session has lapsed, not that the report failed.
+ */
+function isSignInRefusal(error: unknown): boolean {
+  const text = serverErrorText(error);
+  return text.includes("Not authenticated") || text.includes("You need to be signed in.");
 }
 
 interface ChatBubbleProps {
@@ -84,10 +98,57 @@ export const ChatBubble = memo(function ChatBubble({
 
   const toggleReport = useCallback(() => setShowReport((open) => !open), []);
 
-  // There is nowhere to send this yet — the backend has no report type for an
-  // AI message, which is an open item for the owner — so it only thanks the
-  // guest. It did that twice: the screen thanked them as well.
+  const router = useRouter();
+  const { isAuthenticated } = useConvexAuth();
+  const reportContent = useMutation(api.moderation.mutations.reportContent);
+  // Two taps inside one frame would both find nothing in flight in state.
+  const reporting = useRef(false);
+
+  // The report is recorded (targetType "ai_message", 1.1.0). It used to thank
+  // the guest and send nothing, because the backend had no report type for a
+  // planner reply. The conversation lives only on this phone, so the reply's
+  // own words travel with the report — a plan's itinerary, tips and budget, as
+  // the card shows them — and the thanks come only once the server has it.
+  const reportedId = message.id;
+  const reportedText = messageContent(message);
+  const sendReport = useCallback(async () => {
+    if (reporting.current) return;
+    reporting.current = true;
+    try {
+      const result = await reportContent({
+        targetType: "ai_message",
+        targetId: reportedId,
+        // What the confirmation asks: "…for containing inappropriate content?"
+        reason: "inappropriate",
+        details: reportedText,
+      });
+      appAlert(
+        t("thankYou"),
+        result.alreadyReported ? t("reportAlreadySubmitted") : t("reportReceived")
+      );
+    } catch (error) {
+      appAlert(t("error"), t(isSignInRefusal(error) ? "errorSessionExpired" : "reportFailed"));
+    } finally {
+      reporting.current = false;
+    }
+  }, [reportContent, reportedId, reportedText, t]);
+
+  // A report belongs to an account. A guest planning signed out is offered the
+  // way in, rather than a confirmation that could only fail.
   const confirmReport = useCallback(() => {
+    if (!isAuthenticated) {
+      appAlert(t("reportMessage"), t("reportSignInRequired"), [
+        { text: t("cancel"), style: "cancel", onPress: () => setShowReport(false) },
+        {
+          text: t("signIn"),
+          onPress: () => {
+            setShowReport(false);
+            router.push("/auth");
+          },
+        },
+      ]);
+      return;
+    }
     appAlert(t("reportMessage"), t("reportConfirm"), [
       { text: t("cancel"), style: "cancel", onPress: () => setShowReport(false) },
       {
@@ -95,11 +156,11 @@ export const ChatBubble = memo(function ChatBubble({
         style: "destructive",
         onPress: () => {
           setShowReport(false);
-          appAlert(t("thankYou"), t("reportReceived"));
+          void sendReport();
         },
       },
     ]);
-  }, [t]);
+  }, [isAuthenticated, router, sendReport, t]);
 
   // The long-press that reveals Report cannot be found with a screen reader,
   // so the same thing is offered as an action on the bubble.
