@@ -1,6 +1,7 @@
 import { mutation } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
+import { AUTH_ERRORS } from "../lib/errors";
 import { addReviewForUser, deleteReviewForUser, updateReviewForUser } from "./service";
 
 /**
@@ -9,11 +10,17 @@ import { addReviewForUser, deleteReviewForUser, updateReviewForUser } from "./se
  * `getAuthenticatedAppUser`.
  */
 
-const NOT_AUTHENTICATED = "يجب تسجيل الدخول أولاً. / You need to be signed in.";
+const NOT_AUTHENTICATED = AUTH_ERRORS.NOT_AUTHENTICATED;
 
+/**
+ * Review a place or a service: exactly one of `listingId` / `serviceId`.
+ * `listingId` was required before 1.1.0; the apps that send it alone are
+ * unaffected.
+ */
 export const addReview = mutation({
   args: {
-    listingId: v.id("listings"),
+    listingId: v.optional(v.id("listings")),
+    serviceId: v.optional(v.id("services")),
     rating: v.number(),
     content: v.optional(v.string()),
     bookingId: v.optional(v.id("bookings")),
