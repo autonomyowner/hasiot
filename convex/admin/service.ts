@@ -41,7 +41,14 @@ export const ADMIN_ERRORS = {
   CANNOT_SUSPEND_ADMIN: "لا يمكن إيقاف حساب مسؤول. / An admin account cannot be suspended.",
   LISTING_NOT_SUSPENDED: "هذا المكان ليس موقوفًا. / This listing is not suspended.",
   SERVICE_NOT_SUSPENDED: "هذه الخدمة ليست موقوفة. / This service is not suspended.",
+  NOT_BUSINESS: "هذا الحساب ليس حساب أعمال. / User is not a business account.",
+  NO_DOCUMENT: "لا يمكن اعتماد حساب بلا وثيقة. / An account cannot be approved without a document.",
 } as const;
+
+/** The two roles that go through document review before they may post. */
+function isBusinessRole(role: string | undefined): boolean {
+  return role === "business_owner" || role === "service_provider";
+}
 
 function refuse(message: string): never {
   throw new ConvexError(message);
@@ -565,6 +572,86 @@ export function toAdminUserRow(user: Doc<"users">) {
     suspendedAt: user.suspendedAt,
     createdAt: user.createdAt,
   };
+}
+
+// === Business accounts (design 4.5 "Accounts") ===
+
+/**
+ * Approve a business or provider account.
+ *
+ * Checks for the uploaded document on the server. Bulk approve always did;
+ * the single approve relied on the panel greying out its button, so the one
+ * thing the queue exists to check could be skipped by any client that sent
+ * the call anyway. Approving also clears an earlier rejection, so the owner's
+ * verification screen stops showing a verdict that no longer applies.
+ */
+export async function approveBusinessAccountRecord(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  userId: Id<"users">,
+  opts: DecisionOpts = {},
+  now: number = Date.now()
+): Promise<void> {
+  const target = await ctx.db.get(userId);
+  if (!target) refuse(ADMIN_ERRORS.USER_NOT_FOUND);
+  if (!isBusinessRole(target.role)) refuse(ADMIN_ERRORS.NOT_BUSINESS);
+  if (!target.cvFileId) refuse(ADMIN_ERRORS.NO_DOCUMENT);
+
+  await ctx.db.patch(userId, {
+    isApproved: true,
+    accountRejectionReason: undefined,
+    accountRejectedAt: undefined,
+    updatedAt: now,
+  });
+
+  await logAdminAction(ctx, admin, {
+    action: "account.approve",
+    targetType: "user",
+    targetId: userId,
+    summary: labelFor(target),
+    details: opts.bulk ? IN_BULK : undefined,
+  });
+
+  await notifyUserEvent(ctx, "account.approved", { userId }, now);
+}
+
+/**
+ * Turn a business or provider account down, with the reason the owner sees on
+ * their verification screen. Before this an account the admin would not
+ * approve sat in the queue forever with its owner told nothing. Uploading a
+ * new document (saveBusinessDoc) clears the rejection and puts it back.
+ */
+export async function rejectBusinessAccountRecord(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  userId: Id<"users">,
+  reason: string,
+  now: number = Date.now()
+): Promise<void> {
+  const target = await ctx.db.get(userId);
+  if (!target) refuse(ADMIN_ERRORS.USER_NOT_FOUND);
+  if (!isBusinessRole(target.role)) refuse(ADMIN_ERRORS.NOT_BUSINESS);
+
+  const trimmed = reason.trim();
+  if (!trimmed) refuse(ADMIN_ERRORS.REJECT_REASON_REQUIRED);
+  const stored = trimmed.slice(0, 500);
+
+  await ctx.db.patch(userId, {
+    isApproved: false,
+    accountRejectionReason: stored,
+    accountRejectedAt: now,
+    updatedAt: now,
+  });
+
+  await logAdminAction(ctx, admin, {
+    action: "account.reject",
+    targetType: "user",
+    targetId: userId,
+    summary: labelFor(target),
+    details: stored,
+  });
+
+  await notifyUserEvent(ctx, "account.rejected", { userId, reason: stored }, now);
 }
 
 export async function suspendUserRecord(

@@ -188,6 +188,34 @@ export function cityFilter<TI extends GenericTableInfo>(
 
 type ServiceFilter = FilterBuilder<NamedTableInfo<DataModel, "services">>;
 
+// === Accounts ===
+
+// Hard ceiling per role, as listPendingBusinesses always had.
+const MAX_PENDING = 200;
+
+/**
+ * Business and provider accounts not yet approved, each saying whether it has
+ * uploaded a document and, if an admin turned it down, why. The panel shows an
+ * account without a document as such instead of leaving it in the queue with
+ * a greyed-out button nobody can explain.
+ */
+export async function pendingBusinessRows(ctx: QueryCtx) {
+  const [owners, providers] = await Promise.all(
+    (["business_owner", "service_provider"] as const).map((role) =>
+      ctx.db
+        .query("users")
+        .withIndex("by_role_and_approval", (q) => q.eq("role", role).eq("isApproved", false))
+        .take(MAX_PENDING)
+    )
+  );
+
+  return [...owners, ...providers].map((user) => ({
+    ...user,
+    hasDocument: user.cvFileId !== undefined,
+    accountRejectionReason: user.accountRejectionReason,
+  }));
+}
+
 // === Services (the live-services tab) ===
 
 export type AdminServiceRow = Doc<"services"> & { owner: ReturnType<typeof ownerSummary> | null };

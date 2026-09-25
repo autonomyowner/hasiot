@@ -5,7 +5,12 @@ import { requireAdmin } from "../auth";
 import { hasAliases, matchesCity } from "../lib/cities";
 import { isPlaceholderEmail } from "../lib/contact";
 import { riyadhMonthKey } from "../lib/dates";
-import { getServiceForAdmin, listServicesPage, searchServicesForAdmin } from "./views";
+import {
+  getServiceForAdmin,
+  listServicesPage,
+  pendingBusinessRows,
+  searchServicesForAdmin,
+} from "./views";
 
 // Hard ceilings so no admin query can scan an unbounded number of documents.
 // Convex fails a query outright past ~16k reads, and this dashboard used to
@@ -569,26 +574,13 @@ export const adminGetService = query({
   },
 });
 
-// List pending business accounts awaiting approval
+// List business accounts not yet approved. Each row says whether it has a
+// document (hasDocument) and, when an admin turned it down, why.
 export const listPendingBusinesses = query({
   args: {},
   handler: async (ctx) => {
     await requireAdmin(ctx);
-    const pendingOwners = await ctx.db
-      .query("users")
-      .withIndex("by_role_and_approval", (q) =>
-        q.eq("role", "business_owner").eq("isApproved", false)
-      )
-      .take(MAX_LIST);
-
-    const pendingProviders = await ctx.db
-      .query("users")
-      .withIndex("by_role_and_approval", (q) =>
-        q.eq("role", "service_provider").eq("isApproved", false)
-      )
-      .take(MAX_LIST);
-
-    return [...pendingOwners, ...pendingProviders];
+    return await pendingBusinessRows(ctx);
   },
 });
 

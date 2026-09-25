@@ -1,9 +1,23 @@
-import { mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { mutation, type MutationCtx } from "../_generated/server";
+import { ConvexError, v } from "convex/values";
+import type { Doc, Id } from "../_generated/dataModel";
 import { getAuthenticatedAppUser, requireAdmin, authComponent, createAuth } from "../auth";
 import { enforceRateLimit } from "../rateLimit";
-import { logAdminAction, labelFor } from "../admin/activity";
+import { approveBusinessAccountRecord } from "../admin/service";
 import { buildSearchTextFrom } from "./search";
+
+/**
+ * "Not authenticated" stays English only: the app maps that exact text to
+ * "session expired" (contract, "Unchanged refusals"). It is a ConvexError now
+ * because production redacts a plain Error to "Server Error", which the app
+ * could only answer with "please try again".
+ */
+const NOT_AUTHENTICATED = "Not authenticated";
+
+const USER_ERRORS = {
+  ONLY_BUSINESS_UPLOADS:
+    "يمكن لحسابات الأعمال فقط رفع الوثائق. / Only business accounts can upload documents.",
+} as const;
 
 // Maximum favorites a single user can hold. Bounds both the user document and
 // the Promise.all fan-out in users/queries.ts:getFavorites.
@@ -29,24 +43,41 @@ export const generateUploadUrl = mutation({
   },
 });
 
+/**
+ * Attach the owner's business document for review.
+ *
+ * A new document also clears an earlier rejection, which is what puts a
+ * turned-down account back in the admin's queue: the old verdict was about a
+ * file nobody is looking at any more.
+ */
+export async function saveBusinessDocForUser(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  fileId: Id<"_storage">,
+  now: number = Date.now()
+): Promise<void> {
+  if (user.role !== "business_owner" && user.role !== "service_provider") {
+    throw new ConvexError(USER_ERRORS.ONLY_BUSINESS_UPLOADS);
+  }
+
+  await ctx.db.patch(user._id, {
+    cvFileId: fileId,
+    accountRejectionReason: undefined,
+    accountRejectedAt: undefined,
+    updatedAt: now,
+  });
+}
+
 // Save business document reference to user record
 export const saveBusinessDoc = mutation({
   args: { fileId: v.id("_storage") },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
     if (!user) {
-      throw new Error("Not authenticated");
+      throw new ConvexError(NOT_AUTHENTICATED);
     }
 
-    if (user.role !== "business_owner" && user.role !== "service_provider") {
-      throw new Error("Only business accounts can upload documents");
-    }
-
-    await ctx.db.patch(user._id, {
-      cvFileId: args.fileId,
-      updatedAt: Date.now(),
-    });
-
+    await saveBusinessDocForUser(ctx, user, args.fileId);
     return { success: true };
   },
 });
@@ -175,32 +206,16 @@ export const setUserRole = mutation({
   },
 });
 
-// Admin approves a business account
+/**
+ * Admin approves a business account. Refused without an uploaded document;
+ * clears any earlier rejection, logs, and tells the owner
+ * (approveBusinessAccountRecord).
+ */
 export const approveBusinessAccount = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const targetUser = await ctx.db.get(args.userId);
-    if (!targetUser) {
-      throw new Error("User not found");
-    }
-
-    if (targetUser.role !== "business_owner" && targetUser.role !== "service_provider") {
-      throw new Error("User is not a business account");
-    }
-
-    await ctx.db.patch(args.userId, {
-      isApproved: true,
-      updatedAt: Date.now(),
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: "account.approve",
-      targetType: "user",
-      targetId: args.userId,
-      summary: labelFor(targetUser),
-    });
-
+    await approveBusinessAccountRecord(ctx, admin, args.userId);
     return { success: true };
   },
 });

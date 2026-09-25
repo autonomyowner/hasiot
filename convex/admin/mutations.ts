@@ -4,15 +4,16 @@ import { requireAdmin } from "../auth";
 import { logAdminAction, labelFor } from "./activity";
 import {
   applyBookingStatusAsAdmin,
+  approveBusinessAccountRecord,
   approveListingRecord,
   approveServiceRecord,
   assignListingHostRecord,
   createListingAsAdmin,
   deleteListingAsAdmin,
   deleteServiceAsAdmin,
-  IN_BULK,
   reinstateListingRecord,
   reinstateServiceRecord,
+  rejectBusinessAccountRecord,
   rejectListingRecord,
   rejectServiceRecord,
   suspendListingRecord,
@@ -563,18 +564,26 @@ export const bulkApproveBusinesses = mutation({
         continue;
       }
 
-      await ctx.db.patch(userId, { isApproved: true, updatedAt: Date.now() });
-      await logAdminAction(ctx, admin, {
-        action: "account.approve",
-        targetType: "user",
-        targetId: userId,
-        summary: labelFor(user),
-        details: IN_BULK,
-      });
+      // Clears any earlier rejection, logs, and sends account.approved.
+      await approveBusinessAccountRecord(ctx, admin, userId, { bulk: true });
       succeeded++;
     }
 
     return { succeeded, failed };
+  },
+});
+
+/**
+ * Turn down a business or provider account with a reason (contract section 8).
+ * The owner sees it on their verification screen and is sent account.rejected;
+ * uploading a new document puts the account back in the queue.
+ */
+export const rejectBusinessAccount = mutation({
+  args: { userId: v.id("users"), reason: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await rejectBusinessAccountRecord(ctx, admin, args.userId, args.reason);
+    return { success: true };
   },
 });
 
