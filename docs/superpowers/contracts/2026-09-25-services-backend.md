@@ -38,6 +38,23 @@
 9. **`getDashboardStats` is additive.** The panel already in production reads its current fields, and the backend deploys first. New fields such as `capped` are added; nothing is renamed or removed.
 10. **Both sign-in refusals map to "session expired".** Clients map the old English-only `"Not authenticated"` and the new `"… / You need to be signed in."` to the same message.
 
+## Changes after the backend merged (2026-09-25, review fixes and the Fable 5.1 security review)
+
+| # | Rule | Refusal text (English half) |
+|---|---|---|
+| 11 | Confirming a pending request after its `expiresAt` is refused, for stays and services, even before the hourly job marks it expired. | "This request is no longer pending." (existing) |
+| 12 | A host or provider cannot review their own place or service (`REVIEW_ERRORS.OWN_ITEM`). | "You cannot review your own place or service." |
+| 13 | A suspended host's listings cannot be booked (stay or slot) or quoted, and the AI planner never recommends them. | "This listing is not available right now." / `quoteStay` → `NOT_BOOKABLE` |
+| 14 | Only a live listing or service (approved, or a seed listing with no status) can be suspended. Reinstating sets "approved", so a pending one is rejected instead. | "Only a live listing can be suspended; reject a pending one instead." / "Only a live service can be suspended; reject a pending one instead." |
+| 15 | Review lists never carry `bookingId`, so an anonymous author cannot be matched to a booking. Only `getMine` / `getMineForService` return it. | — |
+| 16 | Service free-text fields are cut to size: priceRange 60, availability 300, contactPhone 30, contactEmail 120, region 60, languages 10 × 30. Image URLs over 1000 characters are dropped. The public type filter reads the new `by_status_and_serviceType` index. | — (cut, not refused) |
+| 17 | `registerPushToken`: 20 a day per user. | "You've reached today's device registration limit. Please try again tomorrow." |
+| 18 | Names are trimmed and cut to 50 characters wherever they are written. | — |
+| 19 | Every report's `targetId` must be 1–200 characters (`INVALID_TARGET_ID`; `INVALID_MESSAGE_ID` for `ai_message`), and `details` is cut to 2000 characters, for every target type. | "Invalid report target id." |
+| 20 | A service booking can be completed by its provider only once it is **confirmed and its start time has passed** (`BOOKING_ERRORS.SERVICE_NOT_STARTED`). Anything else goes through the admin panel. | "A service can only be completed once it is confirmed and has started." |
+| 21 | A same-day request that expired at its start time is told "did not respond before the start time", not "within 48 hours" (`expiredAtStart`). | — |
+| 22 | `deleteMyAccount` deletes the sign-in too: Better Auth's sessions, linked accounts and user, via the internal adapter. If that fails, the whole deletion rolls back. Verified on development: the email no longer signs in, and the phone returns as a new, empty account. | — |
+
 ## 1. Shared constants
 
 `convex/lib/errors.ts` (new):

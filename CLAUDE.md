@@ -192,34 +192,59 @@ commits stale and bundled with a separate UI redesign — do not merge it for th
 
 ### Backend (Convex)
 
+The pattern everywhere: rules live in **seams** — plain functions taking `ctx` and an already-resolved
+user (`*/service.ts`, `admin/views.ts`) — because `convex-test` cannot resolve the Better Auth component;
+the public `query`/`mutation` wrappers only authenticate and call them. Refusals a person can meet are
+`ConvexError("عربي / English")`; the app matches the English half, so that wording is an API.
+The 1.1.0 backend contract (every function, shape and refusal) is
+`docs/superpowers/contracts/2026-09-25-services-backend.md`.
+
 ```
 convex/
-├── schema.ts              # Database schema (adminActivity added 2026-08-30)
+├── schema.ts              # Database schema (pushTokens, service bookings/reviews added 2026-09-25)
 ├── convex.config.ts       # Registers betterAuth component
 ├── auth.config.ts         # getAuthConfigProvider()
-├── auth.ts                # Better-Auth instance + getAuthenticatedAppUser helper
+├── auth.ts                # Better-Auth instance + getAuthenticatedAppUser, requireAdmin
 ├── http.ts                # Auth routes with CORS
-├── config/
-│   └── queries.ts         # getPublicConfig (exposes MAPBOX_PUBLIC_TOKEN to frontend)
+├── crons.ts               # expire pending (hourly), reminders 09:00, complete 04:00 (Riyadh) — stays and services
+├── rateLimit.ts           # enforceRateLimit (ConvexError), fixed 24h windows
+├── lib/                   # dates (Riyadh), cities (13 + aliases, toProvinceCity), contact, errors (AUTH_ERRORS)
+├── config/queries.ts      # getPublicConfig
 ├── admin/
-│   ├── queries.ts         # getDashboardStats, adminListListings (paginated), adminSearchListings,
-│   │                     # listPending{Content,Services,Businesses}, listAllBookings, listAdminActivity
-│   ├── mutations.ts       # listing/knowledge CRUD, approve+reject content/services,
-│   │                     # updateBookingStatus, bulkApprove*/bulkReject*
-│   ├── activity.ts        # logAdminAction() — called by every admin write
-│   └── devTools.ts        # internalMutation grantAdmin/revokeAdmin/listAdmins (CLI only)
+│   ├── queries.ts         # getDashboardStats (+queues, capped), adminList/SearchListings, adminList/SearchServices,
+│   │                     # adminGetService, adminList/SearchBookings, adminGetUser, listPending*, listAdminActivity
+│   ├── mutations.ts       # listing CRUD (pricing, null clears), approvals (+ owner notices), services admin
+│   │                     # (update/suspend/reinstate/delete), rejectBusinessAccount, setUserRoleAsAdmin, removeReview
+│   ├── service.ts         # write seams + ADMIN_ERRORS;  views.ts — read seams
+│   ├── users.ts           # adminListUsers, adminSearchUsers
+│   ├── activity.ts        # logAdminAction() — called by every admin write, same transaction
+│   └── devTools.ts        # internalMutation grantAdmin/revokeAdmin/listAdmins/grantVerifiedPhone (CLI only)
 ├── users/
 │   ├── queries.ts         # getCurrentUser, getFavorites, isFavorite, getBusinessDocUrl, getStorageUrl
-│   └── mutations.ts       # updateProfile, toggleFavorite, setUserRole, approveBusinessAccount, generateUploadUrl, saveBusinessDoc, createUser
+│   ├── mutations.ts       # updateProfile, toggleFavorite, setUserRole, approveBusinessAccount, saveBusinessDoc,
+│   │                     # deleteMyAccount (deleteAccountData seam + Better Auth sign-in deletion), createUser (1.0.2)
+│   ├── push.ts            # registerPushToken / unregisterPushToken (pushTokens table, token moves with the phone)
+│   └── sync.ts, search.ts # Better Auth triggers → users row; admin search text
 ├── listings/
-│   ├── queries.ts         # listListings, searchListings, getMyListings, getCategories, getCities, getListingsNearLocation
-│   └── mutations.ts       # createListing, submitListing, updateMyListing, deleteMyListing, seedListings
+│   ├── queries.ts         # public listing queries (suspended owners hidden), getMyListings
+│   ├── mutations.ts       # submitListing, updateMyListing (pricePerNight null clears), deleteMyListing (refuses open bookings)
+│   └── pricing.ts         # PRICING_ARGS, validatePricing, isBookableStay
 ├── services/
-│   ├── queries.ts         # getMyServices, listServices, getService, searchServices
+│   ├── logic.ts           # SERVICE_ERRORS, computeServiceQuote, isPublicService/isBookableService, validateServiceInput
+│   ├── service.ts         # submit/update/delete seams
+│   ├── queries.ts         # listServices(+Paginated), searchServices (en+ar), getService (+provider, bookable), getMyServices
 │   └── mutations.ts       # submitService, updateMyService, deleteMyService
 ├── bookings/
-│   ├── queries.ts         # getUserBookings, getAvailableSlots, getBooking, getBusinessBookings
-│   └── mutations.ts       # createBooking, cancelBooking, rescheduleBooking, confirmBooking
+│   ├── logic.ts           # statuses, BOOKING_ERRORS, computeStayQuote, canTransition, confirmation codes
+│   ├── service.ts         # createStay/Slot/ServiceForUser, confirm/decline/complete/cancel seams
+│   ├── queries.ts         # getUserBookings/getBooking (includeServices), getBusinessBookings, getProviderBookings,
+│   │                     # getOwnerStats, getProviderStats, quoteStay, quoteService
+│   ├── mutations.ts       # createBooking (1.0.2 slots), createStayBooking, createServiceBooking, cancel/confirm/
+│   │                     # decline/complete/markNoShow
+│   └── lifecycle.ts       # the three cron jobs
+├── reviews/               # listings and services: add/update/delete (verified by a completed booking), summaries
+├── notifications/         # templates (booking + account events, en/ar), internal (notify*, data.target), deliver (push/email)
+├── moderation/            # reportContent (listing/service/review/ai_message), blocks, resolveReport
 ├── trips/
 │   ├── queries.ts         # getMyTrips (hydrated stops), getTrip, getMyTripSummaries
 │   └── mutations.ts       # createTrip, addStopToTrip, updateStop, removeStop, reorderStops, updateTrip, deleteTrip, convertPlanToTrip
