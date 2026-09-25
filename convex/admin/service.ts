@@ -5,6 +5,7 @@ import { logAdminAction, labelFor } from "./activity";
 import { isPlaceholderEmail } from "../lib/contact";
 import { notifyBookingEvent, notifyUserEvent } from "../notifications/internal";
 import { SERVICE_ERRORS, validateServiceInput } from "../services/logic";
+import { buildSearchTextFrom } from "../users/search";
 import {
   BOOKING_STATUSES,
   canTransition,
@@ -43,7 +44,12 @@ export const ADMIN_ERRORS = {
   SERVICE_NOT_SUSPENDED: "هذه الخدمة ليست موقوفة. / This service is not suspended.",
   NOT_BUSINESS: "هذا الحساب ليس حساب أعمال. / User is not a business account.",
   NO_DOCUMENT: "لا يمكن اعتماد حساب بلا وثيقة. / An account cannot be approved without a document.",
+  INVALID_ROLE: "دور غير صالح. / Invalid role.",
+  ROLE_LOCKED: "لا يمكن تغيير دور هذا الحساب. / This account's role cannot be changed.",
 } as const;
+
+/** The roles an admin may give an account. Admin itself is granted from the CLI only (devTools). */
+const ASSIGNABLE_ROLES = ["tourist", "business_owner", "service_provider"];
 
 /** The two roles that go through document review before they may post. */
 function isBusinessRole(role: string | undefined): boolean {
@@ -652,6 +658,50 @@ export async function rejectBusinessAccountRecord(
   });
 
   await notifyUserEvent(ctx, "account.rejected", { userId, reason: stored }, now);
+}
+
+/**
+ * Change what an account is, from the panel.
+ *
+ * Never an admin account, the acting admin's included: demoting yourself
+ * locks you out of the panel with no way back but the database, and one admin
+ * demoting another is a fight the product should not host. Making someone a
+ * business owner or provider does not approve them — they still upload a
+ * document and go through the queue. Asking for the role an account already
+ * has changes nothing, so re-saving cannot quietly revoke an approval.
+ */
+export async function setUserRoleRecord(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  userId: Id<"users">,
+  role: string,
+  now: number = Date.now()
+): Promise<void> {
+  if (!ASSIGNABLE_ROLES.includes(role)) refuse(ADMIN_ERRORS.INVALID_ROLE);
+
+  const target = await ctx.db.get(userId);
+  if (!target) refuse(ADMIN_ERRORS.USER_NOT_FOUND);
+  if (target._id === admin._id || target.role === "admin") refuse(ADMIN_ERRORS.ROLE_LOCKED);
+
+  const from = target.role ?? "tourist";
+  if (from === role) return;
+
+  await ctx.db.patch(userId, {
+    role,
+    ...(isBusinessRole(role) ? { isApproved: false } : {}),
+    // Every write to a user row keeps the admin search blob current, and an
+    // account created before search existed gets one here.
+    searchText: buildSearchTextFrom(target),
+    updatedAt: now,
+  });
+
+  await logAdminAction(ctx, admin, {
+    action: "user.role",
+    targetType: "user",
+    targetId: userId,
+    summary: labelFor(target),
+    details: `${from} → ${role}`,
+  });
 }
 
 export async function suspendUserRecord(

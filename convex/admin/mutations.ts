@@ -16,6 +16,7 @@ import {
   rejectBusinessAccountRecord,
   rejectListingRecord,
   rejectServiceRecord,
+  setUserRoleRecord,
   suspendListingRecord,
   suspendServiceRecord,
   suspendUserRecord,
@@ -267,6 +268,20 @@ export const updateBookingStatus = mutation({
       status: args.status,
       reason: args.cancellationReason,
     });
+    return { success: true };
+  },
+});
+
+/**
+ * Change an account's role: tourist, business_owner or service_provider.
+ * Never an admin account (the acting admin's included). Moving to business or
+ * provider leaves the account unapproved until its document is reviewed.
+ */
+export const setUserRoleAsAdmin = mutation({
+  args: { userId: v.id("users"), role: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await setUserRoleRecord(ctx, admin, args.userId, args.role);
     return { success: true };
   },
 });

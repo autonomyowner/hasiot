@@ -7,6 +7,7 @@ import { isPlaceholderEmail } from "../lib/contact";
 import { riyadhMonthKey } from "../lib/dates";
 import {
   getServiceForAdmin,
+  getUserForAdmin,
   listServicesPage,
   pendingBusinessRows,
   searchServicesForAdmin,
@@ -571,6 +572,19 @@ export const adminGetService = query({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
     return await getServiceForAdmin(ctx, args.serviceId);
+  },
+});
+
+/**
+ * One account for the user drawer: the table row plus its rejection reason,
+ * its last 20 bookings as a guest, what it owns (50 each) and the last 20
+ * reports against its content. Null when the account is gone.
+ */
+export const adminGetUser = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await getUserForAdmin(ctx, args.userId);
   },
 });
 

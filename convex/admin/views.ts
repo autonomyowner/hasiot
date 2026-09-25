@@ -10,6 +10,7 @@ import type {
 } from "convex/server";
 import { canonicalCity, EASTERN_PROVINCE_CITIES, hasAliases, matchesCity } from "../lib/cities";
 import { isPlaceholderEmail } from "../lib/contact";
+import { toAdminUserRow } from "./service";
 
 /**
  * What the admin panel reads, with the admin already checked.
@@ -214,6 +215,77 @@ export async function pendingBusinessRows(ctx: QueryCtx) {
     hasDocument: user.cvFileId !== undefined,
     accountRejectionReason: user.accountRejectionReason,
   }));
+}
+
+const USER_BOOKINGS = 20;
+const USER_OWNED = 50;
+const USER_REPORTS = 20;
+
+/**
+ * One account for the user drawer (contract section 8, adminGetUser): the
+ * table row, why it was turned down, the trips it booked, what it publishes,
+ * and the reports filed against what it published or wrote.
+ */
+export async function getUserForAdmin(ctx: QueryCtx, userId: Id<"users">) {
+  const user = await ctx.db.get(userId);
+  if (!user) return null;
+
+  const [bookings, listings, services, reviews] = await Promise.all([
+    ctx.db
+      .query("bookings")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(USER_BOOKINGS),
+    ctx.db
+      .query("listings")
+      .withIndex("by_ownerId", (q) => q.eq("ownerId", userId))
+      .order("desc")
+      .take(USER_OWNED),
+    ctx.db
+      .query("services")
+      .withIndex("by_ownerId", (q) => q.eq("ownerId", userId))
+      .order("desc")
+      .take(USER_OWNED),
+    ctx.db
+      .query("reviews")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .order("desc")
+      .take(USER_OWNED),
+  ]);
+
+  // A report names its target by type and id, so the reports against this
+  // account are found through each thing it owns. Every lookup is one small
+  // indexed range, bounded by the caps above.
+  const targets: { type: string; id: string; title: string }[] = [
+    ...listings.map((l) => ({ type: "listing", id: l._id as string, title: l.name_ar || l.name_en })),
+    ...services.map((s) => ({ type: "service", id: s._id as string, title: s.title_ar || s.title_en })),
+    ...reviews.map((r) => ({ type: "review", id: r._id as string, title: r.content ?? `${r.rating}/5` })),
+  ];
+  const found = await Promise.all(
+    targets.map(async (target) =>
+      (
+        await ctx.db
+          .query("contentReports")
+          .withIndex("by_target", (q) => q.eq("targetType", target.type).eq("targetId", target.id))
+          .order("desc")
+          .take(USER_REPORTS)
+      ).map((report) => ({ ...report, targetTitle: target.title }))
+    )
+  );
+  const reports = found
+    .flat()
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, USER_REPORTS);
+
+  return {
+    ...toAdminUserRow(user),
+    accountRejectionReason: user.accountRejectionReason,
+    accountRejectedAt: user.accountRejectedAt,
+    bookings: await bookingRows(ctx, bookings),
+    listings,
+    services,
+    reports,
+  };
 }
 
 // === Services (the live-services tab) ===
