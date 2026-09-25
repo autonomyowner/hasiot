@@ -559,6 +559,21 @@ Use two phones, or two accounts on one phone, one of them a provider.
 41. **An iOS build made with `HASIO_IOS_PUSH=off`** (before Nabil's APNs key exists) never asks for
     notifications and hides the Notifications row. Everything else works.
 
+**From the final review (Fable 5.1, 2026-09-25) — fixed, never seen on a phone:**
+
+42. A service priced **by the day**, booked for three days from the 10th, reads "10 – 12 Sep at
+    09:00" in My bookings, in the provider's inbox and on the booking itself — not "10 Sep".
+43. A request nobody answers: from its expiry (a same-day request expires at its start time) it
+    shows **Expired** and sits under **Past** — in the traveller's list, the provider's inbox and a
+    host's inbox — with no Confirm, Decline or Cancel, even before the hourly job has marked it.
+    Quickest to see: request a service starting within the next two hours, leave it unanswered,
+    and look again just after the start time. The host inbox must move it without being reopened.
+44. The traveller cancels a confirmed booking while the provider's inbox still shows it; the
+    provider then taps No-show: the message says the booking is **already closed**, not "Please try
+    again".
+45. Signed out: tap an old booking notification → the sign-in screen, never "Booking not found".
+    Launch the app signed out, open a service at once and tap Book → sign-in opens on the first tap.
+
 ## Summary
 
 We looked through every screen of the app and listed about 150 things that felt broken, slow or unfinished.

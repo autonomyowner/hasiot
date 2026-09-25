@@ -47,13 +47,13 @@ How to do good work here:
 - **Green before commit:** `npm run typecheck`, `npm run lint`, `npm run test` in
   `hasio-mobile-app/`. Lint has existed only since 2026-09-14; the UI audit took it from 0 errors /
   55 warnings to **0 errors / 3 warnings** (the documented latest-ref in `useKeyboardOverlap`, two
-  effects in `BookingSheet`). Don't add errors or warnings. Tests: 357 across 17 files (2026-09-25).
+  effects in `BookingSheet`). Don't add errors or warnings. Tests: 366 across 17 files (2026-09-25).
   The backend's own suite (`npm run test` at the root) must stay green too, and
   `npm run typecheck:convex` clean.
 - **Bookable services, push and the finished admin panel** (2026-09-25) were built on branch
   `services-release` (from `sdk-57`) to the design `docs/superpowers/specs/2026-09-25-bookable-services-release-design.md`,
   the plan `docs/superpowers/plans/2026-09-25-bookable-services-release.md` and the backend
-  contract `docs/superpowers/contracts/2026-09-25-services-backend.md`. Device checks 25–41 in the
+  contract `docs/superpowers/contracts/2026-09-25-services-backend.md`. Device checks 25–45 in the
   UI-polish plan are the phone checks this work still owes.
 - **The 2026-09-24 UI/UX audit** — six reviewers, ~150 findings, all fixed on branch `ui-polish`
   (merged into `sdk-57`). The accepted findings, the defaults taken, the owner's open items and
@@ -626,7 +626,7 @@ map of *who owns what and what is broken*, verified live on 2026-09-14.
         (`npx eas credentials`). A production Android build **stops with an error** without the
         file unless `HASIO_ANDROID_PUSH=off` is set — deliberate, so push is never lost by accident.
   - [ ] The device checks at the end of `docs/superpowers/plans/2026-09-24-mobile-ui-polish.md`
-        (iPhone modal flows, Android keyboard, Arabic, and 25–41 for services, provider inbox and
+        (iPhone modal flows, Android keyboard, Arabic, and 25–45 for services, provider inbox and
         push) — none of the UI audit's or the services work's fixes ran on a phone.
   - [ ] Play Data Safety, ASC App Privacy and the privacy policy mention phone number **and push
         tokens** (the policy copies and `DATA_SAFETY_ANSWERS.md` do since 2026-09-25; the two store
