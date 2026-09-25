@@ -160,6 +160,9 @@ export async function addReviewForUser(
   const listingId = args.listingId!;
   const listing = await ctx.db.get(listingId);
   if (!listing) throw new ConvexError(REVIEW_ERRORS.LISTING_NOT_FOUND);
+  if (listing.ownerId && listing.ownerId === user._id) {
+    throw new ConvexError(REVIEW_ERRORS.OWN_ITEM);
+  }
 
   const existing = await ctx.db
     .query("reviews")
@@ -195,6 +198,7 @@ async function addServiceReview(
 ): Promise<Id<"reviews">> {
   const service = await ctx.db.get(args.serviceId);
   if (!service) throw new ConvexError(REVIEW_ERRORS.SERVICE_NOT_FOUND);
+  if (service.ownerId === user._id) throw new ConvexError(REVIEW_ERRORS.OWN_ITEM);
 
   // Looked up among the traveller's own reviews, which stay few, rather than
   // among a popular service's.

@@ -39,6 +39,9 @@ export const REVIEW_ERRORS = {
   NOT_FOUND: "التقييم غير موجود. / Review not found.",
   NOT_YOURS: "لا يمكنك تعديل تقييم شخص آخر. / You can only change your own review.",
   LISTING_NOT_FOUND: "المكان غير موجود. / Place not found.",
+  // A host or provider rating themselves is a fake review with a verified-
+  // looking author; the score is for travellers' judgements only.
+  OWN_ITEM: "لا يمكنك تقييم مكانك أو خدمتك. / You cannot review your own place or service.",
   // 1.1.0: a review is of a place or of a service, never both or neither.
   TARGET_REQUIRED: "اختر ما تريد تقييمه. / Choose what to review.",
   SERVICE_NOT_FOUND: "الخدمة غير موجودة. / Service not found.",

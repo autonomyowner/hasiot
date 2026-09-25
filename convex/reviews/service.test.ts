@@ -141,6 +141,40 @@ describe("addReviewForUser", () => {
   });
 });
 
+describe("addReviewForUser, by an owner", () => {
+  it("refuses a host rating their own place", async () => {
+    const t = makeT();
+    const hostId = await seedUser(t, { role: "business_owner", isApproved: true });
+    const listingId = await seedHotel(t, { ownerId: hostId });
+
+    await expect(
+      t.run(async (ctx) => {
+        const host = (await ctx.db.get(hostId))!;
+        await addReviewForUser(ctx, host, { listingId, rating: 5 });
+      })
+    ).rejects.toSatisfy(
+      (error: unknown) => error instanceof ConvexError && error.data === REVIEW_ERRORS.OWN_ITEM
+    );
+    const listing = await t.run((ctx) => ctx.db.get(listingId));
+    expect(listing?.reviewCount).toBeUndefined();
+  });
+
+  it("refuses a provider rating their own service", async () => {
+    const t = makeT();
+    const providerId = await seedUser(t, { role: "service_provider", isApproved: true });
+    const serviceId = await seedService(t, { ownerId: providerId });
+
+    await expect(
+      t.run(async (ctx) => {
+        const provider = (await ctx.db.get(providerId))!;
+        await addReviewForUser(ctx, provider, { serviceId, rating: 5 });
+      })
+    ).rejects.toSatisfy(
+      (error: unknown) => error instanceof ConvexError && error.data === REVIEW_ERRORS.OWN_ITEM
+    );
+  });
+});
+
 describe("updateReviewForUser", () => {
   it("changes the score and rescores the listing", async () => {
     const { t, guestId, listingId } = await setup();
