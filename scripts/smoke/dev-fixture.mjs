@@ -3,6 +3,8 @@
 // `cleanup`. Run from the repo root:
 //   node scripts/smoke/dev-fixture.mjs create   → writes %TEMP%/hasio-dev-fixture.json
 //   node scripts/smoke/dev-fixture.mjs cleanup  → deletes the accounts it made
+//   node scripts/smoke/dev-fixture.mjs recent-phones [hours]  → phone sign-ups made lately
+//   node scripts/smoke/dev-fixture.mjs delete-phone +9665…   → deletes those accounts
 // Refuses to run unless .env.local points at a dev: deployment.
 import { ConvexHttpClient } from "convex/browser";
 import { anyApi as api } from "convex/server";
@@ -126,7 +128,52 @@ async function cleanup() {
   fs.rmSync(STATE);
 }
 
+// Phone sign-ups made in the last `hours`, read as the fixture admin. A
+// browser smoke that stops half-way never writes down the number it signed in
+// with; this is how its account is found again.
+async function recentPhones(hours) {
+  const state = JSON.parse(fs.readFileSync(STATE, "utf8"));
+  const admin = await client(state.adminSession);
+  const since = Date.now() - hours * 3_600_000;
+  let cursor = null;
+  for (;;) {
+    const page = await admin.query(api.admin.users.adminListUsers, {
+      paginationOpts: { numItems: 100, cursor },
+    });
+    for (const u of page.page) {
+      if (u.isPlaceholderEmail && u.createdAt >= since) {
+        const fixture = u.phone === state.providerPhone ? " (fixture provider — kept)" : "";
+        console.log(`${u.phone}  ${u.role}  ${new Date(u.createdAt).toISOString()}${fixture}`);
+      }
+    }
+    if (page.isDone) break;
+    cursor = page.continueCursor;
+  }
+}
+
+// Delete accounts a smoke made, by signing in as each (development accepts any
+// six digits) and deleting it the way the app does. Never the fixture's own
+// provider: `cleanup` removes that one with the rest of the fixture.
+async function deletePhones(phones) {
+  const state = fs.existsSync(STATE) ? JSON.parse(fs.readFileSync(STATE, "utf8")) : {};
+  for (const phone of phones) {
+    if (!/^\+9665\d{8}$/.test(phone)) {
+      console.log(`skipped ${phone}: not a +9665XXXXXXXX number`);
+      continue;
+    }
+    if (phone === state.providerPhone) {
+      console.log(`skipped ${phone}: the fixture provider (use cleanup)`);
+      continue;
+    }
+    const c = await client(await phoneSession(phone));
+    await c.mutation(api.users.mutations.deleteMyAccount, {});
+    console.log(`deleted ${phone}`);
+  }
+}
+
 const mode = process.argv[2];
 if (mode === "create") await create();
 else if (mode === "cleanup") await cleanup();
-else console.log("usage: node dev-fixture.mjs create|cleanup");
+else if (mode === "recent-phones") await recentPhones(Number(process.argv[3] ?? 12));
+else if (mode === "delete-phone") await deletePhones(process.argv.slice(3));
+else console.log("usage: node dev-fixture.mjs create | cleanup | recent-phones [hours] | delete-phone <+9665…>…");
