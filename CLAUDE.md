@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Hasio is an **Al-Ahsa travel guide platform**. The product is the **React Native (Expo) mobile app** — AI travel planner, hotel/restaurant/attraction directory with map, bookings, trip itinerary builder, freelancer services marketplace and favourites. The **React + Vite website** in this repo is now only a **marketing landing page plus a hidden admin portal**; the public product pages (map, listings, services, dashboards, signup) were removed 2026-08-29. Both share the same Convex backend, and the backend still serves every feature — only the website's UI for them is gone.
+Hasio is an **Al-Ahsa travel guide platform**. The product is the **React Native (Expo) mobile app** — AI travel planner, hotel/restaurant/attraction directory with map, bookings, trip itinerary builder, local services (guides, drivers, photographers…) that are **booked like hotels since 1.1.0**, push notifications and favourites. The **React + Vite website** in this repo is now only a **marketing landing page plus a hidden admin portal**; the public product pages (map, listings, services, dashboards, signup) were removed 2026-08-29. Both share the same Convex backend, and the backend still serves every feature — only the website's UI for them is gone.
 
 **Eastern Province focus:** Hasio covers Saudi Arabia's Eastern Province, and nothing outside it. It began as an Al-Ahsa-only guide and the oasis is still its heart, but as of 2026-09-04 the city model is the **thirteen** governorates and cities of the province: Dammam, Al Khobar, Al Ahsa, Qatif, Jubail, Hafar Al Batin, Khafji, Ras Tanura, Abqaiq, Nairyah, Qaryat Al Ulya, Al Udayd, Al Bayda.
 
@@ -47,7 +47,14 @@ How to do good work here:
 - **Green before commit:** `npm run typecheck`, `npm run lint`, `npm run test` in
   `hasio-mobile-app/`. Lint has existed only since 2026-09-14; the UI audit took it from 0 errors /
   55 warnings to **0 errors / 3 warnings** (the documented latest-ref in `useKeyboardOverlap`, two
-  effects in `BookingSheet`). Don't add errors or warnings. Tests: 171 across 11 files (`lib/**`).
+  effects in `BookingSheet`). Don't add errors or warnings. Tests: 357 across 17 files (2026-09-25).
+  The backend's own suite (`npm run test` at the root) must stay green too, and
+  `npm run typecheck:convex` clean.
+- **Bookable services, push and the finished admin panel** (2026-09-25) were built on branch
+  `services-release` (from `sdk-57`) to the design `docs/superpowers/specs/2026-09-25-bookable-services-release-design.md`,
+  the plan `docs/superpowers/plans/2026-09-25-bookable-services-release.md` and the backend
+  contract `docs/superpowers/contracts/2026-09-25-services-backend.md`. Device checks 25–41 in the
+  UI-polish plan are the phone checks this work still owes.
 - **The 2026-09-24 UI/UX audit** — six reviewers, ~150 findings, all fixed on branch `ui-polish`
   (merged into `sdk-57`). The accepted findings, the defaults taken, the owner's open items and
   the **device checks still owed** are in `docs/superpowers/plans/2026-09-24-mobile-ui-polish.md`.
@@ -68,7 +75,9 @@ npm run dev          # Start Vite development server (port 5173)
 npm run dev:convex   # Start Convex backend server (run in separate terminal)
 npm run build        # Build for production (outputs to dist/)
 npm run preview      # Preview production build locally
-npm run lint         # Run ESLint
+npm run lint         # Run ESLint (website + admin; ignores the app, design-assets and .claude worktrees)
+npm run test         # Backend tests (vitest + convex-test, convex/**)
+npm run typecheck    # Backend tsc, then the mobile app's
 npx convex dashboard # Open Convex dashboard
 npx convex dev --once            # Push code to dev without watching
 npx convex deploy --yes          # Deploy Convex to production
@@ -139,10 +148,23 @@ All admin queries/mutations in `convex/admin/` and `approveBusinessAccount` in `
   `components/` (Modal, ConfirmDialog, ToastProvider + `toast-context`, ImageUploader,
   WorkingHoursModal, States); shared lookups and date helpers in `constants.js`. Auth via Better-Auth
   (`useCurrentUser()` + `role === "admin"`); redirects to `/sign-in?next=/admin` when logged out.
-  Ten tabs: stats, listings, content approval, services approval, pending accounts, reports, bookings,
-  knowledge base, activity log, emails. Still uses framer-motion (lazy admin chunk only).
+  **Twelve tabs** (2026-09-25): الرئيسية (dashboard, one row per queue), الأماكن (listings),
+  الخدمات المنشورة (live services — edit, suspend with a reason, reinstate, delete), المحتوى
+  (pending places), طلبات الخدمات (pending services; it was «الخدمات», which read as the same list
+  twice next to the live one), الحسابات (accounts: approve, or reject with a reason), التبليغات,
+  الحجوزات (stays, slots and services in one paged table, search by code or phone, a
+  support-only forced status change behind a confirmation), المعرفة, السجل, البريد (CSV export),
+  المستخدمون (a drawer per user, role change). Pending places and services are read in full in a
+  **drawer** (`components/Drawer.jsx` + `ListingDrawer` / `ServiceDrawer` / `UserDrawer`) before a
+  decision; the row has no approve button. Still uses framer-motion (lazy admin chunk only).
+  Three shared hooks: `useQuerySafe` (a `useQuery` that returns its error instead of throwing, so a
+  failing count only loses a badge), `usePagedList` (keeps fetching past an empty page, up to 10 in
+  a row — a filter can empty a page while more exist, which used to read as "no results") and
+  `stats.js` (one dashboard-stats subscription for the whole panel).
   **No `window.confirm`/`alert`** — destructive actions go through `useConfirm()` and every mutation
-  reports through `useToast()`; each tab renders explicit loading, empty and error states.
+  reports through `useToast()`; each tab renders explicit loading, empty and error states. A toast
+  shows the **Arabic half** of a server refusal (`"عربي / English"`); anything else reads
+  «حدث خطأ غير متوقع» and goes to the console. Links from user content render only if `http(s)`.
   **Every tab opens with the same block**: `.admin-page-head` (or `.admin-card-header`, same rule)
   wrapping an `.admin-page-title` and a one-line `.admin-page-subtitle` that carries the count, with
   any primary action pushed to the far end. Four tabs used to open with a small `.admin-section-title`
@@ -151,7 +173,7 @@ All admin queries/mutations in `convex/admin/` and `approveBusinessAccount` in `
 - `src/pages/SignInPage.jsx` — **Unlinked from everywhere.** It exists so the admin portal has a login. Honours `?next=` (relative paths only), defaults to `/admin`. No public sign-up.
 - `src/pages/DeleteAccountPage.jsx` — **Do not remove.** App Store guideline 5.1.1(v); linked from `public/support.html`, which is the live App Store Support URL.
 
-**Static pages in `public/` are not routes** — `privacy-policy.html`, `terms-of-service.html`, `support.html`, `download.html`. Vercel's filesystem check beats the SPA rewrite in `vercel.json`, so React routing cannot affect them. **The shipped mobile binaries open two of them by absolute URL** (`hasio-mobile-app/app/auth.tsx:31-32`, `components/screens/SettingsScreenContent.tsx:38-39`), so their paths are frozen — a redirect is the only safe way to ever move them.
+**Static pages in `public/` are not routes** — `privacy-policy.html`, `terms-of-service.html`, `support.html`, `download.html`. Vercel's filesystem check beats the SPA rewrite in `vercel.json`, so React routing cannot affect them. **The mobile binaries open two of them by absolute URL**, so their paths are frozen on **both** domains — a redirect is the only safe way to ever move them. The live 1.0.2 / 1.0.0 binaries open the hasio.xyz copies; 1.1.0 opens the hasio.net ones (`PRIVACY_POLICY_URL` / `TERMS_OF_SERVICE_URL` in `hasio-mobile-app/app/auth.tsx` and `components/screens/SettingsScreenContent.tsx`). The four privacy-policy copies (`public/`, and the app's `public/`, `docs/` and `assets/`) are kept byte-identical.
 
 **Landing page assets** (all local, no external image hosts):
 - `public/hasio-oasis-hero{,-mobile}.webp` — hero, swapped by media query
@@ -180,7 +202,9 @@ commits stale and bundled with a separate UI redesign — do not merge it for th
 (`x.value = …`, which is the whole API); the other React Compiler rules are warnings, not errors.
 
 - `app/business/` — Business owner screens: `post-lodging.tsx`, `post-destination.tsx` (both also edit, via `?id=`), `my-listings.tsx`, `bookings.tsx` (host inbox), `dashboard.tsx`, `verification.tsx`
-- `app/provider/` — Service provider screens: `post-service.tsx` (also edits), `my-services.tsx`, `dashboard.tsx`, `verification.tsx`
+- `app/provider/` — Service provider screens: `post-service.tsx` (also edits; a numeric price is what makes a service bookable, `isBookableService` in `convex/services/logic.ts` — together with an approved, unsuspended provider), `my-services.tsx`, `bookings.tsx` (the provider's inbox: confirm / decline with a reason / no-show / complete, same statuses as the host inbox), `dashboard.tsx`, `verification.tsx`
+- **The Book tab** (1.1.0, design D3) is the old Stay tab — same key `lodging`, label key `tabStay`, now "Book" / «احجز» — with a **Stays | Services** switch at the top (`stores/bookTabStore.ts`, lifted out of the screen because Home's "Local services" row, `components/services/LocalServicesRail.tsx`, opens the tab on services). `components/services/`: `ServicesList`, `ServiceCard`, `ServiceDetailSheet` (nests its booking, review, report and verify-phone sheets — the iOS modal rule below) and `ServiceBookingSheet` (a day, a start time and, for an hourly or daily price, how many hours or days; the server quotes every total). A service **without a price shows Contact instead of Book** (D16), so services posted before 1.1.0 keep working. Service reviews: `app/reviews/service/[serviceId].tsx`. Refusals map through `lib/serviceBookingError.ts`, labels through `lib/serviceDisplay.ts`. "My bookings" (`app/bookings/`) asks for `includeServices: true` — without it the server leaves service bookings out, which is what keeps them away from the 1.0.x apps.
+- **Push** (1.1.0, D6/D14): `lib/push.ts` (permission, Expo token, `registerPushToken`, the Android `default` channel), `lib/pushPrompt.ts` → `maybeAskForPush("guest" | "host")`, `lib/pushDecision.ts` (the seven-day rule), `components/PushPrompt.tsx` (the one explanation sheet, in the root layout; it waits until no other sheet is open), `hooks/usePushRegistration.ts`, `lib/notificationRoute.ts` (the server's `data.target` says where a tap lands — the booking, the host or provider inbox, my listings/services, verification; the in-app inbox and a push tap share it). **Asked in context only, never at first launch**: a traveller after sending a booking request, a host or provider on opening their inbox or dashboard, anyone from the Settings row. Whether a build can receive push at all is decided in `app.config.js` (`extra.push`) — see *Stores, accounts & shipping*.
 - `components/hosting/` — `PhotoPickerField` (the one photo picker, with cover and limit) and `OwnerStatus` (status badge + review note), shared by those screens; `lib/listingForm.ts` holds what an edit writes (an edit must never overwrite a listing's pin, address or capacity with form defaults — see its tests)
 - `app/(tabs)/` — Main tab navigation (a PagerView shell; the route files are placeholders)
 - **Moments is gone from the client** (2026-09-24): it had no tab since Favorites replaced it. The server's `api.moments` and account deletion still handle any stored moments.
@@ -188,7 +212,9 @@ commits stale and bundled with a separate UI redesign — do not merge it for th
 
 **Mobile API import**: The Convex `api` object is exported from `backend/index.ts` (NOT `convex/`). All mobile app files import it as `import { api } from "@/backend"`. The directory was renamed from `convex/` to `backend/` because Metro bundler resolves `@/convex` to the `convex` npm package instead of the local directory. **Never rename `backend/` back to `convex/`** — it will break all API calls at runtime with "Cannot read property of undefined" errors.
 
-**Mobile → Backend mapping**: Mobile business forms use `api.listings.mutations.submitListing` (auto-sets ownerId + pending status). Service provider forms use `api.services.mutations.submitService`.
+**Mobile → Backend mapping**: Mobile business forms use `api.listings.mutations.submitListing` (auto-sets ownerId + pending status). Service provider forms use `api.services.mutations.submitService`. A traveller books a service with `api.bookings.mutations.createServiceBooking` (quote first with `quoteService`); providers read `getProviderBookings` / `getProviderStats`.
+
+**Expo web is a smoke-test surface, not the app.** Two things learned 2026-09-25: Metro caches inlined `EXPO_PUBLIC_*` values, so after pointing `.env.local` at another backend start with `npx expo start --web --clear` and check the URL baked into the bundle before writing anything; and `expo-secure-store` has no web implementation (`ExpoSecureStore.web.js` is `export default {}`), so a web session does not survive a reload — sign in and finish the flow on the same page.
 
 ### Backend (Convex)
 
@@ -258,14 +284,19 @@ convex/
 
 | Table | Purpose |
 |-------|---------|
-| `users` | User profiles with role (tourist/business_owner/service_provider/admin), isApproved, cvFileId |
-| `listings` | Hotels, restaurants, attractions, events, tours with geolocation (56 seeded Al-Ahsa entries) |
-| `services` | Freelancer services (photographer, driver, guide, etc.) with ownerId, serviceType, pricing, portfolio images |
+| `users` | User profiles with role (tourist/business_owner/service_provider/admin), isApproved, cvFileId, account rejection reason, suspension |
+| `listings` | Hotels, restaurants, attractions, events, tours with geolocation (56 seeded Al-Ahsa entries); hotel pricing (`pricePerNight` …) |
+| `services` | Freelancer services (photographer, driver, guide, etc.) with ownerId, serviceType, `price` + `priceUnit` (per_hour / per_day / per_event / fixed), `maxGroupSize`, rating, portfolio images |
 | `availabilitySchedules` | Time slots per listing |
-| `bookings` | Reservations, tour bookings, event tickets with status tracking |
+| `bookings` | One table for every kind: `kind` stay / slot / **service** (`serviceId`, `quantity`, `unitPrice`, `priceUnit`; `listingId` optional). Status pending → confirmed → completed, or declined / cancelled / expired / no-show |
+| `notifications` | The in-app inbox; `data.target` says where a tap lands |
+| `pushTokens` | Expo push tokens, one row per phone; a token moves to whoever signs in on that phone |
 | `travelPlans` | AI travel plan history |
-| `trips` | User-created itineraries with embedded stops array (listing + date/time/notes/order) |
-| `reviews` | Listing ratings & reviews |
+| `trips` | User-created itineraries with embedded stops array (listing + date/time/notes/order) — no client since 1.1.0 (D7) |
+| `reviews` | Ratings & reviews of a listing **or** a service; verified when tied to the reviewer's completed booking |
+| `contentReports`, `userBlocks` | Moderation: reports (listing / service / review / AI message) and blocks |
+| `moments` | Legacy; no client since 2026-09-24, still handled by account deletion |
+| `rateLimits` | Fixed 24h windows (`convex/rateLimit.ts`) |
 | `emailCaptures` | Early access signups |
 | `travelKnowledge` | Knowledge base for AI travel planner |
 | `adminActivity` | Append-only log of every admin action (who / what / when), read by the السجل tab |
@@ -274,15 +305,15 @@ convex/
 
 **Listings** (`listings` table): Physical places — hotels, restaurants, attractions, events, tours. Created by business owners via `submitListing` (auth-protected, sets ownerId + status "pending"). Admin creates via `createListing` (`requireAdmin`, status "approved"). Seed data has no ownerId or status (treated as approved).
 
-**Services** (`services` table): Freelancer offerings — tour_guide, photographer, driver, translator, event_planner, catering, equipment_rental, other. Created only by service providers via `submitService`. All start as "pending" and require admin approval.
+**Services** (`services` table): Freelancer offerings — tour_guide, photographer, driver, translator, event_planner, catering, equipment_rental, other. Created only by service providers via `submitService`. All start as "pending" and require admin approval. **Since 1.1.0 a priced service is booked like a hotel** (design D4): the traveller sends a request for a day and a start time, the provider confirms or declines within 48 hours (or before the start, whichever is sooner), nothing is paid in the app. There is no availability calendar (D10) — two requests for the same time are not blocked, so group tours work. A traveller can cancel until the start time (D11).
 
-Both follow the same approval flow: pending → admin approves/rejects → approved/rejected. Editing resets status to "pending".
+Both follow the same approval flow: pending → admin approves/rejects → approved/rejected. Editing resets status to "pending". A live listing or service can also be **suspended** by an admin (with a reason) and reinstated; suspending an **account** hides all of that owner's listings and services from travellers.
 
 ### Content Approval Flow
 
 1. Business owner/service provider submits listing or service → status: "pending"
-2. Admin sees it in `/admin` under "محتوى معلق" (listings) or "خدمات معلقة" (services)
-3. Admin approves → status: "approved", visible publicly
+2. Admin sees it in `/admin` under «المحتوى» (places) or «طلبات الخدمات» (services), and opens it in the drawer
+3. Admin approves → status: "approved", visible publicly; the owner is notified
 4. Admin rejects → status: "rejected" with optional reason, visible only to owner
 5. Owner edits → status reset to "pending"
 
@@ -380,11 +411,18 @@ EXPO_PUBLIC_CONVEX_SITE_URL=https://hearty-ram-74.eu-west-1.convex.site
 - **Auth**: Better-Auth role-based — user must have `role: "admin"` in `users` table. Set via Convex Dashboard Data tab.
 - **Backend**: All admin queries/mutations require `requireAdmin(ctx)` — throws if not admin. No unauthenticated access possible.
 - **Frontend**: `useCurrentUser()` checks role client-side. Not logged in → redirect to `/sign-in`. Logged in but not admin → "access denied" page.
-- **Features**: dashboard built around pending work (queue cards link into the tab that clears them),
-  listing CRUD **with photo upload** (multi-image, reorder, cover = index 0), **working-hours editor**
-  per listing, **booking management** (confirm / complete / cancel-with-reason / no-show, grouped
-  today / upcoming / past), content + service approval with **bulk approve/reject**, pending account
-  approvals with document review, reports, knowledge base, **admin activity log**, email captures.
+- **URL in production**: https://hasio.net/admin (Cloudflare; deploy steps under *Commands*).
+- **Features**: dashboard built around pending work (one row per queue, linking into the filtered
+  tab that clears it), listing CRUD **with photo upload** (multi-image, reorder, cover = index 0),
+  hotel **pricing** (an emptied field is sent as `null` and clears it), coordinates checked against
+  the Saudi bounds with a warning past 150 km from the chosen city's centre, a **working-hours
+  editor** (overnight hours allowed), the host picker, **live services** (edit, suspend with a
+  reason, reinstate, delete — refused while a booking is open), **booking management** for stays,
+  slots and services (confirm / complete / cancel-with-reason / no-show, plus a forced status change
+  logged as `booking.force`), content + service approval in a drawer with **bulk approve/reject**,
+  account approval or rejection with a reason, reports (remove a review — the rating is
+  recomputed; suspend what is live, reject what is pending), users (drawer, role change), knowledge
+  base, **admin activity log**, email captures with CSV export.
 - **Listing search**: Arabic *and* English names, via two search indexes (`search_listings` on
   `name_en`, `search_listings_ar` on `name_ar`) merged in `adminSearchListings`. Browsing uses
   `adminListListings` with cursor pagination; filters for type/city/review-status/has-photos/has-hours.
@@ -465,8 +503,19 @@ than re-solving the same problems. Most were set by the 2026-09-24 UI audit
   (`images?.[0] ? { uri } : undefined`).
 - **Double-submit guard**: every submit starts with a busy check (a ref where two taps can land in
   one frame).
-- **Dark mode**: the app is light-only. Android still follows the system for the system bars until
-  `expo-system-ui` + `android.userInterfaceStyle: "light"` ship in a build (open item).
+- **Dark mode**: the app is light-only, system bars included. `app.config.js` sets
+  `userInterfaceStyle: "light"` (top level and Android) and adds `expo-system-ui`, without which
+  Android ignores it — a phone in dark mode used to style the status and navigation bars for dark
+  over the app's cream. `app.json` still says `"automatic"`; `app.config.js` wins. Ships with the
+  first 1.1.0 build (a native change, not an OTA).
+- **`app.config.js` is where build-time decisions live** (app.json is read first and passed in):
+  the push switches, the splash and adaptive-icon backgrounds, the notification icon and colour,
+  the photo-permission text, and no Face ID string. Read its header before adding a plugin —
+  `./plugins/withoutPushEntitlement` must stay **first** in `plugins`.
+- **Push prompt**: call `maybeAskForPush(context)` at the moment the reason is on screen, never on
+  launch; it decides and hands off to the one `PushPrompt` sheet, which waits for any other sheet
+  to close (the iOS modal rule). On iOS a "no" is final, which is why the app explains first and
+  shows the system prompt only on "Turn on".
 
 ## Stores, accounts & shipping — read before any build, submit or OTA
 
@@ -562,11 +611,27 @@ map of *who owns what and what is broken*, verified live on 2026-09-14.
   - [ ] `SMS_PROVIDER` off `demo` in prod — **still `demoAuth: true` on 2026-09-14**; any six digits
         sign in as any phone number. `npx convex env set SMS_PROVIDER console --prod` is the
         stopgap (phone sign-in stops; email unaffected), `infobip` once a Saudi route works.
-  - [ ] `main` is not behind any feature branch; `sdk-57` merged.
+  - [ ] `main` is not behind any feature branch; `services-release` merged into `sdk-57`, `sdk-57` merged.
+  - [ ] **The backend goes first** (`npx convex deploy --yes`): besides the 1.1.0 functions it
+        carries two fixes for bugs live in production today — the admin panel's hotel save was
+        rejected by the validator, and deleting an account left its Better Auth sign-in behind.
   - [x] `version` is `1.1.0` in `app.json` (since 2026-09-24); leave `buildNumber`/`versionCode` to `autoIncrement`.
+  - [ ] **Push, iOS:** Nabil enables *Push Notifications* on the `com.hasio.travel` App ID, creates
+        an APNs key (.p8) for EAS, and the provisioning profile is regenerated (EAS won't add the
+        capability — `EXPO_NO_CAPABILITY_SYNC=1`). Only then remove `HASIO_IOS_PUSH: "off"` from
+        the preview and production profiles in `eas.json`. Until then iOS 1.1.0 ships without push
+        and never asks for permission — acceptable, not a blocker.
+  - [ ] **Push, Android:** a Firebase project for `com.hasio.travel`, its `google-services.json` in
+        `hasio-mobile-app/` (gitignored), and its FCM V1 service-account key uploaded to EAS
+        (`npx eas credentials`). A production Android build **stops with an error** without the
+        file unless `HASIO_ANDROID_PUSH=off` is set — deliberate, so push is never lost by accident.
   - [ ] The device checks at the end of `docs/superpowers/plans/2026-09-24-mobile-ui-polish.md`
-        (iPhone modal flows, Android keyboard, Arabic) — none of the UI audit's fixes ran on a phone.
-  - [ ] Play Data Safety, ASC App Privacy and `public/privacy-policy.html` all mention phone number.
+        (iPhone modal flows, Android keyboard, Arabic, and 25–41 for services, provider inbox and
+        push) — none of the UI audit's or the services work's fixes ran on a phone.
+  - [ ] Play Data Safety, ASC App Privacy and the privacy policy mention phone number **and push
+        tokens** (the policy copies and `DATA_SAFETY_ANSWERS.md` do since 2026-09-25; the two store
+        forms are filled in by hand).
+  - [ ] The admin panel deployed to hasio.net (`npm run build -- --mode cloudflare`, `npx wrangler deploy`).
   - [ ] `google-service-account.json` present, or the manual upload planned.
   - [ ] `eas update:list --branch production` shows no update already tagged for runtime 1.1.0
         (the stale-bundle trap that crashed iOS build 4).
@@ -581,8 +646,22 @@ npx expo start --dev-client       # add --tunnel when phone and PC are on differ
 
 The phone runs a **development build** of the app, not Expo Go: `npx eas build -p android
 --profile development` (profile in eas.json, ~20 min on EAS). Rebuild it only when a native
-module or the SDK changes. Current SDK 57 dev APK: EAS build `af661805-cc1b-4b28-a669-941eeee026ec`.
-`.env` points at **production** Convex, so anything created from the phone is real data.
+module or the SDK changes. Current SDK 57 dev APK: EAS build `af661805-cc1b-4b28-a669-941eeee026ec`
+— **built before `expo-notifications`, `expo-device` and `expo-system-ui` were added (2026-09-25)**.
+The root layout imports the first two at start-up, so the JS from `services-release` onward needs a
+**new dev client** (`npx eas build -p android --profile development`) before it can be tested on
+the phone; the old APK is fine for older branches only.
+`.env` points at **production** Convex, so anything created from the phone is real data — and the
+EAS development and preview profiles point at production too (design D17, flagged, not changed).
+
+**Testing a branch whose backend is not in production yet** (e.g. `services-release` before the
+owner's "ship it"): create `hasio-mobile-app/.env.local` (gitignored, wins over `.env`) with
+`EXPO_PUBLIC_CONVEX_URL=https://limitless-mockingbird-449.eu-west-1.convex.cloud` and
+`EXPO_PUBLIC_CONVEX_SITE_URL=https://limitless-mockingbird-449.eu-west-1.convex.site`, push the
+backend with `npx convex dev --once`, and start Metro with `--clear` (it caches the inlined URLs).
+Development runs `SMS_PROVIDER=demo`, so any six digits sign in — a second phone number is how
+one phone books a service it did not post. Delete `.env.local` afterwards. Admin approvals for
+that test happen in `npm run dev` → http://localhost:5173/admin, which also talks to development.
 
 ### Production Target Countries (8)
 Algeria, Australia, Bahrain, Kuwait, Oman, Qatar, Saudi Arabia, United Arab Emirates.
@@ -606,12 +685,15 @@ npx eas update --channel production --environment production --message "descript
 - Submit track is `"production"` (changed from `"internal"` on 2026-05-13 once the closed test passed).
 - Service account key: `google-service-account.json` (gitignored) — **currently missing from disk**, which is the reason Android is stale; see *Stores, accounts & shipping* above.
 
-### Legal Documents (3 locations in mobile app)
+### Legal Documents (in `hasio-mobile-app/`, plus the website's `public/`)
 - `docs/terms-of-service.html` — Terms of Service
-- `docs/privacy-policy.html` — Privacy Policy
-- `assets/privacy-policy.html` — Privacy Policy (bundled in app)
+- `docs/privacy-policy.html`, `assets/privacy-policy.html` (bundled in app), `public/privacy-policy.html`
+  and the website's `public/privacy-policy.html` — **four byte-identical copies**; change all four.
 - `docs/DATA_SAFETY_ANSWERS.md` — Google Play Data Safety form answers
-- All updated April 2026: no voice/audio references, no Groq/ElevenLabs, email is `support@hasio.xyz`.
+- Updated 2026-09-25 for phone-number sign-in and push tokens; no voice/audio references, no
+  Groq/ElevenLabs. The support address is still `support@hasio.xyz` (in the policies and
+  `SUPPORT_EMAIL` in `SettingsScreenContent.tsx`) — whether it moves to hasio.net is an open
+  decision; the mailbox must keep working either way.
 
 ## Design Constraints
 
