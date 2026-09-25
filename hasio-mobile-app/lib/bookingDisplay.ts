@@ -433,14 +433,21 @@ export function providerActionsFor(
  * no-show — in the words of the booking's own kind.
  *
  * getBookingErrorKey reads the English half of the server's refusal, and
- * predates two things settled here. The server now has two sign-in refusals:
+ * predates what is settled here. The server now has two sign-in refusals:
  * the booking mutations' English-only "Not authenticated" and the newer
- * "… / You need to be signed in.", and both mean the session is gone. And a
+ * "… / You need to be signed in.", and both mean the session is gone. A
  * service that has started is refused in the provider's words, which the
- * stay's copy ("Contact the host") would misname.
+ * stay's copy ("Contact the host") would misname. And a service is completed
+ * only once it is confirmed and has started (SERVICE_NOT_STARTED) — the
+ * provider's buttons follow the same rule (providerActionsFor), so this is
+ * the server's word on a tap made just before the start time.
  */
 export function bookingActionErrorKey(error: unknown, kind?: string): TranslationKey {
-  if (/You need to be signed in/i.test(serverErrorText(error))) return "errorSessionExpired";
+  const message = serverErrorText(error);
+  if (/You need to be signed in/i.test(message)) return "errorSessionExpired";
+  if (/only be completed once it is confirmed and has started/i.test(message)) {
+    return "errorServiceNotStarted";
+  }
   const key = getBookingErrorKey(error);
   return kind === "service" && key === "errorStayStarted" ? "errorServiceStarted" : key;
 }

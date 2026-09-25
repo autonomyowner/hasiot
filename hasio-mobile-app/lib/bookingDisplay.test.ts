@@ -385,6 +385,20 @@ describe("providerActionsFor", () => {
       );
     }
   });
+
+  it("offers completion only on a confirmed booking whose start has passed", () => {
+    // The server refuses anything else (SERVICE_NOT_STARTED): a request is
+    // answered first, and a confirmed service cannot be done before it began.
+    // "close" is the only set that carries the completed button.
+    const startedAt = Date.UTC(2026, 8, 10, 7, 0); // 10:00 in Riyadh
+    const request = service("r", "pending", "2026-09-10", "10:00", {
+      expiresAt: NOON_10_SEP + 1,
+    });
+    expect(providerActionsFor(request, NOON_10_SEP)).not.toBe("close");
+    const confirmed = service("c", "confirmed", "2026-09-10", "10:00");
+    expect(providerActionsFor(confirmed, startedAt - 60_000)).not.toBe("close");
+    expect(providerActionsFor(confirmed, startedAt)).toBe("close");
+  });
 });
 
 describe("service booking words", () => {
@@ -487,6 +501,17 @@ describe("bookingActionErrorKey", () => {
         "stay"
       )
     ).toBe("errorStayStarted");
+  });
+
+  it("says why a service cannot be completed yet", () => {
+    expect(
+      bookingActionErrorKey(
+        {
+          data: "لا يمكن إتمام خدمة إلا بعد تأكيدها وبدء موعدها. / A service can only be completed once it is confirmed and has started.",
+        },
+        "service"
+      )
+    ).toBe("errorServiceNotStarted");
   });
 
   it("keeps the booking mapping for everything else", () => {
