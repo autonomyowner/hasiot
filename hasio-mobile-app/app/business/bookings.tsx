@@ -1,5 +1,5 @@
 import { appAlert } from "@/stores/dialogStore";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { View, Text, Linking, StyleSheet } from "react-native";
 import Animated, { FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -28,6 +28,7 @@ import {
 } from "@/lib/bookingDisplay";
 import { getBookingErrorKey } from "@/lib/bookingError";
 import { haptic } from "@/lib/haptics";
+import { maybeAskForPush } from "@/lib/pushPrompt";
 import { crossFadeIn, crossFadeOut } from "@/constants/motion";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
@@ -69,6 +70,13 @@ export default function OwnerBookingsScreen() {
   const declineBooking = useMutation(api.bookings.mutations.declineBooking);
   const markNoShow = useMutation(api.bookings.mutations.markNoShow);
   const completeBooking = useMutation(api.bookings.mutations.completeBooking);
+
+  // A host with their inbox open is who push is for: a request not answered
+  // within 48 hours expires. Asked in context (design D14); whether it is due,
+  // and when the screen is clear, is decided in lib/pushPrompt.ts.
+  useEffect(() => {
+    maybeAskForPush("host");
+  }, []);
 
   const today = todayRiyadhISO();
 
