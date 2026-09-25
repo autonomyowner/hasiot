@@ -2133,6 +2133,15 @@
   background: #fdfcf7;
 }
 
+/* shadcn's cells never wrap. Free text — a log note, a reason, a review —
+   does, or one long sentence stretches the whole table sideways. */
+.admin-table td.admin-cell-wrap {
+  white-space: normal;
+  min-width: 12rem;
+  max-width: 28rem;
+  line-height: 1.7;
+}
+
 /* "The figures are approximate": the counts hit their read cap. */
 .ar-capped {
   display: inline-flex;

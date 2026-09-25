@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { useMutation, usePaginatedQuery, useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
-import { EmptyState, TableSkeleton } from '../components/States'
+import { EmptyState, KeepLooking, LoadMore, TableSkeleton } from '../components/States'
 import FilterSelect from '../components/FilterSelect'
+import { usePagedList } from '../usePagedList'
 import { useDebounced } from '../../hooks/useDebounced'
 import { ROLE_LABELS, formatDate } from '../constants'
 import {
@@ -55,14 +56,18 @@ export default function UsersTab() {
     api.admin.users.adminSearchUsers,
     isSearching ? { searchQuery, ...filters } : 'skip'
   )
-  const browse = usePaginatedQuery(
+  const browse = usePagedList(
     api.admin.users.adminListUsers,
     isSearching ? 'skip' : filters,
-    { initialNumItems: PAGE_SIZE }
+    PAGE_SIZE
   )
 
   const rows = isSearching ? searchResults : browse.results
-  const loading = isSearching ? searchResults === undefined : browse.status === 'LoadingFirstPage'
+  const loading = isSearching
+    ? searchResults === undefined
+    : browse.status === 'LoadingFirstPage' ||
+      (browse.results.length === 0 && browse.status === 'LoadingMore')
+  const stalled = !isSearching && browse.results.length === 0 && browse.status === 'CanLoadMore'
   const hasFilters = Boolean(role || verified || suspended || isSearching)
 
   const displayName = (user) => {
@@ -180,6 +185,8 @@ export default function UsersTab() {
 
       {loading ? (
         <TableSkeleton rows={6} cols={6} />
+      ) : stalled ? (
+        <KeepLooking onLoadMore={browse.loadMore} />
       ) : !rows || rows.length === 0 ? (
         <EmptyState
           title={hasFilters ? 'لا توجد حسابات مطابقة' : 'لا توجد حسابات بعد'}
@@ -263,12 +270,8 @@ export default function UsersTab() {
             </TableBody>
           </Table>
 
-          {!isSearching && browse.status === 'CanLoadMore' && (
-            <div className="admin-load-more">
-              <button className="admin-action-btn" onClick={() => browse.loadMore(PAGE_SIZE)}>
-                تحميل المزيد
-              </button>
-            </div>
+          {!isSearching && (
+            <LoadMore status={browse.status} onLoadMore={browse.loadMore} cols={6} />
           )}
         </>
       )}
