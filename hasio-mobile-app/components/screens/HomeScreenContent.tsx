@@ -23,7 +23,9 @@ import Animated, {
 import { Feather } from "@expo/vector-icons";
 import { useLanguage, getLocalizedText } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useHomeData, type Destination } from "@/hooks/useConvexData";
+import { useHomeData, useLocalServices, type Destination } from "@/hooks/useConvexData";
+import { LocalServicesRail } from "@/components/services/LocalServicesRail";
+import { useBookTabStore } from "@/stores/bookTabStore";
 import {
   Button,
   SearchBar,
@@ -164,6 +166,16 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
 
   // Get data from Convex with fallback to mock data
   const { lodgings, destinations: allDestinations, isLoading } = useHomeData();
+  // The "Local services" row. The skeleton waits for it too: arriving after
+  // the rest, it pushed "More destinations" down under the reader's eye.
+  const { services: localServices, isLoading: servicesLoading } = useLocalServices();
+
+  // "See all" on that row: the Book tab, on Services. The segment is set
+  // first, so the tab is already showing services as the pager lands on it.
+  const openServices = useCallback(() => {
+    useBookTabStore.getState().setSegment("services");
+    onNavigateToTab?.("lodging");
+  }, [onNavigateToTab]);
 
   // The cities the filter sheet offers, counted from the rows this screen
   // shows. They used to come from `getCities`, which also counts restaurants —
@@ -609,7 +621,7 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
             banner and the grid, at their own dimensions rather than as a stack
             of list cards. */}
         <SkeletonFade
-          loading={isLoading}
+          loading={isLoading || servicesLoading}
           skeleton={<SkeletonHomeSections isRTL={isRTL} />}
         >
         {/* Above the fork, so the same chips narrow the browse view and the
@@ -790,6 +802,14 @@ export function HomeScreenContent({ onNavigateToTab }: HomeScreenContentProps) {
                   </View>
                 </PressableScale>
               </View>
+            )}
+
+            {/* Guides, drivers and photographers, beside the stays banner as
+                the other thing to book. Only under "All", like the banner:
+                under a kind chip it would advertise what the chip excluded.
+                It hides itself when there is nothing to show. */}
+            {kind === "all" && (
+              <LocalServicesRail services={localServices} onSeeAll={openServices} />
             )}
 
             {/* Everything the rail did not take — headed only when there is
