@@ -1,5 +1,6 @@
 import type { QueryCtx } from "../_generated/server";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
+import type { Value } from "convex/values";
 import type {
   Expression,
   FilterBuilder,
@@ -189,6 +190,123 @@ export function cityFilter<TI extends GenericTableInfo>(
 
 type ServiceFilter = FilterBuilder<NamedTableInfo<DataModel, "services">>;
 type BookingFilter = FilterBuilder<NamedTableInfo<DataModel, "bookings">>;
+
+// === Listings, users and the activity log (the paged tables) ===
+
+type ListingFilter = FilterBuilder<NamedTableInfo<DataModel, "listings">>;
+type UserFilter = FilterBuilder<NamedTableInfo<DataModel, "users">>;
+
+/** "Has at least one": neither missing nor an empty array. */
+function nonEmpty<TI extends GenericTableInfo>(
+  q: FilterBuilder<TI>,
+  field: Expression<Value[] | undefined>,
+  wanted: boolean
+): Expression<boolean> {
+  return wanted
+    ? q.and(q.neq(field, undefined), q.neq(field, []))
+    : q.or(q.eq(field, undefined), q.eq(field, []));
+}
+
+/**
+ * The listings table, filtered inside the query.
+ *
+ * `status: "seed"` selects the rows with no status at all — seed data, which
+ * predates the approval flow and counts as published everywhere.
+ */
+export async function listListingsPage(
+  ctx: QueryCtx,
+  args: {
+    paginationOpts: PaginationOptions;
+    type?: string;
+    city?: string;
+    status?: string;
+    hasImages?: boolean;
+    hasWorkingHours?: boolean;
+    order?: string;
+  }
+): Promise<PaginationResult<Doc<"listings">>> {
+  const { type, city, status, hasImages, hasWorkingHours } = args;
+
+  // The narrowest index the filters allow; status wins because the pending
+  // queue is the one that grows. A city with old sub-areas cannot use the
+  // city index, which matches one exact string.
+  const byStatus = status !== undefined && status !== "seed";
+  const byType = !byStatus && type !== undefined;
+  const byCity = !byStatus && !byType && city !== undefined && !hasAliases(city);
+  const base = byStatus
+    ? ctx.db.query("listings").withIndex("by_status", (q) => q.eq("status", status))
+    : byType
+      ? ctx.db.query("listings").withIndex("by_type", (q) => q.eq("type", type))
+      : byCity
+        ? ctx.db.query("listings").withIndex("by_city", (q) => q.eq("city", city))
+        : ctx.db.query("listings");
+
+  const conditions: ((q: ListingFilter) => Expression<boolean>)[] = [];
+  if (status === "seed") conditions.push((q) => q.eq(q.field("status"), undefined));
+  if (type !== undefined && !byType) conditions.push((q) => q.eq(q.field("type"), type));
+  if (city !== undefined && !byCity) conditions.push((q) => cityFilter(q, q.field("city"), city));
+  if (hasImages !== undefined) conditions.push((q) => nonEmpty(q, q.field("images"), hasImages));
+  if (hasWorkingHours !== undefined) {
+    conditions.push((q) => nonEmpty(q, q.field("workingHours"), hasWorkingHours));
+  }
+
+  let query = base.order(args.order === "oldest" ? "asc" : "desc");
+  if (conditions.length > 0) query = query.filter((q) => q.and(...conditions.map((c) => c(q))));
+
+  const result = await query.paginate(args.paginationOpts);
+  // Only the sub-area superset in cityFilter can let a stranger through.
+  return city ? { ...result, page: result.page.filter((l) => matchesCity(l.city, city)) } : result;
+}
+
+/** The accounts table, filtered inside the query, as the panel's rows. */
+export async function listUsersPage(
+  ctx: QueryCtx,
+  args: { paginationOpts: PaginationOptions; role?: string; phoneVerified?: boolean; suspended?: boolean }
+) {
+  const { role, phoneVerified, suspended } = args;
+  const base = role
+    ? ctx.db.query("users").withIndex("by_role", (q) => q.eq("role", role))
+    : ctx.db.query("users");
+
+  // "Not verified" includes never having tried (undefined), hence neq true.
+  const conditions: ((q: UserFilter) => Expression<boolean>)[] = [];
+  if (phoneVerified !== undefined) {
+    conditions.push((q) =>
+      phoneVerified ? q.eq(q.field("phoneVerified"), true) : q.neq(q.field("phoneVerified"), true)
+    );
+  }
+  if (suspended !== undefined) {
+    conditions.push((q) =>
+      suspended ? q.eq(q.field("isSuspended"), true) : q.neq(q.field("isSuspended"), true)
+    );
+  }
+
+  let query = base.order("desc");
+  if (conditions.length > 0) query = query.filter((q) => q.and(...conditions.map((c) => c(q))));
+
+  const result = await query.paginate(args.paginationOpts);
+  return { ...result, page: result.page.map(toAdminUserRow) };
+}
+
+/**
+ * The admin action log, newest first. Rows are append-only, so creation order
+ * is the chronology. A target-type filter runs over that order rather than
+ * the by_target index, which would sort by target id instead of by time.
+ */
+export async function listActivityPage(
+  ctx: QueryCtx,
+  args: { paginationOpts: PaginationOptions; action?: string; targetType?: string }
+) {
+  const { action, targetType } = args;
+  const base = action
+    ? ctx.db.query("adminActivity").withIndex("by_action", (q) => q.eq("action", action))
+    : ctx.db.query("adminActivity");
+
+  let query = base.order("desc");
+  if (targetType) query = query.filter((q) => q.eq(q.field("targetType"), targetType));
+
+  return await query.paginate(args.paginationOpts);
+}
 
 // === Bookings (the bookings tab) ===
 

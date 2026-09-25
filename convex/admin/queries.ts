@@ -2,13 +2,15 @@ import { query } from "../_generated/server";
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { requireAdmin } from "../auth";
-import { hasAliases, matchesCity } from "../lib/cities";
+import { matchesCity } from "../lib/cities";
 import { isPlaceholderEmail } from "../lib/contact";
 import { riyadhMonthKey } from "../lib/dates";
 import {
   getServiceForAdmin,
   getUserForAdmin,
+  listActivityPage,
   listBookingsPage,
+  listListingsPage,
   listServicesPage,
   pendingBusinessRows,
   searchBookingsForAdmin,
@@ -238,9 +240,9 @@ function matchesFlags(
  * Cursor-paginated listings for the admin table.
  *
  * `listAllListings` above caps at 200 rows with no way to reach row 201, which
- * was survivable at 56 seeded listings and will not be. Filtering happens per
- * page, so a page can come back shorter than requested — `isDone` still
- * terminates correctly.
+ * was survivable at 56 seeded listings and will not be. The filters run inside
+ * the query (listListingsPage): applied to a page after it was fetched they
+ * could empty it while matches remained, and the panel said "no results".
  */
 export const adminListListings = query({
   args: {
@@ -254,40 +256,7 @@ export const adminListListings = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-
-    // Use the narrowest index the filters allow. Status wins over type because
-    // the pending queue is the one that grows unboundedly.
-    const build = () => {
-      if (args.status && args.status !== "seed") {
-        return ctx.db.query("listings").withIndex("by_status", (q) => q.eq("status", args.status!));
-      }
-      if (args.type) {
-        return ctx.db.query("listings").withIndex("by_type", (q) => q.eq("type", args.type!));
-      }
-      // Only when the name means itself. A city that stands for its old
-      // sub-areas as well (Al Ahsa for Hofuf and Mubarraz) cannot use an index
-      // keyed on one exact string — it would answer "none" for the listings it
-      // most certainly has.
-      if (args.city && !hasAliases(args.city)) {
-        return ctx.db.query("listings").withIndex("by_city", (q) => q.eq("city", args.city!));
-      }
-      return ctx.db.query("listings");
-    };
-
-    const result = await build()
-      .order(args.order === "oldest" ? "asc" : "desc")
-      .paginate(args.paginationOpts);
-
-    return {
-      ...result,
-      page: result.page.filter(
-        (l) =>
-          (!args.type || l.type === args.type) &&
-          (!args.city || matchesCity(l.city, args.city)) &&
-          matchesStatus(l, args.status) &&
-          matchesFlags(l, args)
-      ),
-    };
+    return await listListingsPage(ctx, args);
   },
 });
 
@@ -633,7 +602,8 @@ export const listPendingBusinesses = query({
 
 /**
  * The admin action log, newest first. Rows are append-only, so the default
- * `_creationTime` ordering is the chronology — no extra index needed.
+ * `_creationTime` ordering is the chronology — no extra index needed. The
+ * target-type filter runs inside the query (listActivityPage).
  */
 export const listAdminActivity = query({
   args: {
@@ -643,22 +613,7 @@ export const listAdminActivity = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-
-    const build = () => {
-      if (args.action) {
-        return ctx.db.query("adminActivity").withIndex("by_action", (q) => q.eq("action", args.action!));
-      }
-      return ctx.db.query("adminActivity");
-    };
-
-    const result = await build().order("desc").paginate(args.paginationOpts);
-
-    return {
-      ...result,
-      page: args.targetType
-        ? result.page.filter((row) => row.targetType === args.targetType)
-        : result.page,
-    };
+    return await listActivityPage(ctx, args);
   },
 });
 

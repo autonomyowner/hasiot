@@ -3,6 +3,7 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { requireAdmin } from "../auth";
 import { toAdminUserRow } from "./service";
+import { listUsersPage } from "./views";
 import type { Doc } from "../_generated/dataModel";
 
 /**
@@ -17,7 +18,11 @@ import type { Doc } from "../_generated/dataModel";
 
 const MAX_SEARCH = 100;
 
-/** Applied after the page is fetched, the same way adminListListings does it. */
+/**
+ * Search results are ranked, not paged, so these flags are checked on the
+ * results. The paged browse (listUsersPage) filters inside the query instead:
+ * after the page was fetched, a filter could empty it while matches remained.
+ */
 function matchesFlags(
   user: Doc<"users">,
   args: { phoneVerified?: boolean; suspended?: boolean }
@@ -40,17 +45,7 @@ export const adminListUsers = query({
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-
-    const base = args.role
-      ? ctx.db.query("users").withIndex("by_role", (q) => q.eq("role", args.role!))
-      : ctx.db.query("users");
-
-    const result = await base.order("desc").paginate(args.paginationOpts);
-
-    return {
-      ...result,
-      page: result.page.filter((user) => matchesFlags(user, args)).map(toAdminUserRow),
-    };
+    return await listUsersPage(ctx, args);
   },
 });
 
