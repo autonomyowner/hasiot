@@ -1,9 +1,37 @@
-import { mutation, internalMutation } from "../_generated/server";
+import { mutation, internalMutation, type MutationCtx } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
+import type { Doc, Id } from "../_generated/dataModel";
 import { getAuthenticatedAppUser, requireAdmin } from "../auth";
 import { enforceRateLimit } from "../rateLimit";
 import { logAdminAction, labelFor } from "../admin/activity";
-import { PRICING_ARGS, validatePricing, withPricingDefaults } from "./pricing";
+import {
+  listingEditPatch,
+  PRICING_ARGS,
+  pricingToValidate,
+  validatePricing,
+  withPricingDefaults,
+  type PricingArgs,
+} from "./pricing";
+import { LISTING_ERRORS, listingHasOpenBookings } from "./queries";
+
+/**
+ * Refusals a host can meet while posting, Arabic first then English. The app
+ * matches the English halves (lib/submitError.ts), so they keep the exact
+ * wording they had when they were English only.
+ *
+ * "Not authenticated" stays English only: every client maps that exact text
+ * to "session expired" (contract, "Unchanged refusals").
+ */
+const SUBMIT_ERRORS = {
+  NOT_AUTHENTICATED: "Not authenticated",
+  WRONG_ROLE:
+    "يمكن لأصحاب المنشآت ومقدمي الخدمات فقط إضافة أماكن. / Only business owners and service providers can submit listings",
+  NOT_APPROVED:
+    "يجب اعتماد حسابك قبل إضافة الأماكن. / Your account must be approved before submitting listings",
+  OWNER_TYPES:
+    "يمكن لأصحاب المنشآت إضافة: فندق، مطعم، معلم، فعالية. / Business owners can post: hotel, restaurant, attraction, event",
+  PROVIDER_TYPES: "يمكن لمقدمي الخدمات إضافة: جولة. / Service providers can post: tour",
+} as const;
 
 // Create a new listing
 export const createListing = mutation({
@@ -106,7 +134,7 @@ export const updateListing = mutation({
 
     const listing = await ctx.db.get(listingId);
     if (!listing) {
-      throw new ConvexError("Listing not found");
+      throw new ConvexError(LISTING_ERRORS.NOT_FOUND);
     }
 
     const filteredUpdates: Record<string, unknown> = { updatedAt: Date.now() };
@@ -140,7 +168,7 @@ export const saveWorkingHours = mutation({
 
     const listing = await ctx.db.get(args.listingId);
     if (!listing) {
-      throw new ConvexError("Listing not found");
+      throw new ConvexError(LISTING_ERRORS.NOT_FOUND);
     }
 
     await ctx.db.patch(args.listingId, {
@@ -301,22 +329,22 @@ export const submitListing = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user) throw new ConvexError("Not authenticated");
+    if (!user) throw new ConvexError(SUBMIT_ERRORS.NOT_AUTHENTICATED);
 
     const role = user.role;
     if (role !== "business_owner" && role !== "service_provider") {
-      throw new ConvexError("Only business owners and service providers can submit listings");
+      throw new ConvexError(SUBMIT_ERRORS.WRONG_ROLE);
     }
     if (!user.isApproved) {
-      throw new ConvexError("Your account must be approved before submitting listings");
+      throw new ConvexError(SUBMIT_ERRORS.NOT_APPROVED);
     }
 
     // Validate type based on role
     if (role === "business_owner" && !BUSINESS_OWNER_TYPES.includes(args.type)) {
-      throw new ConvexError("Business owners can post: hotel, restaurant, attraction, event");
+      throw new ConvexError(SUBMIT_ERRORS.OWNER_TYPES);
     }
     if (role === "service_provider" && !SERVICE_PROVIDER_TYPES.includes(args.type)) {
-      throw new ConvexError("Service providers can post: tour");
+      throw new ConvexError(SUBMIT_ERRORS.PROVIDER_TYPES);
     }
 
     validatePricing(args);
@@ -345,7 +373,84 @@ export const submitListing = mutation({
   },
 });
 
-// Update own listing (resets status to pending)
+type WorkingHours = { day: string; open: string; close: string; isClosed?: boolean }[];
+
+/** What a host may change on their own listing. `pricePerNight: null` clears the rate. */
+export type OwnerListingUpdate = {
+  listingId: Id<"listings">;
+  type?: string;
+  name_en?: string;
+  name_ar?: string;
+  category?: string;
+  category_ar?: string;
+  description_en?: string;
+  description_ar?: string;
+  address?: string;
+  city?: string;
+  region?: string;
+  coordinates?: { lat: number; lng: number };
+  phone?: string;
+  email?: string;
+  website?: string;
+  priceRange?: string;
+  amenities?: string[];
+  images?: string[];
+  workingHours?: WorkingHours;
+} & Omit<PricingArgs, "pricePerNight"> & { pricePerNight?: number | null };
+
+/**
+ * A host editing their own listing.
+ *
+ * Any edit sends it back to review, because what travellers see must be what
+ * an admin approved. The exception is a listing an admin suspended: editing is
+ * how the host fixes what got it taken down, but only an admin can put it
+ * back, so it stays suspended and keeps the reason it was given. Sending it to
+ * the queue instead (as this used to) let a host undo a takedown by retyping a
+ * word and waiting for a busy reviewer.
+ */
+export async function updateListingForOwner(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  args: OwnerListingUpdate,
+  now: number = Date.now()
+): Promise<void> {
+  const { listingId, ...updates } = args;
+
+  const listing = await ctx.db.get(listingId);
+  if (!listing) throw new ConvexError(LISTING_ERRORS.NOT_FOUND);
+  if (listing.ownerId !== user._id) throw new ConvexError(LISTING_ERRORS.NOT_YOURS);
+
+  validatePricing(pricingToValidate(updates));
+
+  const review =
+    listing.status === "suspended"
+      ? {}
+      : { status: "pending", rejectionReason: undefined, suspendedReason: undefined };
+
+  await ctx.db.patch(listingId, {
+    ...listingEditPatch(updates),
+    ...review,
+    updatedAt: now,
+  });
+}
+
+/** A host deleting their own listing, which waits until nobody is relying on it. */
+export async function deleteListingForOwner(
+  ctx: MutationCtx,
+  user: Doc<"users">,
+  listingId: Id<"listings">
+): Promise<void> {
+  const listing = await ctx.db.get(listingId);
+  if (!listing) throw new ConvexError(LISTING_ERRORS.NOT_FOUND);
+  if (listing.ownerId !== user._id) throw new ConvexError(LISTING_ERRORS.NOT_YOURS);
+  if (await listingHasOpenBookings(ctx, listingId)) {
+    throw new ConvexError(LISTING_ERRORS.HAS_OPEN_BOOKINGS);
+  }
+
+  await ctx.db.delete(listingId);
+}
+
+// Update own listing (resets status to pending, unless suspended)
 export const updateMyListing = mutation({
   args: {
     listingId: v.id("listings"),
@@ -370,6 +475,8 @@ export const updateMyListing = mutation({
     website: v.optional(v.string()),
     priceRange: v.optional(v.string()),
     ...PRICING_ARGS,
+    // null clears the nightly rate (and its currency) — contract section 7.
+    pricePerNight: v.optional(v.union(v.number(), v.null())),
     amenities: v.optional(v.array(v.string())),
     images: v.optional(v.array(v.string())),
     workingHours: v.optional(
@@ -385,29 +492,9 @@ export const updateMyListing = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user) throw new ConvexError("Not authenticated");
+    if (!user) throw new ConvexError(SUBMIT_ERRORS.NOT_AUTHENTICATED);
 
-    const listing = await ctx.db.get(args.listingId);
-    if (!listing) throw new ConvexError("Listing not found");
-    if (listing.ownerId !== user._id) throw new ConvexError("Not your listing");
-
-    validatePricing(args);
-
-    const { listingId, ...updates } = withPricingDefaults(args);
-    const filteredUpdates: Record<string, unknown> = {
-      updatedAt: Date.now(),
-      status: "pending", // Reset status on edit
-      rejectionReason: undefined,
-      // An edit re-enters review, so any prior suspension note is stale.
-      suspendedReason: undefined,
-    };
-    for (const [key, value] of Object.entries(updates)) {
-      if (value !== undefined) {
-        filteredUpdates[key] = value;
-      }
-    }
-
-    await ctx.db.patch(listingId, filteredUpdates);
+    await updateListingForOwner(ctx, user, args);
     return { success: true };
   },
 });
@@ -419,13 +506,9 @@ export const deleteMyListing = mutation({
   },
   handler: async (ctx, args) => {
     const user = await getAuthenticatedAppUser(ctx);
-    if (!user) throw new ConvexError("Not authenticated");
+    if (!user) throw new ConvexError(SUBMIT_ERRORS.NOT_AUTHENTICATED);
 
-    const listing = await ctx.db.get(args.listingId);
-    if (!listing) throw new ConvexError("Listing not found");
-    if (listing.ownerId !== user._id) throw new ConvexError("Not your listing");
-
-    await ctx.db.delete(args.listingId);
+    await deleteListingForOwner(ctx, user, args.listingId);
     return { success: true };
   },
 });

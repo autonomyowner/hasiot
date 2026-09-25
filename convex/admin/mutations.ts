@@ -5,6 +5,7 @@ import { logAdminAction, labelFor } from "./activity";
 import {
   applyBookingStatusAsAdmin,
   createListingAsAdmin,
+  deleteListingAsAdmin,
   reinstateListingRecord,
   suspendListingRecord,
   suspendUserRecord,
@@ -129,26 +130,12 @@ export const setListingActive = mutation({
   },
 });
 
-// Delete a listing
+// Delete a listing — refused while it has open bookings.
 export const deleteListing = mutation({
   args: { id: v.id("listings") },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    // Read before deleting so the log row can name what went, and so deleting a
-    // listing that is already gone reports it instead of silently succeeding.
-    const existing = await ctx.db.get(args.id);
-    if (!existing) {
-      throw new Error("Listing not found");
-    }
-
-    await ctx.db.delete(args.id);
-
-    await logAdminAction(ctx, admin, {
-      action: "listing.delete",
-      targetType: "listing",
-      targetId: args.id,
-      summary: labelFor(existing),
-    });
+    await deleteListingAsAdmin(ctx, admin, args.id);
     return { success: true };
   },
 });

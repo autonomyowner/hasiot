@@ -17,7 +17,7 @@ import {
   withPricingDefaults,
   type PricingArgs,
 } from "../listings/pricing";
-import { LISTING_ERRORS } from "../listings/queries";
+import { LISTING_ERRORS, listingHasOpenBookings } from "../listings/queries";
 
 /**
  * Admin operations, with the acting admin already resolved.
@@ -142,6 +142,32 @@ export async function updateListingAsAdmin(
     summary: labelFor(existing),
   });
   return id;
+}
+
+/**
+ * Delete a listing from the panel — only once nobody is waiting on it, the
+ * same rule as the host's own delete (design 6.7). Support cancels the open
+ * bookings first, which also tells each guest.
+ */
+export async function deleteListingAsAdmin(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  listingId: Id<"listings">
+): Promise<void> {
+  // Read first so the log can name what went, and so deleting something
+  // already gone says so instead of silently succeeding.
+  const existing = await ctx.db.get(listingId);
+  if (!existing) refuse(LISTING_ERRORS.NOT_FOUND);
+  if (await listingHasOpenBookings(ctx, listingId)) refuse(LISTING_ERRORS.HAS_OPEN_BOOKINGS);
+
+  await ctx.db.delete(listingId);
+
+  await logAdminAction(ctx, admin, {
+    action: "listing.delete",
+    targetType: "listing",
+    targetId: listingId,
+    summary: labelFor(existing),
+  });
 }
 
 /** Shape the admin panel's user table renders. */

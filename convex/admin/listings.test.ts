@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { ConvexError } from "convex/values";
-import { makeT, NOW, seedHotel, seedUser } from "../test.utils";
+import { makeT, NOW, seedHotel, seedStay, seedUser } from "../test.utils";
 import type { TestT } from "../test.utils";
 import type { Doc, Id } from "../_generated/dataModel";
-import { createListingAsAdmin, updateListingAsAdmin } from "./service";
+import { createListingAsAdmin, deleteListingAsAdmin, updateListingAsAdmin } from "./service";
 
 async function admin(t: TestT): Promise<Doc<"users">> {
   const id = await seedUser(t, { role: "admin", email: "admin@hasio.test" });
@@ -174,5 +174,38 @@ describe("updateListingAsAdmin", () => {
       (error: unknown) =>
         error instanceof ConvexError && String(error.data) === "المكان غير موجود. / Listing not found."
     );
+  });
+});
+
+describe("deleteListingAsAdmin", () => {
+  it("refuses while a booking is still open, as the owner's delete does", async () => {
+    // Design 6.7: deleting it would leave a guest holding a booking for a place
+    // that no longer exists. Support cancels the booking first.
+    const t = makeT();
+    const acting = await admin(t);
+    const guest = await seedUser(t, { phoneVerified: true });
+    const id = await seedHotel(t);
+    await seedStay(t, { userId: guest, listingId: id, checkIn: "2026-09-10", checkOut: "2026-09-11" });
+
+    await expect(t.run((ctx) => deleteListingAsAdmin(ctx, acting, id))).rejects.toSatisfy(
+      (error: unknown) => error instanceof ConvexError && /open bookings/.test(String(error.data))
+    );
+    expect(await listing(t, id)).not.toBeNull();
+    expect(await activity(t)).toHaveLength(0);
+  });
+
+  it("deletes and logs what went", async () => {
+    const t = makeT();
+    const acting = await admin(t);
+    const id = await seedHotel(t);
+
+    await t.run((ctx) => deleteListingAsAdmin(ctx, acting, id));
+
+    expect(await listing(t, id)).toBeNull();
+    expect((await activity(t))[0]).toMatchObject({
+      action: "listing.delete",
+      targetId: id,
+      summary: "فندق تجريبي",
+    });
   });
 });
