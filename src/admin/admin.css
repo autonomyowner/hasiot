@@ -2142,6 +2142,27 @@
   line-height: 1.7;
 }
 
+/* A warning that does not block: a pin far from its city, hours that run
+   past midnight. Gold, not red — the operator may go ahead. */
+.admin-form-warning {
+  margin: 0;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid #f1dfae;
+  border-radius: var(--ar-r-sm);
+  background: #fdf3d9;
+  color: #6b4b00;
+  font-size: 0.8125rem;
+  line-height: 1.7;
+}
+
+.admin-hours-times { flex-wrap: wrap; }
+.admin-hours-overnight {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #8a6100;
+  white-space: nowrap;
+}
+
 /* "The figures are approximate": the counts hit their read cap. */
 .ar-capped {
   display: inline-flex;
