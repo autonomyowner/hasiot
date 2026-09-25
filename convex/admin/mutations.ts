@@ -1,13 +1,18 @@
 import { mutation } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { requireAdmin } from "../auth";
 import { logAdminAction, labelFor } from "./activity";
 import {
   applyBookingStatusAsAdmin,
+  approveListingRecord,
+  approveServiceRecord,
   assignListingHostRecord,
   createListingAsAdmin,
   deleteListingAsAdmin,
+  IN_BULK,
   reinstateListingRecord,
+  rejectListingRecord,
+  rejectServiceRecord,
   suspendListingRecord,
   suspendUserRecord,
   unsuspendUserRecord,
@@ -304,31 +309,17 @@ export const reinstateListing = mutation({
   },
 });
 
-// Approve a pending content listing
+// Approve a pending content listing (and tell its owner)
 export const approveContent = mutation({
   args: { id: v.id("listings") },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const listing = await ctx.db.get(args.id);
-    if (!listing) throw new Error("Listing not found");
-
-    await ctx.db.patch(args.id, {
-      status: "approved",
-      rejectionReason: undefined,
-      updatedAt: Date.now(),
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: "content.approve",
-      targetType: "listing",
-      targetId: args.id,
-      summary: labelFor(listing),
-    });
+    await approveListingRecord(ctx, admin, args.id);
     return { success: true };
   },
 });
 
-// Reject a pending content listing
+// Reject a pending content listing (and tell its owner why)
 export const rejectContent = mutation({
   args: {
     id: v.id("listings"),
@@ -336,51 +327,22 @@ export const rejectContent = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const listing = await ctx.db.get(args.id);
-    if (!listing) throw new Error("Listing not found");
-
-    await ctx.db.patch(args.id, {
-      status: "rejected",
-      rejectionReason: args.reason,
-      updatedAt: Date.now(),
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: "content.reject",
-      targetType: "listing",
-      targetId: args.id,
-      summary: labelFor(listing),
-      details: args.reason,
-    });
+    await rejectListingRecord(ctx, admin, args.id, args.reason);
     return { success: true };
   },
 });
 
-// Approve a pending service
+// Approve a pending service (and tell its provider)
 export const approveService = mutation({
   args: { id: v.id("services") },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const service = await ctx.db.get(args.id);
-    if (!service) throw new Error("Service not found");
-
-    await ctx.db.patch(args.id, {
-      status: "approved",
-      rejectionReason: undefined,
-      updatedAt: Date.now(),
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: "service.approve",
-      targetType: "service",
-      targetId: args.id,
-      summary: labelFor(service),
-    });
+    await approveServiceRecord(ctx, admin, args.id);
     return { success: true };
   },
 });
 
-// Reject a pending service
+// Reject a pending service (and tell its provider why)
 export const rejectService = mutation({
   args: {
     id: v.id("services"),
@@ -388,22 +350,7 @@ export const rejectService = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
-    const service = await ctx.db.get(args.id);
-    if (!service) throw new Error("Service not found");
-
-    await ctx.db.patch(args.id, {
-      status: "rejected",
-      rejectionReason: args.reason,
-      updatedAt: Date.now(),
-    });
-
-    await logAdminAction(ctx, admin, {
-      action: "service.reject",
-      targetType: "service",
-      targetId: args.id,
-      summary: labelFor(service),
-      details: args.reason,
-    });
+    await rejectServiceRecord(ctx, admin, args.id, args.reason);
     return { success: true };
   },
 });
@@ -418,9 +365,13 @@ export const rejectService = mutation({
 type BulkFailure = { id: string; error: string };
 
 function assertBulkSize(ids: string[]) {
-  if (ids.length === 0) throw new Error("No items selected");
+  if (ids.length === 0) {
+    throw new ConvexError("لم يتم اختيار أي عنصر. / No items selected.");
+  }
   if (ids.length > MAX_BULK) {
-    throw new Error(`Too many items in one batch (max ${MAX_BULK})`);
+    throw new ConvexError(
+      `لا يمكن معالجة أكثر من ${MAX_BULK} عنصرًا دفعة واحدة. / Too many items in one batch (max ${MAX_BULK}).`
+    );
   }
 }
 
@@ -429,7 +380,6 @@ const GONE_SERVICE = "لم تعد هذه الخدمة موجودة";
 const GONE_ACCOUNT = "لم يعد هذا الحساب موجوداً";
 const NOT_BUSINESS = "ليس حساب أعمال";
 const NO_DOCUMENT = "لم يتم رفع وثيقة العمل";
-const IN_BULK = "ضمن إجراء جماعي";
 
 export const bulkApproveContent = mutation({
   args: { ids: v.array(v.id("listings")) },
@@ -441,23 +391,11 @@ export const bulkApproveContent = mutation({
     let succeeded = 0;
 
     for (const id of args.ids) {
-      const listing = await ctx.db.get(id);
-      if (!listing) {
+      if (!(await ctx.db.get(id))) {
         failed.push({ id, error: GONE_LISTING });
         continue;
       }
-      await ctx.db.patch(id, {
-        status: "approved",
-        rejectionReason: undefined,
-        updatedAt: Date.now(),
-      });
-      await logAdminAction(ctx, admin, {
-        action: "content.approve",
-        targetType: "listing",
-        targetId: id,
-        summary: labelFor(listing),
-        details: IN_BULK,
-      });
+      await approveListingRecord(ctx, admin, id, { bulk: true });
       succeeded++;
     }
 
@@ -475,23 +413,11 @@ export const bulkRejectContent = mutation({
     let succeeded = 0;
 
     for (const id of args.ids) {
-      const listing = await ctx.db.get(id);
-      if (!listing) {
+      if (!(await ctx.db.get(id))) {
         failed.push({ id, error: GONE_LISTING });
         continue;
       }
-      await ctx.db.patch(id, {
-        status: "rejected",
-        rejectionReason: args.reason,
-        updatedAt: Date.now(),
-      });
-      await logAdminAction(ctx, admin, {
-        action: "content.reject",
-        targetType: "listing",
-        targetId: id,
-        summary: labelFor(listing),
-        details: args.reason || IN_BULK,
-      });
+      await rejectListingRecord(ctx, admin, id, args.reason, { bulk: true });
       succeeded++;
     }
 
@@ -509,23 +435,11 @@ export const bulkApproveServices = mutation({
     let succeeded = 0;
 
     for (const id of args.ids) {
-      const service = await ctx.db.get(id);
-      if (!service) {
+      if (!(await ctx.db.get(id))) {
         failed.push({ id, error: GONE_SERVICE });
         continue;
       }
-      await ctx.db.patch(id, {
-        status: "approved",
-        rejectionReason: undefined,
-        updatedAt: Date.now(),
-      });
-      await logAdminAction(ctx, admin, {
-        action: "service.approve",
-        targetType: "service",
-        targetId: id,
-        summary: labelFor(service),
-        details: IN_BULK,
-      });
+      await approveServiceRecord(ctx, admin, id, { bulk: true });
       succeeded++;
     }
 
@@ -543,23 +457,11 @@ export const bulkRejectServices = mutation({
     let succeeded = 0;
 
     for (const id of args.ids) {
-      const service = await ctx.db.get(id);
-      if (!service) {
+      if (!(await ctx.db.get(id))) {
         failed.push({ id, error: GONE_SERVICE });
         continue;
       }
-      await ctx.db.patch(id, {
-        status: "rejected",
-        rejectionReason: args.reason,
-        updatedAt: Date.now(),
-      });
-      await logAdminAction(ctx, admin, {
-        action: "service.reject",
-        targetType: "service",
-        targetId: id,
-        summary: labelFor(service),
-        details: args.reason || IN_BULK,
-      });
+      await rejectServiceRecord(ctx, admin, id, args.reason, { bulk: true });
       succeeded++;
     }
 

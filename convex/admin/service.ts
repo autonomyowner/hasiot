@@ -3,7 +3,8 @@ import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { logAdminAction, labelFor } from "./activity";
 import { isPlaceholderEmail } from "../lib/contact";
-import { notifyBookingEvent } from "../notifications/internal";
+import { notifyBookingEvent, notifyUserEvent } from "../notifications/internal";
+import { SERVICE_ERRORS } from "../services/logic";
 import {
   BOOKING_STATUSES,
   canTransition,
@@ -43,6 +44,22 @@ export const ADMIN_ERRORS = {
 
 function refuse(message: string): never {
   throw new ConvexError(message);
+}
+
+/** Marks a decision taken as part of a batch in the log. */
+export const IN_BULK = "ضمن إجراء جماعي";
+
+/** The name a notice about a listing or a service shows its owner. */
+function listingName(listing: Doc<"listings">) {
+  return { name_en: listing.name_en, name_ar: listing.name_ar };
+}
+function serviceName(service: Doc<"services">) {
+  return { name_en: service.title_en, name_ar: service.title_ar };
+}
+
+/** A free-text reason as stored: trimmed, bounded, and absent rather than empty. */
+function storedReason(reason: string | undefined): string | undefined {
+  return reason?.trim().slice(0, 500) || undefined;
 }
 
 type ListingText = {
@@ -206,6 +223,136 @@ export async function assignListingHostRecord(
   return { movedBookings: open.length };
 }
 
+// === Review decisions ===
+//
+// Approving, rejecting and taking down a listing or a service each tell the
+// owner, in the same transaction as the decision (design 4.4): until 1.1.0 an
+// owner learned their place was live, or turned down, only by opening the app
+// and looking. `bulk` marks the log row as part of a batch. A seed listing has
+// no owner, so there is nobody to tell.
+
+type DecisionOpts = { bulk?: boolean };
+
+export async function approveListingRecord(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  listingId: Id<"listings">,
+  opts: DecisionOpts = {},
+  now: number = Date.now()
+): Promise<void> {
+  const listing = await ctx.db.get(listingId);
+  if (!listing) refuse(LISTING_ERRORS.NOT_FOUND);
+
+  await ctx.db.patch(listingId, { status: "approved", rejectionReason: undefined, updatedAt: now });
+
+  await logAdminAction(ctx, admin, {
+    action: "content.approve",
+    targetType: "listing",
+    targetId: listingId,
+    summary: labelFor(listing),
+    details: opts.bulk ? IN_BULK : undefined,
+  });
+
+  if (listing.ownerId) {
+    await notifyUserEvent(
+      ctx,
+      "listing.approved",
+      { userId: listing.ownerId, ...listingName(listing), listingId },
+      now
+    );
+  }
+}
+
+export async function rejectListingRecord(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  listingId: Id<"listings">,
+  reason: string | undefined,
+  opts: DecisionOpts = {},
+  now: number = Date.now()
+): Promise<void> {
+  const listing = await ctx.db.get(listingId);
+  if (!listing) refuse(LISTING_ERRORS.NOT_FOUND);
+  const stored = storedReason(reason);
+
+  await ctx.db.patch(listingId, { status: "rejected", rejectionReason: stored, updatedAt: now });
+
+  await logAdminAction(ctx, admin, {
+    action: "content.reject",
+    targetType: "listing",
+    targetId: listingId,
+    summary: labelFor(listing),
+    details: stored ?? (opts.bulk ? IN_BULK : undefined),
+  });
+
+  if (listing.ownerId) {
+    await notifyUserEvent(
+      ctx,
+      "listing.rejected",
+      { userId: listing.ownerId, ...listingName(listing), reason: stored, listingId },
+      now
+    );
+  }
+}
+
+export async function approveServiceRecord(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  serviceId: Id<"services">,
+  opts: DecisionOpts = {},
+  now: number = Date.now()
+): Promise<void> {
+  const service = await ctx.db.get(serviceId);
+  if (!service) refuse(SERVICE_ERRORS.NOT_FOUND);
+
+  await ctx.db.patch(serviceId, { status: "approved", rejectionReason: undefined, updatedAt: now });
+
+  await logAdminAction(ctx, admin, {
+    action: "service.approve",
+    targetType: "service",
+    targetId: serviceId,
+    summary: labelFor(service),
+    details: opts.bulk ? IN_BULK : undefined,
+  });
+
+  await notifyUserEvent(
+    ctx,
+    "service.approved",
+    { userId: service.ownerId, ...serviceName(service), serviceId },
+    now
+  );
+}
+
+export async function rejectServiceRecord(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  serviceId: Id<"services">,
+  reason: string | undefined,
+  opts: DecisionOpts = {},
+  now: number = Date.now()
+): Promise<void> {
+  const service = await ctx.db.get(serviceId);
+  if (!service) refuse(SERVICE_ERRORS.NOT_FOUND);
+  const stored = storedReason(reason);
+
+  await ctx.db.patch(serviceId, { status: "rejected", rejectionReason: stored, updatedAt: now });
+
+  await logAdminAction(ctx, admin, {
+    action: "service.reject",
+    targetType: "service",
+    targetId: serviceId,
+    summary: labelFor(service),
+    details: stored ?? (opts.bulk ? IN_BULK : undefined),
+  });
+
+  await notifyUserEvent(
+    ctx,
+    "service.rejected",
+    { userId: service.ownerId, ...serviceName(service), reason: stored, serviceId },
+    now
+  );
+}
+
 /**
  * Delete a listing from the panel — only once nobody is waiting on it, the
  * same rule as the host's own delete (design 6.7). Support cancels the open
@@ -261,22 +408,16 @@ export async function suspendUserRecord(
   now: number = Date.now()
 ): Promise<void> {
   const target = await ctx.db.get(userId);
-  if (!target) throw new Error("User not found");
+  if (!target) refuse(ADMIN_ERRORS.USER_NOT_FOUND);
 
   // Locking yourself out of the panel is unrecoverable without database
   // access, and one admin suspending another is a fight the product should
   // not host.
-  if (target._id === admin._id) {
-    throw new Error("لا يمكنك إيقاف حسابك. / You cannot suspend your own account.");
-  }
-  if (target.role === "admin") {
-    throw new Error("لا يمكن إيقاف حساب مسؤول. / An admin account cannot be suspended.");
-  }
+  if (target._id === admin._id) refuse(ADMIN_ERRORS.CANNOT_SUSPEND_SELF);
+  if (target.role === "admin") refuse(ADMIN_ERRORS.CANNOT_SUSPEND_ADMIN);
 
   const trimmed = reason.trim();
-  if (!trimmed) {
-    throw new Error("سبب الإيقاف مطلوب. / A suspension reason is required.");
-  }
+  if (!trimmed) refuse(ADMIN_ERRORS.SUSPEND_REASON_REQUIRED);
 
   await ctx.db.patch(userId, {
     isSuspended: true,
@@ -301,7 +442,7 @@ export async function unsuspendUserRecord(
   now: number = Date.now()
 ): Promise<void> {
   const target = await ctx.db.get(userId);
-  if (!target) throw new Error("User not found");
+  if (!target) refuse(ADMIN_ERRORS.USER_NOT_FOUND);
 
   await ctx.db.patch(userId, {
     isSuspended: false,
@@ -326,18 +467,17 @@ export async function suspendListingRecord(
   now: number = Date.now()
 ): Promise<void> {
   const listing = await ctx.db.get(listingId);
-  if (!listing) throw new Error("Listing not found");
+  if (!listing) refuse(LISTING_ERRORS.NOT_FOUND);
 
   const trimmed = reason.trim();
-  if (!trimmed) {
-    throw new Error("سبب الإيقاف مطلوب. / A suspension reason is required.");
-  }
+  if (!trimmed) refuse(ADMIN_ERRORS.SUSPEND_REASON_REQUIRED);
+  const stored = trimmed.slice(0, 500);
 
   // isPublicListing is an allow-list on "approved", so this alone removes the
   // listing from search, the directory and the booking flow.
   await ctx.db.patch(listingId, {
     status: "suspended",
-    suspendedReason: trimmed.slice(0, 500),
+    suspendedReason: stored,
     updatedAt: now,
   });
 
@@ -348,6 +488,17 @@ export async function suspendListingRecord(
     summary: labelFor(listing),
     details: trimmed,
   });
+
+  // The host finds out from us, with the reason, rather than from a guest who
+  // can no longer find the place.
+  if (listing.ownerId) {
+    await notifyUserEvent(
+      ctx,
+      "listing.suspended",
+      { userId: listing.ownerId, ...listingName(listing), reason: stored, listingId },
+      now
+    );
+  }
 }
 
 export async function reinstateListingRecord(
@@ -357,10 +508,8 @@ export async function reinstateListingRecord(
   now: number = Date.now()
 ): Promise<void> {
   const listing = await ctx.db.get(listingId);
-  if (!listing) throw new Error("Listing not found");
-  if (listing.status !== "suspended") {
-    throw new Error("هذا المكان ليس موقوفًا. / This listing is not suspended.");
-  }
+  if (!listing) refuse(LISTING_ERRORS.NOT_FOUND);
+  if (listing.status !== "suspended") refuse(ADMIN_ERRORS.LISTING_NOT_SUSPENDED);
 
   await ctx.db.patch(listingId, {
     status: "approved",
@@ -391,16 +540,16 @@ export async function applyBookingStatusAsAdmin(
   now: number = Date.now()
 ): Promise<void> {
   if (!BOOKING_STATUSES.includes(args.status as BookingStatus)) {
-    throw new Error("Invalid booking status: " + args.status);
+    refuse(`حالة الحجز غير صالحة. / Invalid booking status: ${args.status}`);
   }
 
   const booking = await ctx.db.get(args.bookingId);
-  if (!booking) throw new Error("Booking not found");
+  if (!booking) refuse(ADMIN_ERRORS.BOOKING_NOT_FOUND);
 
   const from = booking.status as BookingStatus;
   const to = args.status as BookingStatus;
   const transition = canTransition(from, to, "admin");
-  if (!transition.allowed) throw new Error(transition.reason);
+  if (!transition.allowed) refuse(transition.reason);
 
   const reason = args.reason?.trim().slice(0, 500) || undefined;
 
