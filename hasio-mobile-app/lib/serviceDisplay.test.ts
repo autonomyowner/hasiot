@@ -9,6 +9,7 @@ import {
   localServicesFor,
   mergeById,
   peopleLabel,
+  pickLanguage,
   presentServiceTypes,
   priceUnitLabel,
   quantityLabel,
@@ -398,6 +399,19 @@ describe("presentServiceTypes", () => {
 
   it("ignores a stored type the app does not know", () => {
     expect(presentServiceTypes([row("1", { serviceType: "astrologer" })], "all")).toEqual([]);
+  });
+});
+
+describe("pickLanguage", () => {
+  it("gives the reader's language", () => {
+    expect(pickLanguage("Heritage walks", "جولات تراثية", "en")).toBe("Heritage walks");
+    expect(pickLanguage("Heritage walks", "جولات تراثية", "ar")).toBe("جولات تراثية");
+  });
+
+  it("falls back to the other language rather than showing nothing", () => {
+    expect(pickLanguage("Airport runs", "  ", "ar")).toBe("Airport runs");
+    expect(pickLanguage(undefined, "توصيل المطار", "en")).toBe("توصيل المطار");
+    expect(pickLanguage(undefined, undefined, "en")).toBe("");
   });
 });
 

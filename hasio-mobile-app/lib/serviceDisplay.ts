@@ -19,6 +19,24 @@ import { convertFromSar, SAR_PER_USD, type Currency } from "./currency";
 import { addDays } from "./dates";
 import { countForm, matchesQuery, normalizeForSearch, searchableText } from "./searchText";
 
+/* ── Text ────────────────────────────────────────────────────────────── */
+
+/**
+ * A provider's text in the reader's language, or in the other one when that
+ * is all there is. A provider writes both titles (the server requires them),
+ * but a description, an availability line or a service posted before that
+ * rule may exist in one language only — and the text they did write beats an
+ * empty line.
+ */
+export function pickLanguage(
+  en: string | undefined,
+  ar: string | undefined,
+  lang: Language
+): string {
+  const [first, second] = lang === "ar" ? [ar, en] : [en, ar];
+  return first?.trim() || second?.trim() || "";
+}
+
 /* ── Types and units ─────────────────────────────────────────────────── */
 
 /**
