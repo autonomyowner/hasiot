@@ -6,6 +6,8 @@ import { isPlaceholderEmail } from "../lib/contact";
 import { notifyBookingEvent, notifyUserEvent } from "../notifications/internal";
 import { SERVICE_ERRORS, validateServiceInput } from "../services/logic";
 import { buildSearchTextFrom } from "../users/search";
+import { REVIEW_ERRORS } from "../reviews/logic";
+import { recomputeReviewTarget } from "../reviews/service";
 import {
   BOOKING_STATUSES,
   canTransition,
@@ -46,6 +48,8 @@ export const ADMIN_ERRORS = {
   NO_DOCUMENT: "لا يمكن اعتماد حساب بلا وثيقة. / An account cannot be approved without a document.",
   INVALID_ROLE: "دور غير صالح. / Invalid role.",
   ROLE_LOCKED: "لا يمكن تغيير دور هذا الحساب. / This account's role cannot be changed.",
+  REPORT_NOT_FOUND: "البلاغ غير موجود. / Report not found.",
+  REPORT_MISMATCH: "هذا البلاغ لا يخص هذا التقييم. / That report is not about this review.",
 } as const;
 
 /** The roles an admin may give an account. Admin itself is granted from the CLI only (devTools). */
@@ -530,6 +534,61 @@ export async function deleteServiceAsAdmin(
     targetType: "service",
     targetId: serviceId,
     summary: labelFor(service),
+  });
+}
+
+// === Reviews (design 4.5 "Moderation") ===
+
+/**
+ * Take down a review, usually one somebody reported.
+ *
+ * The score of the place or service it rated is recomputed from the reviews
+ * that remain, so a removed one-star review stops dragging the average. Every
+ * open report about the review is closed as actioned — the given one, and any
+ * other traveller's report of the same review, which would otherwise sit in
+ * the queue pointing at nothing. A `reportId` about some other target is
+ * refused rather than silently closed.
+ *
+ * The author is not notified: there is no notice for a removed review among
+ * the account events (notifications/templates.ts).
+ */
+export async function removeReviewRecord(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  args: { reviewId: Id<"reviews">; reason: string; reportId?: Id<"contentReports"> },
+  now: number = Date.now()
+): Promise<void> {
+  const review = await ctx.db.get(args.reviewId);
+  if (!review) refuse(REVIEW_ERRORS.NOT_FOUND);
+
+  if (args.reportId) {
+    const report = await ctx.db.get(args.reportId);
+    if (!report) refuse(ADMIN_ERRORS.REPORT_NOT_FOUND);
+    if (report.targetType !== "review" || report.targetId !== args.reviewId) {
+      refuse(ADMIN_ERRORS.REPORT_MISMATCH);
+    }
+  }
+
+  await ctx.db.delete(args.reviewId);
+  await recomputeReviewTarget(ctx, review);
+
+  const open = await ctx.db
+    .query("contentReports")
+    .withIndex("by_target", (q) => q.eq("targetType", "review").eq("targetId", args.reviewId))
+    .filter((q) => q.eq(q.field("status"), "pending"))
+    .collect();
+  const toClose = new Set<Id<"contentReports">>(open.map((r) => r._id));
+  if (args.reportId) toClose.add(args.reportId);
+  for (const reportId of toClose) {
+    await ctx.db.patch(reportId, { status: "actioned", reviewedByAdminId: admin._id, reviewedAt: now });
+  }
+
+  await logAdminAction(ctx, admin, {
+    action: "review.remove",
+    targetType: "review",
+    targetId: args.reviewId,
+    summary: review.content ? review.content.slice(0, 80) : `${review.rating}/5`,
+    details: storedReason(args.reason),
   });
 }
 

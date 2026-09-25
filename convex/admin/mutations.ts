@@ -16,6 +16,7 @@ import {
   rejectBusinessAccountRecord,
   rejectListingRecord,
   rejectServiceRecord,
+  removeReviewRecord,
   setUserRoleRecord,
   suspendListingRecord,
   suspendServiceRecord,
@@ -435,6 +436,24 @@ export const deleteService = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     await deleteServiceAsAdmin(ctx, admin, args.serviceId);
+    return { success: true };
+  },
+});
+
+/**
+ * Take down a review (usually a reported one). The rating it counted towards
+ * is recomputed, and the report — with any other open report of the same
+ * review — is marked actioned.
+ */
+export const removeReview = mutation({
+  args: {
+    reviewId: v.id("reviews"),
+    reason: v.string(),
+    reportId: v.optional(v.id("contentReports")),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await removeReviewRecord(ctx, admin, args);
     return { success: true };
   },
 });
