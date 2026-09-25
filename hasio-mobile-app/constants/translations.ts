@@ -15,6 +15,9 @@ export const translations = {
     signOut: "Sign Out",
     signOutSubtitle: "Sign out of your account",
     guest: "Guest",
+    // Shared by every edit form: Save stays a solid button, and this is the
+    // nudge when nothing has been changed yet (never a faded button).
+    nothingChangedYet: "Nothing has changed yet",
 
     // Navigation
     home: "Home",
@@ -885,6 +888,7 @@ export const translations = {
     signOut: "تسجيل الخروج",
     signOutSubtitle: "الخروج من حسابك",
     guest: "ضيف",
+    nothingChangedYet: "لم تغيّر شيئًا بعد",
 
     // Navigation
     home: "الرئيسية",
