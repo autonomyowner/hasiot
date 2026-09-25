@@ -173,7 +173,7 @@ function HostBookingCardInner({
           <Text style={[styles.meta, isRTL && styles.textRTL]}>{when}</Text>
           {amount ? <Text style={[styles.meta, isRTL && styles.textRTL]}>{amount}</Text> : null}
           <View style={[styles.chipRow, isRTL && styles.rowRTL]}>
-            <BookingStatusChip status={booking.status} />
+            <BookingStatusChip status={booking.status} kind={booking.kind} />
             {booking.totalAmount != null ? (
               <Text style={styles.amount}>
                 {labels.formatTotal(

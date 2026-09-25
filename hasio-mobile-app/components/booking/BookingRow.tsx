@@ -118,7 +118,7 @@ function BookingRowInner({ booking, language, isRTL, labels, onPress }: BookingR
           {amount ? <Text style={[styles.meta, isRTL && styles.textRTL]}>{amount}</Text> : null}
 
           <View style={[styles.cardFooter, isRTL && styles.cardRTL]}>
-            <BookingStatusChip status={booking.status} />
+            <BookingStatusChip status={booking.status} kind={booking.kind} />
             {booking.totalAmount != null && (
               <Text style={styles.amount}>
                 {labels.formatTotal(

@@ -280,7 +280,7 @@ export default function BookingDetailScreen() {
           {/* The one raised surface on the page: status and code are what the
               guest opens this screen to see. Everything below is content. */}
           <SurfaceGradient />
-          <BookingStatusChip status={booking.status} />
+          <BookingStatusChip status={booking.status} kind={booking.kind} />
           {booking.confirmationCode ? (
             <>
               {/* To the right in Arabic, under the chip, which already is. */}
@@ -684,6 +684,7 @@ export default function BookingDetailScreen() {
 
       {/* A provider turning a request down says why, as from the inbox. */}
       <DeclineReasonSheet
+        kind={booking.kind}
         visible={declineOpen}
         onClose={() => setDeclineOpen(false)}
         onSubmit={async (reason) => {

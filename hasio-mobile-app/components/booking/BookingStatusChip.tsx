@@ -54,18 +54,24 @@ const STATUS_STYLES: Record<string, Style> = {
   no_show: { bg: SOFT_RED, fg: colors.signOut, label: "bookingStatusNoShow", icon: "user-x" },
 };
 
-export function BookingStatusChip({ status }: { status: string }) {
+/**
+ * `kind` only changes who a pending request is waiting on: a service booking
+ * waits for its provider, not a host.
+ */
+export function BookingStatusChip({ status, kind }: { status: string; kind?: string }) {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
   const style = STATUS_STYLES[status] ?? STATUS_STYLES.pending;
+  const label =
+    status === "pending" && kind === "service" ? "bookingStatusPendingProvider" : style.label;
 
   return (
     <View
       style={[styles.chip, { backgroundColor: style.bg }, isRTL && styles.chipRTL]}
-      accessibilityLabel={t(style.label)}
+      accessibilityLabel={t(label)}
     >
       <Feather name={style.icon} size={12} color={style.fg} />
-      <Text style={[styles.text, { color: style.fg }]}>{t(style.label)}</Text>
+      <Text style={[styles.text, { color: style.fg }]}>{t(label)}</Text>
     </View>
   );
 }

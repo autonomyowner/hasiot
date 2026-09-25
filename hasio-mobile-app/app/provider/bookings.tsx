@@ -334,6 +334,7 @@ export default function ProviderBookingsScreen() {
       ) : null}
 
       <DeclineReasonSheet
+        kind="service"
         visible={decliningId !== null}
         onClose={() => setDecliningId(null)}
         onSubmit={async (reason) => {
