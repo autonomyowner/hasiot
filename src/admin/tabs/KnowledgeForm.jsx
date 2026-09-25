@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Modal from '../components/Modal'
 import FilterSelect from '../components/FilterSelect'
-import { CITIES, CITY_LABELS, KNOWLEDGE_CATEGORIES } from '../constants'
+import { CITY_OPTIONS, KNOWLEDGE_CATEGORIES } from '../constants'
 
 /**
  * An entry in the knowledge base the AI travel planner reads.
@@ -88,11 +88,11 @@ export default function KnowledgeForm({ initialData, onSubmit, onClose }) {
                 <FilterSelect
                   value={form.region}
                   onChange={(v) => set({ region: v })}
-                  placeholder="عام (كل الأحساء)"
+                  placeholder="عام (كل المنطقة الشرقية)"
                   className="w-full"
                   options={[
-                    { value: '', label: 'عام (كل الأحساء)' },
-                    ...CITIES.map((c) => ({ value: c, label: CITY_LABELS[c] || c })),
+                    { value: '', label: 'عام (كل المنطقة الشرقية)' },
+                    ...CITY_OPTIONS,
                   ]}
                 />
               </div>
@@ -152,7 +152,7 @@ export default function KnowledgeForm({ initialData, onSubmit, onClose }) {
                   value={form.keywords}
                   onChange={(e) => set({ keywords: e.target.value })}
                   className="admin-form-input"
-                  placeholder="الهفوف، جبل القارة، تمور، تراث"
+                  placeholder="الخبر، الكورنيش، جبل القارة، تراث"
                 />
               </div>
               <div className="admin-form-group">
