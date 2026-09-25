@@ -154,6 +154,21 @@ Riyadh dates (`lib/dates.ts`). Bookable = `type === "hotel" && pricePerNight` se
 `pending | confirmed | completed | cancelled | no_show | declined | expired`; allowed transitions
 live in `convex/bookings/logic.ts` (`canTransition`) — mirror them, don't invent.
 
+### Bookings (services) — *branch `services-release`, not yet on production*
+
+A priced, approved service is booked like a stay but for one day and a start time:
+`bookings.queries.quoteService({ serviceId, date, time, quantity?, partySize? })` (never throws;
+`quantity` is hours or days for a `per_hour` / `per_day` price) → `bookings.mutations.createServiceBooking`
+with the same arguments → `{ bookingId, confirmationCode }`. The provider answers within 48 hours or
+before the start, whichever is sooner; the traveller can cancel until the start (Riyadh time). A
+service without a numeric `price` shows **Contact**, not Book. Service bookings share the `bookings`
+table (`kind: "service"`, `serviceId`, no `listingId`), and **`getUserBookings` / `getBooking` leave
+them out unless called with `includeServices: true`** — that is what keeps them away from the 1.0.x
+apps, so a new client must pass it. Providers read `getProviderBookings` / `getProviderStats`.
+Service reviews: `reviews.queries.listForService`, `getServiceSummary`, `getMineForService`,
+`listMyReviewableServices`; `addReview` takes `serviceId` instead of `listingId`. Every argument,
+shape and refusal: `docs/superpowers/contracts/2026-09-25-services-backend.md`.
+
 ### AI planner
 
 `travelPlanner.actions.planTravel` — multi-turn; returns `ready:false` (follow-up question) or
@@ -177,29 +192,31 @@ carries `data.target` — `booking` | `host-inbox` | `provider-inbox` | `my-list
 
 ### ⚠️ What production actually has today
 
-**Prod (`hearty-ram-74`) runs `main`: email + password only, slot bookings, no notifications, no
-push tokens, no `quoteStay`, no phone OTP.** Everything below marked *branch* exists only on
-`phase-1-stays` / the dev deployment. If the new app uses any of it, **deploy that backend to prod
-first** (`docs/PHASE1_RELEASE_CHECKLIST.md` §1–2: Twilio Verify + Resend env vars, `npx convex
-deploy --yes` from `D:\hasiot` on that branch, backfills, then the website admin from `main` +
-branch). Build 4 crashed on the App Store by shipping a client that called a function prod did not
-have. Verify with: `cd D:\hasiot && npx convex function-spec --prod | grep <name>`.
+*Checked against `npx convex function-spec --prod` on 2026-09-25.* **Prod (`hearty-ram-74`) runs
+`main`** (the bookings work merged 2026-09-12): email + password and phone OTP sign-in — **with
+`SMS_PROVIDER=demo` still on, so any six digits sign in** (CLAUDE.md pre-flight) — stay bookings
+with server quotes, place reviews, the in-app notification inbox. **Push tokens, service bookings
+and service reviews exist only on branch `services-release` and the dev deployment** until the
+owner's "ship it". If the new app uses any of them, **deploy that backend to prod first**
+(`npx convex deploy --yes` from `D:\hasiot` on the released branch). Build 4 crashed on the App Store
+by shipping a client that called a function prod did not have. Verify with:
+`cd D:\hasiot && npx convex function-spec --prod | grep <name>`.
 
-Functions the old app calls (the surface area to cover):
+Functions a client calls (the surface area to cover):
 
-| Domain | In prod now | *branch only* |
+| Domain | In prod now | *`services-release` only* |
 |---|---|---|
-| users | `getCurrentUser`, `getFavorites`, `getStorageUrl`, `generateUploadUrl`, `saveBusinessDoc`, `setUserRole`, `toggleFavorite`, `updateProfile`, `deleteMyAccount`, `createUser` | `ensureAuthLink`, `registerPushToken`, `unregisterPushToken`, `setPreferredLanguage` |
-| listings | `listListings`, `listListingsPaginated`, `searchListings`, `getListing`, `getCategories`, `getCities`, `getListingsNearLocation`, `getMyListings`, `submitListing`, `updateMyListing`, `deleteMyListing` | `pricePerNight` field + `listings/pricing.ts` |
-| reviews | `listForListing`, `getSummary`, `getMine`, `listMyReviewablePlaces`, `addReview`, `updateMyReview`, `deleteMyReview` | new module; verification is server-decided |
-| services | `listServices`, `listServicesPaginated`, `getService`, `searchServices`, `getServiceCities`, `getMyServices`, `submitService`, `updateMyService`, `deleteMyService` | — |
-| bookings | `createBooking`, `cancelBooking`, `rescheduleBooking`, `confirmBooking`, `completeBooking`, `getUserBookings`, `getBooking`, `getAvailableSlots`, `getUpcomingCount`, `getBusinessBookings`, `getListingSchedule` | `quoteStay`, `createStayBooking`, `declineBooking`, `markNoShow`, `getOwnerStats` (and the stay-aware rewrites of the others) |
-| notifications | — | `listMine`, `unreadCount`, `getNotification`, `markRead`, `markAllRead` |
-| trips | `getMyTrips`, `getTrip`, `getMyTripSummaries`, `createTrip`, `addStopToTrip`, `updateStop`, `removeStop`, `reorderStops`, `updateTrip`, `deleteTrip`, `convertPlanToTrip` | — |
+| users | `getCurrentUser`, `getFavorites`, `isFavorite`, `getStorageUrl`, `getBusinessDocUrl`, `generateUploadUrl`, `saveBusinessDoc`, `setUserRole`, `toggleFavorite`, `updateProfile`, `deleteMyAccount`, `createUser`, `ensureAuthLink` | `users.push.registerPushToken`, `unregisterPushToken`; `deleteMyAccount` also deleting the Better Auth sign-in (in prod it leaves it behind) |
+| listings | `listListings`, `listListingsPaginated`, `searchListings`, `getListing`, `getCategories`, `getCities`, `getListingsNearLocation`, `getMyListings`, `submitListing`, `updateMyListing`, `deleteMyListing`; `pricePerNight` | — |
+| reviews | `listForListing`, `getSummary`, `getMine`, `listMyReviewablePlaces`, `addReview`, `updateMyReview`, `deleteMyReview` | `listForService`, `getServiceSummary`, `getMineForService`, `listMyReviewableServices`; `addReview({ serviceId })` |
+| services | `listServices`, `listServicesPaginated`, `getService`, `searchServices`, `getServiceCities`, `getMyServices`, `submitService`, `updateMyService`, `deleteMyService` | `price`, `maxGroupSize`, the bookable flag on `getService` |
+| bookings | `createBooking`, `cancelBooking`, `rescheduleBooking`, `confirmBooking`, `completeBooking`, `getUserBookings`, `getBooking`, `getAvailableSlots`, `getUpcomingCount`, `getBusinessBookings`, `getListingSchedule`, `quoteStay`, `createStayBooking`, `declineBooking`, `markNoShow`, `getOwnerStats` | `quoteService`, `createServiceBooking`, `getProviderBookings`, `getProviderStats`; the `includeServices` argument |
+| notifications | `listMine`, `unreadCount`, `getNotification`, `markRead`, `markAllRead` | `data.target` on every row |
+| trips | `getMyTrips`, `getTrip`, `getMyTripSummaries`, `createTrip`, `addStopToTrip`, `updateStop`, `removeStop`, `reorderStops`, `updateTrip`, `deleteTrip`, `convertPlanToTrip` | — (no client from 1.1.0, design D7) |
 | travelPlanner | `planTravel` (action), `getMyPlans`, `getPlan` | — |
-| moments | `getMyMoments`, `createMoment`, `deleteMoment` | — |
-| moderation | `reportContent`, `blockUser`, `unblockUser`, `getMyBlockedUsers`, `getMyBlockedUserIds` | — |
-| auth | email + password | phone OTP, Better-Auth triggers creating the `users` row (on `main` the client must call `createUser` after sign-up) |
+| moments | `getMyMoments`, `createMoment`, `deleteMoment` | — (no client since 2026-09-24) |
+| moderation | `reportContent`, `blockUser`, `unblockUser`, `getMyBlockedUsers`, `getMyBlockedUserIds` | `reportContent` target `ai_message`; ids and details length-checked |
+| auth | email + password, phone OTP | — |
 
 ## Local state left behind on upgraders' devices
 
