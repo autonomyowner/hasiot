@@ -26,6 +26,32 @@ async function refusalOf(promise: Promise<unknown>): Promise<string> {
   throw new Error("expected a refusal");
 }
 
+describe("every report is bounded", () => {
+  // Only planner-message reports used to be cut; a listing, service or review
+  // report stored its details and target id at any length, 20 a day.
+  it("cuts the details and refuses an oversized target id, whatever is reported", async () => {
+    const t = makeT();
+    const me = await reporter(t);
+    const listingId = await seedHotel(t);
+
+    const { reportId } = await report(t, me, {
+      targetType: "listing",
+      targetId: listingId,
+      reason: "spam",
+      details: "x".repeat(MAX_MESSAGE_TEXT * 10),
+    });
+    expect((await t.run((ctx) => ctx.db.get(reportId)))?.details).toHaveLength(MAX_MESSAGE_TEXT);
+
+    for (const targetType of ["listing", "service", "review"]) {
+      expect(
+        await refusalOf(
+          report(t, me, { targetType, targetId: "y".repeat(MAX_MESSAGE_ID + 1), reason: "spam" })
+        )
+      ).toBe(REPORT_ERRORS.INVALID_TARGET_ID);
+    }
+  });
+});
+
 describe("reporting a planner message", () => {
   it("records the message id and its text, which exist only on the traveller's phone", async () => {
     const t = makeT();
@@ -96,7 +122,9 @@ describe("the other report targets", () => {
     const t = makeT();
     const me = await reporter(t);
     const listingId = await seedHotel(t);
-    const details = "y".repeat(MAX_MESSAGE_TEXT + 10);
+    // Within the limit, a listing report's details are kept exactly (the
+    // limit itself, for every target type, is "every report is bounded").
+    const details = "y".repeat(MAX_MESSAGE_TEXT);
 
     const { reportId } = await report(t, me, { targetType: "listing", targetId: listingId, reason: "fraud", details });
 

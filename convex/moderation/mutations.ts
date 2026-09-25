@@ -27,6 +27,7 @@ export const REPORT_ERRORS = {
   INVALID_TARGET: "نوع البلاغ غير صالح. / Invalid report target.",
   INVALID_REASON: "سبب البلاغ غير صالح. / Invalid report reason.",
   INVALID_MESSAGE_ID: "معرّف الرسالة غير صالح. / Invalid message id.",
+  INVALID_TARGET_ID: "معرّف المحتوى المبلّغ عنه غير صالح. / Invalid report target id.",
 } as const;
 
 /**
@@ -46,16 +47,17 @@ export async function reportContentForUser(
     throw new ConvexError(REPORT_ERRORS.INVALID_REASON);
   }
 
-  let details = args.details;
-  if (args.targetType === "ai_message") {
-    if (!args.targetId.trim() || args.targetId.length > MAX_MESSAGE_ID) {
-      throw new ConvexError(REPORT_ERRORS.INVALID_MESSAGE_ID);
-    }
-    // Cut rather than refused: a planner itinerary can run past this, and a
-    // traveller reporting a long harmful reply should not be told the report
-    // failed. The admin reads the start of it, and the id says which one.
-    details = args.details?.slice(0, MAX_MESSAGE_TEXT);
+  // Every report is bounded, whatever it is about: 20 a day of unbounded text
+  // would let one account fill the moderation queue with megabytes.
+  if (!args.targetId.trim() || args.targetId.length > MAX_MESSAGE_ID) {
+    throw new ConvexError(
+      args.targetType === "ai_message" ? REPORT_ERRORS.INVALID_MESSAGE_ID : REPORT_ERRORS.INVALID_TARGET_ID
+    );
   }
+  // Cut rather than refused: a planner itinerary can run past this, and a
+  // traveller reporting a long harmful reply should not be told the report
+  // failed. The admin reads the start of it, and the id says which one.
+  const details = args.details?.slice(0, MAX_MESSAGE_TEXT);
 
   const existing = await ctx.db
     .query("contentReports")
