@@ -47,9 +47,9 @@ How to do good work here:
 - **Green before commit:** `npm run typecheck`, `npm run lint`, `npm run test` in
   `hasio-mobile-app/`. Lint has existed only since 2026-09-14; the UI audit took it from 0 errors /
   55 warnings to **0 errors / 3 warnings** (the documented latest-ref in `useKeyboardOverlap`, two
-  effects in `BookingSheet`). Don't add errors or warnings. Tests: 366 across 17 files (2026-09-25).
-  The backend's own suite (`npm run test` at the root) must stay green too, and
-  `npm run typecheck:convex` clean.
+  effects in `BookingSheet`). Don't add errors or warnings. Tests: 367 across 17 files (2026-09-25).
+  The backend's own suite (`npm run test` at the root, 518 across 36 files) must stay green too,
+  and `npm run typecheck:convex` clean.
 - **Bookable services, push and the finished admin panel** (2026-09-25) were built on branch
   `services-release` (from `sdk-57`) to the design `docs/superpowers/specs/2026-09-25-bookable-services-release-design.md`,
   the plan `docs/superpowers/plans/2026-09-25-bookable-services-release.md` and the backend
