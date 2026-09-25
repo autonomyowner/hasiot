@@ -25,7 +25,6 @@ export const translations = {
     food: "Food",
     events: "Events",
     planner: "Planner",
-    moments: "Moments",
     settings: "Settings",
 
     // Home
@@ -81,7 +80,6 @@ export const translations = {
     filterApply: "Show results",
     filterNoMatch: "Nothing matches these filters",
     detailBook: "Book",
-    detailBookSoon: "Booking coming soon",
     sar: "SAR",
     pricePerNightLabel: "Price per night (SAR)",
     placeholderPricePerNight: "e.g. 450",
@@ -187,7 +185,6 @@ export const translations = {
     notificationsSubtitle: "Booking updates and reminders appear here.",
     noNotifications: "No notifications yet",
     markAllRead: "Mark all read",
-    pushNotifications: "Push notifications",
 
     // Food
     restaurants: "Restaurants",
@@ -264,12 +261,8 @@ export const translations = {
     close: "Close",
     done: "Done",
 
-    // Moments
-    myMoments: "My Moments",
-    addMoment: "Add Moment",
+    // Photo picker (components/hosting/PhotoPickerField.tsx)
     selectPhoto: "Select Photo",
-    addLocation: "Add Location",
-    writeNote: "Write a note...",
 
     // Settings
     language: "Language",
@@ -324,9 +317,6 @@ export const translations = {
     emptyFoodMessage: "Try a different category",
     emptyEventsTitle: "No events available",
     emptyEventsMessage: "Check back later for upcoming events",
-    emptyMomentsTitle: "No memories yet",
-    emptyMomentsMessage: "Capture your first travel moment!",
-    emptyMomentsAction: "Add Moment",
     emptyPlannerTitle: "No plans yet",
     emptyPlannerMessage: "Start planning your Eastern Province adventure",
     emptyDestinationsTitle: "No destinations found",
@@ -334,7 +324,6 @@ export const translations = {
 
     // Auth
     signInRequired: "Sign in to continue",
-    signInRequiredMessage: "Create an account to save your moments and plans",
     guestProfileTitle: "Welcome to Hasio",
     guestProfileMessage: "Sign in to access your profile, save favorites, plan trips, and upgrade your account.",
     guestSignInButton: "Sign In or Create Account",
@@ -364,8 +353,6 @@ export const translations = {
       ", and you accept that abusive users and objectionable content are not tolerated.",
     back: "Back",
     saving: "Saving...",
-    momentSaveError: "Failed to save moment. Please try again.",
-    deleteMomentConfirm: "Are you sure you want to delete this moment?",
 
     // User Types
     selectAccountType: "Select Account Type",
@@ -816,7 +803,6 @@ export const translations = {
     // Profile — shown in place of the page while the account is going away.
     accountSigningOut: "Signing you out…",
     accountDeleting: "Deleting your account…",
-    profileTrips: "Trips",
     profileGetStarted: "Get started",
     profileAddName: "Add your name",
     // Read by screen readers on the Notifications row's count.
@@ -870,6 +856,29 @@ export const translations = {
     startAddingPlaces: "Add a place to stay or a destination to get started.",
 
     // ── ui-polish: app shell ──
+
+    // ── 1.1.0: push notifications, Settings, sign-in ──
+    // The in-context ask (components/PushPrompt.tsx, design D14).
+    pushPromptTitle: "Get booking updates?",
+    pushPromptGuestBody:
+      "We'll tell you the moment your request is confirmed, and remind you the day before.",
+    pushPromptHostBody:
+      "Get a notification the moment a booking request arrives, so it never expires unseen.",
+    pushTurnOn: "Turn on notifications",
+    pushNotNow: "Not now",
+    // The Settings row. Not a second "Notifications": the inbox row above it
+    // already has that name.
+    pushNotifications: "Push notifications",
+    pushOn: "On",
+    pushOff: "Off",
+    pushTurnOnInSettings: "Turn on in Settings",
+    // The Android notification channel, as the phone's settings list it.
+    pushChannelName: "Bookings",
+    contactSupport: "Contact support",
+    markReadFailed: "Couldn't update. Check your connection.",
+    // Said by a sign-in button pressed too early (never faded; see useNudge).
+    enterPhoneNudge: "Enter your phone number",
+    enterCodeNudge: "Enter the 6-digit code",
   },
 
   ar: {
@@ -896,7 +905,6 @@ export const translations = {
     food: "الطعام",
     events: "الفعاليات",
     planner: "المخطط",
-    moments: "اللحظات",
     settings: "الإعدادات",
 
     // Home
@@ -952,7 +960,6 @@ export const translations = {
     filterApply: "عرض النتائج",
     filterNoMatch: "لا توجد نتائج مطابقة",
     detailBook: "احجز",
-    detailBookSoon: "الحجز قريبًا",
     sar: "ر.س",
     pricePerNightLabel: "سعر الليلة (ر.س)",
     placeholderPricePerNight: "مثال: 450",
@@ -1058,7 +1065,6 @@ export const translations = {
     notificationsSubtitle: "تظهر هنا تحديثات الحجوزات والتذكيرات.",
     noNotifications: "لا توجد إشعارات بعد",
     markAllRead: "تحديد الكل كمقروء",
-    pushNotifications: "إشعارات التطبيق",
 
     // Food
     restaurants: "المطاعم",
@@ -1133,12 +1139,8 @@ export const translations = {
     close: "إغلاق",
     done: "تم",
 
-    // Moments
-    myMoments: "لحظاتي",
-    addMoment: "إضافة لحظة",
+    // Photo picker — see the English block.
     selectPhoto: "اختر صورة",
-    addLocation: "إضافة موقع",
-    writeNote: "اكتب ملاحظة...",
 
     // Settings
     language: "اللغة",
@@ -1193,9 +1195,6 @@ export const translations = {
     emptyFoodMessage: "جرب فئة مختلفة",
     emptyEventsTitle: "لا توجد فعاليات",
     emptyEventsMessage: "تحقق لاحقاً من الفعاليات القادمة",
-    emptyMomentsTitle: "لا توجد ذكريات",
-    emptyMomentsMessage: "احفظ ذكريات رحلتك الأولى!",
-    emptyMomentsAction: "إضافة ذكرى",
     emptyPlannerTitle: "لا توجد خطط",
     emptyPlannerMessage: "ابدأ التخطيط لمغامرتك في الشرقية",
     emptyDestinationsTitle: "لا توجد وجهات",
@@ -1203,7 +1202,6 @@ export const translations = {
 
     // Auth
     signInRequired: "سجل الدخول للمتابعة",
-    signInRequiredMessage: "أنشئ حساباً لحفظ لحظاتك وخططك",
     guestProfileTitle: "مرحباً بك في Hasio",
     guestProfileMessage: "سجل الدخول للوصول إلى ملفك الشخصي، حفظ المفضلات، تخطيط الرحلات، وترقية حسابك.",
     guestSignInButton: "تسجيل الدخول أو إنشاء حساب",
@@ -1232,8 +1230,6 @@ export const translations = {
     consentSuffix: "، وتقر بعدم التسامح مع المحتوى المخالف أو المستخدمين المسيئين.",
     back: "رجوع",
     saving: "جاري الحفظ...",
-    momentSaveError: "فشل في حفظ اللحظة. حاول مرة أخرى.",
-    deleteMomentConfirm: "هل أنت متأكد من حذف هذه اللحظة؟",
 
     // User Types
     selectAccountType: "اختر نوع الحساب",
@@ -1678,7 +1674,6 @@ export const translations = {
     // Profile — see the English block.
     accountSigningOut: "جارٍ تسجيل خروجك…",
     accountDeleting: "جارٍ حذف حسابك…",
-    profileTrips: "الرحلات",
     profileGetStarted: "ابدأ الآن",
     profileAddName: "أضف اسمك",
     profileUnread: "{n} غير مقروءة",
@@ -1730,6 +1725,23 @@ export const translations = {
     startAddingPlaces: "أضف مكان إقامة أو وجهة لتبدأ.",
 
     // ── ui-polish: app shell ──
+
+    // ── 1.1.0: push notifications, Settings, sign-in — see the English block ──
+    pushPromptTitle: "هل تريد تنبيهات الحجز؟",
+    pushPromptGuestBody: "سنخبرك فور تأكيد طلبك، ونذكّرك قبل الموعد بيوم.",
+    pushPromptHostBody: "استلم تنبيهًا فور وصول طلب حجز، حتى لا تنتهي صلاحيته دون أن تراه.",
+    pushTurnOn: "تفعيل التنبيهات",
+    pushNotNow: "ليس الآن",
+    pushNotifications: "التنبيهات",
+    // Feminine, agreeing with «التنبيهات».
+    pushOn: "مفعّلة",
+    pushOff: "متوقفة",
+    pushTurnOnInSettings: "فعّلها من الإعدادات",
+    pushChannelName: "الحجوزات",
+    contactSupport: "تواصل مع الدعم",
+    markReadFailed: "تعذّر التحديث. تحقق من اتصالك.",
+    enterPhoneNudge: "أدخل رقم جوالك",
+    enterCodeNudge: "أدخل الرمز المكوّن من 6 أرقام",
   },
 } as const;
 

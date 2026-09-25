@@ -36,7 +36,7 @@ import { useLanguage } from "@/hooks/useLanguage";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useAppStore } from "@/stores/appStore";
 import { useConvexUser } from "@/hooks/useConvexUser";
-import { useFavorites, useTrips } from "@/hooks/useConvexData";
+import { useFavorites } from "@/hooks/useConvexData";
 import type { TabKey } from "@/app/(tabs)/_layout";
 import { signOut as authSignOut } from "@/lib/auth";
 import { refreshAuth } from "@/lib/convex";
@@ -104,10 +104,9 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
   const setOnboardingComplete = useAppStore((state) => state.setOnboardingComplete);
   const clearUserData = useAppStore((state) => state.clearUserData);
 
-  // The stats band used to render three hardcoded zeros. Trips and favourites
-  // come from Convex (both skip while signed out); moments are local to the
-  // device, which is where the app already keeps them.
-  const { trips } = useTrips();
+  // The stats band: bookings and favourites, both from Convex (both skip while
+  // signed out). A trips count used to lead it, but no screen lists trips —
+  // a number that opens nothing is not a stat (design D7).
   const { favorites } = useFavorites();
 
   const {
@@ -123,8 +122,13 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
   const userType: UserType = convexUserType === "business_owner" ? "business" : convexUserType === "service_provider" ? "provider" : convexUserType === "admin" ? "admin" : "user";
 
   // Bookings replaced Moments in the stats: Moments no longer has a tab, and
-  // a count for a screen nobody can reach is not a stat.
-  const bookings = useQuery(api.bookings.queries.getUserBookings, user ? {} : "skip");
+  // a count for a screen nobody can reach is not a stat. Service bookings are
+  // counted too, as My bookings lists them; without the flag the server leaves
+  // them out for the apps that predate services.
+  const bookings = useQuery(
+    api.bookings.queries.getUserBookings,
+    user ? { includeServices: true } : "skip"
+  );
   const unreadCount = useQuery(api.notifications.queries.unreadCount, user ? {} : "skip");
 
   const realName = [user?.firstName, user?.lastName].filter(Boolean).join(" ").trim();
@@ -659,11 +663,6 @@ export function SettingsScreenContent({ onNavigateToTab }: SettingsScreenContent
             entering={FadeInDown.delay(150).duration(600)}
             style={[styles.statsCard, isRTL && styles.statsCardRTL]}
           >
-            <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{trips.length}</Text>
-              <Text style={styles.statLabel}>{t("profileTrips")}</Text>
-            </View>
-            <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>{(bookings ?? []).length}</Text>
               <Text style={styles.statLabel}>{t("myBookings")}</Text>
