@@ -2415,6 +2415,15 @@
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--ring) 45%, transparent);
 }
 
+/* A reported review or planner reply can run to paragraphs; four lines are
+   enough to judge it in the table. */
+.admin-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 /* "The figures are approximate": the counts hit their read cap. */
 .ar-capped {
   display: inline-flex;

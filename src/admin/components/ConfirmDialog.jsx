@@ -21,6 +21,8 @@ import { Textarea } from '../ui/textarea'
  * With `reason` it doubles as the reject/cancel prompt and resolves
  * `{ reason }`; without it, it resolves `{ reason: '' }`. Cancelling always
  * resolves `null`, so `if (!ok) return` is the single guard either way.
+ * `reason.initial` pre-fills the box, for a reason the operator will usually
+ * keep but may edit (a report's own reason, when taking content down).
  *
  * Built on Radix's AlertDialog rather than a hand-rolled modal. Two reasons that
  * are not cosmetic: AlertDialog is the correct role for a decision the operator
@@ -33,7 +35,7 @@ export function useConfirm() {
   const [reason, setReason] = useState('')
 
   const confirm = useCallback((options) => new Promise((resolve) => {
-    setReason('')
+    setReason(options?.reason?.initial ?? '')
     setRequest({ options, resolve })
   }), [])
 
