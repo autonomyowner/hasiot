@@ -63,7 +63,8 @@ const mobile = () => `+96650${String(Math.floor(Math.random() * 1e7)).padStart(7
 async function create() {
   const stamp = Date.now().toString(36);
   const adminEmail = `fixture-admin-${stamp}@example.com`;
-  const adminSession = (await authPost("/sign-up/email", { email: adminEmail, password: `Fx-${stamp}-pw!`, name: "Fixture Admin" })).token;
+  const adminPassword = `Fx-${stamp}-pw!`;
+  const adminSession = (await authPost("/sign-up/email", { email: adminEmail, password: adminPassword, name: "Fixture Admin" })).token;
   run("admin/devTools:grantAdmin", { email: adminEmail });
   const admin = await client(adminSession);
 
@@ -104,7 +105,9 @@ async function create() {
   await admin.mutation(api.admin.mutations.approveService, { id: priced });
   await admin.mutation(api.admin.mutations.approveService, { id: unpriced });
 
-  const state = { stamp, adminEmail, adminSession, providerSession, providerPhone, priced, unpriced };
+  // The admin's password is kept so a browser check can sign in through the
+  // real /sign-in page. Development accounts only, in the temp folder.
+  const state = { stamp, adminEmail, adminPassword, adminSession, providerSession, providerPhone, priced, unpriced };
   fs.writeFileSync(STATE, JSON.stringify(state, null, 2));
   console.log(JSON.stringify({ adminEmail, providerPhone, priced, unpriced }, null, 2));
 }
