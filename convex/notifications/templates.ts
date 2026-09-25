@@ -57,6 +57,8 @@ export type TemplateInput = {
   startTime?: string; // "HH:MM", Riyadh
   quantity?: number; // hours or days, per priceUnit
   priceUnit?: string;
+  /** A same-day request closed at its start time, before 48 hours were up. */
+  expiredAtStart?: boolean;
 };
 
 export type RenderedNotification = {
@@ -293,15 +295,18 @@ function renderServiceNotification(event: NotificationEvent, i: TemplateInput): 
       };
 
     case "booking.expired":
+      // A request for today or tomorrow closes at its start time, which can be
+      // well before 48 hours; saying "48 hours" then would be untrue.
       return {
         title_en: "Request expired",
         title_ar: "انتهت صلاحية الطلب",
         body_en:
-          `The provider of ${i.listingName_en} did not respond within 48 hours, so your ` +
+          `The provider of ${i.listingName_en} did not respond ` +
+          `${i.expiredAtStart ? "before the start time" : "within 48 hours"}, so your ` +
           `request for ${date} was closed. Try another day or another provider.`,
         body_ar:
-          `لم يرد مقدم ${i.listingName_ar} خلال 48 ساعة، لذا أُغلق طلبك ليوم ${date}. ` +
-          `جرّب يومًا آخر أو مقدم خدمة آخر.`,
+          `لم يرد مقدم ${i.listingName_ar} ${i.expiredAtStart ? "قبل موعد البدء" : "خلال 48 ساعة"}، ` +
+          `لذا أُغلق طلبك ليوم ${date}. جرّب يومًا آخر أو مقدم خدمة آخر.`,
       };
 
     case "booking.cancelled":

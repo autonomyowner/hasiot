@@ -9,6 +9,7 @@ import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import { isPlaceholderEmail } from "../lib/contact";
 import { renderEmail, type NotificationEvent, type TemplateInput } from "./templates";
+import { closedAtStart } from "./internal";
 
 /**
  * Fanning a notification out to push and email.
@@ -66,6 +67,7 @@ export function emailInputFor(
       currency: booking.currency ?? "SAR",
       confirmationCode: booking.confirmationCode,
       reason,
+      expiredAtStart: closedAtStart(booking),
     };
   }
 

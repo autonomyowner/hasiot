@@ -222,6 +222,16 @@ describe("renderNotification for a service booking", () => {
     expect(body({ quantity: 11 })).toContain("11 ساعة");
   });
 
+  it("says 'before the start time' when a same-day request expired at its start, not '48 hours'", () => {
+    const r = renderNotification("booking.expired", { ...SERVICE, expiredAtStart: true });
+    expect(r.body_en).toContain("did not respond before the start time");
+    expect(r.body_en).not.toContain("48 hours");
+    expect(r.body_ar).toContain("قبل موعد البدء");
+
+    const usual = renderNotification("booking.expired", SERVICE);
+    expect(usual.body_en).toContain("within 48 hours");
+  });
+
   it("reminds the guest the day before with the start time", () => {
     const r = renderNotification("booking.reminder", SERVICE);
     expect(r.title_en).toBe("Your booking is tomorrow");

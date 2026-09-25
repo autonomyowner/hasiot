@@ -409,6 +409,16 @@ export async function completeAsManager(
   if (TERMINAL_STATUSES.includes(booking.status as BookingStatus)) {
     throw new ConvexError(BOOKING_ERRORS.ALREADY_CLOSED);
   }
+  // For a service, "completed" is what earns the traveller's review its
+  // verified mark and counts as the provider's revenue, so it has to mean the
+  // service happened: confirmed, and its start time passed. Completing a
+  // request nobody confirmed is support's call, through the admin panel.
+  if (
+    booking.kind === "service" &&
+    (booking.status !== "confirmed" || riyadhDateTimeToTimestamp(booking.date, booking.time) > now)
+  ) {
+    throw new ConvexError(BOOKING_ERRORS.SERVICE_NOT_STARTED);
+  }
 
   await ctx.db.patch(booking._id, {
     status: "completed",

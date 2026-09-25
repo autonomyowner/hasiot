@@ -1,6 +1,7 @@
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
+import { PENDING_TTL_MS } from "../bookings/logic";
 import {
   renderAccountNotification,
   renderNotification,
@@ -115,6 +116,7 @@ export async function notifyBookingEvent(
       confirmationCode: booking.confirmationCode,
       guestName: guestName || undefined,
       reason,
+      expiredAtStart: closedAtStart(booking),
     };
   } else {
     const listing = booking.listingId ? await ctx.db.get(booking.listingId) : null;
@@ -155,6 +157,15 @@ export async function notifyBookingEvent(
     },
     now
   );
+}
+
+/**
+ * Whether a service request's deadline was its start time rather than the
+ * usual 48 hours (createServiceForUser takes the earlier of the two), so the
+ * expiry notice can say "before the start time" truthfully.
+ */
+export function closedAtStart(booking: Pick<Doc<"bookings">, "expiresAt" | "createdAt">): boolean {
+  return booking.expiresAt !== undefined && booking.expiresAt < booking.createdAt + PENDING_TTL_MS;
 }
 
 /** Fall back to the listing or service when a booking predates the denormalised ownerId. */

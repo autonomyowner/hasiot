@@ -301,6 +301,8 @@ describe("emailInputFor", () => {
       currency: "SAR",
       confirmationCode: "HSO-TOUR2",
       reason: "Fully booked",
+      // The usual 48-hour deadline, so an expiry would say "within 48 hours".
+      expiredAtStart: false,
     });
   });
 

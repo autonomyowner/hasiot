@@ -83,6 +83,8 @@ export const BOOKING_ERRORS = {
   NOT_A_STAY: "هذا الإجراء متاح لحجوزات الإقامة فقط. / That action applies to stays only.",
   STAY_NO_RESCHEDULE:
     "لتغيير تواريخ الإقامة، ألغِ الحجز واحجز من جديد. / To change stay dates, cancel and book again.",
+  SERVICE_NOT_STARTED:
+    "لا يمكن إتمام خدمة إلا بعد تأكيدها وبدء موعدها. / A service can only be completed once it is confirmed and has started.",
   // Also exported as SERVICE_ERRORS.NO_RESCHEDULE from services/logic.ts.
   SERVICE_NO_RESCHEDULE:
     "لتغيير موعد الخدمة، ألغِ الطلب واحجز من جديد. / To change a service booking, cancel it and book again.",

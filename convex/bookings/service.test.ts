@@ -183,6 +183,46 @@ describe("createStayForUser", () => {
   });
 });
 
+describe("completing a service booking", () => {
+  // A provider completing a request that never happened would mint a verified
+  // review and count as revenue. For a service, "completed" means confirmed
+  // and started; anything else is support's call, through the admin panel.
+  async function serviceBooking(t: TestT, status: string) {
+    const providerId = await seedUser(t, { role: "service_provider", isApproved: true });
+    const touristId = await seedUser(t, { phoneVerified: true });
+    const serviceId = await seedService(t, { ownerId: providerId });
+    // 2026-09-04 09:00 Riyadh, the day after NOW.
+    return await seedServiceBooking(t, {
+      userId: touristId,
+      serviceId,
+      ownerId: providerId,
+      date: "2026-09-04",
+      time: "09:00",
+      status,
+    });
+  }
+  const START = Date.UTC(2026, 8, 4, 6, 0, 0); // 09:00 Riyadh
+
+  it("refuses a pending request", async () => {
+    const t = makeT();
+    const bookingId = await serviceBooking(t, "pending");
+    await expect(
+      t.run(async (ctx) => completeAsManager(ctx, (await ctx.db.get(bookingId))!, undefined, START + 3_600_000))
+    ).rejects.toThrow(BOOKING_ERRORS.SERVICE_NOT_STARTED);
+  });
+
+  it("refuses a confirmed one before its start time, allows it after", async () => {
+    const t = makeT();
+    const bookingId = await serviceBooking(t, "confirmed");
+    await expect(
+      t.run(async (ctx) => completeAsManager(ctx, (await ctx.db.get(bookingId))!, undefined, START - 60_000))
+    ).rejects.toThrow(BOOKING_ERRORS.SERVICE_NOT_STARTED);
+
+    await t.run(async (ctx) => completeAsManager(ctx, (await ctx.db.get(bookingId))!, undefined, START + 60_000));
+    expect((await t.run((ctx) => ctx.db.get(bookingId)))!.status).toBe("completed");
+  });
+});
+
 describe("a suspended host's places", () => {
   // Suspending an account hides its listings from every list, but a guest who
   // already had the id (an open detail sheet, a shared link, the old app's
