@@ -4,7 +4,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { logAdminAction, labelFor } from "./activity";
 import { isPlaceholderEmail } from "../lib/contact";
 import { notifyBookingEvent, notifyUserEvent } from "../notifications/internal";
-import { SERVICE_ERRORS } from "../services/logic";
+import { SERVICE_ERRORS, validateServiceInput } from "../services/logic";
 import {
   BOOKING_STATUSES,
   canTransition,
@@ -40,6 +40,7 @@ export const ADMIN_ERRORS = {
   CANNOT_SUSPEND_SELF: "لا يمكنك إيقاف حسابك. / You cannot suspend your own account.",
   CANNOT_SUSPEND_ADMIN: "لا يمكن إيقاف حساب مسؤول. / An admin account cannot be suspended.",
   LISTING_NOT_SUSPENDED: "هذا المكان ليس موقوفًا. / This listing is not suspended.",
+  SERVICE_NOT_SUSPENDED: "هذه الخدمة ليست موقوفة. / This service is not suspended.",
 } as const;
 
 function refuse(message: string): never {
@@ -351,6 +352,172 @@ export async function rejectServiceRecord(
     { userId: service.ownerId, ...serviceName(service), reason: stored, serviceId },
     now
   );
+}
+
+// === Live services (design 6 "New" 1, D15) ===
+
+/** What an admin may change on a service: the fields of updateMyService. */
+export type AdminServiceUpdate = {
+  serviceId: Id<"services">;
+  serviceType?: string;
+  title_en?: string;
+  title_ar?: string;
+  description_en?: string;
+  description_ar?: string;
+  priceRange?: string;
+  priceUnit?: string;
+  price?: number | null;
+  maxGroupSize?: number | null;
+  availability_en?: string;
+  availability_ar?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  languages?: string[];
+  images?: string[];
+  city?: string;
+  region?: string;
+  coordinates?: { lat: number; lng: number };
+};
+
+/** Free-form fields validateServiceInput does not own; stored as sent. */
+const SERVICE_PASSTHROUGH = [
+  "priceRange",
+  "availability_en",
+  "availability_ar",
+  "contactPhone",
+  "contactEmail",
+  "languages",
+  "region",
+  "coordinates",
+] as const;
+
+/**
+ * Edit a service as an admin.
+ *
+ * Checked by the same validateServiceInput a provider's edit goes through, so
+ * support cannot store what the provider could not. Unlike the provider's
+ * edit it leaves `status` alone: an admin fixing a typo on a live service must
+ * not take it off the app until someone re-approves it.
+ */
+export async function updateServiceAsAdmin(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  args: AdminServiceUpdate,
+  now: number = Date.now()
+): Promise<void> {
+  const { serviceId, ...fields } = args;
+  const service = await ctx.db.get(serviceId);
+  if (!service) refuse(SERVICE_ERRORS.NOT_FOUND);
+
+  const validated = validateServiceInput(fields, "update");
+  const passthrough: Record<string, unknown> = {};
+  for (const key of SERVICE_PASSTHROUGH) {
+    if (fields[key] !== undefined) passthrough[key] = fields[key];
+  }
+
+  await ctx.db.patch(serviceId, { ...passthrough, ...validated, updatedAt: now });
+
+  await logAdminAction(ctx, admin, {
+    action: "service.update",
+    targetType: "service",
+    targetId: serviceId,
+    summary: labelFor(service),
+  });
+}
+
+/**
+ * Take a live service down. Distinct from rejecting: rejection is a verdict on
+ * a submission nobody could book yet; suspension hides something travellers
+ * can book now, and the provider is told why.
+ */
+export async function suspendServiceRecord(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  serviceId: Id<"services">,
+  reason: string,
+  now: number = Date.now()
+): Promise<void> {
+  const service = await ctx.db.get(serviceId);
+  if (!service) refuse(SERVICE_ERRORS.NOT_FOUND);
+
+  const trimmed = reason.trim();
+  if (!trimmed) refuse(ADMIN_ERRORS.SUSPEND_REASON_REQUIRED);
+  const stored = trimmed.slice(0, 500);
+
+  // isPublicService is an allow-list on "approved", so this alone takes it out
+  // of search, the directory and the booking flow.
+  await ctx.db.patch(serviceId, { status: "suspended", suspendedReason: stored, updatedAt: now });
+
+  await logAdminAction(ctx, admin, {
+    action: "service.suspend",
+    targetType: "service",
+    targetId: serviceId,
+    summary: labelFor(service),
+    details: trimmed,
+  });
+
+  await notifyUserEvent(
+    ctx,
+    "service.suspended",
+    { userId: service.ownerId, ...serviceName(service), reason: stored, serviceId },
+    now
+  );
+}
+
+/**
+ * Put a suspended service back. Only a suspended one: otherwise this would be
+ * a one-click way to publish a service nobody reviewed.
+ */
+export async function reinstateServiceRecord(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  serviceId: Id<"services">,
+  now: number = Date.now()
+): Promise<void> {
+  const service = await ctx.db.get(serviceId);
+  if (!service) refuse(SERVICE_ERRORS.NOT_FOUND);
+  if (service.status !== "suspended") refuse(ADMIN_ERRORS.SERVICE_NOT_SUSPENDED);
+
+  await ctx.db.patch(serviceId, { status: "approved", suspendedReason: undefined, updatedAt: now });
+
+  await logAdminAction(ctx, admin, {
+    action: "service.reinstate",
+    targetType: "service",
+    targetId: serviceId,
+    summary: labelFor(service),
+  });
+}
+
+async function serviceHasOpenBookings(ctx: MutationCtx, serviceId: Id<"services">): Promise<boolean> {
+  const open = await ctx.db
+    .query("bookings")
+    .withIndex("by_serviceId", (q) => q.eq("serviceId", serviceId))
+    .filter((q) => q.or(q.eq(q.field("status"), "pending"), q.eq(q.field("status"), "confirmed")))
+    .first();
+  return open !== null;
+}
+
+/**
+ * Delete a service — not while a traveller still holds a pending or confirmed
+ * booking of it, who would be left with a booking for nothing.
+ */
+export async function deleteServiceAsAdmin(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  serviceId: Id<"services">
+): Promise<void> {
+  const service = await ctx.db.get(serviceId);
+  if (!service) refuse(SERVICE_ERRORS.NOT_FOUND);
+  if (await serviceHasOpenBookings(ctx, serviceId)) refuse(SERVICE_ERRORS.HAS_OPEN_BOOKINGS);
+
+  await ctx.db.delete(serviceId);
+
+  await logAdminAction(ctx, admin, {
+    action: "service.delete",
+    targetType: "service",
+    targetId: serviceId,
+    summary: labelFor(service),
+  });
 }
 
 /**

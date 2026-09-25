@@ -9,14 +9,18 @@ import {
   assignListingHostRecord,
   createListingAsAdmin,
   deleteListingAsAdmin,
+  deleteServiceAsAdmin,
   IN_BULK,
   reinstateListingRecord,
+  reinstateServiceRecord,
   rejectListingRecord,
   rejectServiceRecord,
   suspendListingRecord,
+  suspendServiceRecord,
   suspendUserRecord,
   unsuspendUserRecord,
   updateListingAsAdmin,
+  updateServiceAsAdmin,
 } from "./service";
 import { CLEARABLE_PRICING_ARGS, PRICING_ARGS } from "../listings/pricing";
 import type { Id } from "../_generated/dataModel";
@@ -351,6 +355,70 @@ export const rejectService = mutation({
   handler: async (ctx, args) => {
     const admin = await requireAdmin(ctx);
     await rejectServiceRecord(ctx, admin, args.id, args.reason);
+    return { success: true };
+  },
+});
+
+// === Live services (design 6 "New" 1) ===
+
+/**
+ * Edit a service as support: the same fields and checks as updateMyService,
+ * but the service keeps its status. `null` clears the price or group size.
+ */
+export const adminUpdateService = mutation({
+  args: {
+    serviceId: v.id("services"),
+    serviceType: v.optional(v.string()),
+    title_en: v.optional(v.string()),
+    title_ar: v.optional(v.string()),
+    description_en: v.optional(v.string()),
+    description_ar: v.optional(v.string()),
+    priceRange: v.optional(v.string()),
+    priceUnit: v.optional(v.string()),
+    price: v.optional(v.union(v.number(), v.null())),
+    maxGroupSize: v.optional(v.union(v.number(), v.null())),
+    availability_en: v.optional(v.string()),
+    availability_ar: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    contactEmail: v.optional(v.string()),
+    languages: v.optional(v.array(v.string())),
+    images: v.optional(v.array(v.string())),
+    city: v.optional(v.string()),
+    region: v.optional(v.string()),
+    coordinates: v.optional(v.object({ lat: v.number(), lng: v.number() })),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await updateServiceAsAdmin(ctx, admin, args);
+    return { success: true };
+  },
+});
+
+/** Take a live service down, with a reason the provider is sent. */
+export const suspendService = mutation({
+  args: { serviceId: v.id("services"), reason: v.string() },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await suspendServiceRecord(ctx, admin, args.serviceId, args.reason);
+    return { success: true };
+  },
+});
+
+export const reinstateService = mutation({
+  args: { serviceId: v.id("services") },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await reinstateServiceRecord(ctx, admin, args.serviceId);
+    return { success: true };
+  },
+});
+
+/** Delete a service. Refused while it has a pending or confirmed booking. */
+export const deleteService = mutation({
+  args: { serviceId: v.id("services") },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+    await deleteServiceAsAdmin(ctx, admin, args.serviceId);
     return { success: true };
   },
 });

@@ -5,6 +5,7 @@ import { requireAdmin } from "../auth";
 import { hasAliases, matchesCity } from "../lib/cities";
 import { isPlaceholderEmail } from "../lib/contact";
 import { riyadhMonthKey } from "../lib/dates";
+import { getServiceForAdmin, listServicesPage, searchServicesForAdmin } from "./views";
 
 // Hard ceilings so no admin query can scan an unbounded number of documents.
 // Convex fails a query outright past ~16k reads, and this dashboard used to
@@ -522,6 +523,49 @@ export const listPendingServices = query({
     );
 
     return enriched;
+  },
+});
+
+// === Live services (the services tab) ===
+
+/**
+ * Every service, newest first, whatever its status — the pending queue has
+ * its own query. Each row carries its owner. Filters run inside the query, so
+ * a page is never empty while matches remain.
+ */
+export const adminListServices = query({
+  args: {
+    paginationOpts: paginationOptsValidator,
+    status: v.optional(v.string()),
+    serviceType: v.optional(v.string()),
+    city: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await listServicesPage(ctx, args);
+  },
+});
+
+/** Search services by English or Arabic title: one ranked array of up to 50 rows. */
+export const adminSearchServices = query({
+  args: {
+    search: v.string(),
+    status: v.optional(v.string()),
+    serviceType: v.optional(v.string()),
+    city: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await searchServicesForAdmin(ctx, args);
+  },
+});
+
+/** One service for the detail drawer: owner, recent bookings, open reports. Null when gone. */
+export const adminGetService = query({
+  args: { serviceId: v.id("services") },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    return await getServiceForAdmin(ctx, args.serviceId);
   },
 });
 
