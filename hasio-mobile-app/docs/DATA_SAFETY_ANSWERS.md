@@ -47,6 +47,17 @@ Use these exact answers when filling out the Data Safety form in Google Play Con
 - **Required:** Yes (for account creation)
 - **Purpose:** Account management, App functionality
 
+#### Phone number
+- **Collected:** Yes
+- **Shared:** Yes
+- **Ephemeral:** No
+- **Required:** Yes (phone number + SMS code is the primary sign-in; email is the fallback)
+- **Purpose:** Account management, App functionality
+- **Note:** Shared with the business owner or service provider when the user makes
+  a booking, so they can contact the guest. Not transferred to any advertiser or
+  analytics provider. The number is also the account identifier, so it cannot be
+  left blank the way the old optional profile field could.
+
 #### User IDs
 - **Collected:** Yes
 - **Shared:** No
