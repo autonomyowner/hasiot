@@ -63,6 +63,66 @@ describe("getSubmitErrorKey", () => {
     expect(getSubmitErrorKey({ data: "Not your listing" })).toBe("editorNotFound");
   });
 
+  it("reads both sign-in refusals as an expired session", () => {
+    // The listing mutations still throw the old English-only text; the
+    // service mutations throw AUTH_ERRORS.NOT_AUTHENTICATED.
+    expect(getSubmitErrorKey({ data: "Not authenticated" })).toBe("errorSessionExpired");
+    expect(
+      getSubmitErrorKey({ data: "يجب تسجيل الدخول أولاً. / You need to be signed in." })
+    ).toBe("errorSessionExpired");
+  });
+
+  it("names the service refusals a provider can fix", () => {
+    const refusal = (text: string) => ({ data: text });
+    expect(
+      getSubmitErrorKey(
+        refusal("أدخل سعرًا صحيحًا بين 1 و 100000 ريال. / Enter a valid price between 1 and 100000 SAR.")
+      )
+    ).toBe("errorServicePrice");
+    expect(
+      getSubmitErrorKey(refusal("السعر يجب أن يكون رقمًا صحيحًا. / The price must be a whole number."))
+    ).toBe("errorServicePrice");
+    expect(
+      getSubmitErrorKey(refusal("اختر مدينة من القائمة. / Choose a city from the list."))
+    ).toBe("errorServiceCity");
+    expect(
+      getSubmitErrorKey(
+        refusal("لا يمكن حذف خدمة لديها حجوزات قائمة. / A service with open bookings cannot be deleted.")
+      )
+    ).toBe("errorServiceOpenBookings");
+    expect(
+      getSubmitErrorKey(refusal("الحد الأقصى للأشخاص بين 1 و 100. / Group size must be between 1 and 100."))
+    ).toBe("invalidGroupSize");
+  });
+
+  it("keeps the service refusals it already read", () => {
+    expect(
+      getSubmitErrorKey({
+        data: "يجب اعتماد حسابك قبل إضافة الخدمات. / Your account must be approved before you add services.",
+      })
+    ).toBe("errorNotApproved");
+    expect(
+      getSubmitErrorKey({ data: "هذه الميزة لمقدمي الخدمات فقط. / Only service providers can do this." })
+    ).toBe("errorWrongRole");
+    expect(getSubmitErrorKey({ data: "الخدمة غير موجودة. / Service not found." })).toBe(
+      "editorNotFound"
+    );
+    expect(getSubmitErrorKey({ data: "هذه الخدمة ليست لك. / This is not your service." })).toBe(
+      "editorNotFound"
+    );
+  });
+
+  it("does not mistake a stay's nightly-price refusal for a service's", () => {
+    // Same limits, different words — and the stay form checks them first.
+    expect(
+      getSubmitErrorKey(
+        new Error(
+          "Uncaught Error: أدخل سعرًا صحيحًا بين 1 و 100000 ريال. / Enter a valid nightly price between 1 and 100000 SAR."
+        )
+      )
+    ).toBe("pleaseTryAgain");
+  });
+
   it("falls back when production has redacted the reason", () => {
     expect(
       getSubmitErrorKey(
