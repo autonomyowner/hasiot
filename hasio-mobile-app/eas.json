@@ -30,6 +30,7 @@
         "distribution": "internal"
       },
       "env": {
+        "HASIO_IOS_PUSH": "off",
         "EXPO_PUBLIC_CONVEX_URL": "https://hearty-ram-74.eu-west-1.convex.cloud",
         "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site"
       }
@@ -56,6 +57,7 @@
       },
       "env": {
         "EXPO_NO_CAPABILITY_SYNC": "1",
+        "HASIO_IOS_PUSH": "off",
         "EXPO_PUBLIC_CONVEX_URL": "https://hearty-ram-74.eu-west-1.convex.cloud",
         "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site"
       }
