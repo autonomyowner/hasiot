@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { isHHMM } from "../lib/dates";
 
 /**
@@ -34,6 +34,14 @@ const MAX_PRICE_PER_NIGHT = 100_000;
 const MAX_GUESTS = 20;
 const MAX_UNITS = 500;
 
+/**
+ * Check the pricing fields that were sent. Absent fields are not checked, so
+ * an update may send any subset.
+ *
+ * Refuses with a ConvexError: production redacts a plain Error's text to
+ * "Server Error", and the host's form and the admin panel both need to say
+ * which field is wrong.
+ */
 export function validatePricing(args: PricingArgs): void {
   if (args.pricePerNight !== undefined) {
     if (
@@ -41,12 +49,12 @@ export function validatePricing(args: PricingArgs): void {
       args.pricePerNight <= 0 ||
       args.pricePerNight > MAX_PRICE_PER_NIGHT
     ) {
-      throw new Error(
+      throw new ConvexError(
         `أدخل سعرًا صحيحًا بين 1 و ${MAX_PRICE_PER_NIGHT} ريال. / Enter a valid nightly price between 1 and ${MAX_PRICE_PER_NIGHT} SAR.`
       );
     }
     if (!Number.isInteger(args.pricePerNight)) {
-      throw new Error("السعر يجب أن يكون رقمًا صحيحًا. / The nightly price must be a whole number.");
+      throw new ConvexError("السعر يجب أن يكون رقمًا صحيحًا. / The nightly price must be a whole number.");
     }
   }
 
@@ -54,12 +62,12 @@ export function validatePricing(args: PricingArgs): void {
   // source; accepting a currency we cannot convert would produce totals that
   // silently mean the wrong thing.
   if (args.currency !== undefined && args.currency !== "SAR") {
-    throw new Error("العملة المدعومة حاليًا هي الريال السعودي فقط. / Only SAR is supported.");
+    throw new ConvexError("العملة المدعومة حاليًا هي الريال السعودي فقط. / Only SAR is supported.");
   }
 
   if (args.maxGuests !== undefined) {
     if (!Number.isInteger(args.maxGuests) || args.maxGuests < 1 || args.maxGuests > MAX_GUESTS) {
-      throw new Error(
+      throw new ConvexError(
         `الحد الأقصى للضيوف بين 1 و ${MAX_GUESTS}. / Max guests must be between 1 and ${MAX_GUESTS}.`
       );
     }
@@ -67,7 +75,7 @@ export function validatePricing(args: PricingArgs): void {
 
   if (args.unitCount !== undefined) {
     if (!Number.isInteger(args.unitCount) || args.unitCount < 1 || args.unitCount > MAX_UNITS) {
-      throw new Error(
+      throw new ConvexError(
         `عدد الوحدات بين 1 و ${MAX_UNITS}. / Unit count must be between 1 and ${MAX_UNITS}.`
       );
     }
@@ -78,7 +86,7 @@ export function validatePricing(args: PricingArgs): void {
     ["وقت المغادرة / Check-out time", args.checkOutTime],
   ] as const) {
     if (value !== undefined && !isHHMM(value)) {
-      throw new Error(`${label}: أدخل الوقت بصيغة HH:MM. / must be in HH:MM format.`);
+      throw new ConvexError(`${label}: أدخل الوقت بصيغة HH:MM. / must be in HH:MM format.`);
     }
   }
 }
