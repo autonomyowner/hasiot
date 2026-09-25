@@ -6,7 +6,7 @@ import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
 import FilterSelect from '../components/FilterSelect'
-import { useDebounced } from '../hooks/useDebounced'
+import { useDebounced } from '../../hooks/useDebounced'
 import { ROLE_LABELS, formatDate } from '../constants'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,

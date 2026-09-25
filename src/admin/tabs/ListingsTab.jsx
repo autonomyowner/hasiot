@@ -10,7 +10,7 @@ import FilterSelect from '../components/FilterSelect'
 import { useConfirm } from '../components/ConfirmDialog'
 import { useToast } from '../components/toast-context'
 import { EmptyState, TableSkeleton } from '../components/States'
-import { useDebounced } from '../hooks/useDebounced'
+import { useDebounced } from '../../hooks/useDebounced'
 import {
   CITIES,
   CITY_LABELS,

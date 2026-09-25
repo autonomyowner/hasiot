@@ -3,7 +3,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import Modal from './Modal'
 import { useToast } from './toast-context'
-import { useDebounced } from '../hooks/useDebounced'
+import { useDebounced } from '../../hooks/useDebounced'
 import { EmptyState } from './States'
 
 // Only these two can answer a booking: the host inbox is keyed on ownerId, and
