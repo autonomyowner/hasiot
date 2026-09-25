@@ -4,6 +4,12 @@ import { api } from "@/backend";
 import { cityLabel } from "@/constants/cities";
 import { categoryLabel } from "@/constants/categories";
 import { useAppStore } from "@/stores/appStore";
+import {
+  filterServicesByQuery,
+  localServicesFor,
+  mergeById,
+  sortServicesForBrowse,
+} from "@/lib/serviceDisplay";
 import type { Lodging, ListingDetails } from "@/types";
 import type { Doc, Id } from "../../convex/_generated/dataModel";
 
@@ -234,6 +240,135 @@ export function useSearchListings(query: string, type?: string) {
     results: results || [],
     isLoading: query.length >= 2 && results === undefined,
   };
+}
+
+/**
+ * A service as the traveller's screens read it.
+ *
+ * Flattened from the public service queries, which return the stored document
+ * plus `bookable` (and, from `getService`, the provider). Blank optional text
+ * is dropped rather than passed through as "", so the sheet decides what to
+ * show by presence alone, as `toDetails` does for listings.
+ */
+export interface ServiceItem {
+  id: string;
+  ownerId: string;
+  serviceType: string;
+  title: string;
+  titleAr: string;
+  description: string;
+  descriptionAr: string;
+  /** Whole SAR per `priceUnit`. Absent, the service offers Contact instead of Book. */
+  price?: number;
+  priceUnit?: string;
+  /** People per booking; absent means the server's default of 20. */
+  maxGroupSize?: number;
+  /** As stored, which may be a sub-area ("Hofuf"): show it through `cityLabel`. */
+  city?: string;
+  images: string[];
+  languages: string[];
+  availability: string;
+  availabilityAr: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  /** 0 until someone has rated it — never shown as a score. */
+  rating: number;
+  reviewCount: number;
+  /** Approved, priced, and offered by an approved provider (the server's isBookableService). */
+  bookable: boolean;
+  createdAt: number;
+}
+
+type ConvexServiceRow = Doc<"services"> & { bookable: boolean };
+
+export function toServiceItem(s: ConvexServiceRow): ServiceItem {
+  return {
+    id: s._id,
+    ownerId: s.ownerId,
+    serviceType: s.serviceType,
+    title: s.title_en,
+    titleAr: s.title_ar,
+    description: s.description_en || "",
+    descriptionAr: s.description_ar || "",
+    // Carried through undefined rather than defaulted: Book keys off the price
+    // being there, so a 0 here would offer a free hour.
+    price: s.price,
+    priceUnit: s.priceUnit,
+    maxGroupSize: s.maxGroupSize,
+    city: s.city?.trim() || undefined,
+    images: s.images || [],
+    languages: (s.languages || []).filter((language) => language.trim()),
+    availability: s.availability_en || "",
+    availabilityAr: s.availability_ar || "",
+    contactPhone: s.contactPhone?.trim() || undefined,
+    contactEmail: s.contactEmail?.trim() || undefined,
+    rating: s.rating || 0,
+    reviewCount: s.reviewCount || 0,
+    bookable: s.bookable,
+    createdAt: s.createdAt,
+  };
+}
+
+/**
+ * Every public service, in browse order.
+ *
+ * `listServices({})` exactly — the Book tab's unfiltered list, its type chips
+ * and Home's "Local services" row all ask with these same arguments, so Convex
+ * holds one subscription for the three. Memoised on the query result, like the
+ * listing hooks, so the rows' identities hold between renders.
+ */
+export function useAllServices() {
+  const rows = useQuery(api.services.queries.listServices, {});
+  const services = useMemo(
+    () => (rows ? sortServicesForBrowse(rows.map(toServiceItem)) : []),
+    [rows]
+  );
+  return { services, isLoading: rows === undefined };
+}
+
+/** Home's row: at most ten, the ones that can be booked first. */
+export function useLocalServices() {
+  const { services, isLoading } = useAllServices();
+  const local = useMemo(() => localServicesFor(services), [services]);
+  return { services: local, isLoading };
+}
+
+/**
+ * The Book tab's services, narrowed by type, city and a search.
+ *
+ * Type and city are filtered on the server, which folds a city's sub-areas
+ * ("Hofuf" is Al Ahsa). A search runs two ways at once and is merged: the
+ * server's `searchServices` over both titles, and the same folded matching
+ * Home uses over the rows already here — the search index does not fold
+ * Arabic spelling, so «الاحساء» typed without its hamza finds nothing there,
+ * and it cannot match a service by what it is ("photographer", «مصور») or
+ * where. Server hits need two characters; the local match starts at one.
+ */
+export function useServiceList(filters: {
+  serviceType: string | null;
+  city: string | null;
+  search: string;
+}) {
+  const narrow = {
+    ...(filters.serviceType ? { serviceType: filters.serviceType } : {}),
+    ...(filters.city ? { city: filters.city } : {}),
+  };
+  const rows = useQuery(api.services.queries.listServices, narrow);
+  const term = filters.search.trim();
+  const hits = useQuery(
+    api.services.queries.searchServices,
+    term.length >= 2 ? { searchQuery: term, ...narrow } : "skip"
+  );
+
+  const base = useMemo(() => (rows ? rows.map(toServiceItem) : []), [rows]);
+  const found = useMemo(() => (hits ? hits.map(toServiceItem) : []), [hits]);
+  const services = useMemo(
+    () =>
+      sortServicesForBrowse(term ? mergeById(filterServicesByQuery(base, term), found) : base),
+    [base, found, term]
+  );
+
+  return { services, isLoading: rows === undefined };
 }
 
 type Listing = Doc<"listings">;

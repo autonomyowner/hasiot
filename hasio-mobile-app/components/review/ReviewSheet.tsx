@@ -11,6 +11,7 @@ import { useThemedStyles } from "@/hooks/useAppFonts";
 import { useLanguage } from "@/hooks/useLanguage";
 import { ThemedTextInput } from "@/components/ui";
 import { BottomSheet } from "@/components/ui/BottomSheet";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { StarRating } from "./StarRating";
 
 const MAX_TEXT = 500;
@@ -24,9 +25,16 @@ export interface ExistingReview {
 
 interface ReviewSheetProps {
   visible: boolean;
-  listingId: string;
-  /** Passing this links the review to a completed stay, which is what earns the
-   *  verified badge. The server checks the booking really is the guest's own. */
+  /**
+   * What is being reviewed: a place, or — since 1.1.0 — a service. Pass
+   * exactly one. The server refuses both or neither, and each has its own
+   * duplicate rule (one review per place, one per service).
+   */
+  listingId?: string;
+  serviceId?: string;
+  /** Passing this links the review to a completed stay or service booking,
+   *  which is what earns the verified badge. The server checks the booking
+   *  really is the guest's own, and of this place or service. */
   bookingId?: string;
   existing?: ExistingReview | null;
   onClose: () => void;
@@ -36,6 +44,7 @@ interface ReviewSheetProps {
 export function ReviewSheet({
   visible,
   listingId,
+  serviceId,
   bookingId,
   existing,
   onClose,
@@ -43,6 +52,9 @@ export function ReviewSheet({
 }: ReviewSheetProps) {
   const styles = useThemedStyles(makeStyles);
   const { t, isRTL } = useLanguage();
+  // What the sheet asks for. Editing reads the same for both; a new review
+  // names what it is of — "Rate this place" over a guide read as a mistake.
+  const rateLabel = serviceId ? t("rateThisService") : t("rateThisPlace");
 
   const [rating, setRating] = useState(existing?.rating ?? 0);
   const [content, setContent] = useState(existing?.content ?? "");
@@ -93,20 +105,26 @@ export function ReviewSheet({
     try {
       const text = content.trim() ? content.trim() : undefined;
       if (existing) {
+        // An edit or a delete names the review, whatever it is of.
         await updateReview({
-          reviewId: existing._id as never,
+          reviewId: existing._id as Id<"reviews">,
           rating,
           content: text,
           isAnonymous: anonymous,
         });
         finish("reviewUpdated");
       } else {
+        const target = serviceId
+          ? { serviceId: serviceId as Id<"services"> }
+          : listingId
+            ? { listingId: listingId as Id<"listings"> }
+            : {};
         await addReview({
-          listingId: listingId as never,
+          ...target,
           rating,
           content: text,
           isAnonymous: anonymous,
-          bookingId: bookingId as never,
+          bookingId: bookingId ? (bookingId as Id<"bookings">) : undefined,
         });
         finish("reviewSaved");
       }
@@ -124,7 +142,7 @@ export function ReviewSheet({
     if (!existing) return;
     setSaving(true);
     try {
-      await deleteReview({ reviewId: existing._id as never });
+      await deleteReview({ reviewId: existing._id as Id<"reviews"> });
       finish("reviewDeleted");
     } catch (error) {
       appAlert(t("error"), t(getReviewErrorKey(error)));
@@ -152,7 +170,7 @@ export function ReviewSheet({
       header={
         <View style={[styles.head, isRTL && styles.rowRTL]}>
           <Text style={styles.title}>
-            {existing ? t("editYourReview") : t("rateThisPlace")}
+            {existing ? t("editYourReview") : rateLabel}
           </Text>
           <Pressable
             onPress={onClose}
@@ -171,7 +189,7 @@ export function ReviewSheet({
           value={rating}
           size={34}
           onChange={setRating}
-          label={t("rateThisPlace")}
+          label={rateLabel}
         />
       </View>
 

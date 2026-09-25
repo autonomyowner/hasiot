@@ -12,8 +12,11 @@ export interface ReviewItem {
   rating: number;
   content?: string;
   isAnonymous?: boolean;
-  /** Set by the server when the review cites the author's own completed stay. */
+  /** Set by the server when the review cites the author's own completed stay
+   *  or, for a service, the author's own completed booking of it. */
   isVerified?: boolean;
+  /** Present on a review of a service — which is what the badge then names. */
+  serviceId?: string;
   createdAt: number;
   user?: { firstName?: string; lastName?: string } | null;
 }
@@ -74,11 +77,14 @@ function ReviewCardInner({ review, onReport }: ReviewCardProps) {
 
       {/* The badge is rendered from the server's own flag. Never recompute it
           here — "this guest actually stayed" is the one claim the app cannot
-          be trusted to make about itself. */}
+          be trusted to make about itself. A service is not stayed in, so its
+          badge says the booking was real instead. */}
       {review.isVerified && (
         <View style={[styles.verified, isRTL && styles.verifiedRTL]}>
           <Feather name="check-circle" size={11} color={colors.primary.deep} />
-          <Text style={styles.verifiedText}>{t("reviewVerifiedStay")}</Text>
+          <Text style={styles.verifiedText}>
+            {review.serviceId ? t("reviewVerifiedService") : t("reviewVerifiedStay")}
+          </Text>
         </View>
       )}
 
