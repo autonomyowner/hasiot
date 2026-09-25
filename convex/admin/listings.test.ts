@@ -3,7 +3,12 @@ import { ConvexError } from "convex/values";
 import { makeT, NOW, seedHotel, seedStay, seedUser } from "../test.utils";
 import type { TestT } from "../test.utils";
 import type { Doc, Id } from "../_generated/dataModel";
-import { createListingAsAdmin, deleteListingAsAdmin, updateListingAsAdmin } from "./service";
+import {
+  assignListingHostRecord,
+  createListingAsAdmin,
+  deleteListingAsAdmin,
+  updateListingAsAdmin,
+} from "./service";
 
 async function admin(t: TestT): Promise<Doc<"users">> {
   const id = await seedUser(t, { role: "admin", email: "admin@hasio.test" });
@@ -174,6 +179,92 @@ describe("updateListingAsAdmin", () => {
       (error: unknown) =>
         error instanceof ConvexError && String(error.data) === "المكان غير موجود. / Listing not found."
     );
+  });
+});
+
+describe("assignListingHostRecord", () => {
+  async function hostedWithBookings(t: TestT) {
+    const oldHost = await seedUser(t, { role: "business_owner", isApproved: true });
+    const newHost = await seedUser(t, { role: "business_owner", isApproved: true });
+    const guest = await seedUser(t, { phoneVerified: true });
+    const listingId = await seedHotel(t, { ownerId: oldHost });
+    const stay = (status: string, checkIn: string) =>
+      seedStay(t, {
+        userId: guest,
+        listingId,
+        ownerId: oldHost,
+        checkIn,
+        checkOut: "2026-09-30",
+        status,
+      });
+    const pending = await stay("pending", "2026-09-10");
+    const confirmed = await stay("confirmed", "2026-09-12");
+    const completed = await stay("completed", "2026-09-01");
+    const cancelled = await stay("cancelled", "2026-09-05");
+    return { oldHost, newHost, listingId, pending, confirmed, completed, cancelled };
+  }
+
+  // Returns the document and reads the field outside: a bare `undefined`
+  // coming back from t.run is serialised to null.
+  const ownerOf = async (t: TestT, id: Id<"bookings">) =>
+    (await t.run((ctx) => ctx.db.get(id)))!.ownerId;
+
+  it("hands the open bookings to the new host, so they reach an inbox", async () => {
+    // The host inbox reads bookings by their own ownerId. Moving only the
+    // listing left every open request in the old host's inbox, where nobody
+    // who now manages the place would ever see it.
+    const t = makeT();
+    const acting = await admin(t);
+    const b = await hostedWithBookings(t);
+
+    await t.run((ctx) => assignListingHostRecord(ctx, acting, b.listingId, b.newHost, NOW));
+
+    expect((await listing(t, b.listingId))!.ownerId).toBe(b.newHost);
+    expect(await ownerOf(t, b.pending)).toBe(b.newHost);
+    expect(await ownerOf(t, b.confirmed)).toBe(b.newHost);
+    // History stays with whoever hosted it.
+    expect(await ownerOf(t, b.completed)).toBe(b.oldHost);
+    expect(await ownerOf(t, b.cancelled)).toBe(b.oldHost);
+    expect((await activity(t))[0]).toMatchObject({
+      action: "listing.assign_host",
+      targetId: b.listingId,
+    });
+  });
+
+  it("clears the open bookings' owner when the host is removed", async () => {
+    const t = makeT();
+    const acting = await admin(t);
+    const b = await hostedWithBookings(t);
+
+    await t.run((ctx) => assignListingHostRecord(ctx, acting, b.listingId, null, NOW));
+
+    expect((await listing(t, b.listingId))!.ownerId).toBeUndefined();
+    expect(await ownerOf(t, b.pending)).toBeUndefined();
+    expect(await ownerOf(t, b.confirmed)).toBeUndefined();
+    expect(await ownerOf(t, b.completed)).toBe(b.oldHost);
+    expect((await activity(t))[0]).toMatchObject({ action: "listing.clear_host" });
+  });
+
+  it("refuses an account that cannot answer requests", async () => {
+    const t = makeT();
+    const acting = await admin(t);
+    const listingId = await seedHotel(t);
+    const tourist = await seedUser(t, { role: "tourist" });
+    const suspended = await seedUser(t, { role: "business_owner", isSuspended: true });
+
+    await expect(
+      t.run((ctx) => assignListingHostRecord(ctx, acting, listingId, tourist, NOW))
+    ).rejects.toSatisfy(
+      (error: unknown) => error instanceof ConvexError && /business owner account/.test(String(error.data))
+    );
+    // A suspended account reads as signed out everywhere, so its inbox is one
+    // nobody can open.
+    await expect(
+      t.run((ctx) => assignListingHostRecord(ctx, acting, listingId, suspended, NOW))
+    ).rejects.toSatisfy(
+      (error: unknown) => error instanceof ConvexError && /suspended account/.test(String(error.data))
+    );
+    expect((await listing(t, listingId))!.ownerId).toBeUndefined();
   });
 });
 

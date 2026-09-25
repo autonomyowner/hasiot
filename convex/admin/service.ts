@@ -145,6 +145,68 @@ export async function updateListingAsAdmin(
 }
 
 /**
+ * Point a listing at the account that will answer its booking requests, or
+ * clear it with `null`.
+ *
+ * The seeded catalogue has no owner, so nothing in it can be managed from the
+ * app, and a stay request against an ownerless listing has no inbox to
+ * arrive in. Assigning a Hasio-run account is what makes it bookable.
+ *
+ * The listing's open bookings move with it. The host inbox reads bookings by
+ * their own denormalised `ownerId`, so moving only the listing left every
+ * pending request in the old host's inbox — where the person now managing
+ * the place would never see it, and it would quietly expire. Closed bookings
+ * stay with whoever hosted them: that is their history, not work.
+ */
+export async function assignListingHostRecord(
+  ctx: MutationCtx,
+  admin: Doc<"users">,
+  listingId: Id<"listings">,
+  ownerId: Id<"users"> | null,
+  now: number = Date.now()
+): Promise<{ movedBookings: number }> {
+  const listing = await ctx.db.get(listingId);
+  if (!listing) refuse(LISTING_ERRORS.NOT_FOUND);
+
+  let owner: Doc<"users"> | null = null;
+  if (ownerId !== null) {
+    owner = await ctx.db.get(ownerId);
+    if (!owner) refuse("الحساب غير موجود. / User not found.");
+    // The host inbox is reachable from these two roles only. A tourist would
+    // receive requests they cannot answer.
+    if (owner.role !== "business_owner" && owner.role !== "admin") {
+      refuse("يجب أن يكون الحساب مالك نشاط تجاري. / The host must be a business owner account.");
+    }
+    // A suspended account reads as signed out everywhere: its inbox is one
+    // nobody can open, so every request sent there would expire unanswered.
+    if (owner.isSuspended) {
+      refuse("لا يمكن تعيين حساب موقوف مضيفًا. / A suspended account cannot host a listing.");
+    }
+  }
+
+  await ctx.db.patch(listingId, { ownerId: ownerId ?? undefined, updatedAt: now });
+
+  const open = await ctx.db
+    .query("bookings")
+    .withIndex("by_listingId", (q) => q.eq("listingId", listingId))
+    .filter((q) => q.or(q.eq(q.field("status"), "pending"), q.eq(q.field("status"), "confirmed")))
+    .collect();
+  for (const booking of open) {
+    await ctx.db.patch(booking._id, { ownerId: ownerId ?? undefined, updatedAt: now });
+  }
+
+  await logAdminAction(ctx, admin, {
+    action: owner ? "listing.assign_host" : "listing.clear_host",
+    targetType: "listing",
+    targetId: listingId,
+    summary: labelFor(listing),
+    details: owner ? labelFor(owner) : undefined,
+  });
+
+  return { movedBookings: open.length };
+}
+
+/**
  * Delete a listing from the panel — only once nobody is waiting on it, the
  * same rule as the host's own delete (design 6.7). Support cancels the open
  * bookings first, which also tells each guest.
