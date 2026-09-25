@@ -6,7 +6,14 @@ import { BookingStatusChip } from "./BookingStatusChip";
 import { getLocalizedText } from "@/hooks/useLanguage";
 import { formatDateRange, formatISODate } from "@/lib/dates";
 import { formatPhoneForDisplay, ltr } from "@/lib/phone";
-import { hostActionsFor, type StayTotal } from "@/lib/bookingDisplay";
+import {
+  hostActionsFor,
+  minuteNow,
+  providerActionsFor,
+  totalShownFor,
+  type ServiceAmount,
+  type StayTotal,
+} from "@/lib/bookingDisplay";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 import { SurfaceGradient } from "@/components/ui/Gradients";
@@ -28,13 +35,38 @@ export interface HostBookingData {
   notes?: string;
   listing?: { name_en: string; name_ar: string; images?: string[] } | null;
   tourist?: { firstName?: string; lastName?: string; phone?: string } | null;
+  // A service booking (kind "service", the provider inbox): hours or days
+  // when the service is priced by them, else 1; the price per unit frozen at
+  // booking time; the group; and when an unanswered request closes. `service`
+  // is null once the service has been deleted.
+  quantity?: number;
+  unitPrice?: number;
+  priceUnit?: string;
+  partySize?: number;
+  expiresAt?: number;
+  service?: { title_en: string; title_ar: string; images?: string[] } | null;
 }
 
 export type HostAction = "confirm" | "decline" | "noShow" | "complete";
 
+/** What a card needs to show a service booking. The host inbox has none. */
+export interface ServiceCardLabels {
+  /** "10 Sep at 19:00" — lib/bookingDisplay `serviceWhen`, bound to the language. */
+  when: (date: string, time: string) => string;
+  /** "3 hours · 4 people" — lib/bookingDisplay `serviceAmountLabel`, bound to `t`. */
+  amount: (booking: ServiceAmount) => string;
+  /** The title of a service deleted since it was booked. */
+  gone: string;
+}
+
 interface HostBookingCardProps {
   booking: HostBookingData;
   today: string;
+  /**
+   * The clock, for a service booking: its no-show and completed buttons come
+   * with its start time, not its day (lib/bookingDisplay `providerActionsFor`).
+   */
+  now?: number;
   language: Language;
   isRTL: boolean;
   /** Which action, if any, is running on this card right now. */
@@ -45,7 +77,7 @@ interface HostBookingCardProps {
     /** Stands in for a guest with no name on their account. */
     guest: string;
     /**
-     * A stay's total in the viewer's currency, agreeing with the quote the
+     * A booking's total in the viewer's currency, agreeing with the quote the
      * guest was shown (lib/bookingDisplay `displayTotalSar`).
      */
     formatTotal: (stay: StayTotal) => string;
@@ -54,6 +86,7 @@ interface HostBookingCardProps {
     decline: string;
     noShow: string;
     complete: string;
+    service?: ServiceCardLabels;
   };
   onAction: (id: string, action: HostAction) => void;
   /**
@@ -63,9 +96,16 @@ interface HostBookingCardProps {
   onCall: (phone: string) => void;
 }
 
+/**
+ * One booking in an owner's inbox: a stay in the host's, a service booking in
+ * the provider's. The two differ only in the lines under the title — dates
+ * and nights for a stay, the day at its start time and the hours and group
+ * for a service — and in when the closing buttons appear.
+ */
 function HostBookingCardInner({
   booking,
   today,
+  now,
   language,
   isRTL,
   busy,
@@ -74,14 +114,40 @@ function HostBookingCardInner({
   onCall,
 }: HostBookingCardProps) {
   const styles = useThemedStyles(makeStyles);
+  const isService = booking.kind === "service";
   const listing = booking.listing;
+  const service = booking.service;
   const guest = booking.tourist;
   const guestName =
     [guest?.firstName, guest?.lastName].filter(Boolean).join(" ").trim() || labels.guest;
   const phone = guest?.phone;
   const isStay = booking.kind === "stay" && !!booking.checkIn && !!booking.checkOut;
-  const actions = hostActionsFor(booking, today);
+  const actions = isService
+    ? providerActionsFor(booking, now ?? minuteNow())
+    : hostActionsFor(booking, today);
   const anyBusy = busy !== null;
+
+  const image = isService ? service?.images?.[0] : listing?.images?.[0];
+  // A deleted service is named as such, not as a dash: the provider still has
+  // to tell this booking from their others.
+  const title = isService
+    ? service
+      ? getLocalizedText(service.title_en, service.title_ar, language)
+      : (labels.service?.gone ?? "—")
+    : listing
+      ? getLocalizedText(listing.name_en, listing.name_ar, language)
+      : "—";
+  const when =
+    isService && labels.service
+      ? labels.service.when(booking.date, booking.time)
+      : isStay
+        ? formatDateRange(booking.checkIn!, booking.checkOut!, language)
+        : `${formatISODate(booking.date, language)} · ${booking.time}`;
+  const amount = isService
+    ? (labels.service?.amount(booking) ?? "")
+    : isStay && booking.nights
+      ? labels.stay(booking.nights, booking.guests)
+      : "";
 
   return (
     <View style={styles.card}>
@@ -89,9 +155,9 @@ function HostBookingCardInner({
           than a flat white fill. The card clips it with its own radius. */}
       <SurfaceGradient />
       <View style={[styles.cardTop, isRTL && styles.rowRTL]}>
-        {listing?.images?.[0] ? (
+        {image ? (
           <Image
-            source={{ uri: listing.images[0] }}
+            source={{ uri: image }}
             style={styles.thumb}
             contentFit="cover"
             transition={200}
@@ -102,27 +168,24 @@ function HostBookingCardInner({
         )}
         <View style={styles.cardBody}>
           <Text style={[styles.listingName, isRTL && styles.textRTL]} numberOfLines={1}>
-            {listing ? getLocalizedText(listing.name_en, listing.name_ar, language) : "—"}
+            {title}
           </Text>
-          <Text style={[styles.meta, isRTL && styles.textRTL]}>
-            {isStay
-              ? formatDateRange(booking.checkIn!, booking.checkOut!, language)
-              : `${formatISODate(booking.date, language)} · ${booking.time}`}
-          </Text>
-          {isStay && booking.nights ? (
-            <Text style={[styles.meta, isRTL && styles.textRTL]}>
-              {labels.stay(booking.nights, booking.guests)}
-            </Text>
-          ) : null}
+          <Text style={[styles.meta, isRTL && styles.textRTL]}>{when}</Text>
+          {amount ? <Text style={[styles.meta, isRTL && styles.textRTL]}>{amount}</Text> : null}
           <View style={[styles.chipRow, isRTL && styles.rowRTL]}>
             <BookingStatusChip status={booking.status} />
             {booking.totalAmount != null ? (
               <Text style={styles.amount}>
-                {labels.formatTotal({
-                  totalAmount: booking.totalAmount,
-                  nights: booking.nights,
-                  pricePerNight: booking.pricePerNight,
-                })}
+                {labels.formatTotal(
+                  totalShownFor({
+                    kind: booking.kind,
+                    totalAmount: booking.totalAmount,
+                    nights: booking.nights,
+                    pricePerNight: booking.pricePerNight,
+                    quantity: booking.quantity,
+                    unitPrice: booking.unitPrice,
+                  })
+                )}
               </Text>
             ) : null}
           </View>
@@ -162,14 +225,14 @@ function HostBookingCardInner({
 
       {actions === "decide" ? (
         <View style={[styles.actions, isRTL && styles.rowRTL]}>
-          <ActionButton
+          <HostActionButton
             label={labels.decline}
             tone="secondary"
             busy={busy === "decline"}
             disabled={anyBusy}
             onPress={() => onAction(booking._id, "decline")}
           />
-          <ActionButton
+          <HostActionButton
             label={labels.confirm}
             tone="primary"
             busy={busy === "confirm"}
@@ -181,14 +244,14 @@ function HostBookingCardInner({
 
       {actions === "close" ? (
         <View style={[styles.actions, isRTL && styles.rowRTL]}>
-          <ActionButton
+          <HostActionButton
             label={labels.noShow}
             tone="secondary"
             busy={busy === "noShow"}
             disabled={anyBusy}
             onPress={() => onAction(booking._id, "noShow")}
           />
-          <ActionButton
+          <HostActionButton
             label={labels.complete}
             tone="primary"
             busy={busy === "complete"}
@@ -204,9 +267,10 @@ function HostBookingCardInner({
 /**
  * The pressed button shows its own spinner and its sibling only dims. Two
  * buttons dimming together read as "the app froze"; one spinning reads as
- * "that one is working".
+ * "that one is working". Exported for the booking detail, which offers a
+ * provider the same pair.
  */
-function ActionButton({
+export function HostActionButton({
   label,
   tone,
   busy,
