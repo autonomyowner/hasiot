@@ -68,9 +68,12 @@
 .bk .sv-sum-counts{font-size:13px;color:var(--muted)}
 /* The live part. Empty until there is something to price, and then it takes
    no room; it is never display:none, so it stays a live region. */
-.bk .sv-sum-quote{display:grid;gap:10px}
+.bk .sv-sum-quote{display:grid;gap:10px;scroll-margin-top:calc(var(--nav) + 16px)}
 .bk .sv-sum-quote:not(:empty){margin-top:10px}
 .bk .sv-sum-quote:focus{outline:none}
+/* Scrolled to when "Request to book" meets a refusal: on a phone, stop above
+   the fixed bar rather than under it. */
+@media(max-width:899px){.bk .sv-sum-quote{scroll-margin-bottom:calc(96px + env(safe-area-inset-bottom))}}
 .bk .sv-sum-updating{font-size:12.5px;color:var(--muted)}
 
 /* ---- contact, for a service that is not booked on Hasio ---- */
