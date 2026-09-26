@@ -4,7 +4,7 @@ import { Icon } from './Ui'
 const translations = {
   en: {
     stepsLabel: 'Sign-up progress',
-    steps: ['Account', 'Your business', 'Documents'],
+    steps: ['Account', 'Business', 'Documents'],
     stepOf: 'Step {n} of 3',
     done: 'done',
     current: 'current',

@@ -31,7 +31,8 @@ export default function SuspendedPage() {
   if (guard) return guard
 
   return (
-    <div style={{ maxWidth: 640 }}>
+    // The same glass card as the other screens before approval (AuthShell).
+    <div className="p-auth-card p-auth-card-wide p-auth-step">
       <h1 className="p-title">{t.title}</h1>
       <div className="p-card p-stack">
         <div className="p-status p-status-bad" role="status">

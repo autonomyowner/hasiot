@@ -1260,15 +1260,15 @@ a.p-choice { text-decoration: none; }
 .p-callout-title { margin: 0 0 4px; font-weight: 600; font-size: 14px; }
 .p-callout-body { margin: 0; font-size: 13px; line-height: 1.6; color: var(--p-secondary); }
 
-/* ---- sign-in as dark glass ----------------------------------------------
-   The sign-in screen only: it is the one auth screen whose card is
-   .p-auth-card without -wide (join, documents and suspended keep the light
-   card — they use outline buttons, role cards and notes with white fills).
+/* ---- the sign-up screens as dark glass ------------------------------------
+   Every screen in the auth shell — sign in, join, documents, suspended — so
+   signing up no longer jumps from the dark sign-in to a white card at step 2
+   (2026-09-26; the other screens used to keep the light card).
    Glass is re-tokened rather than restyled piece by piece: the portal's
    colours are variables, so flipping them here turns every control light-on-
    dark at once. --p-green becomes a mint so links, focus and the resend ring
    stay legible; the primary button is the app's lime with dark text. */
-.partners:has(.p-auth-card:not(.p-auth-card-wide)) {
+.partners:has(.p-auth-card) {
   background:
     radial-gradient(45% 40% at 50% 38%, rgba(214, 170, 96, 0.22), transparent 70%),
     radial-gradient(55% 50% at 50% 100%, rgba(13, 122, 95, 0.35), transparent 70%),
@@ -1276,8 +1276,8 @@ a.p-choice { text-decoration: none; }
     #0b1611;
   background-attachment: fixed;
 }
-.partners:has(.p-auth-card:not(.p-auth-card-wide)) .p-auth { background: transparent; }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) {
+.partners:has(.p-auth-card) .p-auth { background: transparent; }
+.p-auth-side:has(.p-auth-card) {
   --p-card: transparent;
   --p-ink: #f5f2ea;
   --p-secondary: rgba(245, 242, 234, 0.72);
@@ -1299,17 +1299,17 @@ a.p-choice { text-decoration: none; }
   -webkit-backdrop-filter: blur(28px) saturate(140%);
   backdrop-filter: blur(28px) saturate(140%);
 }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-wordmark { color: #fff; }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.08); }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-input { background: rgba(255, 255, 255, 0.06); }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-input::placeholder { color: rgba(245, 242, 234, 0.35); }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-seg { background: rgba(0, 0, 0, 0.22); }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-seg::before { background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-callout { background: rgba(255, 255, 255, 0.06); }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-primary { background: #cce745; color: #14210f; }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-primary:hover:not(:disabled) { background: #d9f05c; }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-primary .p-spinner { border-color: rgba(20, 33, 15, 0.25); border-top-color: currentColor; }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-otp-box { background: rgba(255, 255, 255, 0.06); }
+.p-auth-side:has(.p-auth-card) .p-wordmark { color: #fff; }
+.p-auth-side:has(.p-auth-card) .p-btn-ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.08); }
+.p-auth-side:has(.p-auth-card) .p-input { background: rgba(255, 255, 255, 0.06); }
+.p-auth-side:has(.p-auth-card) .p-input::placeholder { color: rgba(245, 242, 234, 0.35); }
+.p-auth-side:has(.p-auth-card) .p-seg { background: rgba(0, 0, 0, 0.22); }
+.p-auth-side:has(.p-auth-card) .p-seg::before { background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+.p-auth-side:has(.p-auth-card) .p-callout { background: rgba(255, 255, 255, 0.06); }
+.p-auth-side:has(.p-auth-card) .p-btn-primary { background: #cce745; color: #14210f; }
+.p-auth-side:has(.p-auth-card) .p-btn-primary:hover:not(:disabled) { background: #d9f05c; }
+.p-auth-side:has(.p-auth-card) .p-btn-primary .p-spinner { border-color: rgba(20, 33, 15, 0.25); border-top-color: currentColor; }
+.p-auth-side:has(.p-auth-card) .p-otp-box { background: rgba(255, 255, 255, 0.06); }
 
 /* Phones: no card floating on a canvas — the page is the form, white, top-down. */
 @media (max-width: 639px) {
@@ -1323,15 +1323,15 @@ a.p-choice { text-decoration: none; }
 /* Sign-in on phones and tablets: the dark page, and the glass on the card
    itself (on desktop it is on the whole middle column). */
 @media (max-width: 1099px) {
-  .p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) {
+  .p-auth-side:has(.p-auth-card) {
     background: transparent;
     border: 0;
     box-shadow: none;
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
-  .p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-auth-header { background: transparent; }
-  .p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-auth-card {
+  .p-auth-side:has(.p-auth-card) .p-auth-header { background: transparent; }
+  .p-auth-side:has(.p-auth-card) .p-auth-card {
     background: rgba(255, 255, 255, 0.07);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 24px;
@@ -1355,9 +1355,9 @@ a.p-choice { text-decoration: none; }
 }
 .p-or::before,
 .p-or::after { content: ''; flex: 1; height: 1px; background: var(--p-border); }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-outline { background: rgba(255, 255, 255, 0.06); }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-outline:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
-.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-outline .p-spinner { border-color: rgba(255, 255, 255, 0.2); border-top-color: currentColor; }
+.p-auth-side:has(.p-auth-card) .p-btn-outline { background: rgba(255, 255, 255, 0.06); }
+.p-auth-side:has(.p-auth-card) .p-btn-outline:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+.p-auth-side:has(.p-auth-card) .p-btn-outline .p-spinner { border-color: rgba(255, 255, 255, 0.2); border-top-color: currentColor; }
 
 .p-callout-body + .p-callout-body { margin-top: 6px; }
 .p-callout.is-pulse { animation: p-callout-pulse 700ms var(--p-ease) both; }
@@ -1516,6 +1516,75 @@ a.p-choice { text-decoration: none; }
   .p-auth-body { padding: 8px 16px 48px; align-items: flex-start; }
   .p-auth-card { padding: 22px 18px; }
 }
+
+/* ---- join, documents and suspended on the glass -------------------------
+   The tokens above make most of these screens light-on-dark by themselves;
+   these are the pieces that carried a light fill of their own (the selected
+   role card went pale with its text invisible), plus the lime of the primary
+   button for everything that means "chosen" or "done", so progress reads in
+   the brand colour rather than a second green. */
+.p-auth-card {
+  --p-lime: #cce745;
+  --p-active-bg: rgba(204, 231, 69, 0.08);
+}
+.p-auth-card .p-step.is-done::before,
+.p-auth-card .p-step.is-current::before { background: var(--p-lime); }
+.p-auth-card .p-step.is-done .p-step-dot { background: rgba(204, 231, 69, 0.14); border-color: rgba(204, 231, 69, 0.45); color: var(--p-lime); }
+.p-auth-card .p-step.is-current .p-step-dot { background: var(--p-lime); border-color: var(--p-lime); color: #14210f; }
+
+.p-auth-card .p-role-card { background: rgba(255, 255, 255, 0.04); }
+.p-auth-card .p-role-card:hover { background: rgba(255, 255, 255, 0.07); }
+.p-auth-card .p-role-card.is-selected {
+  border-color: var(--p-lime);
+  background: var(--p-active-bg);
+  box-shadow: 0 0 0 3px rgba(204, 231, 69, 0.12);
+}
+.p-auth-card .p-role-icon { background: rgba(255, 255, 255, 0.06); }
+.p-auth-card .p-role-card.is-selected .p-role-icon { background: rgba(204, 231, 69, 0.14); border-color: rgba(204, 231, 69, 0.35); color: var(--p-lime); }
+.p-auth-card .p-role-check { background: transparent; }
+.p-auth-card .p-role-card.is-selected .p-role-check { background: var(--p-lime); border-color: var(--p-lime); color: #14210f; }
+
+/* Phones: each role is a row — icon, words, check — instead of a tall tile,
+   so both choices and the names fit without scrolling past the button. */
+@media (max-width: 480px) {
+  .p-auth-card .p-role-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 14px;
+    row-gap: 2px;
+    align-items: center;
+    padding: 14px 16px;
+    padding-inline-end: 48px;
+  }
+  .p-auth-card .p-role-icon { grid-row: 1 / span 2; margin: 0; }
+  .p-auth-card .p-role-check { top: 50%; transform: translateY(-50%); }
+}
+
+/* What happens next, under the button: two quiet lines with icons, where a
+   grey boxed note used to sit above it. */
+.p-auth-next { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.p-auth-next li { display: flex; align-items: flex-start; gap: 10px; font-size: 13px; line-height: 1.55; color: var(--p-secondary); }
+.p-auth-next .p-icon { flex: none; margin-top: 2px; color: var(--p-muted); }
+
+/* A title and its subtitle directly in the card (documents, suspended) sit
+   together, not a full flex gap apart. */
+.p-auth-card > .p-title + .p-subtitle { margin-top: -10px; }
+
+/* Documents: the card is already the surface — no second bordered box inside it. */
+.p-auth-card .p-card { background: transparent; border: 0; padding: 0; box-shadow: none; }
+.p-auth-card .p-status-icon { background: rgba(255, 255, 255, 0.08); color: var(--p-ink); }
+.p-auth-card .p-status-ok .p-status-icon { background: rgba(204, 231, 69, 0.14); color: var(--p-lime); }
+.p-auth-card .p-status-bad .p-status-icon { background: rgba(255, 155, 140, 0.14); color: var(--p-danger); }
+.p-auth-card .p-drop {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.22);
+  border-radius: 18px;
+  padding: 28px 20px;
+}
+.p-auth-card .p-drop:hover,
+.p-auth-card .p-drop.is-over { border-color: var(--p-lime); background: var(--p-active-bg); }
+.p-auth-card .p-drop .p-icon { color: var(--p-lime); }
 
 /* ---- reduced motion: everything still, spinner slowed ------------------ */
 @media (prefers-reduced-motion: reduce) {

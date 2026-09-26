@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
@@ -53,7 +53,7 @@ const translations = {
 export default function JoinPage() {
   const { lang, isRtl } = usePartnerLang()
   const t = pick(translations, lang)
-  const { guard } = usePartnerGate('join')
+  const { guard, user } = usePartnerGate('join')
   const navigate = useNavigate()
   const setUserRole = useMutation(api.users.mutations.setUserRole)
 
@@ -63,6 +63,17 @@ export default function JoinPage() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const busyRef = useRef(false)
+
+  // A Google sign-up already gave us a name (the auth trigger saved it), so
+  // the fields start with it instead of asking again. Once, when the account
+  // first loads, and never over something already typed.
+  const prefilled = useRef(false)
+  useEffect(() => {
+    if (prefilled.current || !user) return
+    prefilled.current = true
+    if (user.firstName) setFirstName((typed) => typed || user.firstName)
+    if (user.lastName) setLastName((typed) => typed || user.lastName)
+  }, [user])
 
   if (guard) return guard
 
@@ -171,16 +182,21 @@ export default function JoinPage() {
         </div>
 
         {error && <p className="p-field-error" role="alert">{error}</p>}
-        <p className="p-note">{t.next}</p>
 
         <button type="submit" className="p-btn p-btn-primary p-btn-block p-btn-lg" disabled={busy}>
           {busy && <Spinner />}
           <span>{t.continue}</span>
         </button>
-        <p className="p-auth-reassure">
-          <Icon name="clock" size={16} />
-          <span>{t.reassure}</span>
-        </p>
+        <ul className="p-auth-next">
+          <li>
+            <Icon name="upload" size={16} />
+            <span>{t.next}</span>
+          </li>
+          <li>
+            <Icon name="clock" size={16} />
+            <span>{t.reassure}</span>
+          </li>
+        </ul>
       </form>
     </div>
   )
