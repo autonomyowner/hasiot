@@ -48,9 +48,11 @@ Host / provider inboxes already receive `guest.phoneVerified`; show «غير م�
 
 - **App:** `callbackURL` and `errorCallbackURL` = `hasio://auth-callback`. The server appends
   `cookie=<the Set-Cookie header>` to that redirect. The session token is the value of the cookie
-  named `better-auth.session_token` or `__Secure-better-auth.session_token` (URL-encoded,
-  `token.signature`); use it as the bearer exactly like a phone sign-in's token (store it, then
-  `/convex/token`). An `error` param, or no session cookie, is a failed sign-in.
+  named `better-auth.session_token` or `__Secure-better-auth.session_token`. URL-decoded it is
+  `token.signature`; the bearer is the part **before the first `.`** — the raw token, identical to
+  the `token` a phone sign-in returns (verified on dev: the decoded whole value gets 401). Store it
+  and call `/convex/token` exactly as for a phone sign-in. An `error` param, or no session cookie,
+  is a failed sign-in. A cancel arrives as `?error=access_denied&cookie=better-auth.state%3D%3B…`.
 - **Site:** `callbackURL` = `${location.origin}/partners`, `errorCallbackURL` =
   `${location.origin}/partners`. On return, `?error=<code>` means it failed (`access_denied` = the
   person cancelled, say nothing alarming). Server-level failures also land on `/partners?error=…`.
