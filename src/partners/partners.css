@@ -297,8 +297,10 @@
 .partners[dir='rtl'] .p-title { letter-spacing: 0; line-height: 1.4; }
 @media (max-width: 640px) { .p-title { font-size: 26px; } }
 .p-subtitle { color: var(--p-secondary); margin: 0 0 24px; font-size: 14px; }
-/* index.css gives every h1–h4 the landing page's serif; the portal is all sans. */
-.partners :is(h1, h2, h3, h4) { font-family: var(--p-sans); }
+/* index.css gives every h1–h4 its own face (Cairo in Arabic, via
+   html[dir="rtl"] h1, which outranks a plain .partners h1). [dir] lifts this
+   above it so the portal's headings use the portal's font in both languages. */
+.partners[dir] :is(h1, h2, h3, h4) { font-family: var(--p-sans); }
 .p-h2,
 .p-h { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 12px; }
 .partners[dir='rtl'] .p-h2,
