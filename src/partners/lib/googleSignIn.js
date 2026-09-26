@@ -17,7 +17,7 @@ export function googleReturnURL(origin) {
 
 /** The top-level page that starts Google sign-in on the Convex site. */
 export function oauthStartURL(convexSiteURL, returnURL) {
-  if (!convexSiteURL) throw new Error('VITE_CONVEX_SITE_URL is not set')
+  if (!convexSiteURL) throw new Error('The auth base URL is not set')
   if (typeof returnURL !== 'string' || !returnURL) throw new Error('No return address for Google sign-in')
   const base = String(convexSiteURL).replace(/\/+$/, '')
   const params = new URLSearchParams({ provider: 'google', callbackURL: returnURL, errorCallbackURL: returnURL })

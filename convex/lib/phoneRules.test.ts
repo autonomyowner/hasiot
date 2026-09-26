@@ -78,6 +78,19 @@ describe("googleProvider", () => {
   });
 });
 
+describe("googleProvider behind hasio.net", () => {
+  it("returns to AUTH_PUBLIC_URL when set, so cookies and Google's screen say hasio.net", () => {
+    expect(
+      googleProvider({
+        GOOGLE_CLIENT_ID: "id",
+        GOOGLE_CLIENT_SECRET: "s",
+        CONVEX_SITE_URL: "https://example-123.eu-west-1.convex.site",
+        AUTH_PUBLIC_URL: "https://hasio.net/",
+      })?.redirectURI
+    ).toBe("https://hasio.net/api/auth/callback/google");
+  });
+});
+
 describe("appleProvider", () => {
   it("verifies the iOS app's identity tokens, which are issued for the bundle id", () => {
     expect(appleProvider()).toMatchObject({

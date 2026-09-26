@@ -10,7 +10,8 @@
       "channel": "development",
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://hearty-ram-74.eu-west-1.convex.cloud",
-        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site"
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site",
+        "EXPO_PUBLIC_AUTH_URL": "https://hasio.net"
       },
       "android": {
         "buildType": "apk",
@@ -33,7 +34,8 @@
         "HASIO_IOS_PUSH": "off",
         "HASIO_IOS_APPLE_SIGNIN": "off",
         "EXPO_PUBLIC_CONVEX_URL": "https://hearty-ram-74.eu-west-1.convex.cloud",
-        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site"
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site",
+        "EXPO_PUBLIC_AUTH_URL": "https://hasio.net"
       }
     },
     "simulator": {
@@ -43,7 +45,8 @@
       },
       "env": {
         "EXPO_PUBLIC_CONVEX_URL": "https://hearty-ram-74.eu-west-1.convex.cloud",
-        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site"
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site",
+        "EXPO_PUBLIC_AUTH_URL": "https://hasio.net"
       }
     },
     "production": {
@@ -61,7 +64,8 @@
         "HASIO_IOS_PUSH": "off",
         "HASIO_IOS_APPLE_SIGNIN": "off",
         "EXPO_PUBLIC_CONVEX_URL": "https://hearty-ram-74.eu-west-1.convex.cloud",
-        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site"
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site",
+        "EXPO_PUBLIC_AUTH_URL": "https://hasio.net"
       }
     }
   },

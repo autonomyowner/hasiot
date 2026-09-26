@@ -3,11 +3,18 @@
   "name": "hasio",
   "compatibility_date": "2026-09-01",
 
-  // Static-assets-only Worker: no `main`, so Cloudflare serves ./dist directly and
-  // nothing runs per request. This mirrors the Vercel deployment rather than
-  // replacing it — hasio.xyz stays on Vercel, untouched.
+  // Static assets, plus one small Worker that runs only for /api/auth/* and
+  // forwards it to the Convex site, so sign-in cookies are first-party on
+  // hasio.net (worker/index.js says why). Every other path is served straight
+  // from ./dist as before — the Worker never sees it.
+  "main": "./worker/index.js",
+  "vars": {
+    "CONVEX_SITE_URL": "https://hearty-ram-74.eu-west-1.convex.site"
+  },
   "assets": {
     "directory": "./dist",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/auth/*"],
 
     // The Vercel side rewrites every non-/api path to "/" so React Router can take
     // it. This is the Cloudflare equivalent. Real files still win, so the four

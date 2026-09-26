@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
-import { authClient } from '../../lib/auth-client'
+import { AUTH_BASE_URL, authClient } from '../../lib/auth-client'
 import { usePartnerLang, pick } from '../lang'
 import { usePartnerRoute } from '../usePartnerGate'
 import { dashboardPath, safeNext } from '../lib/gate'
@@ -365,7 +365,7 @@ export default function LoginPage() {
       // state in this browser (googleSignIn.js says why that matters).
       // Leaves the page; busy stays on until it does (or pageshow resets it).
       window.location.assign(
-        oauthStartURL(import.meta.env.VITE_CONVEX_SITE_URL, googleReturnURL(window.location.origin))
+        oauthStartURL(AUTH_BASE_URL, googleReturnURL(window.location.origin))
       )
     } catch (err) {
       // Under the Google button, not the phone field: the number is not what failed.

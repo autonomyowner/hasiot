@@ -17,6 +17,7 @@ export default defineConfig([
   // once per worktree — 162 errors from six worktrees on 2026-09-25.
   // design-assets: masters and design exports (some ship their own bundled
   // JS), never served and never website source.
+  // .wrangler: `wrangler dev` writes its bundled Worker there.
   globalIgnores([
     'dist',
     'hasio-mobile-app/**',
@@ -24,6 +25,7 @@ export default defineConfig([
     'hasio v5/**',
     '.claude/**',
     'design-assets/**',
+    '.wrangler/**',
   ]),
   {
     files: ['**/*.{js,jsx}'],

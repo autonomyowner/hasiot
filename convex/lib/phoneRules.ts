@@ -56,7 +56,11 @@ export function googleProvider(env: Env = process.env) {
   return {
     clientId,
     clientSecret,
-    redirectURI: `${env.CONVEX_SITE_URL}/api/auth/callback/google`,
+    // AUTH_PUBLIC_URL (production: https://hasio.net) when the auth routes are
+    // reached through the website's own origin (worker/index.js), so the
+    // cookies are first-party there and Google names hasio.net. The flow must
+    // start on the same host it returns to — the state cookie lives there.
+    redirectURI: `${(env.AUTH_PUBLIC_URL || env.CONVEX_SITE_URL || "").replace(/\/+$/, "")}/api/auth/callback/google`,
     // Someone with a work and a personal Google account picks which one,
     // instead of being signed in silently with whichever the browser knows.
     prompt: "select_account" as const,

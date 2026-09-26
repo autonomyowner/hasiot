@@ -261,7 +261,11 @@ export async function verifyPhoneOtp(
  */
 export async function signInWithGoogle(): Promise<{ token: string } | null> {
   const result = await WebBrowser.openAuthSessionAsync(
-    oauthStartUrl(CONVEX_SITE_URL!),
+    // Google must start on the host it returns to — the OAuth state cookie
+    // lives there. In production that is hasio.net (the backend's
+    // AUTH_PUBLIC_URL; the site forwards /api/auth/* to Convex), so Google's
+    // screen also names hasio.net. Elsewhere, the Convex site itself.
+    oauthStartUrl(process.env.EXPO_PUBLIC_AUTH_URL || CONVEX_SITE_URL!),
     OAUTH_CALLBACK_URL
   );
   if (result.type !== "success") return null;
