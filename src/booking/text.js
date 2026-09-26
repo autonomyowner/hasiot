@@ -31,6 +31,9 @@ export const hoursText = (n, lang) =>
 export const daysText = (n, lang) =>
   lang === 'ar' ? arabicCount(n, 'يوم واحد', 'يومان', 'أيام', 'يومًا') : english(n, 'day', 'days')
 
+export const reviewsText = (n, lang) =>
+  lang === 'ar' ? arabicCount(n, 'تقييم واحد', 'تقييمان', 'تقييمات', 'تقييمًا') : english(n, 'review', 'reviews')
+
 /** Hours or days for an hourly or daily service; nothing for any other price. */
 export function quantityText(priceUnit, n, lang) {
   if (priceUnit === 'per_hour') return hoursText(n, lang)

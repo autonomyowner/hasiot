@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { daysText, guestsText, hoursText, nightsText, peopleText, quantityText } from './text'
+import { daysText, guestsText, hoursText, nightsText, peopleText, quantityText, reviewsText } from './text'
 
 describe('counts', () => {
   it('says nights the way Arabic counts them: one, two, three to ten, eleven and up', () => {
@@ -21,6 +21,11 @@ describe('counts', () => {
     expect([peopleText(1, 'en'), peopleText(4, 'en')]).toEqual(['1 person', '4 people'])
     expect([hoursText(1, 'en'), hoursText(3, 'en')]).toEqual(['1 hour', '3 hours'])
     expect([daysText(1, 'en'), daysText(2, 'en')]).toEqual(['1 day', '2 days'])
+  })
+
+  it('counts reviews', () => {
+    expect([1, 2, 3, 11].map((n) => reviewsText(n, 'ar'))).toEqual(['تقييم واحد', 'تقييمان', '3 تقييمات', '11 تقييمًا'])
+    expect([reviewsText(1, 'en'), reviewsText(12, 'en')]).toEqual(['1 review', '12 reviews'])
   })
 
   it('describes a service quantity only for hourly and daily prices', () => {
