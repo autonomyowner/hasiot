@@ -9,6 +9,7 @@ import { PartnerConfirmContext } from './confirm'
 import { usePartnerRoute } from './usePartnerGate'
 import { formatPhone } from './lib/phone'
 import { Icon, PageSpinner } from './components/Ui'
+import AuthShell from './components/AuthShell'
 import { InsightIcon } from './insights/InsightsUi'
 // Tailwind (with its preflight) is what the shared dialog and toasts are
 // styled with; it rides in this lazy chunk like it does in the admin one.
@@ -298,7 +299,8 @@ export default function PartnersLayout() {
     <PartnerLangContext.Provider value={langValue}>
       <PartnerConfirmContext.Provider value={partnerConfirm}>
         <div className="partners" dir={isRtl ? 'rtl' : 'ltr'} lang={lang}>
-          {items.length > 0 ? (
+          {/* Before approval the verify page gets the auth shell, not a sidebar with one link. */}
+          {items.length > 0 && route !== 'verify' ? (
             <div className="p-shell">
               <aside className="p-sidebar">
                 {brand}
@@ -331,16 +333,21 @@ export default function PartnersLayout() {
               </NavSheet>
             </div>
           ) : (
-            <>
-              <header className="p-header">
-                {brand}
-                <div className="p-header-actions">
-                  {langButton}
-                  {signOutButton}
-                </div>
-              </header>
-              <div className="p-body">{content}</div>
-            </>
+            // Before approval (sign in, join, documents, suspended): the auth
+            // shell, with the same brand, language and sign-out controls.
+            <AuthShell
+              header={
+                <header className="p-header p-auth-header">
+                  {brand}
+                  <div className="p-header-actions">
+                    {langButton}
+                    {signOutButton}
+                  </div>
+                </header>
+              }
+            >
+              {content}
+            </AuthShell>
           )}
 
           <Toaster

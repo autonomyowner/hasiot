@@ -1088,6 +1088,339 @@ a.p-choice { text-decoration: none; }
   .p-kpi-value { font-size: 24px; }
 }
 
+/* ==========================================================================
+   auth — the shell and screens a partner sees before approval
+   (sign in, join, documents, suspended). AuthShell.jsx, LoginPage, JoinPage,
+   VerifyPage. Motion here is switched off by the reduced-motion block below.
+   ========================================================================== */
+
+.p-auth { min-height: 100vh; }
+.p-auth-panel { display: none; }
+.p-auth-side { display: flex; flex-direction: column; min-height: 100vh; }
+.p-auth-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 28px 64px;
+}
+.p-auth-form { width: 100%; max-width: 560px; }
+.p-auth-form > .p-main > * { margin-inline: auto; }
+
+/* The card: white plate on the canvas when narrow; no chrome when wide, where
+   the whole form column is white. */
+.p-auth-card {
+  max-width: 420px;
+  margin-inline: auto;
+  background: var(--p-card);
+  border: 1px solid var(--p-hairline);
+  border-radius: var(--p-radius);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.p-auth-card-wide { max-width: 520px; }
+.p-auth-step { animation: p-rise 260ms var(--p-ease) both; }
+.p-auth-card .p-input { min-height: 48px; font-size: 16px; }
+.p-btn-lg { min-height: 48px; font-size: 15px; }
+
+/* Brand panel, ≥960px only. The photo is a CSS background inside this media
+   query, so a phone never downloads it. */
+@media (min-width: 960px) {
+  .p-auth {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  }
+  .p-auth-panel {
+    display: block;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow: hidden;
+    color: #fff;
+    background: #0b1f18 url('/hasio-oasis-hero.webp') center / cover no-repeat;
+  }
+  .p-auth-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to top, rgba(6, 18, 14, 0.9) 0%, rgba(6, 18, 14, 0.62) 42%, rgba(6, 18, 14, 0.12) 78%, rgba(6, 18, 14, 0.28) 100%);
+  }
+  .p-auth-panel-inner {
+    position: relative;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 36px 48px 48px;
+  }
+  .p-auth-side { background: var(--p-card); }
+  .p-auth-header { background: transparent; backdrop-filter: none; justify-content: flex-end; }
+  .p-auth-header .p-brand { display: none; }
+  .p-auth-body { padding: 16px 48px 72px; }
+  .p-auth-card { border: 0; padding: 0; background: transparent; }
+}
+
+.p-auth-brand { display: flex; align-items: baseline; gap: 10px; margin: 0; }
+.p-auth-panel .p-wordmark { color: #fff; font-size: 26px; }
+.p-auth-brand-sub {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.72);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.partners[dir='rtl'] .p-auth-brand-sub { text-transform: none; letter-spacing: 0; font-size: 13px; }
+.p-auth-pitch { max-width: 460px; }
+.p-auth-headline {
+  margin: 0 0 24px;
+  font-size: clamp(28px, 2.6vw, 38px);
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-wrap: balance;
+}
+.partners[dir='rtl'] .p-auth-headline { letter-spacing: 0; line-height: 1.35; }
+.p-auth-values { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.p-auth-values li { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.5; color: rgba(255, 255, 255, 0.9); }
+.p-auth-value-icon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+/* Segmented control: Saudi Arabia / another country. */
+.p-seg {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  background: var(--p-subtle);
+  border: 1px solid var(--p-border);
+  border-radius: 14px;
+}
+.p-seg-opt {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--p-secondary);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 200ms var(--p-ease), color 200ms var(--p-ease), box-shadow 200ms var(--p-ease);
+}
+.p-seg-opt:hover:not(.is-selected) { color: var(--p-ink); }
+.p-seg-opt.is-selected { background: var(--p-card); color: var(--p-ink); box-shadow: 0 1px 3px rgba(17, 20, 24, 0.1), 0 0 0 1px var(--p-hairline); }
+.p-seg-opt:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
+.p-seg-sub { color: var(--p-muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+
+/* Phone input with the fixed +966 chip (always LTR). */
+.p-phone { position: relative; }
+.p-phone-prefix {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--p-subtle);
+  border: 1px solid var(--p-hairline);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--p-ink);
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+.p-phone .p-input { width: 100%; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.p-phone.has-prefix .p-input { padding-left: 78px; }
+
+/* Info callout (the Saudi SMS notice): calm, not an error. */
+.p-callout {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--p-radius-item);
+  background: var(--p-green-tint);
+  border: 1px solid var(--p-active-border);
+  color: var(--p-ink);
+}
+.p-callout-icon { flex: none; color: var(--p-green-deep); padding-top: 1px; }
+.p-callout-title { margin: 0 0 4px; font-weight: 600; font-size: 14px; }
+.p-callout-body { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--p-secondary); }
+.p-callout-body + .p-callout-body { margin-top: 6px; }
+.p-callout.is-pulse { animation: p-callout-pulse 700ms var(--p-ease) both; }
+@keyframes p-callout-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(13, 122, 95, 0.28); transform: none; }
+  30% { box-shadow: 0 0 0 6px rgba(13, 122, 95, 0.16); transform: scale(1.012); }
+  100% { box-shadow: 0 0 0 10px rgba(13, 122, 95, 0); transform: none; }
+}
+
+/* Six code boxes, always left to right. */
+.p-otp { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; direction: ltr; }
+.p-otp-box {
+  width: 100%;
+  min-width: 0;
+  height: 56px;
+  padding: 0;
+  text-align: center;
+  font: inherit;
+  font-size: 24px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--p-ink);
+  background: var(--p-card);
+  border: 1px solid var(--p-border);
+  border-radius: 12px;
+  caret-color: var(--p-green);
+  transition: border-color 200ms var(--p-ease), box-shadow 200ms var(--p-ease), background-color 200ms var(--p-ease);
+}
+.p-otp-box:nth-child(3) { margin-right: 8px; }
+.p-otp-box:hover { border-color: var(--p-line-strong); }
+.p-otp-box:focus { outline: none; border-color: var(--p-green); box-shadow: 0 0 0 3px var(--p-focus); }
+.p-otp-box[aria-invalid='true'] { border-color: var(--p-danger); }
+.p-otp.is-verifying .p-otp-box { border-color: var(--p-active-border); background: var(--p-green-tint); color: var(--p-green-deep); }
+.p-otp-status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--p-green-deep); }
+.p-otp-status .p-spinner { width: 14px; height: 14px; border-width: 2px; }
+@media (max-width: 380px) {
+  .p-otp { gap: 6px; }
+  .p-otp-box { height: 50px; font-size: 21px; }
+  .p-otp-box:nth-child(3) { margin-right: 4px; }
+}
+
+.p-auth-number { font-weight: 600; color: var(--p-ink); }
+.p-auth-edit,
+.p-auth-resend .p-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; margin: -12px -6px; }
+.p-auth-resend { display: flex; justify-content: center; min-height: 44px; align-items: center; }
+.p-auth-countdown { display: inline-flex; align-items: center; gap: 8px; font-variant-numeric: tabular-nums; }
+.p-ring { transform: rotate(-90deg); }
+.p-ring circle { fill: none; stroke-width: 2; }
+.p-ring-track { stroke: var(--p-border); }
+.p-ring-fill { stroke: var(--p-green); stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+
+/* Sign-up steps: Account / Your business / Documents. */
+.p-steps { display: flex; flex-direction: column; gap: 8px; }
+.p-steps-count { margin: 0; font-size: 12px; font-weight: 500; color: var(--p-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.partners[dir='rtl'] .p-steps-count { text-transform: none; letter-spacing: 0; font-size: 12.5px; }
+.p-steps-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.p-step { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 8px 8px; font-size: 13px; color: var(--p-muted); }
+.p-step::before {
+  content: '';
+  grid-column: 1 / -1;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--p-border);
+  transition: background-color 300ms var(--p-ease);
+}
+.p-step.is-done::before, .p-step.is-current::before { background: var(--p-green); }
+.p-step-dot {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--p-border);
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.p-step.is-done { color: var(--p-secondary); }
+.p-step.is-done .p-step-dot { background: var(--p-green-tint); border-color: var(--p-active-border); color: var(--p-green-deep); }
+.p-step.is-current { color: var(--p-ink); font-weight: 500; }
+.p-step.is-current .p-step-dot { background: var(--p-green); border-color: var(--p-green); color: #fff; }
+.p-step-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Role cards on the join page. */
+.p-role-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.p-role-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-height: 150px;
+  padding: 18px;
+  text-align: start;
+  font: inherit;
+  color: var(--p-ink);
+  background: var(--p-card);
+  border: 1.5px solid var(--p-border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: border-color 200ms var(--p-ease), background-color 200ms var(--p-ease), box-shadow 200ms var(--p-ease), transform 150ms var(--p-ease);
+}
+.p-role-card:hover { border-color: var(--p-line-strong); }
+.p-role-card:active { transform: scale(0.99); }
+.p-role-card:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
+.p-role-card.is-selected { border-color: var(--p-green); background: var(--p-active-bg); box-shadow: 0 0 0 3px rgba(13, 122, 95, 0.08); }
+.p-role-icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--p-subtle);
+  border: 1px solid var(--p-hairline);
+  color: var(--p-ink);
+  margin-bottom: 6px;
+}
+.p-role-card.is-selected .p-role-icon { background: var(--p-card); color: var(--p-green-deep); }
+.p-role-title { font-weight: 600; font-size: 15px; }
+.p-role-hint { color: var(--p-secondary); font-size: 13px; line-height: 1.5; }
+.p-role-check {
+  position: absolute;
+  top: 14px;
+  inset-inline-end: 14px;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--p-line-strong);
+  background: var(--p-card);
+  transition: background-color 200ms var(--p-ease), border-color 200ms var(--p-ease);
+}
+.p-role-card.is-selected .p-role-check { background: var(--p-green); border-color: var(--p-green); color: #fff; }
+
+.p-auth-names { display: grid; gap: 12px; }
+@media (min-width: 560px) { .p-auth-names { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) {
+  .p-role-cards { grid-template-columns: 1fr; }
+  .p-role-card { min-height: 0; }
+}
+
+.p-auth-reassure {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--p-secondary);
+  text-align: center;
+}
+.p-auth-reassure .p-icon { flex: none; color: var(--p-muted); }
+
+@media (max-width: 850px) {
+  .p-auth-body { padding: 8px 16px 48px; align-items: flex-start; }
+  .p-auth-card { padding: 22px 18px; }
+}
+
 /* ---- reduced motion: everything still, spinner slowed ------------------ */
 @media (prefers-reduced-motion: reduce) {
   .partners *,
