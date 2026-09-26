@@ -3,7 +3,7 @@ import { useQuery } from 'convex/react'
 import { api } from '../../../convex/_generated/api'
 import { usePartnerLang, pick } from '../lang'
 import { usePartnerGate } from '../usePartnerGate'
-import { Icon, PageSpinner } from '../components/Ui'
+import { Icon, Kpi, SkeletonKpis } from '../components/Ui'
 import { ownerStatusOf } from './placePayload'
 
 const translations = {
@@ -58,7 +58,15 @@ export default function Overview() {
   const stats = useQuery(api.bookings.queries.getOwnerStats, guard ? 'skip' : {})
   const listings = useQuery(api.listings.queries.getMyListings, guard ? 'skip' : {})
   if (guard) return guard
-  if (stats === undefined || listings === undefined) return <PageSpinner />
+  if (stats === undefined || listings === undefined) {
+    return (
+      <div>
+        <h1 className="p-title">{t.title}</h1>
+        <p className="p-subtitle">{t.subtitle}</p>
+        <SkeletonKpis />
+      </div>
+    )
+  }
 
   const counts = {}
   for (const l of listings) {
@@ -73,26 +81,16 @@ export default function Overview() {
       <h1 className="p-title">{t.title}</h1>
       <p className="p-subtitle">{t.subtitle}</p>
 
-      <div className="h-stats">
-        <div className="p-card h-stat">
-          <span className="p-muted p-small">{t.pending}</span>
-          <strong className="h-stat-value">{number(stats?.pending)}</strong>
+      <div className="h-stats p-kpis">
+        <Kpi index={0} className="h-stat" label={t.pending} icon={<Icon name="clock" size={15} />} value={number(stats?.pending)}>
           {stats?.pending > 0 && (
             <Link className="p-link p-small" to="/partners/hotel/bookings">{t.answer}</Link>
           )}
-        </div>
-        <div className="p-card h-stat">
-          <span className="p-muted p-small">{t.upcoming}</span>
-          <strong className="h-stat-value">{number(stats?.upcoming)}</strong>
-        </div>
-        <div className="p-card h-stat">
-          <span className="p-muted p-small">{t.revenue}</span>
-          <strong className="h-stat-value">{number(stats?.revenueMonth)} <span className="p-small">{currency}</span></strong>
-        </div>
-        <div className="p-card h-stat">
-          <span className="p-muted p-small">{t.places}</span>
-          <strong className="h-stat-value">{number(stats?.listings ?? listings.length)}</strong>
-        </div>
+        </Kpi>
+        <Kpi index={1} className="h-stat" label={t.upcoming} icon={<Icon name="calendar" size={15} />} value={number(stats?.upcoming)} />
+        <Kpi index={2} className="h-stat" label={t.revenue} icon={<Icon name="wallet" size={15} />}
+          value={<>{number(stats?.revenueMonth)} <span className="p-kpi-unit">{currency}</span></>} />
+        <Kpi index={3} className="h-stat" label={t.places} icon={<Icon name="building" size={15} />} value={number(stats?.listings ?? listings.length)} />
       </div>
 
       <div className="p-card h-section">

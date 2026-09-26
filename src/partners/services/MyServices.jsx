@@ -8,7 +8,7 @@ import { usePartnerLang, pick } from '../lang'
 import { usePartnerGate } from '../usePartnerGate'
 import { usePartnerConfirm } from '../confirm'
 import { errorText } from '../lib/errors'
-import { EmptyState, ErrorState, PageSpinner, Spinner } from '../components/Ui'
+import { EmptyState, ErrorState, SkeletonList, Spinner } from '../components/Ui'
 import { ownerStatusOf } from './servicePayload'
 import { STATUS_LABELS, cityName, priceText, serviceTitle, serviceTypeLabel } from './labels'
 
@@ -103,7 +103,7 @@ export default function MyServices() {
       {error ? (
         <ErrorState title={t.errorTitle} retryLabel={t.retry} onRetry={() => window.location.reload()} />
       ) : services === undefined ? (
-        <PageSpinner />
+        <SkeletonList />
       ) : services.length === 0 ? (
         <div className="p-card">
           <EmptyState icon="briefcase" title={t.emptyTitle} hint={t.emptyHint} />

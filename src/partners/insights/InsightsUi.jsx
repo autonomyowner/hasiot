@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { formatCount } from './format'
 
 /**
@@ -37,6 +38,8 @@ export function TrendChart({ labels, series, rtl, formatters = {} }) {
   const height = 96
   const count = labels.length
   const barW = count > 0 ? width / count : width
+  // { key, i }: the bar under the pointer, drawn as a tooltip above its row.
+  const [hover, setHover] = useState(null)
 
   return (
     <div className="p-ins-trend">
@@ -44,26 +47,38 @@ export function TrendChart({ labels, series, rtl, formatters = {} }) {
         const max = Math.max(1, ...s.values)
         const fmt = formatters[s.key] ?? formatCount
         const total = s.values.reduce((a, b) => a + b, 0)
+        const tip = hover && hover.key === s.key ? hover.i : null
+        const tipSlot = tip === null ? 0 : rtl ? count - 1 - tip : tip
         return (
           <figure key={s.key} className="p-ins-trend-row">
             <figcaption className="p-ins-trend-head">
               <span>{s.label}</span>
               <strong>{fmt(total)}</strong>
             </figcaption>
-            <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img"
-              aria-label={`${s.label}: ${s.values.map((v, i) => `${labels[i]} ${fmt(v)}`).join(', ')}`}>
-              <line x1="0" y1={height - 0.5} x2={width} y2={height - 0.5} className="p-ins-axis" />
-              {s.values.map((v, i) => {
-                const h = v > 0 ? Math.max(2, (v / max) * (height - 6)) : 0
-                const slot = rtl ? count - 1 - i : i
-                return (
-                  <rect key={labels[i] ?? i} x={slot * barW + barW * 0.15} y={height - h} width={barW * 0.7} height={h}
-                    className="p-ins-bar" rx="1.5">
-                    <title>{`${labels[i]}: ${fmt(v)}`}</title>
-                  </rect>
-                )
-              })}
-            </svg>
+            <div className="p-ins-plot" onMouseLeave={() => setHover(null)}>
+              <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img"
+                aria-label={`${s.label}: ${s.values.map((v, i) => `${labels[i]} ${fmt(v)}`).join(', ')}`}>
+                <line x1="0" y1={height / 2} x2={width} y2={height / 2} className="p-ins-gridline" />
+                <line x1="0" y1="6" x2={width} y2="6" className="p-ins-gridline" />
+                <line x1="0" y1={height - 0.5} x2={width} y2={height - 0.5} className="p-ins-axis" />
+                {s.values.map((v, i) => {
+                  const h = v > 0 ? Math.max(2, (v / max) * (height - 6)) : 0
+                  const slot = rtl ? count - 1 - i : i
+                  return (
+                    <rect key={labels[i] ?? i} x={slot * barW + barW * 0.15} y={height - h} width={barW * 0.7} height={h}
+                      className={tip === i ? 'p-ins-bar is-hover' : 'p-ins-bar'} rx={Math.min(4, barW * 0.2)}
+                      onMouseEnter={() => setHover({ key: s.key, i })} />
+                  )
+                })}
+              </svg>
+              {tip !== null && (
+                <span className="p-ins-tip" aria-hidden="true"
+                  style={{ left: `${((tipSlot + 0.5) / Math.max(1, count)) * 100}%` }}>
+                  <span className="p-ins-tip-label">{labels[tip]}</span>
+                  <strong>{fmt(s.values[tip])}</strong>
+                </span>
+              )}
+            </div>
           </figure>
         )
       })}
@@ -83,7 +98,7 @@ export function Bars({ rows, format = formatCount }) {
   return (
     <ul className="p-ins-bars">
       {rows.map((row) => (
-        <li key={row.key} className="p-ins-bars-row">
+        <li key={row.key} className={row.value > 0 && row.value === max ? 'p-ins-bars-row is-top' : 'p-ins-bars-row'}>
           <span className="p-ins-bars-label">{row.label}</span>
           <span className="p-ins-bars-track">
             <span className="p-ins-bars-fill" style={{ width: `${(row.value / max) * 100}%` }} />

@@ -7,7 +7,7 @@ import { usePartnerLang, pick } from '../lang'
 import { usePartnerGate } from '../usePartnerGate'
 import { usePartnerConfirm } from '../confirm'
 import { errorText } from '../lib/errors'
-import { EmptyState, PageSpinner, Spinner } from '../components/Ui'
+import { EmptyState, SkeletonList, Spinner } from '../components/Ui'
 import { cityLabel } from './cities'
 import { kindOfType, ownerStatusOf } from './placePayload'
 
@@ -68,7 +68,7 @@ export default function MyPlaces() {
   const busyRef = useRef(false)
 
   if (guard) return guard
-  if (listings === undefined) return <PageSpinner />
+  if (listings === undefined) return <SkeletonList />
 
   const open = new Set(
     (bookings ?? [])

@@ -3,7 +3,7 @@ import { api } from '../../../convex/_generated/api'
 import { useQuerySafe } from '../../admin/useQuerySafe'
 import { usePartnerLang, pick } from '../lang'
 import { usePartnerGate } from '../usePartnerGate'
-import { ErrorState, PageSpinner } from '../components/Ui'
+import { ErrorState, Icon, Kpi, SkeletonKpis } from '../components/Ui'
 import { errorText } from '../lib/errors'
 import { Bars, InsightIcon, TrendChart } from './InsightsUi'
 import {
@@ -114,11 +114,20 @@ const translations = {
 const PERIODS = ['30d', '90d', '12m']
 const OUTCOMES = ['pending', 'confirmed', 'completed', 'declined', 'expired', 'cancelled', 'no_show']
 
-function HeadlineCard({ label, value, change, hint }) {
+const CARD_ICONS = {
+  requests: <Icon name="calendar" size={15} />,
+  confirmed: <Icon name="check" size={15} />,
+  acceptanceRate: <InsightIcon name="chart" size={15} />,
+  medianResponse: <Icon name="clock" size={15} />,
+  revenue: <Icon name="wallet" size={15} />,
+  avgBookingValue: <Icon name="wallet" size={15} />,
+  nightsSold: <Icon name="building" size={15} />,
+  repeatGuests: <InsightIcon name="users" size={15} />,
+}
+
+function HeadlineCard({ label, value, change, hint, icon, index }) {
   return (
-    <div className="p-card p-ins-stat">
-      <span className="p-muted p-small">{label}</span>
-      <span className="p-ins-stat-value">{value}</span>
+    <Kpi className="p-ins-stat" label={label} value={value} icon={icon} index={index}>
       {change ? (
         <span className={`p-ins-change is-${change.direction}`} title={hint}>
           <bdi dir="ltr">{change.text}</bdi>
@@ -126,7 +135,7 @@ function HeadlineCard({ label, value, change, hint }) {
       ) : (
         <span className="p-ins-change is-none" aria-hidden="true">&nbsp;</span>
       )}
-    </div>
+    </Kpi>
   )
 }
 
@@ -158,7 +167,8 @@ export default function AnalyticsPage({ role }) {
         <h1 className="p-title">{t.title}</h1>
         <p className="p-subtitle" style={{ margin: 0 }}>{isHotel ? t.subtitleHotel : t.subtitleServices}</p>
       </div>
-      <div className="p-ins-seg" role="radiogroup" aria-label={t.periodLabel}>
+      <div className="p-ins-seg p-seg" role="radiogroup" aria-label={t.periodLabel}
+        style={{ '--seg-n': PERIODS.length, '--seg-i': Math.max(0, PERIODS.indexOf(period)) }}>
         {PERIODS.map((p) => (
           <button key={p} type="button" role="radio" aria-checked={p === period}
             className={p === period ? 'is-active' : undefined} onClick={() => choosePeriod(p)}>
@@ -179,7 +189,7 @@ export default function AnalyticsPage({ role }) {
     )
   }
   if (result.data === undefined) {
-    return <div className="p-stack">{header}<PageSpinner /></div>
+    return <div className="p-stack">{header}<SkeletonKpis count={8} /></div>
   }
 
   const a = result.data
@@ -230,9 +240,10 @@ export default function AnalyticsPage({ role }) {
       {header}
       {a.truncated && <p className="p-note" style={{ margin: 0 }}>{t.truncated}</p>}
 
-      <div className="p-ins-stats">
-        {cards.map((c) => (
-          <HeadlineCard key={c.key} label={t[c.key]} value={c.value} change={c.change} hint={t.vsPrevious} />
+      <div className="p-ins-stats p-kpis">
+        {cards.map((c, i) => (
+          <HeadlineCard key={c.key} label={t[c.key]} value={c.value} change={c.change} hint={t.vsPrevious}
+            icon={CARD_ICONS[c.key]} index={i} />
         ))}
       </div>
 
