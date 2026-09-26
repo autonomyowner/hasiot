@@ -63,3 +63,16 @@ is no longer used by either client.
 - Origin header: the app sends `Origin: https://www.hasio.xyz` as for every auth call.
 - New users get a `users` row through the existing onCreate trigger (role `tourist`, name from
   Google). A Google login whose email matches an existing email account signs into that account.
+
+## Sign in with Apple (iOS app only)
+
+- `getPublicConfig().appleAuth: true` — the backend verifies Apple identity tokens.
+- `POST /api/auth/sign-in/social` `{ provider: "apple", idToken: { token: <identityToken>, nonce } }`
+  (Origin `https://www.hasio.xyz`) → `{ redirect: false, token, user }`. `token` is the session
+  token (bearer), as for a phone sign-in. The token must be issued for `com.hasio.travel` and ≤ 1 h
+  old; `nonce` must equal the one passed to Apple. A bad token is refused (currently HTTP 500 from
+  Better Auth's verifier — the app treats any non-network failure as "Apple sign-in didn't complete").
+- The name is not in the token: the app saves `fullName` (first sign-in only) with
+  `users/mutations:updateProfile`. The server ignores email-shaped display names.
+- The build must carry the entitlement: `extra.appleSignIn` (env `HASIO_IOS_APPLE_SIGNIN`, "off" in
+  eas.json until the capability exists on the App ID).

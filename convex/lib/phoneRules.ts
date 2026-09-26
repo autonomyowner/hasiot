@@ -62,3 +62,25 @@ export function googleProvider(env: Env = process.env) {
     prompt: "select_account" as const,
   };
 }
+
+/** The iOS app's bundle id — the audience of the identity tokens Apple issues it. */
+export const IOS_BUNDLE_ID = "com.hasio.travel";
+
+/**
+ * Better Auth's Apple provider, for Sign in with Apple in the iOS app only
+ * (App Store guideline 4.8 asks for it next to Google).
+ *
+ * The app signs in with Apple's native sheet and sends the identity token to
+ * /sign-in/social; Better Auth checks it against Apple's public keys with the
+ * bundle id as audience. That path needs no client secret, so unlike Google
+ * this is always registered. Apple's web redirect flow is not offered: it
+ * would need a Services ID and a signed secret from the Apple account.
+ */
+export function appleProvider() {
+  return {
+    clientId: IOS_BUNDLE_ID,
+    appBundleIdentifier: IOS_BUNDLE_ID,
+    // Required by the type, unused by the id-token path.
+    clientSecret: "",
+  };
+}

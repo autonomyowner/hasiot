@@ -17,6 +17,9 @@ export const getPublicConfig = query({
       // Whether a code sent to a +966 number arrives. While false the clients
       // do not send one, and say so (lib/phoneRules.ts).
       saudiSmsLive: saudiSmsLive(),
+      // Sign in with Apple by id token (lib/phoneRules.ts appleProvider). The
+      // iOS app also needs a build with the entitlement (extra.appleSignIn).
+      appleAuth: true,
     };
   },
 });

@@ -18,7 +18,9 @@ import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
 import { useFocusEffect, useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Feather } from "@expo/vector-icons";
+import { Feather, Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
+import * as AppleAuthentication from "expo-apple-authentication";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { useNudge } from "@/hooks/useNudge";
@@ -27,6 +29,7 @@ import { api } from "@/backend";
 import {
   sendPhoneOtp,
   signIn,
+  signInWithApple,
   signInWithGoogle,
   signOut,
   verifyPhoneOtp,
@@ -41,6 +44,7 @@ import { toLatinDigits } from "@/lib/digits";
 import { formatPhoneForDisplay, ltr, normalizeKsaPhone } from "@/lib/phone";
 import { googleSignInAvailable, saudiSmsBlocked, smsBlockedFor } from "@/lib/phoneRules";
 import { GoogleMark } from "@/components/auth/GoogleMark";
+import { appleSignInAvailable } from "@/lib/appleSignIn";
 import { convex, refreshAuth } from "@/lib/convex";
 import { useAppStore } from "@/stores/appStore";
 import { colors, type AppFonts } from "@/constants/colors";
@@ -167,6 +171,27 @@ export default function AuthScreen() {
   const showGoogle = googleSignInAvailable(config, Platform.OS);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Sign in with Apple: iOS only, when the backend verifies Apple's tokens and
+  // this build carries the entitlement (lib/appleSignIn.ts). Apple's own
+  // isAvailableAsync is asked once as well — it is false on an iPhone that
+  // cannot present the sheet (no Apple ID signed in on an old iOS).
+  const [appleDeviceReady, setAppleDeviceReady] = useState(false);
+  useEffect(() => {
+    if (Platform.OS !== "ios") return;
+    let alive = true;
+    AppleAuthentication.isAvailableAsync()
+      .then((ok) => alive && setAppleDeviceReady(ok))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const showApple =
+    appleDeviceReady &&
+    appleSignInAvailable(config, Platform.OS, Constants.expoConfig?.extra?.appleSignIn);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const socialLoading = googleLoading || appleLoading;
+
   // While SMS cannot reach +966 numbers the field stays (the owner wants SMS
   // kept for when it can), but Send code does not send: it would only start a
   // wait for a text that never comes. The notice under the field says so. It
@@ -187,7 +212,7 @@ export default function AuthScreen() {
   // it, leave the keyboard down when there is.
   const configAnswered = config !== undefined;
   useEffect(() => {
-    if (configAnswered && !showGoogle) phoneRef.current?.focus();
+    if (configAnswered && !showGoogle && !showApple) phoneRef.current?.focus();
     // Once, when the config first answers — not every time Google flips.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configAnswered]);
@@ -420,6 +445,35 @@ export default function AuthScreen() {
     finishSignIn();
   };
 
+  /**
+   * Apple's native sheet (lib/auth.ts signInWithApple): no browser, and it
+   * finishes like the others — the users row exists before the answer.
+   */
+  const handleApple = async () => {
+    if (busy.current) return;
+    busy.current = true;
+    setAppleLoading(true);
+    setFieldError(null);
+    let signedIn = false;
+    try {
+      signedIn = (await signInWithApple()) !== null;
+    } catch (error) {
+      const failure = describeAuthError(error, locale);
+      alertFailure(
+        failure.kind === "network" || failure.kind === "rateLimited"
+          ? failure
+          : { kind: "appleFailed", ...AUTH_ERROR_COPY.appleFailed, serverText: null }
+      );
+    }
+    if (!signedIn) {
+      // Closing Apple's sheet lands here too, and says nothing.
+      busy.current = false;
+      setAppleLoading(false);
+      return;
+    }
+    finishSignIn();
+  };
+
   const handleEmailSignIn = async () => {
     if (busy.current) return;
     const trimmed = email.trim();
@@ -576,36 +630,62 @@ export default function AuthScreen() {
                 {/* First, while SMS cannot reach Saudi numbers: for most
                     people this is the way in that works. Outlined, so the
                     lime Send code stays the one filled button on the page. */}
-                {showGoogle ? (
-                  <>
-                    <Pressable
-                      onPress={handleGoogle}
-                      disabled={loading || googleLoading}
-                      style={({ pressed }) => [
-                        styles.googleButton,
-                        isRTL && styles.rowRTL,
-                        pressed && styles.pressed,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={t("continueWithGoogle")}
-                      accessibilityState={{ disabled: loading || googleLoading, busy: googleLoading }}
-                    >
-                      {googleLoading ? (
-                        <ActivityIndicator color={colors.ink} />
-                      ) : (
-                        <>
-                          <GoogleMark size={18} color={colors.ink} />
-                          <Text style={styles.googleButtonText}>{t("continueWithGoogle")}</Text>
-                        </>
-                      )}
-                    </Pressable>
+                {/* Apple first when it is offered: its guidelines ask for the
+                    Apple button to be at least as prominent as any other. */}
+                {showApple ? (
+                  <Pressable
+                    onPress={handleApple}
+                    disabled={loading || socialLoading}
+                    style={({ pressed }) => [
+                      styles.appleButton,
+                      isRTL && styles.rowRTL,
+                      pressed && styles.pressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("continueWithApple")}
+                    accessibilityState={{ disabled: loading || socialLoading, busy: appleLoading }}
+                  >
+                    {appleLoading ? (
+                      <ActivityIndicator color="#FFFFFF" />
+                    ) : (
+                      <>
+                        <Ionicons name="logo-apple" size={20} color="#FFFFFF" />
+                        <Text style={styles.appleButtonText}>{t("continueWithApple")}</Text>
+                      </>
+                    )}
+                  </Pressable>
+                ) : null}
 
-                    <View style={styles.orRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-                      <View style={styles.orLine} />
-                      <Text style={styles.orText}>{t("authOr")}</Text>
-                      <View style={styles.orLine} />
-                    </View>
-                  </>
+                {showGoogle ? (
+                  <Pressable
+                    onPress={handleGoogle}
+                    disabled={loading || socialLoading}
+                    style={({ pressed }) => [
+                      styles.googleButton,
+                      isRTL && styles.rowRTL,
+                      pressed && styles.pressed,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel={t("continueWithGoogle")}
+                    accessibilityState={{ disabled: loading || socialLoading, busy: googleLoading }}
+                  >
+                    {googleLoading ? (
+                      <ActivityIndicator color={colors.ink} />
+                    ) : (
+                      <>
+                        <GoogleMark size={18} color={colors.ink} />
+                        <Text style={styles.googleButtonText}>{t("continueWithGoogle")}</Text>
+                      </>
+                    )}
+                  </Pressable>
+                ) : null}
+
+                {showApple || showGoogle ? (
+                  <View style={styles.orRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                    <View style={styles.orLine} />
+                    <Text style={styles.orText}>{t("authOr")}</Text>
+                    <View style={styles.orLine} />
+                  </View>
                 ) : null}
 
                 <View style={styles.inputGroup}>
@@ -965,6 +1045,24 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
     fontSize: 16,
     fontFamily: fonts.semibold,
     color: colors.ink,
+  },
+  // Apple's black style, as its guidelines draw it: a solid fill with the
+  // logo and the title in white. Same size and radius as the Google button,
+  // with a gap between the two.
+  appleButton: {
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 12,
+    backgroundColor: "#000000",
+    marginBottom: 12,
+  },
+  appleButtonText: {
+    fontSize: 16,
+    fontFamily: fonts.semibold,
+    color: "#FFFFFF",
   },
   orRow: {
     flexDirection: "row",

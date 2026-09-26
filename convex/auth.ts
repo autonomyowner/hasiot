@@ -10,7 +10,7 @@ import authConfig from "./auth.config";
 import { getSmsProvider, localeFromAcceptLanguage } from "./sms/provider";
 import { tempEmailForPhone } from "./lib/contact";
 import { mirrorAuthUserUpdate, upsertUserFromAuth } from "./users/sync";
-import { canBookWithPhone, googleProvider } from "./lib/phoneRules";
+import { appleProvider, canBookWithPhone, googleProvider } from "./lib/phoneRules";
 import { nativeOAuth } from "./lib/nativeOAuth";
 
 const siteUrl = process.env.SITE_URL || "http://localhost:5173";
@@ -174,7 +174,9 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     // does not depend on SMS reaching Saudi numbers. Registered only when both
     // keys are set (lib/phoneRules.ts), which getPublicConfig reports to the
     // clients so they never show a button that cannot work.
-    ...(google ? { socialProviders: { google } } : {}),
+    // Apple: the iOS app's native sheet, verified by id token (no secret), so
+    // always on. Guideline 4.8 asks for it wherever Google is offered on iOS.
+    socialProviders: { apple: appleProvider(), ...(google ? { google } : {}) },
   });
 };
 

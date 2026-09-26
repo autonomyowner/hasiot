@@ -1,5 +1,8 @@
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
+import * as AppleAuthentication from "expo-apple-authentication";
+import * as Crypto from "expo-crypto";
+import { appleProfileName, isAppleCancel } from "./appleSignIn";
 import { OAUTH_CALLBACK_URL, oauthStartUrl, parseOAuthCallback } from "./oauthCallback";
 
 const CONVEX_SITE_URL = process.env.EXPO_PUBLIC_CONVEX_SITE_URL;
@@ -288,6 +291,87 @@ export async function signInWithGoogle(): Promise<{ token: string } | null> {
   }
 
   return { token: sessionToken };
+}
+
+/**
+ * Sign in (or up) with Apple — iOS only, with Apple's own sheet.
+ *
+ * No browser and no redirect: Apple hands the app a signed identity token,
+ * and Better Auth verifies it against Apple's public keys with the bundle id
+ * as audience (convex/lib/phoneRules.ts appleProvider), then answers with a
+ * session token exactly like a phone sign-in's.
+ *
+ * The nonce is fresh per attempt and sent to Apple and to the server
+ * unchanged; Apple copies it into the token and Better Auth checks the two
+ * match, so a token lifted from one sign-in cannot be replayed into another.
+ *
+ * Apple gives the person's name on the first sign-in only and never inside
+ * the token, so it is saved here straight away (best effort: a failure costs
+ * a name, not the sign-in). Null when the person closed Apple's sheet.
+ */
+export async function signInWithApple(): Promise<{ token: string } | null> {
+  const nonce = Crypto.randomUUID();
+  let credential: AppleAuthentication.AppleAuthenticationCredential;
+  try {
+    credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+      nonce,
+    });
+  } catch (error) {
+    if (isAppleCancel(error)) return null;
+    const err: AuthError = new Error("Apple sign-in failed");
+    err.code = "APPLE_FAILED";
+    throw err;
+  }
+  if (!credential.identityToken) {
+    const err: AuthError = new Error("Apple returned no identity token");
+    err.code = "APPLE_FAILED";
+    throw err;
+  }
+
+  const data: AuthResponse = await authFetch("/sign-in/social", {
+    provider: "apple",
+    idToken: { token: credential.identityToken, nonce },
+  });
+  const sessionToken = data.token || data.session?.token;
+  if (!sessionToken) throw new Error("No token received");
+
+  try {
+    await SecureStore.setItemAsync(SESSION_TOKEN_KEY, sessionToken);
+    if (data.user) {
+      await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(data.user));
+    }
+  } catch {
+    // As in verifyPhoneOtp.
+  }
+  const jwt = await fetchConvexToken(sessionToken);
+
+  const name = appleProfileName(credential.fullName);
+  if (jwt && name) await saveProfileName(jwt, name);
+
+  return { token: sessionToken };
+}
+
+/**
+ * users/mutations:updateProfile over Convex's HTTP API, with the JWT just
+ * issued — the app's Convex client has not picked up the new session yet at
+ * this point. Never throws.
+ */
+async function saveProfileName(jwt: string, name: { firstName?: string; lastName?: string }) {
+  const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
+  if (!convexUrl) return;
+  try {
+    await fetchWithTimeout(`${convexUrl}/api/mutation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify({ path: "users/mutations:updateProfile", args: name, format: "json" }),
+    });
+  } catch {
+    // The account works without it; the person can add a name in Settings.
+  }
 }
 
 export async function signUp(

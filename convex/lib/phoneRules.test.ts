@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { canBookWithPhone, googleProvider, isSaudiMobile, saudiSmsLive } from "./phoneRules";
+import { appleProvider, canBookWithPhone, googleProvider, isSaudiMobile, saudiSmsLive } from "./phoneRules";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -74,6 +74,15 @@ describe("googleProvider", () => {
       clientId: env.GOOGLE_CLIENT_ID,
       clientSecret: env.GOOGLE_CLIENT_SECRET,
       redirectURI: "https://example-123.eu-west-1.convex.site/api/auth/callback/google",
+    });
+  });
+});
+
+describe("appleProvider", () => {
+  it("verifies the iOS app's identity tokens, which are issued for the bundle id", () => {
+    expect(appleProvider()).toMatchObject({
+      clientId: "com.hasio.travel",
+      appBundleIdentifier: "com.hasio.travel",
     });
   });
 });

@@ -912,6 +912,10 @@ export const translations = {
     authOr: "or",
     authGoogleFailed: "Google sign-in didn't complete. Please try again.",
     authGoogleFailedTitle: "Couldn't sign in with Google",
+    // Sign in with Apple (iOS only). The button is continueWithApple, at the
+    // top — one of the titles Apple's guidelines allow on a custom button.
+    authAppleFailed: "Apple sign-in didn't complete. Please try again.",
+    authAppleFailedTitle: "Couldn't sign in with Apple",
     // Under the phone field while SMS cannot reach +966 numbers (the server's
     // SAUDI_SMS_LIVE switch). The first points at Google; the second is for a
     // build or backend where Google is not configured.
@@ -1019,7 +1023,8 @@ export const translations = {
     skip: "تخطي",
     // "Google" in Latin letters, as the brand writes itself, like "Hasio".
     continueWithGoogle: "المتابعة باستخدام Google",
-    continueWithApple: "المتابعة مع أبل",
+    // "Apple" in Latin script, like "Google" beside it: the brand on the button.
+    continueWithApple: "المتابعة باستخدام Apple",
     signOut: "تسجيل الخروج",
     signOutSubtitle: "الخروج من حسابك",
     guest: "ضيف",
@@ -1905,6 +1910,9 @@ export const translations = {
     authOr: "أو",
     authGoogleFailed: "لم يكتمل تسجيل الدخول عبر Google. حاول مرة أخرى.",
     authGoogleFailedTitle: "تعذّر الدخول عبر Google",
+    // Sign in with Apple — see the English block (the button is continueWithApple, at the top).
+    authAppleFailed: "لم يكتمل تسجيل الدخول عبر Apple. حاول مرة أخرى.",
+    authAppleFailedTitle: "تعذّر الدخول عبر Apple",
     saudiSmsUnavailableGoogle: "رسائل الرمز لا تصل إلى الأرقام السعودية حاليًا. تابع باستخدام Google.",
     saudiSmsUnavailableEmail: "رسائل الرمز لا تصل إلى الأرقام السعودية حاليًا. سجّل الدخول بالبريد الإلكتروني.",
     contactPhoneTitle: "أضف رقم جوالك",

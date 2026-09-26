@@ -195,3 +195,11 @@ describe("getAuthErrorKind — Google sign-in", () => {
     expect(getAuthErrorKind(new TypeError("Network request failed"))).toBe("network");
   });
 });
+
+describe("getAuthErrorKind — Apple sign-in", () => {
+  it("reads an APPLE_ code as an Apple failure", () => {
+    const error = Object.assign(new Error("Apple sign-in failed"), { code: "APPLE_FAILED" });
+    expect(getAuthErrorKind(error)).toBe("appleFailed");
+    expect(getAuthErrorKey(error)).toBe("authAppleFailed");
+  });
+});

@@ -59,3 +59,21 @@ application**. Authorised redirect URIs:
 `https://limitless-mockingbird-449.eu-west-1.convex.site/api/auth/callback/google` (dev). Consent
 screen: app name Hasio, support email, `hasio.net` as authorised domain, publish to production.
 Then `npx convex env set GOOGLE_CLIENT_ID …` and `GOOGLE_CLIENT_SECRET …` (dev, then `--prod`).
+
+## Sign in with Apple (added 2026-09-26, owner: "yes add sign in with apple too")
+
+Why: App Store guideline 4.8 — an iOS app that offers Google sign-in must also offer an equivalent
+privacy-focused login, in practice Sign in with Apple. It applies to the iOS app only.
+
+| # | Decision | Why |
+|---|---|---|
+| A1 | **iOS app only**, with Apple's native sheet (`expo-apple-authentication`). Not on Android, not on the website | 4.8 covers iOS apps; the web/Android flow needs a Services ID and a signed client secret from Nabil's Apple account for no review benefit |
+| A2 | The app sends Apple's identity token to Better Auth `POST /sign-in/social { provider: "apple", idToken: { token, nonce } }`; the server verifies it against Apple's keys with audience `com.hasio.travel` and returns a session token like a phone sign-in | No browser hop, no client secret, no custom scheme hand-off |
+| A3 | The provider is always registered (it needs no secret for id tokens); `getPublicConfig().appleAuth` says the backend supports it | An older backend never gets a button it cannot serve |
+| A4 | The build decides whether the app can use it: `HASIO_IOS_APPLE_SIGNIN="off"` (eas.json, next to `HASIO_IOS_PUSH`) builds without the `com.apple.developer.applesignin` entitlement, and `extra.appleSignIn` hides the button | `EXPO_NO_CAPABILITY_SYNC=1`: EAS will not add the capability, so a build with the entitlement fails to sign until Nabil enables *Sign in with Apple* on the App ID and the profile is regenerated — the same trip as push |
+| A5 | Apple gives the person's name only on the first sign-in and never in the token: the app saves it with `updateProfile` right after; the server's name split ignores anything that looks like an email (Better Auth falls back to the email as the display name) | Otherwise "abc@privaterelay.appleid.com" becomes a first name |
+| A6 | A fresh random nonce per attempt, passed to Apple and to the server unchanged | Replay protection; Better Auth compares it with the token's claim |
+
+Open (owner / Nabil): enable the capability + regenerate the profile, then remove `HASIO_IOS_APPLE_SIGNIN: "off"`;
+Apple also asks apps using Sign in with Apple to revoke the user's Apple tokens when the account is
+deleted (REST API with a key from Nabil's account) — not built.
