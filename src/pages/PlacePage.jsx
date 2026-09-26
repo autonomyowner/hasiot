@@ -106,7 +106,7 @@ function Message({ title, children }) {
   )
 }
 
-function ReviewsBlock({ summaryQ, reviewsQ, lang, t }) {
+function ReviewsBlock({ summaryQ, reviewsQ, isHotel, lang, t }) {
   const failed = Boolean(summaryQ.error || reviewsQ.error)
   if (failed) {
     const retry = () => {
@@ -134,7 +134,11 @@ function ReviewsBlock({ summaryQ, reviewsQ, lang, t }) {
       </section>
     )
   }
-  return <Reviews summary={summaryQ.data} reviews={reviewsQ.data} lang={lang} kind="stay" />
+  // `kind` only picks the verified label. Any completed booking at a place
+  // verifies a review (convex/reviews/service.ts isVerifiedStay), and at a
+  // restaurant or an event that was a table or a ticket, not a stay: those
+  // read "Verified booking".
+  return <Reviews summary={summaryQ.data} reviews={reviewsQ.data} lang={lang} kind={isHotel ? 'stay' : 'service'} />
 }
 
 function Place({ listing, summaryQ, reviewsQ, bookable, lang, t }) {
@@ -237,7 +241,7 @@ function Place({ listing, summaryQ, reviewsQ, bookable, lang, t }) {
 
   const rest = (
     <div className="bk-section pl-rest">
-      <ReviewsBlock summaryQ={summaryQ} reviewsQ={reviewsQ} lang={lang} t={t} />
+      <ReviewsBlock summaryQ={summaryQ} reviewsQ={reviewsQ} isHotel={isHotel} lang={lang} t={t} />
     </div>
   )
 
