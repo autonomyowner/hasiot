@@ -49,7 +49,7 @@ export function formatMinutes(minutes, lang) {
 
 /**
  * The change against the previous period, or null when both are zero (nothing
- * to compare). From zero to something is "new", not "+∞%".
+ * to compare). From zero to something is "up from 0", not "+∞%".
  * `direction` is 'up' | 'down' | 'flat' | 'new'.
  */
 export function formatChange(current, previous, lang, { lowerIsBetter = false } = {}) {
@@ -58,7 +58,9 @@ export function formatChange(current, previous, lang, { lowerIsBetter = false } 
   const c = current
   const p = previous ?? 0
   if (c === 0 && p === 0) return null
-  if (p === 0) return { text: lang === 'en' ? 'new' : 'جديد', direction: 'new', tone: 'good' }
+  // "new" alone read as a label on every card of a young account; this says
+  // what it means — the previous period had none.
+  if (p === 0) return { text: lang === 'en' ? 'up from 0' : 'ارتفاع من 0', direction: 'new', tone: 'good' }
   const pct = Math.round(((c - p) / p) * 100)
   if (pct === 0) return { text: '0%', direction: 'flat', tone: 'plain' }
   // `tone` is what the colour follows: for a response time, going up is worse.

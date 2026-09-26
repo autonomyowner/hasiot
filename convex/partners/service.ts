@@ -389,9 +389,12 @@ const digitsOf = (s: string | undefined | null) => (s ?? "").replace(/\D/g, "");
 export async function listGuestsFor(
   ctx: Reader,
   user: Doc<"users">,
-  args: { search?: string; tag?: string; sort?: "recent" | "spent" | "bookings" }
+  args: { search?: string; tag?: string; sort?: "recent" | "spent" | "bookings"; now?: number }
 ) {
   const kind = requirePartner(user);
+  // A confirmed stay that has not begun is booked, not visited: the list
+  // used to show next month's arrival as a guest's "last visit".
+  const today = todayRiyadhISO(args.now ?? Date.now());
   const { rows, truncated } = await partnerBookings(ctx, user, kind);
 
   type Acc = {
@@ -417,7 +420,7 @@ export async function listGuestsFor(
     if (isWon(b)) {
       acc.spent += b.totalAmount ?? 0;
       const visit = b.checkIn ?? b.date;
-      if (visit && (!acc.lastVisit || visit > acc.lastVisit)) acc.lastVisit = visit;
+      if (visit && visit <= today && (!acc.lastVisit || visit > acc.lastVisit)) acc.lastVisit = visit;
     }
   }
 

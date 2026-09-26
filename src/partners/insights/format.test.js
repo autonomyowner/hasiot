@@ -53,8 +53,8 @@ describe('formatChange', () => {
     expect(formatChange(100, 100, 'en')).toMatchObject({ text: '0%', direction: 'flat' })
   })
   it('calls growth from zero new, and has nothing to say about zero to zero', () => {
-    expect(formatChange(3, 0, 'en')).toMatchObject({ text: 'new', direction: 'new' })
-    expect(formatChange(3, 0, 'ar').text).toBe('جديد')
+    expect(formatChange(3, 0, 'en')).toMatchObject({ text: 'up from 0', direction: 'new' })
+    expect(formatChange(3, 0, 'ar').text).toBe('ارتفاع من 0')
     expect(formatChange(0, 0, 'en')).toBeNull()
   })
   it('has nothing to say when this period has no value at all', () => {

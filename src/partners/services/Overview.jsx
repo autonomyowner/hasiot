@@ -5,20 +5,21 @@ import { usePartnerLang, pick } from '../lang'
 import { usePartnerGate } from '../usePartnerGate'
 import { ErrorState, Icon, Kpi, SkeletonKpis } from '../components/Ui'
 import { ownerStatusOf } from './servicePayload'
-import { STATUS_LABELS } from './labels'
+import { STATUS_LABELS, cityName, priceText, serviceTitle } from './labels'
+import BookingPreview from '../components/BookingPreview'
+import { dayPart } from '../lib/bookingText'
 
 const translations = {
   en: {
     title: 'Overview',
+    greet: { morning: 'Good morning', afternoon: 'Good afternoon', evening: 'Good evening' },
     subtitle: 'Your services and bookings at a glance.',
+    noPrice: 'No price — shows Contact, not Book',
     pending: 'Requests waiting',
     upcoming: 'Upcoming',
     completedMonth: 'Completed this month',
     revenueMonth: 'Earned this month',
     services: 'Services',
-    answer: 'Answer requests',
-    answerHint: 'A request not answered within 48 hours expires.',
-    noRequests: 'No requests waiting.',
     byStatus: 'Your services',
     manage: 'Manage services',
     add: 'Add a service',
@@ -29,15 +30,14 @@ const translations = {
   },
   ar: {
     title: 'نظرة عامة',
+    greet: { morning: 'صباح الخير', afternoon: 'مساء الخير', evening: 'مساء الخير' },
     subtitle: 'خدماتك وحجوزاتك في لمحة.',
+    noPrice: 'بلا سعر — يظهر «تواصل» بدل «احجز»',
     pending: 'طلبات بانتظارك',
     upcoming: 'القادمة',
     completedMonth: 'المنجزة هذا الشهر',
     revenueMonth: 'دخل هذا الشهر',
     services: 'الخدمات',
-    answer: 'الرد على الطلبات',
-    answerHint: 'ينتهي الطلب إن لم تردّ عليه خلال 48 ساعة.',
-    noRequests: 'لا توجد طلبات بانتظارك.',
     byStatus: 'خدماتك',
     manage: 'إدارة الخدمات',
     add: 'إضافة خدمة',
@@ -57,11 +57,15 @@ function money(amount, lang) {
 export default function Overview() {
   const { lang } = usePartnerLang()
   const t = pick(translations, lang)
-  const { guard } = usePartnerGate('services')
+  const { guard, user } = usePartnerGate('services')
   const skip = guard ? 'skip' : {}
   const stats = useQuerySafe(api.bookings.queries.getProviderStats, skip)
   const services = useQuerySafe(api.services.queries.getMyServices, skip)
+  const bookings = useQuerySafe(api.bookings.queries.getProviderBookings, skip)
   if (guard) return guard
+
+  const comma = lang === 'ar' ? '، ' : ', '
+  const hello = t.greet[dayPart(new Date().getHours())] + (user?.firstName ? comma + user.firstName : '')
 
   const error = stats.error || services.error
   if (error) return <ErrorState title={t.errorTitle} retryLabel={t.retry} onRetry={() => window.location.reload()} />
@@ -69,6 +73,7 @@ export default function Overview() {
     return (
       <div className="p-stack">
         <div>
+          <p className="p-greet">{hello}</p>
           <h1 className="p-title">{t.title}</h1>
           <p className="p-subtitle" style={{ margin: 0 }}>{t.subtitle}</p>
         </div>
@@ -79,11 +84,6 @@ export default function Overview() {
 
   const s = stats.data ?? { pending: 0, upcoming: 0, completedMonth: 0, revenueMonth: 0, services: 0 }
   const rows = services.data ?? []
-  const counts = {}
-  for (const row of rows) {
-    const status = ownerStatusOf(row.status)
-    counts[status] = (counts[status] ?? 0) + 1
-  }
   const unpriced = rows.some((row) => row.price === undefined || row.price === null)
   const statusLabels = STATUS_LABELS[lang === 'en' ? 'en' : 'ar']
 
@@ -97,6 +97,7 @@ export default function Overview() {
   return (
     <div className="p-stack">
       <div>
+        <p className="p-greet">{hello}</p>
         <h1 className="p-title">{t.title}</h1>
         <p className="p-subtitle" style={{ margin: 0 }}>{t.subtitle}</p>
       </div>
@@ -108,17 +109,7 @@ export default function Overview() {
         ))}
       </div>
 
-      <Link to="/partners/services/bookings" className="p-choice">
-        <span className="p-choice-icon"><Icon name="calendar" /></span>
-        <span className="p-choice-body">
-          <span className="p-choice-title">
-            {t.answer}
-            {s.pending > 0 && <span className="p-badge p-badge-pending" style={{ marginInlineStart: 8 }}>{s.pending}</span>}
-          </span>
-          <span className="p-choice-hint">{s.pending > 0 ? t.answerHint : t.noRequests}</span>
-        </span>
-        <Icon name="chevron" className="p-chevron" />
-      </Link>
+      <BookingPreview bookings={bookings.data} kind="service" path="/partners/services/bookings" />
 
       <div className="p-card p-stack">
         <div className="p-row" style={{ justifyContent: 'space-between' }}>
@@ -131,15 +122,31 @@ export default function Overview() {
         {rows.length === 0 ? (
           <p className="p-muted" style={{ margin: 0 }}>{t.none}</p>
         ) : (
-          <div className="p-row">
-            {['approved', 'pending', 'rejected', 'suspended']
-              .filter((status) => counts[status])
-              .map((status) => (
-                <span key={status} className={`p-badge p-svc-status-${status}`}>
-                  {statusLabels[status]} · {counts[status]}
-                </span>
-              ))}
-          </div>
+          <ul className="p-items-list">
+            {rows.map((row) => {
+              const status = ownerStatusOf(row.status)
+              const price = priceText(row.price, row.priceUnit, lang)
+              return (
+                <li key={row._id}>
+                  <Link className="p-item" to={`/partners/services/mine/${row._id}`}>
+                    <span className="p-item-photo">
+                      {row.images?.[0] ? <img src={row.images[0]} alt="" loading="lazy" /> : <Icon name="briefcase" size={22} />}
+                    </span>
+                    <span className="p-item-body">
+                      <span className="p-item-name">{serviceTitle(row, lang) || '—'}</span>
+                      <span className="p-item-meta">
+                        <span className={`p-badge p-svc-status-${status}`}>{statusLabels[status]}</span>
+                        {row.city && <span>{cityName(row.city, lang)}</span>}
+                      </span>
+                      <span className="p-item-meta">
+                        {price ? <span className="p-price">{price}</span> : <span>{t.noPrice}</span>}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
         )}
         {(rows.length === 0 || unpriced) && <p className="p-note" style={{ margin: 0 }}>{t.priceHint}</p>}
       </div>

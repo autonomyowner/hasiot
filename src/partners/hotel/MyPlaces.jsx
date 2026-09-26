@@ -10,6 +10,7 @@ import { errorText } from '../lib/errors'
 import { EmptyState, SkeletonList, Spinner } from '../components/Ui'
 import { cityLabel } from './cities'
 import { kindOfType, ownerStatusOf } from './placePayload'
+import { formatMoney } from '../lib/bookingText'
 
 const translations = {
   en: {
@@ -27,6 +28,8 @@ const translations = {
     noPhoto: 'No photo',
     reason: 'Reason:',
     fixHint: 'Edit it and it goes back to review.',
+    perNight: '/ night',
+    notBookable: 'No nightly price yet — travellers can see it but not book. Edit to add one.',
     status: { pending: 'In review', approved: 'Live', rejected: 'Not approved', suspended: 'Suspended' },
     type: { hotel: 'Stay', attraction: 'Place to visit', restaurant: 'Restaurant', event: 'Event', tour: 'Tour' },
   },
@@ -45,6 +48,8 @@ const translations = {
     noPhoto: 'لا صورة',
     reason: 'السبب:',
     fixHint: 'عدّله ليعود إلى المراجعة.',
+    perNight: '/ الليلة',
+    notBookable: 'لا يوجد سعر لليلة بعد — يراه المسافرون لكن لا يمكنهم الحجز. عدّله لإضافته.',
     status: { pending: 'قيد المراجعة', approved: 'منشور', rejected: 'مرفوض', suspended: 'موقوف' },
     type: { hotel: 'إقامة', attraction: 'مكان للزيارة', restaurant: 'مطعم', event: 'فعالية', tour: 'جولة' },
   },
@@ -131,6 +136,16 @@ export default function MyPlaces() {
                   <span className="p-muted p-small">
                     {t.type[l.type] ?? l.type} · {cityLabel(l.city, lang)}
                   </span>
+                  {/* A stay is bookable only with a nightly price (isBookableStay). */}
+                  {l.type === 'hotel' && (
+                    <span className="p-small">
+                      {typeof l.pricePerNight === 'number' ? (
+                        <><span className="p-price">{formatMoney(l.pricePerNight, l.currency, lang)}</span> <span className="p-muted">{t.perNight}</span></>
+                      ) : (
+                        <span className="p-muted">{t.notBookable}</span>
+                      )}
+                    </span>
+                  )}
                   {(status === 'rejected' || status === 'suspended') && (
                     <p className="p-note h-place-note">
                       {reason && <>{t.reason} {reason} </>}

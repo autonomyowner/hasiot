@@ -257,12 +257,21 @@ describe("listGuestsFor", () => {
 
   it("groups one row per guest with counts, spend and last visit", async () => {
     const { t, host, guest, ali } = await crm();
-    const { guests } = await t.run(async (ctx) => listGuestsFor(ctx, await ctxUser(ctx, host), {}));
+    const { guests } = await t.run(async (ctx) => listGuestsFor(ctx, await ctxUser(ctx, host), { now: NOW }));
     expect(guests.map((g) => g.guestId)).toEqual([guest, ali]); // recent: guest's last request is newest
     expect(guests[0]).toMatchObject({ name: "Nora Salem", phone: "+966501112222", bookings: 2, completed: 1, spent: 900, lastVisit: "2026-07-20", tags: ["VIP"], hasNote: true });
     expect(guests[0].firstAt).toBe(daysAgo(50));
     expect(guests[0].lastAt).toBe(daysAgo(3));
-    expect(guests[1]).toMatchObject({ name: "Ali Omar", bookings: 3, completed: 0, spent: 3100, lastVisit: "2026-09-25", tags: [], hasNote: false });
+    // Ali's two confirmed stays are still ahead (NOW is 3 September): booked
+    // and paid for, but not a visit yet.
+    expect(guests[1]).toMatchObject({ name: "Ali Omar", bookings: 3, completed: 0, spent: 3100, lastVisit: null, tags: [], hasNote: false });
+  });
+
+  it("counts a stay as the last visit only once it has begun", async () => {
+    const { t, host, ali } = await crm();
+    const later = NOW + 27 * DAY; // 30 September
+    const { guests } = await t.run(async (ctx) => listGuestsFor(ctx, await ctxUser(ctx, host), { now: later }));
+    expect(guests.find((g) => g.guestId === ali)?.lastVisit).toBe("2026-09-25");
   });
 
   it("sorts by spend and by bookings", async () => {

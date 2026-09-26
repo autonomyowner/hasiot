@@ -8,6 +8,7 @@ import { actionsFor, partitionBookings, shownStatus } from '../lib/bookings'
 import { errorText } from '../lib/errors'
 import { formatPhone } from '../lib/phone'
 import { EmptyState, ErrorState, Icon, Ltr, SkeletonList, Spinner } from './Ui'
+import { formatDay, formatMoney } from '../lib/bookingText'
 
 const translations = {
   en: {
@@ -114,24 +115,6 @@ const translations = {
 function count(n, forms) {
   const i = n === 1 ? 0 : n === 2 ? 1 : n >= 3 && n <= 10 ? 2 : 3
   return forms[i].replace('{n}', String(n))
-}
-
-function formatDay(iso, lang) {
-  const ts = Date.parse(`${iso}T00:00:00Z`)
-  if (Number.isNaN(ts)) return iso ?? ''
-  // Latin digits in Arabic too, like every other number beside prices and codes.
-  const locale = lang === 'ar' ? 'ar-SA-u-nu-latn-ca-gregory' : 'en-GB'
-  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(ts)
-}
-
-function formatMoney(amount, currency, lang) {
-  if (typeof amount !== 'number') return ''
-  const locale = lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US'
-  try {
-    return new Intl.NumberFormat(locale, { style: 'currency', currency: currency || 'SAR', maximumFractionDigits: 0 }).format(amount)
-  } catch {
-    return `${amount} ${currency || 'SAR'}`
-  }
 }
 
 function useMinuteClock() {

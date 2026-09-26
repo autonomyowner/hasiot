@@ -1682,3 +1682,63 @@ a.p-choice { text-decoration: none; }
 :is(.partners:has(.p-shell), .partners.p-ins-drawer) :is(.p-svc-cover, .p-svc-photos .admin-uploader-thumb) { background: rgba(239, 231, 214, 0.1); }
 .partners:has(.p-shell) .p-svc-photos .admin-uploader-thumb-actions button.danger { background: #f5f2ea; color: #14210f; }
 .partners:has(.p-shell) .p-step.is-current .p-step-dot { color: #0b1611; }
+
+/* ---- overview: greeting, what needs you, your places ---------------------
+   The overview used to be four numbers and two buttons. It now leads with
+   the work: the requests waiting for an answer and what is coming up (both
+   open the Bookings page, where the actions live), then the places or
+   services themselves with photo, status and price. */
+.p-greet { margin: 0 0 4px; font-size: 13.5px; font-weight: 500; color: var(--p-muted); }
+.p-preview-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+@media (max-width: 1100px) { .p-preview-grid { grid-template-columns: 1fr; } }
+.p-preview { display: flex; flex-direction: column; gap: 10px; }
+.p-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.p-preview-head .p-h2 { display: inline-flex; align-items: center; gap: 8px; }
+.p-preview-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.p-preview-row {
+  display: grid;
+  grid-template-columns: minmax(118px, max-content) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--p-subtle);
+  color: var(--p-ink);
+  text-decoration: none;
+  transition: background-color 160ms var(--p-ease);
+}
+.p-preview-row:hover { background: rgba(255, 255, 255, 0.08); }
+.p-preview-row:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
+.p-preview-when { font-size: 13px; font-weight: 600; color: var(--p-green-deep); font-variant-numeric: tabular-nums; }
+.p-preview-main { display: flex; flex-direction: column; min-width: 0; }
+.p-preview-main > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-preview-total { font-weight: 600; font-variant-numeric: tabular-nums; }
+.p-preview-empty { margin: 0; display: flex; align-items: center; gap: 10px; padding: 14px 12px; border-radius: 12px; background: var(--p-subtle); color: var(--p-secondary); font-size: 13.5px; }
+.p-preview-empty .p-icon { color: var(--p-green); flex: none; }
+@media (max-width: 480px) {
+  .p-preview-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .p-preview-when { grid-column: 1 / -1; }
+}
+
+.p-items { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+.p-items-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.p-items-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.p-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--p-subtle);
+  border: 1px solid var(--p-hairline);
+  color: var(--p-ink);
+  text-decoration: none;
+  transition: background-color 160ms var(--p-ease), border-color 160ms var(--p-ease);
+}
+a.p-item:hover { background: rgba(255, 255, 255, 0.08); border-color: var(--p-border); }
+.p-item-photo { flex: none; width: 64px; height: 64px; border-radius: 10px; overflow: hidden; background: rgba(255, 255, 255, 0.06); display: grid; place-items: center; color: var(--p-muted); }
+.p-item-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.p-item-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.p-item-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.p-item-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--p-secondary); }
+.p-price { font-weight: 600; color: var(--p-ink); font-variant-numeric: tabular-nums; }
