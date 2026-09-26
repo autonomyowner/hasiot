@@ -8,6 +8,7 @@ import { useConfirm } from '../admin/components/ConfirmDialog'
 import { PartnerLangContext, pick } from './lang'
 import { PartnerConfirmContext } from './confirm'
 import { partnerRoute } from './lib/gate'
+import { formatPhone } from './lib/phone'
 import { Icon, PageSpinner } from './components/Ui'
 import { InsightIcon } from './insights/InsightsUi'
 // Tailwind (with its preflight) is what the shared dialog and toasts are
@@ -129,8 +130,14 @@ function NavSheet({ open, onClose, label, closeLabel, returnFocusRef, children }
       }
     }
     document.addEventListener('keydown', onKey)
+    // Widening past the breakpoint hides the sheet with CSS but would leave the
+    // body scroll-locked; close it properly instead.
+    const wide = window.matchMedia('(min-width: 1024px)')
+    const onWide = (e) => { if (e.matches) onClose() }
+    wide.addEventListener('change', onWide)
     return () => {
       document.removeEventListener('keydown', onKey)
+      wide.removeEventListener('change', onWide)
       document.body.style.overflow = prevOverflow
       returnTo?.focus()
     }
@@ -238,7 +245,10 @@ export default function PartnersLayout() {
     </a>
   )
 
-  const displayName = user?.name || user?.email || user?.phone || ''
+  // Phone sign-ups carry a synthetic @phone.hasio.xyz email, never shown to anyone.
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim()
+  const realEmail = user?.email && !user.email.endsWith('@phone.hasio.xyz') ? user.email : ''
+  const displayName = fullName || user?.name || (user?.phone ? formatPhone(user.phone) : '') || realEmail
   const account = user && (
     <div className="p-account">
       <span className="p-account-avatar" aria-hidden="true">
