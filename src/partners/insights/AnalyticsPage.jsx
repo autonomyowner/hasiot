@@ -129,7 +129,7 @@ function HeadlineCard({ label, value, change, hint, icon, index }) {
   return (
     <Kpi className="p-ins-stat" label={label} value={value} icon={icon} index={index}>
       {change ? (
-        <span className={`p-ins-change is-${change.direction}`} title={hint}>
+        <span className={`p-ins-change is-${change.tone}`} title={hint}>
           <bdi dir="ltr">{change.text}</bdi>
         </span>
       ) : (
@@ -212,12 +212,12 @@ export default function AnalyticsPage({ role }) {
   }
 
   const money = (n) => formatMoney(n, lang)
-  const change = (key) => formatChange(totals[key], previous[key], lang)
+  const change = (key, opts) => formatChange(totals[key], previous[key], lang, opts)
   const cards = [
     { key: 'requests', value: formatCount(totals.requests), change: change('requests') },
     { key: 'confirmed', value: formatCount(totals.confirmed), change: change('confirmed') },
     { key: 'acceptanceRate', value: formatPercent(totals.acceptanceRate), change: change('acceptanceRate') },
-    { key: 'medianResponse', value: formatMinutes(totals.medianResponseMinutes, lang), change: change('medianResponseMinutes') },
+    { key: 'medianResponse', value: formatMinutes(totals.medianResponseMinutes, lang), change: change('medianResponseMinutes', { lowerIsBetter: true }) },
     { key: 'revenue', value: money(totals.revenue), change: change('revenue') },
     { key: 'avgBookingValue', value: money(totals.avgBookingValue), change: change('avgBookingValue') },
     ...(isHotel ? [{ key: 'nightsSold', value: formatCount(totals.nightsSold), change: change('nightsSold') }] : []),

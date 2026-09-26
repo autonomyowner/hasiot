@@ -1,13 +1,12 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useLanguage } from '../hooks/useLanguage'
-import { useCurrentUser } from '../hooks/useCurrentUser'
 import { authClient } from '../lib/auth-client'
 import { Toaster } from '../admin/ui/sonner'
 import { useConfirm } from '../admin/components/ConfirmDialog'
 import { PartnerLangContext, pick } from './lang'
 import { PartnerConfirmContext } from './confirm'
-import { partnerRoute } from './lib/gate'
+import { usePartnerRoute } from './usePartnerGate'
 import { formatPhone } from './lib/phone'
 import { Icon, PageSpinner } from './components/Ui'
 import { InsightIcon } from './insights/InsightsUi'
@@ -198,8 +197,7 @@ function navFor(route, user, t) {
 export default function PartnersLayout() {
   const { lang, toggleLang, isRtl } = useLanguage()
   const t = pick(translations, lang)
-  const { user, isLoading, isAuthenticated } = useCurrentUser()
-  const route = partnerRoute({ isLoading, isAuthenticated, user })
+  const { user, isAuthenticated, route } = usePartnerRoute()
   const navigate = useNavigate()
   const { confirm, confirmDialog } = useConfirm()
 

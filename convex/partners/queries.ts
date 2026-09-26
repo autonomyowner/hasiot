@@ -1,8 +1,17 @@
 import { ConvexError, v } from "convex/values";
 import { query } from "../_generated/server";
-import { getAuthenticatedAppUser } from "../auth";
+import { authComponent, getAuthenticatedAppUser } from "../auth";
 import { AUTH_ERRORS } from "../lib/errors";
-import { analyticsFor, getGuestFor, listGuestsFor } from "./service";
+import { accountStatusFor, analyticsFor, getGuestFor, listGuestsFor } from "./service";
+
+/** Signed out / no account / suspended (with the admin's reason) / active. Never throws. */
+export const getAccountStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const authUser = await authComponent.safeGetAuthUser(ctx).catch(() => null);
+    return await accountStatusFor(ctx, authUser ?? null);
+  },
+});
 
 /** Partner analytics and guest CRM reads. Rules live in ./service.ts. */
 

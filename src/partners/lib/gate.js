@@ -8,13 +8,18 @@
  * and `accountRejectionReason` is cleared by a new upload (saveBusinessDocForUser),
  * so "rejected" only ever means the current document was turned down.
  */
-export function partnerRoute({ isLoading, isAuthenticated, user }) {
+export function partnerRoute({ isLoading, isAuthenticated, user, accountStatus }) {
   if (isLoading) return 'loading'
   if (!isAuthenticated) return 'login'
   // Signed in but the users query has not answered yet.
   if (user === undefined) return 'loading'
-  // Signed in with no row yet: the auth trigger has not written it. Treat as new.
-  if (!user) return 'join'
+  // Signed in with no user: a suspended account reads exactly like a brand-new
+  // one here (getAuthenticatedAppUser returns null for both), so ask which.
+  if (!user) {
+    if (accountStatus === undefined) return 'loading'
+    if (accountStatus?.status === 'suspended') return 'suspended'
+    return 'join'
+  }
 
   const role = user.role
   if (role === 'admin') return 'admin'
@@ -29,6 +34,7 @@ const PATHS = {
   login: '/partners',
   join: '/partners/join',
   verify: '/partners/verify',
+  suspended: '/partners/suspended',
   hotel: '/partners/hotel',
   services: '/partners/services',
   admin: '/admin',

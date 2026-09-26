@@ -1,5 +1,7 @@
 import { createElement } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { useQuery } from 'convex/react'
+import { api } from '../../convex/_generated/api'
 import { useCurrentUser } from '../hooks/useCurrentUser'
 import { dashboardPath, partnerRoute } from './lib/gate'
 import { PageSpinner } from './components/Ui'
@@ -17,10 +19,23 @@ import { PageSpinner } from './components/Ui'
  *
  * Returns `{ route, user, guard }`; a page renders `guard` when it is set.
  */
-export function usePartnerGate(expected) {
+/**
+ * The portal route for whoever is here, shared by the gate, the layout and the
+ * login page so they never disagree. The account-status query only runs in the
+ * one case getCurrentUser cannot settle: a session with no user (new sign-up,
+ * or a suspended account, which reads as null there).
+ */
+export function usePartnerRoute() {
   const { user, isLoading, isAuthenticated } = useCurrentUser()
+  const needsStatus = !isLoading && isAuthenticated && user === null
+  const accountStatus = useQuery(api.partners.queries.getAccountStatus, needsStatus ? {} : 'skip')
+  const route = partnerRoute({ isLoading, isAuthenticated, user, accountStatus })
+  return { route, user, isLoading, isAuthenticated, accountStatus }
+}
+
+export function usePartnerGate(expected) {
+  const { route, user } = usePartnerRoute()
   const location = useLocation()
-  const route = partnerRoute({ isLoading, isAuthenticated, user })
   const allowed = Array.isArray(expected) ? expected : [expected]
 
   let guard = null

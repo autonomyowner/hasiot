@@ -22,6 +22,7 @@ const PartnersLayout = lazy(() => import('./partners/PartnersLayout.jsx'))
 const PartnerLogin = lazy(() => import('./partners/pages/LoginPage.jsx'))
 const PartnerJoin = lazy(() => import('./partners/pages/JoinPage.jsx'))
 const PartnerVerify = lazy(() => import('./partners/pages/VerifyPage.jsx'))
+const PartnerSuspended = lazy(() => import('./partners/pages/SuspendedPage.jsx'))
 const PartnerHotel = lazy(() => import('./partners/hotel/HotelRoutes.jsx'))
 const PartnerServices = lazy(() => import('./partners/services/ServicesRoutes.jsx'))
 
@@ -44,6 +45,7 @@ createRoot(document.getElementById('root')).render(
                 <Route index element={<PartnerLogin />} />
                 <Route path="join" element={<PartnerJoin />} />
                 <Route path="verify" element={<PartnerVerify />} />
+                <Route path="suspended" element={<PartnerSuspended />} />
                 <Route path="hotel/*" element={<PartnerHotel />} />
                 <Route path="services/*" element={<PartnerServices />} />
                 <Route path="*" element={<Navigate to="/partners" replace />} />

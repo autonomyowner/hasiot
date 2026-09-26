@@ -52,15 +52,21 @@ export function formatMinutes(minutes, lang) {
  * to compare). From zero to something is "new", not "+∞%".
  * `direction` is 'up' | 'down' | 'flat' | 'new'.
  */
-export function formatChange(current, previous, lang) {
-  const c = current ?? 0
+export function formatChange(current, previous, lang, { lowerIsBetter = false } = {}) {
+  // No value this period (a rate with nothing to divide) is not a 100% drop.
+  if (current === null || current === undefined) return null
+  const c = current
   const p = previous ?? 0
   if (c === 0 && p === 0) return null
-  if (p === 0) return { text: lang === 'en' ? 'new' : 'جديد', direction: 'new' }
+  if (p === 0) return { text: lang === 'en' ? 'new' : 'جديد', direction: 'new', tone: 'good' }
   const pct = Math.round(((c - p) / p) * 100)
-  if (pct === 0) return { text: '0%', direction: 'flat' }
+  if (pct === 0) return { text: '0%', direction: 'flat', tone: 'plain' }
+  // `tone` is what the colour follows: for a response time, going up is worse.
+  const tone = (pct > 0) !== lowerIsBetter ? 'good' : 'plain'
   // U+2212 minus: a hyphen is shorter than the plus sign and reads as a dash.
-  return pct > 0 ? { text: `+${pct}%`, direction: 'up' } : { text: `−${Math.abs(pct)}%`, direction: 'down' }
+  return pct > 0
+    ? { text: `+${pct}%`, direction: 'up', tone }
+    : { text: `−${Math.abs(pct)}%`, direction: 'down', tone }
 }
 
 const MONTHS = {

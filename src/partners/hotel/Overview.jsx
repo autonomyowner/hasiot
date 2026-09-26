@@ -73,7 +73,7 @@ export default function Overview() {
     const s = ownerStatusOf(l.status)
     counts[s] = (counts[s] ?? 0) + 1
   }
-  const number = (n) => new Intl.NumberFormat(lang === 'ar' ? 'ar-SA' : 'en-US').format(n ?? 0)
+  const number = (n) => new Intl.NumberFormat(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US').format(n ?? 0)
   const currency = stats?.currency === 'SAR' || !stats?.currency ? (lang === 'ar' ? 'ر.س' : 'SAR') : stats.currency
 
   return (

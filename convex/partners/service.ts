@@ -44,6 +44,41 @@ type Reader = Pick<QueryCtx, "db">;
 type Booking = Doc<"bookings">;
 type PartnerKind = "listing" | "service";
 
+export type AccountStatus =
+  | { status: "signed_out" }
+  | { status: "no_account" }
+  | { status: "suspended"; reason: string | null }
+  | { status: "active" };
+
+/**
+ * What the portal needs to know before routing a signed-in person, and which
+ * getCurrentUser cannot say: a suspended account reads as signed out there
+ * (getAuthenticatedAppUser returns null), which the portal would otherwise
+ * mistake for a new sign-up and send to Join. Same join as
+ * getAuthenticatedAppUser — authId first, then email for pre-trigger rows —
+ * and it reveals nothing about anyone but the caller.
+ */
+export async function accountStatusFor(
+  ctx: Reader,
+  authUser: { _id: string; email?: string | null } | null
+): Promise<AccountStatus> {
+  if (!authUser) return { status: "signed_out" };
+  const user =
+    (await ctx.db
+      .query("users")
+      .withIndex("by_authId", (q) => q.eq("authId", authUser._id))
+      .first()) ??
+    (authUser.email
+      ? await ctx.db
+          .query("users")
+          .withIndex("by_email", (q) => q.eq("email", authUser.email!))
+          .first()
+      : null);
+  if (!user) return { status: "no_account" };
+  if (user.isSuspended) return { status: "suspended", reason: user.suspendedReason ?? null };
+  return { status: "active" };
+}
+
 /**
  * Only an approved host or provider whose account is not suspended. The
  * refusal is the same for every reason, so the page need not tell a pending
@@ -55,11 +90,6 @@ export function requirePartner(user: Doc<"users">): PartnerKind {
     throw new ConvexError(PARTNER_ERRORS.NOT_PARTNER);
   }
   return user.role === "service_provider" ? "service" : "listing";
-}
-
-/** A host sees stays and slots, a provider service bookings — as getOwnerStats / getProviderStats split them. */
-function isOwnKind(kind: PartnerKind, booking: Pick<Booking, "kind">): boolean {
-  return kind === "service" ? booking.kind === "service" : booking.kind !== "service";
 }
 
 /** The partner's bookings, newest first, capped; `truncated` when the cap came back full. */
@@ -99,6 +129,13 @@ function shiftMonth(month: string, by: number): string {
   return `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, "0")}`;
 }
 
+/** `YYYY-MM-DD` one year back; 29 February becomes the 28th. */
+function sameDayLastYear(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(y - 1, m, 0)).getUTCDate();
+  return `${y - 1}-${String(m).padStart(2, "0")}-${String(Math.min(d, lastDay)).padStart(2, "0")}`;
+}
+
 type Window = { from: string; to: string };
 
 /**
@@ -113,7 +150,10 @@ export function periodWindows(period: Period, now: number) {
     const from = `${shiftMonth(month, -11)}-01`;
     return {
       current: { from, to: today },
-      previous: { from: `${shiftMonth(month, -23)}-01`, to: addDays(from, -1) },
+      // The same stretch a year earlier. Ending it on the day before `from`
+      // would make it twelve whole months against eleven and a bit, and every
+      // change early in a month would read as a drop.
+      previous: { from: `${shiftMonth(month, -23)}-01`, to: sameDayLastYear(today) },
       bucket: "month" as const,
     };
   }

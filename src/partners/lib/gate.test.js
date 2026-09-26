@@ -16,7 +16,15 @@ describe('partnerRoute', () => {
 
   it('treats a session without a users row as a new tourist', () => {
     // The auth trigger writes the row just after verify; until then there is nothing to gate on.
-    expect(signedIn(null)).toBe('join')
+    expect(partnerRoute({ isLoading: false, isAuthenticated: true, user: null, accountStatus: { status: 'no_account' } })).toBe('join')
+  })
+
+  it('tells a suspended account apart from a new one', () => {
+    // getCurrentUser reads a suspended account as null, exactly like a new sign-up.
+    const base = { isLoading: false, isAuthenticated: true, user: null }
+    expect(partnerRoute({ ...base, accountStatus: { status: 'suspended', reason: 'x' } })).toBe('suspended')
+    // Until the status answers, show nothing rather than flash Join.
+    expect(partnerRoute({ ...base, accountStatus: undefined })).toBe('loading')
   })
 
   it('sends a tourist (or no role) to join', () => {

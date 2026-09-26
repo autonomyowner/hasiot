@@ -48,14 +48,26 @@ describe('formatMinutes', () => {
 
 describe('formatChange', () => {
   it('reports growth and decline against the previous period', () => {
-    expect(formatChange(112, 100, 'en')).toEqual({ text: '+12%', direction: 'up' })
-    expect(formatChange(95, 100, 'en')).toEqual({ text: '−5%', direction: 'down' })
-    expect(formatChange(100, 100, 'en')).toEqual({ text: '0%', direction: 'flat' })
+    expect(formatChange(112, 100, 'en')).toMatchObject({ text: '+12%', direction: 'up' })
+    expect(formatChange(95, 100, 'en')).toMatchObject({ text: '−5%', direction: 'down' })
+    expect(formatChange(100, 100, 'en')).toMatchObject({ text: '0%', direction: 'flat' })
   })
   it('calls growth from zero new, and has nothing to say about zero to zero', () => {
-    expect(formatChange(3, 0, 'en')).toEqual({ text: 'new', direction: 'new' })
+    expect(formatChange(3, 0, 'en')).toMatchObject({ text: 'new', direction: 'new' })
     expect(formatChange(3, 0, 'ar').text).toBe('جديد')
     expect(formatChange(0, 0, 'en')).toBeNull()
+  })
+  it('has nothing to say when this period has no value at all', () => {
+    // An acceptance rate with nothing answered is null, not a 100% drop.
+    expect(formatChange(null, 0.8, 'en')).toBeNull()
+    expect(formatChange(undefined, 12, 'en')).toBeNull()
+  })
+  it('marks a change good or not by which way is better', () => {
+    expect(formatChange(112, 100, 'en').tone).toBe('good')
+    expect(formatChange(95, 100, 'en').tone).toBe('plain')
+    // A slower answer is worse, even though the number went up.
+    expect(formatChange(90, 30, 'en', { lowerIsBetter: true }).tone).toBe('plain')
+    expect(formatChange(30, 90, 'en', { lowerIsBetter: true }).tone).toBe('good')
   })
 })
 

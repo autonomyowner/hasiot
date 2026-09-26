@@ -13,11 +13,13 @@ import type { TestT } from "../test.utils";
 import type { Doc, Id } from "../_generated/dataModel";
 import { deleteAccountData } from "../users/mutations";
 import {
+  accountStatusFor,
   analyticsFor,
   getGuestFor,
   listGuestsFor,
   PARTNER_ERRORS,
   PARTNER_LIMITS,
+  periodWindows,
   requirePartner,
   saveGuestNoteFor,
 } from "./service";
@@ -379,3 +381,41 @@ describe("deleteAccountData and partner notes", () => {
 async function ctxUser(ctx: { db: { get: (id: Id<"users">) => Promise<Doc<"users"> | null> } }, id: Id<"users">) {
   return (await ctx.db.get(id))!;
 }
+
+describe("periodWindows", () => {
+  it("compares twelve months with the same stretch a year earlier, not a longer one", () => {
+    // NOW is 3 Sep 2026: the current window is Oct 2025 to 3 Sep 2026, so the
+    // previous one must stop on 3 Sep 2025 or every early-month delta reads low.
+    const w = periodWindows("12m", NOW);
+    expect(w.current).toEqual({ from: "2025-10-01", to: "2026-09-03" });
+    expect(w.previous).toEqual({ from: "2024-10-01", to: "2025-09-03" });
+  });
+
+  it("clamps a leap day to the end of February a year earlier", () => {
+    const leap = Date.UTC(2028, 1, 29, 9); // 29 Feb 2028, midday Riyadh
+    expect(periodWindows("12m", leap).previous.to).toBe("2027-02-28");
+  });
+
+  it("keeps day windows the same length back to back", () => {
+    const w = periodWindows("30d", NOW);
+    expect(w.current).toEqual({ from: "2026-08-05", to: "2026-09-03" });
+    expect(w.previous).toEqual({ from: "2026-07-06", to: "2026-08-04" });
+  });
+});
+
+describe("accountStatusFor", () => {
+  it("tells a suspended account apart from one with no row", async () => {
+    const t = makeT();
+    const suspended = await seedUser(t, { role: "business_owner", isApproved: true, authId: "auth-s", isSuspended: true });
+    await t.run((ctx) => ctx.db.patch(suspended, { suspendedReason: "Fake documents" }));
+    await seedUser(t, { role: "business_owner", isApproved: true, authId: "auth-a", email: "a@example.com" });
+    await t.run(async (ctx) => {
+      expect(await accountStatusFor(ctx, null)).toEqual({ status: "signed_out" });
+      expect(await accountStatusFor(ctx, { _id: "auth-s", email: "x@example.com" })).toEqual({ status: "suspended", reason: "Fake documents" });
+      expect(await accountStatusFor(ctx, { _id: "auth-a", email: "a@example.com" })).toEqual({ status: "active" });
+      // Rows from before the auth triggers are joined by email, as getAuthenticatedAppUser does.
+      expect(await accountStatusFor(ctx, { _id: "auth-new", email: "a@example.com" })).toEqual({ status: "active" });
+      expect(await accountStatusFor(ctx, { _id: "auth-none", email: "none@example.com" })).toEqual({ status: "no_account" });
+    });
+  });
+});

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { authClient } from '../../lib/auth-client'
-import { useCurrentUser } from '../../hooks/useCurrentUser'
 import { usePartnerLang, pick } from '../lang'
-import { dashboardPath, partnerRoute, safeNext } from '../lib/gate'
+import { usePartnerRoute } from '../usePartnerGate'
+import { dashboardPath, safeNext } from '../lib/gate'
 import { formatPhone, normalizePhone, toLatinDigits } from '../lib/phone'
 import { errorText } from '../lib/errors'
 import { Icon, Ltr, PageSpinner, Spinner } from '../components/Ui'
@@ -62,8 +62,7 @@ const translations = {
 export default function LoginPage() {
   const { lang } = usePartnerLang()
   const t = pick(translations, lang)
-  const { user, isLoading, isAuthenticated } = useCurrentUser()
-  const route = partnerRoute({ isLoading, isAuthenticated, user })
+  const { route } = usePartnerRoute()
   const [params] = useSearchParams()
 
   const [step, setStep] = useState('phone')
