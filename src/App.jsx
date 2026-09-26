@@ -120,7 +120,7 @@ const hotelUi = {
   ar: { book: 'احجز', night: '/ الليلة', sar: 'ر.س' },
 }
 
-function HotelCard({ h, lang }) {
+function HotelCard({ h, lang, hidden = false }) {
   const w = hotelUi[lang]
   const city = canonicalCity(h.city)
   const name = lang === 'ar' ? h.name_ar || h.name_en : h.name_en
@@ -128,8 +128,8 @@ function HotelCard({ h, lang }) {
   const external = href.startsWith('http')
   const price = Math.round(h.pricePerNight).toLocaleString(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US')
   return (
-    <article className="place-card hotel-card">
-      <img src={h.images[0]} alt={name} loading="lazy" width="520" height="880" />
+    <article className="place-card hotel-card" aria-hidden={hidden || undefined}>
+      <img src={h.images[0]} alt={hidden ? '' : name} loading="lazy" width="520" height="880" />
       <div className="place-shade" />
       <div className="place-body">
         <span className="hotel-city">{lang === 'ar' ? CITY_LABELS[city] || city : city}</span>
@@ -138,10 +138,43 @@ function HotelCard({ h, lang }) {
           <p className="hotel-price">
             {lang === 'ar' ? <><b>{price}</b> {w.sar}</> : <>{w.sar} <b>{price}</b></>} <small>{w.night}</small>
           </p>
-          <a className="hotel-book" href={href} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{w.book}</a>
+          <a className="hotel-book" href={href} tabIndex={hidden ? -1 : undefined} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{w.book}</a>
         </div>
       </div>
     </article>
+  )
+}
+
+// Two edge-to-edge rows of hotels drifting in opposite directions. Each row is
+// one "half" rendered twice and moved by exactly -50% of its own width, so the
+// loop point lands on an identical frame and the seam never shows. A half is
+// padded out by repeating its hotels until it is wider than any screen
+// (MIN_HALF cards × ~280px ≈ 2800px) — with ten hotels a single set would leave
+// an empty stretch on a wide monitor. The motion is a CSS transform, so it runs
+// on the compositor and costs no JS per frame.
+const MIN_HALF = 10
+
+function HotelMarquee({ hotels, lang, label }) {
+  const rows = [hotels.filter((_, i) => i % 2 === 0), hotels.filter((_, i) => i % 2 === 1)]
+    .map((row) => (row.length ? row : hotels))
+  return (
+    <div className="marquee" role="region" aria-label={label}>
+      {rows.map((row, r) => {
+        const half = []
+        while (half.length < MIN_HALF) half.push(...row)
+        return (
+          <div className="marquee-row" key={r}>
+            <div className={`marquee-track ${r ? 'is-reverse' : ''}`} style={{ '--dur': `${half.length * 6}s` }}>
+              {[0, 1].map((copy) => half.map((h, i) => (
+                // Only the first appearance of each hotel is reachable by
+                // keyboard and screen reader; every repeat is decoration.
+                <HotelCard key={`${copy}-${i}`} h={h} lang={lang} hidden={copy > 0 || i >= row.length} />
+              )))}
+            </div>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -225,7 +258,8 @@ export default function App() {
       el.removeEventListener('scroll', syncRail)
       window.removeEventListener('resize', syncRail)
     }
-  }, [syncRail])
+    // hotels: the rail only mounts once the fetch has failed, after first render.
+  }, [syncRail, hotels])
 
   // Switching language re-lays the rail out mirrored; re-measure after paint.
   useEffect(() => {
@@ -327,7 +361,10 @@ export default function App() {
       </section>
 
 
-      <section className="places" id="places">
+      {/* Live hotels (or their loading state) get the edge-to-edge two-row
+          marquee under the copy; only a failed or empty fetch falls back to the
+          original copy-beside-rail layout with the picture cards. */}
+      <section className={`places ${hotels?.length === 0 ? '' : 'has-marquee'}`} id="places">
         <div className="places-inner section-shell">
           <div data-reveal className="places-copy">
             <span className="eyebrow gold">{t.placesKicker}</span>
@@ -335,18 +372,13 @@ export default function App() {
             <p>{t.placesBody}</p>
             <a className="place-cta" href="#download">{t.placesCta}<span><Arrow /></span></a>
           </div>
-          <div className="rail-wrap">
+          {hotels?.length === 0 && <div className="rail-wrap">
             <div className="rail-nav">
               <button type="button" onClick={() => slide(-1)} aria-label="Previous" disabled={scroll.atStart}><Chevron back /></button>
               <button type="button" onClick={() => slide(1)} aria-label="Next" disabled={scroll.atEnd}><Chevron /></button>
             </div>
             <div className="rail" ref={rail} tabIndex="0" role="region" aria-label={t.placesKicker}>
-              {/* Live hotels when the backend answers; three blank cards while
-                  it is asked (no flash of the picture cards); the picture cards
-                  only if it fails or has nothing to show. */}
-              {hotels === null && [0, 1, 2].map((i) => <div className="place-card hotel-skeleton" key={i} aria-hidden="true" />)}
-              {hotels?.length > 0 && hotels.map((h) => <HotelCard key={h._id} h={h} lang={lang} />)}
-              {hotels?.length === 0 && t.places.map((c, i) => (
+              {t.places.map((c, i) => (
                 <a className="place-card" key={c[0]} href="#download">
                   <img src={places[i]} alt={c[0]} loading="lazy" width="520" height="880" />
                   <div className="place-shade" />
@@ -361,8 +393,20 @@ export default function App() {
             <div className="rail-progress" aria-hidden="true">
               <i style={{ '--w': scroll.w, '--p': scroll.p }} />
             </div>
-          </div>
+          </div>}
         </div>
+        {hotels !== null && hotels.length > 0 && <HotelMarquee hotels={hotels} lang={lang} label={t.placesKicker} />}
+        {hotels === null && (
+          <div className="marquee" aria-hidden="true">
+            {[0, 1].map((r) => (
+              <div className="marquee-row" key={r}>
+                <div className="marquee-track is-static">
+                  {[0, 1, 2, 3, 4, 5, 6].map((i) => <div className="place-card hotel-card hotel-skeleton" key={i} />)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="showcase section-shell" id="app">
