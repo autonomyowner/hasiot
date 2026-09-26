@@ -423,3 +423,125 @@
 .h-flip { transform: scaleX(-1); }
 .partners[dir='rtl'] .h-photo-actions .p-icon { transform: scaleX(-1); }
 .partners[dir='rtl'] .h-photo-actions .h-flip { transform: none; }
+/* ======================================================================== */
+/* services — the provider dashboard (src/partners/services/)               */
+/* ======================================================================== */
+.p-svc-head { display: flex; gap: 16px; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; margin-bottom: 24px; }
+.p-svc-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .p-svc-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.p-svc-stat { display: flex; flex-direction: column; gap: 4px; padding: 18px; }
+.p-svc-stat-value { font-size: 26px; font-weight: 700; line-height: 1.2; }
+a.p-choice { text-decoration: none; }
+
+.p-svc-status-approved { background: var(--p-green-tint); color: var(--p-green-deep); }
+.p-svc-status-pending { background: var(--p-amber-tint); color: var(--p-amber); }
+.p-svc-status-rejected,
+.p-svc-status-suspended { background: var(--p-danger-tint); color: var(--p-danger); }
+
+.p-svc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.p-svc-card {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--p-line);
+  border-radius: var(--p-radius);
+  padding: 14px;
+}
+.p-svc-cover {
+  width: 112px;
+  height: 84px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #efe7d6; /* the app's warm sand, for a service with no photo */
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.p-svc-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.p-svc-body { min-width: 0; }
+.p-svc-body .p-small { margin: 0; }
+.p-svc-title { font-size: 17px; font-weight: 600; margin: 6px 0 2px; overflow-wrap: anywhere; }
+.p-svc-price { margin: 0; font-weight: 600; }
+.p-svc-note { margin: 6px 0 0; font-size: 13px; color: var(--p-danger); }
+.p-svc-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 640px) {
+  .p-svc-card { grid-template-columns: 88px minmax(0, 1fr); }
+  .p-svc-cover { width: 88px; height: 66px; }
+  .p-svc-actions { grid-column: 1 / -1; justify-content: stretch; }
+  .p-svc-actions .p-btn { flex: 1; }
+}
+
+.p-svc-form { max-width: 760px; }
+.p-svc-form fieldset { margin: 0; min-width: 0; }
+.p-svc-form textarea.p-input { resize: vertical; min-height: 96px; }
+.p-svc-footer { justify-content: flex-end; }
+@media (max-width: 520px) { .p-svc-footer .p-btn { flex: 1; } }
+
+/* The admin ImageUploader, restyled for the portal (admin.css is not loaded here). */
+.p-svc-photos .admin-form-group { display: flex; flex-direction: column; gap: 10px; }
+.p-svc-photos .admin-form-label { font-size: 14px; font-weight: 500; }
+.p-svc-photos .admin-form-hint { color: var(--p-muted); font-size: 13px; font-weight: 400; }
+.p-svc-photos .admin-uploader-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.p-svc-photos .admin-uploader-thumb {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--p-line);
+  background: #efe7d6;
+}
+.p-svc-photos .admin-uploader-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.p-svc-photos .admin-uploader-cover {
+  position: absolute;
+  top: 6px;
+  inset-inline-start: 6px;
+  background: var(--p-green);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+.p-svc-photos .admin-uploader-thumb-actions {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px;
+  background: linear-gradient(to top, rgba(20, 32, 28, 0.72), transparent);
+}
+.p-svc-photos .admin-uploader-thumb-actions button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--p-ink);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.p-svc-photos .admin-uploader-thumb-actions button:disabled { opacity: 0.4; cursor: default; }
+.p-svc-photos .admin-uploader-thumb-actions button.danger { background: var(--p-ink); color: #fff; }
+.p-svc-photos .admin-uploader-controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.p-svc-photos .admin-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--p-line-strong);
+  background: #fff;
+  color: var(--p-ink);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.p-svc-photos .admin-btn:hover:not(:disabled) { border-color: var(--p-green); }
+.p-svc-photos .admin-btn:disabled { opacity: 0.6; cursor: default; }
+.p-svc-photos .admin-uploader-empty { margin: 0; font-size: 13px; color: var(--p-muted); }
