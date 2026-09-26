@@ -1,0 +1,57 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { convexQuery } from './convexHttp'
+
+const URL = 'https://example.convex.cloud'
+
+function stubFetch(respond) {
+  const calls = []
+  vi.stubGlobal('fetch', vi.fn(async (url, init) => {
+    calls.push({ url, init, body: JSON.parse(init.body) })
+    return respond()
+  }))
+  return calls
+}
+
+const json = (value, status = 200) => new Response(JSON.stringify(value), { status })
+
+afterEach(() => vi.unstubAllGlobals())
+
+describe('convexQuery', () => {
+  it('posts the function path and arguments to the HTTP query API', async () => {
+    const calls = stubFetch(() => json({ status: 'success', value: { ok: true } }))
+    await expect(convexQuery('listings/queries:getListing', { listingId: 'l1' }, { url: URL })).resolves.toEqual({ ok: true })
+    expect(calls[0].url).toBe(`${URL}/api/query`)
+    expect(calls[0].init.method).toBe('POST')
+    expect(calls[0].body).toEqual({ path: 'listings/queries:getListing', args: { listingId: 'l1' }, format: 'json' })
+  })
+
+  it('returns null and false values as they are', async () => {
+    stubFetch(() => json({ status: 'success', value: null }))
+    await expect(convexQuery('x:y', {}, { url: URL })).resolves.toBeNull()
+  })
+
+  it("carries a ConvexError's text on `data`, where the error helpers look for it", async () => {
+    stubFetch(() => json({
+      status: 'error',
+      errorMessage: '[Request ID: 1] Server Error\nUncaught ConvexError: عربي / English',
+      errorData: 'عربي / English',
+    }))
+    const err = await convexQuery('x:y', {}, { url: URL }).catch((e) => e)
+    expect(err).toBeInstanceOf(Error)
+    expect(err.data).toBe('عربي / English')
+  })
+
+  it('rejects on an HTTP failure, with no data to show a person', async () => {
+    stubFetch(() => new Response('upstream', { status: 502 }))
+    const err = await convexQuery('x:y', {}, { url: URL }).catch((e) => e)
+    expect(err).toBeInstanceOf(Error)
+    expect(err.data).toBeUndefined()
+    expect(err.message).toContain('502')
+  })
+
+  it('rejects without a backend URL instead of fetching a relative path', async () => {
+    const calls = stubFetch(() => json({ status: 'success', value: 1 }))
+    await expect(convexQuery('x:y', {}, { url: '' })).rejects.toThrow(/VITE_CONVEX_URL/)
+    expect(calls).toHaveLength(0)
+  })
+})
