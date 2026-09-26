@@ -93,9 +93,14 @@ describe('phoneErrorText', () => {
     )
   })
 
-  it('says when a number belongs to someone else', () => {
+  it('says when a number belongs to someone else, and that its bookings are there', () => {
+    // On the web the traveller may be signed in with Google while their
+    // bookings live on the phone account: say how to reach them.
     expect(phoneErrorText(betterAuth('Phone number already exists'), 'en')).toBe(
-      'This number already belongs to another Hasio account. Use a different number.'
+      'This number already belongs to another Hasio account. Sign in with that number instead, or use a different one.'
+    )
+    expect(phoneErrorText(betterAuth('Phone number already exists'), 'ar')).toBe(
+      'هذا الرقم مرتبط بحساب آخر في Hasio. سجّل الدخول بهذا الرقم بدلًا من ذلك، أو استخدم رقمًا مختلفًا.'
     )
   })
 

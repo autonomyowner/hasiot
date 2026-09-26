@@ -41,6 +41,19 @@ describe('convexQuery', () => {
     expect(err.data).toBe('عربي / English')
   })
 
+  it('flags arguments Convex refused, so a page can say "not found" for a bad link', async () => {
+    stubFetch(() => json({
+      status: 'error',
+      errorMessage: '[Request ID: 1] Server Error\nArgumentValidationError: Value does not match validator.\nPath: .listingId',
+    }))
+    const err = await convexQuery('x:y', { listingId: 'nope' }, { url: URL }).catch((e) => e)
+    expect(err.validation).toBe(true)
+
+    stubFetch(() => json({ status: 'error', errorMessage: 'Uncaught Error: boom', errorData: 'x / y' }))
+    const other = await convexQuery('x:y', {}, { url: URL }).catch((e) => e)
+    expect(other.validation).toBeUndefined()
+  })
+
   it('rejects on an HTTP failure, with no data to show a person', async () => {
     stubFetch(() => new Response('upstream', { status: 502 }))
     const err = await convexQuery('x:y', {}, { url: URL }).catch((e) => e)

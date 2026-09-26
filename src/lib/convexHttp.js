@@ -30,6 +30,10 @@ export async function convexQuery(path, args = {}, { signal, url = CONVEX_URL } 
   if (body.status === 'success') return body.value
   const err = new Error(body.errorMessage || `Convex query ${path} failed`)
   if (body.errorData !== undefined) err.data = body.errorData
+  // Convex refused the arguments themselves: an id that is malformed or from
+  // another table — a link cut short, or a hand-edited one. To a visitor that
+  // is "not found", never an error screen.
+  if (/ArgumentValidationError/.test(body.errorMessage ?? '')) err.validation = true
   throw err
 }
 

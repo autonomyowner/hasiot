@@ -111,6 +111,12 @@ describe('safeNext', () => {
       '/tripsevil',
       '/book',
       ' /trips',
+      // The router resolves dot segments, so these would land on /admin.
+      '/trips/../admin',
+      '/trips/%2e%2e/admin',
+      '/trips/%2E%2E/admin',
+      '/book/x/..',
+      '/book/./../admin',
     ]) {
       expect(safeNext(next)).toBeNull()
     }

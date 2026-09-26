@@ -51,14 +51,18 @@ export function serviceQuery({ date, time, quantity, people }) {
 }
 
 const NEXT = /^\/(trips(?:[/?]|$)|book\/)/
+// "..", written plainly or percent-encoded: the router resolves it, so
+// "/trips/../admin" would land on /admin.
+const DOT_SEGMENT = /\.\.|%2e/i
 
 /**
  * A `?next=` worth following after sign-in: a path inside My trips or the
  * checkout, and nothing else. Protocol-relative (`//host`) and backslash forms
- * are refused because browsers treat both as another host.
+ * are refused because browsers treat both as another host, and dot segments
+ * because they climb out of the allowed paths.
  */
 export function safeNext(next) {
   if (typeof next !== 'string') return null
-  if (next.startsWith('//') || next.includes('\\')) return null
+  if (next.startsWith('//') || next.includes('\\') || DOT_SEGMENT.test(next)) return null
   return NEXT.test(next) ? next : null
 }

@@ -37,7 +37,12 @@ const T = {
   codeWrong: ["That code isn't right. Check the text message and try again.", 'الرمز غير صحيح. تحقق من الرسالة النصية وحاول مرة أخرى.'],
   codeExpired: ['This code has expired. Press “Resend code” to get a new one.', 'انتهت صلاحية هذا الرمز. اضغط «إعادة إرسال الرمز» للحصول على رمز جديد.'],
   tooManyAttempts: ['Too many wrong codes. Press “Resend code” to get a new one.', 'أدخلت رموزًا خاطئة كثيرة. اضغط «إعادة إرسال الرمز» للحصول على رمز جديد.'],
-  phoneTaken: ['This number already belongs to another Hasio account. Use a different number.', 'هذا الرقم مرتبط بحساب آخر في Hasio. استخدم رقمًا مختلفًا.'],
+  // Longer than the app's: on the web the traveller may be signed in with
+  // Google while their bookings live on the account that owns this number.
+  phoneTaken: [
+    'This number already belongs to another Hasio account. Sign in with that number instead, or use a different one.',
+    'هذا الرقم مرتبط بحساب آخر في Hasio. سجّل الدخول بهذا الرقم بدلًا من ذلك، أو استخدم رقمًا مختلفًا.',
+  ],
   invalidSaudi: ['Enter a valid Saudi mobile number (05XXXXXXXX)', 'أدخل رقم جوال سعودي صحيح (05XXXXXXXX)'],
   smsLive: ['Saudi numbers are confirmed by SMS code now. Please send yourself a code.', 'أرقام السعودية تُوثَّق برمز SMS الآن. أرسل رمزًا إلى رقمك.'],
   changesLimit: ["You've changed your number too many times today. Try again tomorrow.", 'غيّرت رقمك مرات كثيرة اليوم. حاول مرة أخرى غدًا.'],
