@@ -16,6 +16,25 @@
 /** Where the server sends the browser back to. Must be a trusted origin on the server. */
 export const OAUTH_CALLBACK_URL = "hasio://auth-callback";
 
+/**
+ * The one page the browser opens to start a Google sign-in.
+ *
+ * The server's /oauth-start creates the OAuth state itself, *in that
+ * browser*, and redirects to Google. The app used to mint the state first
+ * with a POST to /sign-in/social and hand the browser the resulting Google
+ * URL — but a state minted outside the browser can be minted by anyone and
+ * handed to someone else's browser (login CSRF: the victim ends up signed in
+ * as the attacker), so the state is now only ever born where it is checked.
+ */
+export function oauthStartUrl(convexSiteUrl: string, provider = "google"): string {
+  const base = convexSiteUrl.replace(/\/+$/, "");
+  const callback = encodeURIComponent(OAUTH_CALLBACK_URL);
+  return (
+    `${base}/api/auth/oauth-start?provider=${encodeURIComponent(provider)}` +
+    `&callbackURL=${callback}&errorCallbackURL=${callback}`
+  );
+}
+
 /** Both names Better Auth gives the session cookie: the second on HTTPS. */
 const SESSION_COOKIE = /(?:^|[;,]\s*)(?:__Secure-)?better-auth\.session_token=([^;,\s]*)/g;
 

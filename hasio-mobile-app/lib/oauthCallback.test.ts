@@ -1,10 +1,32 @@
 import { describe, expect, it } from "vitest";
 import {
   isOAuthCallbackLink,
+  oauthStartUrl,
   parseOAuthCallback,
   readQuery,
   sessionTokenFromSetCookie,
 } from "./oauthCallback";
+
+describe("oauthStartUrl", () => {
+  it("opens the server's own start page, with both returns to the app encoded", () => {
+    expect(oauthStartUrl("https://limitless-mockingbird-449.eu-west-1.convex.site")).toBe(
+      "https://limitless-mockingbird-449.eu-west-1.convex.site/api/auth/oauth-start" +
+        "?provider=google&callbackURL=hasio%3A%2F%2Fauth-callback&errorCallbackURL=hasio%3A%2F%2Fauth-callback"
+    );
+  });
+
+  it("does not double a trailing slash on the site URL", () => {
+    expect(oauthStartUrl("https://x.convex.site/")).toMatch(/^https:\/\/x\.convex\.site\/api\/auth\/oauth-start\?/);
+  });
+
+  it("round-trips through a query reader", () => {
+    expect(readQuery(oauthStartUrl("https://x.convex.site"))).toEqual({
+      provider: "google",
+      callbackURL: "hasio://auth-callback",
+      errorCallbackURL: "hasio://auth-callback",
+    });
+  });
+});
 
 // A session token and its signature as Better Auth writes them: the cookie's
 // value is `token.signature`, URL-encoded (the signature is base64, so `=` and

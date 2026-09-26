@@ -1,6 +1,6 @@
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
-import { OAUTH_CALLBACK_URL, parseOAuthCallback } from "./oauthCallback";
+import { OAUTH_CALLBACK_URL, oauthStartUrl, parseOAuthCallback } from "./oauthCallback";
 
 const CONVEX_SITE_URL = process.env.EXPO_PUBLIC_CONVEX_SITE_URL;
 if (!CONVEX_SITE_URL) {
@@ -239,14 +239,15 @@ export async function verifyPhoneOtp(
 /**
  * Sign in (or up) with Google, in the system browser.
  *
- * Three hops, all set by the server (convex/lib/nativeOAuth.ts):
- * 1. /sign-in/social with `disableRedirect` hands back Google's consent URL
- *    instead of redirecting this fetch there.
- * 2. That URL is opened through /oauth-start, *in the browser*. It sets the
- *    OAuth state cookie first-party there — the cookie this fetch received
- *    lives in the app's own jar, which the browser never sees, and without it
- *    the callback fails its state check.
- * 3. Google returns to the server, which redirects to hasio://auth-callback
+ * Everything before the return happens in the browser, set up by the server
+ * (convex/lib/nativeOAuth.ts):
+ * 1. The browser opens /oauth-start (lib/oauthCallback.ts oauthStartUrl). The
+ *    server creates the OAuth state there — its cookie first-party in that
+ *    browser, where the callback will check it — and redirects to Google.
+ *    The app never mints the state itself with a fetch: a state made outside
+ *    the browser that checks it could be handed to someone else's browser
+ *    and sign them in as the wrong person (login CSRF).
+ * 2. Google returns to the server, which redirects to hasio://auth-callback
  *    with the session's Set-Cookie header in the query. openAuthSessionAsync
  *    (ASWebAuthenticationSession on iOS, a Custom Tab on Android) resolves
  *    with that URL, and lib/oauthCallback.ts lifts the token out of it.
@@ -256,28 +257,19 @@ export async function verifyPhoneOtp(
  * JS-only: expo-web-browser is already in the dev client and store builds.
  */
 export async function signInWithGoogle(): Promise<{ token: string } | null> {
-  const data: { url?: string } = await authFetch("/sign-in/social", {
-    provider: "google",
-    callbackURL: OAUTH_CALLBACK_URL,
-    errorCallbackURL: OAUTH_CALLBACK_URL,
-    disableRedirect: true,
-  });
-  if (!data?.url) {
-    const err: AuthError = new Error("No authorization URL received");
-    err.code = "GOOGLE_NO_URL";
-    throw err;
-  }
-
-  const start = `${CONVEX_SITE_URL}/api/auth/oauth-start?authorizationURL=${encodeURIComponent(data.url)}`;
-  const result = await WebBrowser.openAuthSessionAsync(start, OAUTH_CALLBACK_URL);
+  const result = await WebBrowser.openAuthSessionAsync(
+    oauthStartUrl(CONVEX_SITE_URL!),
+    OAUTH_CALLBACK_URL
+  );
   if (result.type !== "success") return null;
 
   const sessionToken = parseOAuthCallback(result.url);
   if (!sessionToken) return null;
 
   // Stored exactly as a phone sign-in stores its token. The cached user
-  // (SESSION_KEY) is left alone: nothing reads it, and fetching it would be a
-  // fourth round trip standing between the person and the app.
+  // (SESSION_KEY) is cleared rather than fetched: nothing reads it, a
+  // fetch would be one more round trip between the person and the app, and
+  // an old one would name whoever was signed in before.
   try {
     await SecureStore.setItemAsync(SESSION_TOKEN_KEY, sessionToken);
     await SecureStore.deleteItemAsync(SESSION_KEY);
