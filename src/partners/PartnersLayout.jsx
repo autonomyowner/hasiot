@@ -9,6 +9,7 @@ import { PartnerLangContext, pick } from './lang'
 import { PartnerConfirmContext } from './confirm'
 import { partnerRoute } from './lib/gate'
 import { Icon, PageSpinner } from './components/Ui'
+import { InsightIcon } from './insights/InsightsUi'
 // Tailwind (with its preflight) is what the shared dialog and toasts are
 // styled with; it rides in this lazy chunk like it does in the admin one.
 // partners.css comes after it so the portal's own rules win.
@@ -25,6 +26,8 @@ const translations = {
     places: 'My places',
     services: 'My services',
     bookings: 'Bookings',
+    analytics: 'Analytics',
+    guests: 'Guests',
     verification: 'Verification',
     nav: 'Partner navigation',
     toasts: 'Notifications',
@@ -41,6 +44,8 @@ const translations = {
     places: 'أماكني',
     services: 'خدماتي',
     bookings: 'الحجوزات',
+    analytics: 'التحليلات',
+    guests: 'الضيوف',
     verification: 'التوثيق',
     nav: 'تنقل الشركاء',
     toasts: 'الإشعارات',
@@ -59,13 +64,17 @@ function navFor(route, user, t) {
     items.push(
       { to: '/partners/hotel', end: true, label: t.overview, icon: 'home' },
       { to: '/partners/hotel/places', label: t.places, icon: 'building' },
-      { to: '/partners/hotel/bookings', label: t.bookings, icon: 'calendar' }
+      { to: '/partners/hotel/bookings', label: t.bookings, icon: 'calendar' },
+      { to: '/partners/hotel/analytics', label: t.analytics, insightIcon: 'chart' },
+      { to: '/partners/hotel/guests', label: t.guests, insightIcon: 'users' }
     )
   } else if (route === 'services') {
     items.push(
       { to: '/partners/services', end: true, label: t.overview, icon: 'home' },
       { to: '/partners/services/mine', label: t.services, icon: 'briefcase' },
-      { to: '/partners/services/bookings', label: t.bookings, icon: 'calendar' }
+      { to: '/partners/services/bookings', label: t.bookings, icon: 'calendar' },
+      { to: '/partners/services/analytics', label: t.analytics, insightIcon: 'chart' },
+      { to: '/partners/services/guests', label: t.guests, insightIcon: 'users' }
     )
   }
   items.push({ to: '/partners/verify', label: t.verification, icon: 'shield' })
@@ -137,7 +146,9 @@ export default function PartnersLayout() {
                     end={item.end}
                     className={({ isActive }) => (isActive ? 'p-nav-link is-active' : 'p-nav-link')}
                   >
-                    <Icon name={item.icon} size={20} />
+                    {item.insightIcon
+                      ? <InsightIcon name={item.insightIcon} size={20} />
+                      : <Icon name={item.icon} size={20} />}
                     <span>{item.label}</span>
                   </NavLink>
                 ))}
