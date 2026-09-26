@@ -14,8 +14,13 @@
 .bk .tr-apps a{color:inherit;text-decoration:underline;text-underline-offset:3px;display:inline-block;padding-block:6px}
 .bk .tr-apps a:hover{color:var(--ink)}
 /* Moved to by script after a change the page itself made (a cancel, a review,
-   the banner closing); the ring is for keyboard users only. */
-.bk [tabindex="-1"]:focus:not(:focus-visible){outline:none}
+   the banner closing); the ring is for keyboard users only. Named one by one:
+   this file stays loaded after leaving My trips, and a bare [tabindex] rule
+   would reach the other pages' calendars and galleries. */
+.bk .tr-status:focus:not(:focus-visible),
+.bk .tr-banner:focus:not(:focus-visible),
+.bk .tr-done:focus:not(:focus-visible),
+.bk .tr-rate-done:focus:not(:focus-visible){outline:none}
 
 /* ---- /trips: tabs, list, cards ---- */
 .bk .tr-tabs{margin-bottom:20px}
