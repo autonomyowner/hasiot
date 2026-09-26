@@ -1513,3 +1513,85 @@ a.p-choice { text-decoration: none; }
   .partners .p-spinner { animation-duration: 2s !important; animation-iteration-count: infinite !important; }
   .partners .p-skel { animation: none !important; }
 }
+
+/* ==========================================================================
+   Dashboard: the sign-in's dark green and glass, carried into the portal.
+   The portal's colours are variables, so the theme is mostly a re-token: the
+   whole dashboard (and the guest drawer, which is its own .partners root)
+   goes light-on-dark at once. What follows the tokens are the few rules that
+   hardcoded a white fill, and the overlays, which need a solid fill rather
+   than glass so the page under them does not show through the text.
+   color-scheme: dark turns native controls (select menus, date pickers,
+   scrollbars) dark to match.
+   ========================================================================== */
+.partners:has(.p-shell),
+.partners.p-ins-drawer {
+  --p-canvas: #0b1611;
+  --p-card: rgba(255, 255, 255, 0.045);
+  --p-subtle: rgba(255, 255, 255, 0.05);
+  --p-border: rgba(255, 255, 255, 0.12);
+  --p-hairline: rgba(255, 255, 255, 0.07);
+  --p-line-strong: rgba(255, 255, 255, 0.28);
+  --p-ink: #f5f2ea;
+  --p-secondary: rgba(245, 242, 234, 0.7);
+  --p-muted: rgba(245, 242, 234, 0.48);
+  --p-green: #6fd3ae;
+  --p-green-deep: #9be4c8;
+  --p-green-tint: rgba(111, 211, 174, 0.14);
+  --p-active-bg: rgba(111, 211, 174, 0.12);
+  --p-active-border: rgba(111, 211, 174, 0.32);
+  --p-focus: rgba(111, 211, 174, 0.3);
+  --p-danger: #ff9b8c;
+  --p-danger-tint: rgba(255, 120, 100, 0.14);
+  --p-amber: #f3c969;
+  --p-amber-tint: rgba(243, 201, 105, 0.14);
+  --p-shadow-pop: 0 24px 60px -12px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
+}
+.partners:has(.p-shell) {
+  background:
+    radial-gradient(40% 35% at 70% 0%, rgba(214, 170, 96, 0.14), transparent 70%),
+    radial-gradient(55% 50% at 20% 100%, rgba(13, 122, 95, 0.3), transparent 70%),
+    radial-gradient(60% 45% at 50% 0%, rgba(13, 122, 95, 0.22), transparent 70%),
+    #0b1611;
+  background-attachment: fixed;
+}
+
+/* The plate is glass; the sidebar sits straight on the page. */
+.partners:has(.p-shell) .p-plate {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 30px 80px -40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+}
+.partners:has(.p-shell) .p-wordmark { color: #fff; }
+.partners:has(.p-shell) .p-nav-link:hover,
+.partners:has(.p-shell) .p-btn-ghost:hover:not(:disabled),
+.partners.p-ins-drawer .p-btn-ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); }
+.partners:has(.p-shell) .p-topbar { background: rgba(11, 22, 17, 0.78); }
+.partners:has(.p-shell) .p-sheet { background: #0f1d17; }
+.partners.p-ins-drawer { background: #0f1d17; }
+.partners:has(.p-shell) .p-ins-tip,
+.partners.p-ins-drawer .p-ins-tip { background: #16261f; }
+
+/* The primary action is the app's lime, as on the sign-in. */
+:is(.partners:has(.p-shell), .partners.p-ins-drawer) .p-btn-primary { background: #cce745; color: #14210f; }
+:is(.partners:has(.p-shell), .partners.p-ins-drawer) .p-btn-primary:hover:not(:disabled) { background: #d9f05c; }
+:is(.partners:has(.p-shell), .partners.p-ins-drawer) .p-btn-primary .p-spinner { border-color: rgba(20, 33, 15, 0.25); border-top-color: currentColor; }
+
+/* White fills that were hardcoded rather than tokened. */
+:is(.partners:has(.p-shell), .partners.p-ins-drawer) :is(.p-input, .p-choice, .p-chip, .p-booking, .h-chip, .p-svc-card, .p-svc-photos .admin-btn, .p-btn-outline, .p-btn-danger) {
+  background: rgba(255, 255, 255, 0.045);
+}
+:is(.partners:has(.p-shell), .partners.p-ins-drawer) .p-input::placeholder { color: rgba(245, 242, 234, 0.35); }
+:is(.partners:has(.p-shell), .partners.p-ins-drawer) .p-seg { background: rgba(0, 0, 0, 0.22); }
+:is(.partners:has(.p-shell), .partners.p-ins-drawer) .p-seg::before { background: rgba(255, 255, 255, 0.14); border-color: rgba(255, 255, 255, 0.12); }
+:is(.partners:has(.p-shell), .partners.p-ins-drawer) .p-badge-completed { background: rgba(255, 255, 255, 0.08); color: #d6dde4; }
+:is(.partners:has(.p-shell), .partners.p-ins-drawer) .p-skel {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.1) 37%, rgba(255, 255, 255, 0.05) 63%);
+  background-size: 400% 100%;
+}
+:is(.partners:has(.p-shell), .partners.p-ins-drawer) :is(.p-svc-cover, .p-svc-photos .admin-uploader-thumb) { background: rgba(239, 231, 214, 0.1); }
+.partners:has(.p-shell) .p-svc-photos .admin-uploader-thumb-actions button.danger { background: #f5f2ea; color: #14210f; }
+.partners:has(.p-shell) .p-step.is-current .p-step-dot { color: #0b1611; }
