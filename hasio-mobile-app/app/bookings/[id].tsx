@@ -370,6 +370,9 @@ export default function BookingDetailScreen() {
                   <>
                     <Text style={[styles.muted, isRTL && styles.textRTL]}>
                       {ltr(formatPhoneForDisplay(guest.phone))}
+                      {/* Typed without an SMS code while Saudi SMS is down
+                          (lib/phoneRules.ts); still most likely theirs. */}
+                      {guest.phoneVerified === false ? `  ·  ${t("phoneNotConfirmed")}` : ""}
                     </Text>
                     <View style={[styles.actions, isRTL && styles.rowRTL]}>
                       <Pressable

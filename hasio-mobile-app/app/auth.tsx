@@ -516,7 +516,12 @@ export default function AuthScreen() {
         }
       : step === "email"
         ? { title: t("welcomeBack"), subtitle: t("signInToContinue") }
-        : { title: t("phoneSignInTitle"), subtitle: t("phoneSignInSubtitle") };
+        : {
+            title: t("phoneSignInTitle"),
+            // "We'll text you a code" is not true while the notice below says
+            // texts cannot reach Saudi numbers.
+            subtitle: t(showSmsNotice ? "phoneSignInSubtitleNoSms" : "phoneSignInSubtitle"),
+          };
 
   const fieldErrorText = fieldError ? (
     <Text

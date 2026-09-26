@@ -664,6 +664,7 @@ export const translations = {
     // Phone sign-in — the only way to create an account from the app
     phoneSignInTitle: "Sign in with your phone",
     phoneSignInSubtitle: "We'll text you a 6-digit code",
+    phoneSignInSubtitleNoSms: "Sign in or create your account",
     phoneNumber: "Phone number",
     verificationCode: "Verification code",
     signInWithEmail: "Sign in with email",
@@ -1663,6 +1664,7 @@ export const translations = {
     // Phone sign-in — the only way to create an account from the app
     phoneSignInTitle: "سجّل الدخول برقم جوالك",
     phoneSignInSubtitle: "سنرسل لك رمزًا من 6 أرقام",
+    phoneSignInSubtitleNoSms: "سجّل دخولك أو أنشئ حسابك",
     phoneNumber: "رقم الجوال",
     verificationCode: "رمز التحقق",
     signInWithEmail: "الدخول بالبريد الإلكتروني",
