@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useLanguage } from '../hooks/useLanguage'
 import { useListings } from '../hooks/useListings'
 import { useHotelPages, useSentinel } from '../hooks/useHotelPages'
@@ -9,22 +10,14 @@ import './ExplorePage.css'
 // /explore — every live hotel and place straight from the backend: a search
 // hero, then the home page's two drifting rows. Searching or filtering swaps
 // the rows for a still grid, because nobody can read results that move.
-// Booking lives in the app, so every card ends at a store.
-const IOS_URL = 'https://apps.apple.com/app/id6800297588'
-const ANDROID_URL = 'https://play.google.com/store/apps/details?id=com.hasio.travel'
-
-const storeUrl = () => {
-  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent
-  if (/iPhone|iPad|iPod/i.test(ua)) return IOS_URL
-  if (/Android/i.test(ua)) return ANDROID_URL
-  return '/#download'
-}
+// Every card opens its place's page (/places/:id), where a priced hotel can be
+// booked (docs/superpowers/specs/2026-09-26-web-booking-design.md).
 
 const copy = {
   en: {
-    home: 'Home', explore: 'Explore', app: 'The app', contact: 'Contact', switch: 'العربية', getApp: 'Get the app',
+    home: 'Home', explore: 'Explore', app: 'The app', contact: 'Contact', switch: 'العربية', getApp: 'Get the app', trips: 'My trips',
     kicker: 'EXPLORE THE KINGDOM', title: ['Timeless places', 'waiting for you.'],
-    body: 'Hotels, heritage, tables and events — live from Hasio. Find one, then book it in the app.',
+    body: 'Hotels, heritage, tables and events — live from Hasio. Find a stay and book it right here.',
     placeholder: 'Search a hotel, a place, a city…', search: 'Search', allCities: 'All cities', city: 'City',
     types: [['all', 'All'], ['hotel', 'Stays'], ['attraction', 'Places'], ['restaurant', 'Food'], ['event', 'Events']],
     book: 'Book', view: 'View', night: '/ night', sar: 'SAR',
@@ -37,9 +30,9 @@ const copy = {
     loadMore: 'Load more', end: 'You’ve seen every hotel.', loadFailed: 'Couldn’t load more hotels.',
   },
   ar: {
-    home: 'الرئيسية', explore: 'استكشف', app: 'التطبيق', contact: 'تواصل معنا', switch: 'English', getApp: 'حمّل التطبيق',
+    home: 'الرئيسية', explore: 'استكشف', app: 'التطبيق', contact: 'تواصل معنا', switch: 'English', getApp: 'حمّل التطبيق', trips: 'رحلاتي',
     kicker: 'استكشف المملكة', title: ['أماكن خالدة', 'بانتظارك.'],
-    body: 'فنادق وتراث وموائد وفعاليات — مباشرة من Hasio. اعثر على وجهتك ثم احجزها من التطبيق.',
+    body: 'فنادق وتراث وموائد وفعاليات — مباشرة من Hasio. اعثر على إقامتك واحجزها هنا مباشرة.',
     placeholder: 'ابحث عن فندق أو مكان أو مدينة…', search: 'بحث', allCities: 'كل المدن', city: 'المدينة',
     types: [['all', 'الكل'], ['hotel', 'الإقامة'], ['attraction', 'الأماكن'], ['restaurant', 'المطاعم'], ['event', 'الفعاليات']],
     book: 'احجز', view: 'عرض', night: '/ الليلة', sar: 'ر.س',
@@ -89,17 +82,17 @@ const PinIcon = () => (
 )
 const Star = () => <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" /></svg>
 
+// The whole card is the link to the place's page; "Book" / "View" is its
+// label, not a second link inside it.
 function ListingCard({ l, lang, hidden = false }) {
   const t = copy[lang]
   const city = canonicalCity(l.city)
   const name = lang === 'ar' ? l.name_ar || l.name_en : l.name_en
   const priced = l.type === 'hotel' && typeof l.pricePerNight === 'number' && l.pricePerNight > 0
-  const href = storeUrl()
-  const external = href.startsWith('http')
   const typeLabel = (t.types.find(([k]) => matchesType(l, k) && k !== 'all') || [])[1]
   const price = priced ? Math.round(l.pricePerNight).toLocaleString(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US') : null
   return (
-    <article className="place-card hotel-card ex-card" aria-hidden={hidden || undefined}>
+    <Link className="place-card hotel-card ex-card is-link" to={`/places/${l._id}`} aria-hidden={hidden || undefined} tabIndex={hidden ? -1 : undefined}>
       {l.images?.[0] && <img src={l.images[0]} alt={hidden ? '' : name} loading="lazy" decoding="async" width="500" height="625" />}
       <div className="place-shade" />
       <div className="ex-tags">
@@ -115,12 +108,10 @@ function ListingCard({ l, lang, hidden = false }) {
               {lang === 'ar' ? <><b>{price}</b> {t.sar}</> : <>{t.sar} <b>{price}</b></>} <small>{t.night}</small>
             </p>
           ) : <span />}
-          <a className="hotel-book" href={href} tabIndex={hidden ? -1 : undefined} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
-            {priced ? t.book : t.view}
-          </a>
+          <span className="hotel-book">{priced ? t.book : t.view}</span>
         </div>
       </div>
-    </article>
+    </Link>
   )
 }
 
@@ -223,6 +214,7 @@ export default function ExplorePage() {
           </nav>
           <div className="nav-actions">
             <a className="ex-home" href="/">{t.home}</a>
+            <Link className="partner-login trips-link" to="/trips">{t.trips}</Link>
             <button className="lang-btn" onClick={toggleLang}>{t.switch}</button>
             <a className="join" href="/#download">{t.getApp}<span>↓</span></a>
           </div>

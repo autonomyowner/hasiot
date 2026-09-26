@@ -1,4 +1,12 @@
 User-agent: *
 Allow: /
+# Personal pages: a traveller's checkout, bookings and sign-in, and the
+# partner and admin portals. Nothing there is for search.
+Disallow: /book/
+Disallow: /trips
+Disallow: /login
+Disallow: /sign-in
+Disallow: /partners
+Disallow: /admin
 
-Sitemap: https://www.hasio.xyz/sitemap.xml
+Sitemap: https://hasio.net/sitemap.xml

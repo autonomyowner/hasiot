@@ -20,8 +20,9 @@ function NoBackend() {
   )
 }
 
-// Layout route — mounts once and stays mounted across /sign-in, /delete-account
-// and /admin, so the session isn't refetched when moving between them.
+// Layout route — mounts once and stays mounted across /sign-in, /delete-account,
+// /admin, /partners and the traveller's /login, /book and /trips pages, so the
+// session isn't refetched when moving between them.
 export default function AuthedLayout() {
   if (!convex) return <NoBackend />
   return (
