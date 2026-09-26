@@ -387,7 +387,12 @@ export default function LoginPage() {
             <p className="p-subtitle" style={{ marginBottom: 0 }}>{t.subtitle}</p>
           </div>
 
-          <div className="p-seg" role="radiogroup" aria-label={t.countryLabel}>
+          <div
+            className="p-seg"
+            role="radiogroup"
+            aria-label={t.countryLabel}
+            style={{ '--seg-n': countries.length, '--seg-i': Math.max(0, countries.findIndex((c) => c.value === country)) }}
+          >
             {countries.map((c) => (
               <button
                 key={c.value}

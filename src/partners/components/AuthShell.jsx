@@ -3,12 +3,6 @@ import { Icon } from './Ui'
 
 const translations = {
   en: {
-    headline: 'Bring your place to travellers across Saudi Arabia',
-    values: [
-      { icon: 'map', text: 'Reach travellers planning their trip in the Hasio app.' },
-      { icon: 'inbox', text: 'Answer every booking request from one inbox.' },
-      { icon: 'chart', text: "See what's working with analytics and a guest list." },
-    ],
     stepsLabel: 'Sign-up progress',
     steps: ['Account', 'Your business', 'Documents'],
     stepOf: 'Step {n} of 3',
@@ -16,12 +10,6 @@ const translations = {
     current: 'current',
   },
   ar: {
-    headline: 'قدّم منشأتك للمسافرين في أنحاء السعودية',
-    values: [
-      { icon: 'map', text: 'اوصل إلى المسافرين وهم يخططون لرحلاتهم في تطبيق Hasio.' },
-      { icon: 'inbox', text: 'ردّ على كل طلبات الحجز من صندوق واحد.' },
-      { icon: 'chart', text: 'اعرف ما ينجح عندك من خلال التحليلات وقائمة الضيوف.' },
-    ],
     stepsLabel: 'مراحل التسجيل',
     steps: ['الحساب', 'نشاطك', 'المستندات'],
     stepOf: 'الخطوة {n} من 3',
@@ -30,44 +18,41 @@ const translations = {
   },
 }
 
+// The landing page's two brand posters (its "inside the app" section). They
+// are artwork with their own typography, so they are always shown whole —
+// never cropped with object-fit: cover, and nothing is laid over them.
+const POSTERS = [
+  { src: '/posters/gate.webp', w: 1085, h: 1335 },
+  { src: '/posters/arch.webp', w: 1122, h: 1402 },
+]
+
 /**
  * The frame for every screen a partner sees before approval (sign in, join,
- * documents, suspended). On wide screens a brand panel sits beside the form;
- * the photo is a CSS background inside a ≥960px media query, so a phone never
- * downloads it. Under 960px it is the slim header and the form alone.
+ * documents, suspended). On wide screens the form sits between the two
+ * posters; under 1100px it is the slim header and the form alone. The poster
+ * columns are display:none there and the images are lazy, which Chrome and
+ * Safari do not fetch while hidden, so a phone does not download them.
  * The header (brand, language, sign out) is passed in by the layout so the
  * controls stay the ones the rest of the portal uses.
  */
 export default function AuthShell({ header, children }) {
-  const { lang } = usePartnerLang()
-  const t = pick(translations, lang)
+  const poster = (p) => (
+    <aside className="p-auth-panel" aria-hidden="true">
+      <figure className="p-auth-poster">
+        <img src={p.src} alt="" width={p.w} height={p.h} loading="lazy" decoding="async" />
+      </figure>
+    </aside>
+  )
   return (
     <div className="p-auth">
-      <aside className="p-auth-panel">
-        <div className="p-auth-panel-inner">
-          <p className="p-auth-brand">
-            <span className="p-wordmark" lang="en" dir="ltr">Hasio</span>
-            <span className="p-auth-brand-sub">{lang === 'ar' ? 'الشركاء' : 'Partners'}</span>
-          </p>
-          <div className="p-auth-pitch">
-            <h2 className="p-auth-headline">{t.headline}</h2>
-            <ul className="p-auth-values">
-              {t.values.map((v) => (
-                <li key={v.icon}>
-                  <span className="p-auth-value-icon"><Icon name={v.icon} size={18} /></span>
-                  <span>{v.text}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </aside>
+      {poster(POSTERS[0])}
       <div className="p-auth-side">
         {header}
         <div className="p-auth-body">
           <div className="p-auth-form">{children}</div>
         </div>
       </div>
+      {poster(POSTERS[1])}
     </div>
   )
 }

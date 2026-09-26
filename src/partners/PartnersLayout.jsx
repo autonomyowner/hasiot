@@ -70,30 +70,6 @@ const translations = {
   },
 }
 
-// The portal's own type: Geist for Latin and numbers, IBM Plex Sans Arabic for
-// Arabic. Injected when the portal mounts so the landing page never pays for it.
-const FONT_HREF =
-  'https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap'
-
-function usePortalFonts() {
-  useEffect(() => {
-    if (document.querySelector('link[data-partners-fonts]')) return
-    for (const origin of ['https://fonts.googleapis.com', 'https://fonts.gstatic.com']) {
-      const pre = document.createElement('link')
-      pre.rel = 'preconnect'
-      pre.href = origin
-      if (origin.includes('gstatic')) pre.crossOrigin = 'anonymous'
-      pre.setAttribute('data-partners-fonts', '')
-      document.head.appendChild(pre)
-    }
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'
-    link.href = FONT_HREF
-    link.setAttribute('data-partners-fonts', '')
-    document.head.appendChild(link)
-  }, [])
-}
-
 const FOCUSABLE = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 /**
@@ -211,7 +187,6 @@ export default function PartnersLayout() {
   const langValue = useMemo(() => ({ lang, isRtl, toggleLang }), [lang, isRtl, toggleLang])
 
   const items = navFor(route, user, t)
-  usePortalFonts()
   const [menuOpen, setMenuOpen] = useState(false)
   const menuBtnRef = useRef(null)
   const closeMenu = useCallback(() => setMenuOpen(false), [])

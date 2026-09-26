@@ -5,8 +5,8 @@
 
    A light dashboard: warm canvas, white plates, depth from borders rather than
    shadows, Hasio green for the brand and a lime accent used sparingly. Type is
-   Geist (Latin, numbers) and IBM Plex Sans Arabic, which PartnersLayout
-   injects on mount so the landing page never loads them.
+   the landing page's: Playpen Sans Arabic for Latin and Arabic alike, loaded
+   by index.html's font <link>.
    ========================================================================== */
 
 .partners {
@@ -36,7 +36,7 @@
   --p-radius-item: 12px;
   --p-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --p-shadow-pop: 0 18px 50px -12px rgba(17, 20, 24, 0.18), 0 2px 6px rgba(17, 20, 24, 0.05);
-  --p-sans: 'Geist', 'IBM Plex Sans Arabic', -apple-system, 'SF Pro Text', system-ui, sans-serif;
+  --p-sans: 'Playpen Sans Arabic', 'Cairo', 'Outfit', -apple-system, system-ui, sans-serif;
   --p-serif: var(--p-sans);
 
   min-height: 100vh;
@@ -46,10 +46,6 @@
   font-size: 14.5px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-}
-.partners[dir='rtl'],
-.partners:lang(ar) {
-  --p-sans: 'IBM Plex Sans Arabic', 'Geist', -apple-system, 'SF Pro Text', system-ui, sans-serif;
 }
 .partners[dir='rtl'] { line-height: 1.7; }
 @media (min-width: 1024px) { .partners { --p-radius: 24px; } }
@@ -90,7 +86,7 @@
   text-decoration: none;
 }
 .p-wordmark {
-  font-family: 'Geist', -apple-system, system-ui, sans-serif;
+  font-family: var(--p-sans);
   font-size: 22px;
   font-weight: 700;
   color: var(--p-green);
@@ -1125,144 +1121,224 @@ a.p-choice { text-decoration: none; }
 .p-auth-card .p-input { min-height: 48px; font-size: 16px; }
 .p-btn-lg { min-height: 48px; font-size: 15px; }
 
-/* Brand panel, ≥960px only. The photo is a CSS background inside this media
-   query, so a phone never downloads it. */
-@media (min-width: 960px) {
+/* ≥1100px: a triptych — poster, form, poster — on a near-black green that
+   the posters' own skies and shadows sit in, so they read as windows rather
+   than pasted tiles. Below 1100px the columns would squeeze the posters to
+   thumbnails, so it is the form alone.
+   The posters are shown whole (their typography is the artwork): each is
+   capped by its column's width and the viewport's height, never cropped, and
+   hugs the card. The card stretches to the row's height, so its edges line up
+   with the posters' instead of floating shorter or taller between them. */
+@media (min-width: 1100px) {
+  .partners:has(.p-auth) { background: #0b1611; }
   .p-auth {
+    --p-auth-gap: clamp(14px, 1.2vw, 20px);
     display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-  }
-  .p-auth-panel {
-    display: block;
-    position: sticky;
-    top: 0;
-    height: 100vh;
-    overflow: hidden;
-    color: #fff;
-    background: #0b1f18 url('/hasio-oasis-hero.webp') center / cover no-repeat;
-  }
-  .p-auth-panel::before {
-    content: '';
-    position: absolute;
-    inset: 0;
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 440px) minmax(0, 1fr);
+    align-items: center;
+    align-content: center;
+    gap: var(--p-auth-gap);
+    padding: var(--p-auth-gap);
     background:
-      linear-gradient(to top, rgba(6, 18, 14, 0.9) 0%, rgba(6, 18, 14, 0.62) 42%, rgba(6, 18, 14, 0.12) 78%, rgba(6, 18, 14, 0.28) 100%);
+      radial-gradient(60% 50% at 50% 0%, rgba(13, 122, 95, 0.22), transparent 70%),
+      #0b1611;
   }
-  .p-auth-panel-inner {
-    position: relative;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 36px 48px 48px;
+  .p-auth-panel { display: flex; justify-content: flex-end; }
+  .p-auth-panel:last-child { justify-content: flex-start; }
+  .p-auth-poster {
+    margin: 0;
+    border-radius: 24px;
+    overflow: hidden;
+    background: #101f17;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   }
-  .p-auth-side { background: var(--p-card); }
-  .p-auth-header { background: transparent; backdrop-filter: none; justify-content: flex-end; }
-  .p-auth-header .p-brand { display: none; }
-  .p-auth-body { padding: 16px 48px 72px; }
-  .p-auth-card { border: 0; padding: 0; background: transparent; }
+  .p-auth-poster img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: calc(100vh - 2 * var(--p-auth-gap));
+  }
+  .p-auth-side {
+    align-self: stretch;
+    min-height: 0;
+    background: var(--p-card);
+    border-radius: 24px;
+    overflow: hidden;
+  }
+  .p-auth-header { position: static; background: transparent; backdrop-filter: none; padding: 20px 32px 0; }
+  .p-auth-body { padding: 18px 32px 32px; }
+  .p-auth-card { border: 0; padding: 0; background: transparent; gap: 16px; }
 }
 
-.p-auth-brand { display: flex; align-items: baseline; gap: 10px; margin: 0; }
-.p-auth-panel .p-wordmark { color: #fff; font-size: 26px; }
-.p-auth-brand-sub {
-  font-size: 11.5px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.72);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-.partners[dir='rtl'] .p-auth-brand-sub { text-transform: none; letter-spacing: 0; font-size: 13px; }
-.p-auth-pitch { max-width: 460px; }
-.p-auth-headline {
-  margin: 0 0 24px;
-  font-size: clamp(28px, 2.6vw, 38px);
-  line-height: 1.15;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: #fff;
-  text-wrap: balance;
-}
-.partners[dir='rtl'] .p-auth-headline { letter-spacing: 0; line-height: 1.35; }
-.p-auth-values { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
-.p-auth-values li { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.5; color: rgba(255, 255, 255, 0.9); }
-.p-auth-value-icon {
-  flex: none;
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #fff;
-}
+/* ---- the sign-in form ---------------------------------------------------
+   One surface, one border per control. It used to stack a bordered track,
+   a full-width white thumb (the shared .p-seg ::before, never told how many
+   options it had), a boxed +966 inside a bordered field and a bordered green
+   notice: four outlines in a 400px column. This rule was also unscoped and
+   restyled every .p-seg in the portal; it now touches only this card. */
+.p-auth-card .p-title { font-size: 30px; margin-bottom: 6px; }
+.p-auth-card .p-subtitle { font-size: 14.5px; line-height: 1.6; }
 
-/* Segmented control: Saudi Arabia / another country. */
-.p-seg {
+/* Country: the shared sliding pill, full width. LoginPage sets --seg-n/--seg-i. */
+.p-auth-card .p-seg {
+  --seg-pad: 4px;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  padding: 4px;
-  background: var(--p-subtle);
-  border: 1px solid var(--p-border);
-  border-radius: 14px;
+  width: 100%;
+  border: 0;
+  background: #f0eee8;
 }
-.p-seg-opt {
+.p-auth-card .p-seg::before {
+  border: 0;
+  box-shadow: 0 1px 2px rgba(17, 20, 24, 0.08), 0 4px 12px -4px rgba(17, 20, 24, 0.14);
+}
+.p-seg > .p-seg-opt {
   min-height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 6px 10px;
+  padding: 6px 12px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 999px;
   background: transparent;
   color: var(--p-secondary);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 200ms var(--p-ease), color 200ms var(--p-ease), box-shadow 200ms var(--p-ease);
+  transition: color 200ms var(--p-ease);
 }
 .p-seg-opt:hover:not(.is-selected) { color: var(--p-ink); }
-.p-seg-opt.is-selected { background: var(--p-card); color: var(--p-ink); box-shadow: 0 1px 3px rgba(17, 20, 24, 0.1), 0 0 0 1px var(--p-hairline); }
+.p-seg-opt.is-selected { color: var(--p-ink); font-weight: 600; }
 .p-seg-opt:focus-visible { outline: 2px solid var(--p-focus); outline-offset: 2px; }
-.p-seg-sub { color: var(--p-muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.p-seg-sub { color: var(--p-muted); font-size: 12.5px; font-weight: 500; font-variant-numeric: tabular-nums; }
 
-/* Phone input with the fixed +966 chip (always LTR). */
+/* Inputs: one field, soft focus ring. */
+.p-auth-card .p-input { min-height: 54px; border-radius: 14px; font-size: 16px; }
+.p-auth-card .p-input::placeholder { color: rgba(17, 20, 24, 0.3); }
+.p-auth-card .p-input:focus { border-color: var(--p-green); box-shadow: 0 0 0 4px rgba(13, 122, 95, 0.12); }
+
+/* Phone: +966 is plain text behind a hairline, not a box inside the box. */
 .p-phone { position: relative; }
 .p-phone-prefix {
   position: absolute;
-  left: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 7px 10px;
-  border-radius: 8px;
-  background: var(--p-subtle);
-  border: 1px solid var(--p-hairline);
-  font-size: 15px;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px 0 16px;
+  border: 0;
+  border-right: 1px solid var(--p-border);
+  border-radius: 0;
+  background: none;
+  font-size: 16px;
   font-weight: 500;
   color: var(--p-ink);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
 }
-.p-phone .p-input { width: 100%; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
-.p-phone.has-prefix .p-input { padding-left: 78px; }
+.p-phone .p-input { width: 100%; border-radius: 14px; font-size: 17px; font-variant-numeric: tabular-nums; letter-spacing: 0.02em; }
+.p-phone.has-prefix .p-input { padding-left: 80px; }
 
-/* Info callout (the Saudi SMS notice): calm, not an error. */
+.p-auth-card .p-btn-lg { min-height: 54px; border-radius: 999px; font-size: 16px; font-weight: 600; }
+
+/* The Saudi SMS notice: calm, not an error — a tint, no outline. */
 .p-callout {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   padding: 14px 16px;
-  border-radius: var(--p-radius-item);
-  background: var(--p-green-tint);
-  border: 1px solid var(--p-active-border);
+  border-radius: 14px;
+  background: #f2f6f4;
   color: var(--p-ink);
 }
-.p-callout-icon { flex: none; color: var(--p-green-deep); padding-top: 1px; }
+.p-callout-icon { flex: none; color: var(--p-green); padding-top: 2px; }
 .p-callout-title { margin: 0 0 4px; font-weight: 600; font-size: 14px; }
-.p-callout-body { margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--p-secondary); }
+.p-callout-body { margin: 0; font-size: 13px; line-height: 1.6; color: var(--p-secondary); }
+
+/* ---- sign-in as dark glass ----------------------------------------------
+   The sign-in screen only: it is the one auth screen whose card is
+   .p-auth-card without -wide (join, documents and suspended keep the light
+   card — they use outline buttons, role cards and notes with white fills).
+   Glass is re-tokened rather than restyled piece by piece: the portal's
+   colours are variables, so flipping them here turns every control light-on-
+   dark at once. --p-green becomes a mint so links, focus and the resend ring
+   stay legible; the primary button is the app's lime with dark text. */
+.partners:has(.p-auth-card:not(.p-auth-card-wide)) {
+  background:
+    radial-gradient(45% 40% at 50% 38%, rgba(214, 170, 96, 0.22), transparent 70%),
+    radial-gradient(55% 50% at 50% 100%, rgba(13, 122, 95, 0.35), transparent 70%),
+    radial-gradient(60% 45% at 50% 0%, rgba(13, 122, 95, 0.25), transparent 70%),
+    #0b1611;
+  background-attachment: fixed;
+}
+.partners:has(.p-auth-card:not(.p-auth-card-wide)) .p-auth { background: transparent; }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) {
+  --p-card: transparent;
+  --p-ink: #f5f2ea;
+  --p-secondary: rgba(245, 242, 234, 0.72);
+  --p-muted: rgba(245, 242, 234, 0.5);
+  --p-border: rgba(255, 255, 255, 0.16);
+  --p-hairline: rgba(255, 255, 255, 0.08);
+  --p-line-strong: rgba(255, 255, 255, 0.3);
+  --p-subtle: rgba(255, 255, 255, 0.06);
+  --p-green: #6fd3ae;
+  --p-green-deep: #9be4c8;
+  --p-green-tint: rgba(111, 211, 174, 0.14);
+  --p-active-border: rgba(111, 211, 174, 0.4);
+  --p-focus: rgba(111, 211, 174, 0.3);
+  --p-danger: #ff9b8c;
+  color: var(--p-ink);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  backdrop-filter: blur(28px) saturate(140%);
+}
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-wordmark { color: #fff; }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.08); }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-input { background: rgba(255, 255, 255, 0.06); }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-input::placeholder { color: rgba(245, 242, 234, 0.35); }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-seg { background: rgba(0, 0, 0, 0.22); }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-seg::before { background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12); }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-callout { background: rgba(255, 255, 255, 0.06); }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-primary { background: #cce745; color: #14210f; }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-primary:hover:not(:disabled) { background: #d9f05c; }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-primary .p-spinner { border-color: rgba(20, 33, 15, 0.25); border-top-color: currentColor; }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-otp-box { background: rgba(255, 255, 255, 0.06); }
+
+/* Phones: no card floating on a canvas — the page is the form, white, top-down. */
+@media (max-width: 639px) {
+  .p-auth-side { background: var(--p-card); }
+  .p-auth-header { background: var(--p-card); backdrop-filter: none; padding: 16px 22px; }
+  .p-auth-body { align-items: flex-start; padding: 20px 22px 40px; }
+  .p-auth-card { border: 0; padding: 0; background: transparent; max-width: none; }
+  .p-auth-card .p-title { font-size: 28px; }
+}
+
+/* Sign-in on phones and tablets: the dark page, and the glass on the card
+   itself (on desktop it is on the whole middle column). */
+@media (max-width: 1099px) {
+  .p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) {
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-auth-header { background: transparent; }
+  .p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-auth-card {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 24px;
+    padding: 24px 20px;
+    box-shadow: 0 30px 80px -30px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    -webkit-backdrop-filter: blur(28px) saturate(140%);
+    backdrop-filter: blur(28px) saturate(140%);
+  }
+}
 .p-callout-body + .p-callout-body { margin-top: 6px; }
 .p-callout.is-pulse { animation: p-callout-pulse 700ms var(--p-ease) both; }
 @keyframes p-callout-pulse {

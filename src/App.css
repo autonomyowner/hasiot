@@ -7,7 +7,6 @@ html{scroll-behavior:smooth}
 .reveal-ready [data-reveal]{opacity:0;translate:0 26px}
 .reveal-ready [data-reveal].is-in{opacity:1;translate:0 0}
 @keyframes heroIn{from{opacity:0;translate:0 24px}to{opacity:1;translate:0 0}}
-@keyframes cueSlide{0%{translate:-100% 0}55%,100%{translate:100% 0}}
 @keyframes panelIn{from{opacity:0;translate:0 -10px}to{opacity:1;translate:0 0}}
 
 /* ---- landing typography ----
@@ -115,7 +114,7 @@ html{scroll-behavior:smooth}
 
 /* ---- hero ---- */
 .hero-wrap{height:min(920px,94vh);margin:0 14px;border-radius:0 0 14px 14px;position:relative;overflow:hidden;color:#fff}
-.hero-media{position:absolute;inset:0;background:url("/hasio-oasis-hero.webp") center/cover}
+.hero-media{position:absolute;inset:0;background:url("/concierge-bg.webp") center/cover}
 .hero-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(6,21,13,.66),rgba(6,21,13,.08) 66%),linear-gradient(0deg,rgba(4,15,9,.5),transparent 46%),linear-gradient(180deg,rgba(4,15,9,.34),transparent 22%)}
 .hero-copy{animation:heroIn .9s cubic-bezier(.22,1,.36,1) both;position:absolute;left:clamp(30px,8vw,130px);top:50%;transform:translateY(-48%);max-width:790px}
 .rtl .hero-copy{left:auto;right:clamp(30px,8vw,130px)}
@@ -126,14 +125,6 @@ html{scroll-behavior:smooth}
 .hero-copy h1{font-size:clamp(54px,7.6vw,112px);line-height:.85;letter-spacing:-.055em;font-weight:400;text-wrap:balance}
 .hero-copy h1 em,.story h2 em{font-weight:400;color:#d5d8be}
 .hero-copy p{font-size:16.5px;line-height:1.7;max-width:560px;margin:34px 0 0;color:#ffffffd6}
-/* The coordinates are Latin, so the span forces direction:ltr — which also
-   makes any inset-inline-* on it resolve LTR. Mirror it with physical sides
-   instead, or it lands on top of the scroll cue in Arabic. */
-.hero-index{position:absolute;right:28px;bottom:38px;font-size:9px;letter-spacing:.14em;color:#ffffffb0;direction:ltr}
-.rtl .hero-index{right:auto;left:28px}
-.hero-cue{position:absolute;inset-inline-start:clamp(30px,8vw,130px);bottom:36px;display:flex;align-items:center;gap:13px;font-size:9px;letter-spacing:.2em;color:#ffffffab}
-.hero-cue i{display:block;width:46px;height:1px;background:#ffffff45;position:relative;overflow:hidden}
-.hero-cue i::after{content:'';position:absolute;inset:0;background:#fff;animation:cueSlide 2.6s ease-in-out infinite}
 
 /* ---- store badges ---- */
 .badges{display:flex;gap:12px;flex-wrap:wrap;margin-top:34px}
@@ -154,26 +145,9 @@ html{scroll-behavior:smooth}
 .story-heading{display:grid;grid-template-columns:1fr 2fr;column-gap:30px}
 .story-heading .eyebrow{margin-top:14px}
 .story-heading h2{grid-column:2;font-size:clamp(52px,6vw,88px);line-height:.95;font-weight:400;white-space:nowrap}
-.story-copy{width:42%;margin:45px 0 76px auto}
+.story-copy{width:42%;margin:45px 0 0 auto}
 .rtl .story-copy{margin-left:0;margin-right:auto}
 .story-copy p{font:21px/1.5 var(--font-display)}
-/* Generously rounded, not a 4px near-square: at this size a hairline radius
-   just reads as a rendering artefact. The same radius scale is used by the
-   place cards and the poster plates so every image on the page rhymes. */
-.story-image{height:clamp(340px,42vw,560px);overflow:hidden;border-radius:clamp(18px,2.2vw,30px);box-shadow:0 1px 2px #0a1c1214,0 34px 60px -44px #0a1c1275}
-.story-image img{width:100%;height:100%;object-fit:cover;filter:saturate(.78);transition:scale 1.4s cubic-bezier(.22,1,.36,1)}
-.story-image:hover img{scale:1.03}
-.values{display:grid;grid-template-columns:1.2fr repeat(3,1fr);border-top:1px solid var(--line);margin:64px 0 0}
-.values>h3,.values article{padding:34px 26px 30px 0;border-bottom:1px solid var(--line)}
-.rtl .values>h3,.rtl .values article{padding-right:0;padding-left:26px}
-.values>h3{font-size:23px;font-weight:400}
-/* Logical border and padding: the physical border-left used to land on the
-   wrong side of each cell once the grid mirrored in Arabic. */
-.values article{border-inline-start:1px solid var(--line);padding-inline-start:26px;transition:background-color .35s}
-.values article:hover{background:#17241d07}
-.values article>span{font-size:9px;letter-spacing:.16em;color:var(--gold)}
-.values h4{font-family:var(--font-body);font-size:16px;font-weight:500;margin:28px 0 10px}
-.values p{font-size:13.5px;line-height:1.65;color:var(--muted);max-width:32ch}
 
 /* ---- Timeless places carousel ----
    A native scroll-snap rail: no carousel library, works with touch, trackpad
@@ -291,7 +265,6 @@ html{scroll-behavior:smooth}
 /* width/height, never object-fit: cover — cropping would cut the wordmark. */
 .plate img{display:block;width:100%;height:auto;transition:scale 1.4s cubic-bezier(.22,1,.36,1)}
 .plate:hover img{scale:1.03}
-/* Mirrors .values so the two feature strips on the page read as one system. */
 .app-features{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);margin-top:clamp(64px,7vw,100px)}
 .app-features .feature{border-inline-start:1px solid var(--line);padding:34px 26px 30px;padding-inline-start:26px;transition:background-color .35s}
 .app-features .feature:first-child{border-inline-start:0;padding-inline-start:0}
@@ -327,7 +300,6 @@ html{scroll-behavior:smooth}
 .quote{text-align:center;padding-top:var(--sy);padding-bottom:var(--sy)}
 .quote span{display:block;font-size:22px;color:var(--gold)}
 .quote blockquote{font:clamp(36px,5vw,64px)/1.15 var(--font-display);max-width:1040px;margin:28px auto;text-wrap:balance}
-.quote small{font-size:9px;letter-spacing:.2em;color:var(--muted)}
 .download{border-top:1px solid var(--line);padding-top:var(--sy);padding-bottom:var(--sy);text-align:center}
 .download .eyebrow{justify-content:center}
 .download h2{font-size:clamp(46px,6vw,84px);font-weight:400;line-height:.95}
@@ -348,7 +320,7 @@ html{scroll-behavior:smooth}
 .rtl .story-heading h2,.rtl .concierge-copy h2,.rtl .download h2{line-height:1.22}
 .rtl .quote blockquote{line-height:1.5;font-size:clamp(30px,4.2vw,54px)}
 .rtl em{font-style:normal}
-.rtl .hero-copy p,.rtl .story-copy p,.rtl .app-features p,.rtl .values p,.rtl .concierge-copy p{line-height:1.9}
+.rtl .hero-copy p,.rtl .story-copy p,.rtl .app-features p,.rtl .concierge-copy p{line-height:1.9}
 
 /* ---- footer ---- */
 .home-footer{background:var(--green-deep);color:#fff;padding:78px clamp(24px,6vw,90px) 34px}
@@ -376,7 +348,6 @@ html{scroll-behavior:smooth}
 .foot-bottom span{direction:ltr}
 
 @media(max-width:980px){
- .values{grid-template-columns:1fr 1fr}
  .app-features{grid-template-columns:1fr}
  .app-features .feature{border-inline-start:0;padding-inline:0;padding-bottom:26px;border-bottom:1px solid var(--line)}
  .app-features p{max-width:none}
@@ -413,22 +384,16 @@ html{scroll-behavior:smooth}
  /* Grid rather than flex so the one in-flow child still stretches to the full
     width; the media/shade layers are absolute and stay out of the flow. */
  .hero-wrap{height:auto;min-height:700px;min-height:clamp(620px,92svh,780px);margin:0 7px;padding:104px 0 64px;display:grid;align-content:center}
- .hero-media{background-image:url("/hasio-oasis-hero-mobile.webp")}
+ .hero-media{background-position:70% center}
  .hero-copy,.rtl .hero-copy{position:static;transform:none;max-width:none;padding:0 26px}
  .hero-copy h1{font-size:54px}
  .rtl .hero-copy h1{font-size:42px}
- .hero-index,.hero-cue{display:none}
  .badges{margin-top:30px}
  .section-shell{padding-left:22px;padding-right:22px}
  .story-heading{display:block}
  .story-heading .eyebrow{margin-top:0}
  .story-heading h2{white-space:normal;font-size:46px}
- .story-copy,.rtl .story-copy{width:100%;margin:30px 0 50px}
- .values{grid-template-columns:1fr;margin-bottom:0}
- .values>h3,.values article{padding-bottom:26px}
- .values article{border-inline-start:0}
- .rtl .values>h3,.rtl .values article{padding-left:0}
- .values p{max-width:none}
+ .story-copy,.rtl .story-copy{width:100%;margin:30px 0 0}
  .places-inner{grid-template-columns:1fr;gap:34px}
  .places-copy h2{font-size:38px}
  .places-copy p{max-width:none}
