@@ -129,6 +129,8 @@ describe('editPlacePayload', () => {
     expect(payload.maxGuests).toBe(4)
     expect(payload.pricePerNight).toBe(500)
     expect(payload.city).toBe('Al Ahsa')
+    // Sent as "" so an emptied phone is cleared rather than silently kept.
+    expect(payload.phone).toBe('')
   })
 
   it('an emptied nightly price is sent as null, and its currency with nothing', () => {

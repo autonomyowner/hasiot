@@ -81,6 +81,7 @@ export function emptyForm(kind = 'stay') {
     city: '',
     neighborhood: '',
     address: '',
+    phone: '',
     priceRange: '',
     pricePerNight: '',
     // Offered filled in for a new stay only; an edit never is.
@@ -111,6 +112,7 @@ export function formFromListing(listing) {
     city: canonicalCity(listing.city ?? ''),
     neighborhood: isProvinceWideRegion(listing.region) ? '' : (listing.region ?? ''),
     address: listing.address ?? '',
+    phone: listing.phone ?? '',
     priceRange: listing.priceRange ?? '',
     pricePerNight: count(listing.pricePerNight),
     maxGuests: count(listing.maxGuests),
@@ -173,6 +175,7 @@ export function newPlacePayload(form) {
     city,
     description_en: form.description.trim() || undefined,
     description_ar: form.descriptionAr.trim() || undefined,
+    phone: form.phone.trim() || undefined,
     images: form.images.length > 0 ? form.images : undefined,
     coordinates: cityCoordinates(city),
   }
@@ -211,6 +214,7 @@ export function editPlacePayload(form, existing) {
     coordinates: cityChanged ? cityCoordinates(city) : undefined,
     description_en: form.description.trim(),
     description_ar: form.descriptionAr.trim(),
+    phone: form.phone.trim(),
     images: form.images,
   }
   if (form.kind === 'stay') {

@@ -23,6 +23,7 @@ const PartnerLogin = lazy(() => import('./partners/pages/LoginPage.jsx'))
 const PartnerJoin = lazy(() => import('./partners/pages/JoinPage.jsx'))
 const PartnerVerify = lazy(() => import('./partners/pages/VerifyPage.jsx'))
 const PartnerPlaceholder = lazy(() => import('./partners/pages/Placeholder.jsx'))
+const PartnerHotel = lazy(() => import('./partners/hotel/HotelRoutes.jsx'))
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -43,7 +44,7 @@ createRoot(document.getElementById('root')).render(
                 <Route index element={<PartnerLogin />} />
                 <Route path="join" element={<PartnerJoin />} />
                 <Route path="verify" element={<PartnerVerify />} />
-                <Route path="hotel/*" element={<PartnerPlaceholder kind="hotel" />} />
+                <Route path="hotel/*" element={<PartnerHotel />} />
                 <Route path="services/*" element={<PartnerPlaceholder kind="services" />} />
                 <Route path="*" element={<Navigate to="/partners" replace />} />
               </Route>
