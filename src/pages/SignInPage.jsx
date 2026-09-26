@@ -2,8 +2,20 @@ import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { authClient } from '../lib/auth-client'
 import { useLanguage } from '../hooks/useLanguage'
-import AuthVisual from '../components/auth/AuthVisual'
-import './AuthPages.css'
+import './SignIn.css'
+
+// The landing page's two brand posters, as on the partner sign-in: artwork
+// with its own typography, so always shown whole and never cropped.
+const POSTERS = [
+  { src: '/posters/gate.webp', w: 1085, h: 1335 },
+  { src: '/posters/arch.webp', w: 1122, h: 1402 },
+]
+
+const Poster = ({ p }) => (
+  <aside className="signin-poster" aria-hidden="true">
+    <img src={p.src} alt="" width={p.w} height={p.h} loading="lazy" decoding="async" />
+  </aside>
+)
 
 const translations = {
   ar: {
@@ -78,28 +90,29 @@ export default function SignInPage() {
   }
 
   return (
-    <div className="auth-page auth-page--split" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <div className="auth-form-side">
-        <button
-          className="auth-lang-toggle"
-          type="button"
-          onClick={() => toggleLang()}
-        >
-          {lang === 'ar' ? 'EN' : 'عربي'}
-        </button>
+    <div className="signin" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <Poster p={POSTERS[0]} />
 
-        <div className="auth-card">
-        <Link to="/" className="auth-logo">Hasio</Link>
-        <h1>{t.title}</h1>
-        <p className="auth-subtitle">{t.subtitle}</p>
+      <main className="signin-card">
+        <div className="signin-top">
+          <Link to="/" className="signin-logo">Hasio</Link>
+          <button className="signin-lang" type="button" onClick={() => toggleLang()}>
+            {lang === 'ar' ? 'English' : 'العربية'}
+          </button>
+        </div>
 
-        {error && <div className="auth-error">{error}</div>}
+        <h1 className="signin-title">{t.title}</h1>
+        <p className="signin-subtitle">{t.subtitle}</p>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          <div className="form-group-auth">
-            <label className="form-label-auth">{t.email}</label>
+        {error && <div className="signin-error" role="alert">{error}</div>}
+
+        <form className="signin-form" onSubmit={handleSubmit}>
+          <div className="signin-field">
+            <label className="signin-label" htmlFor="signin-email">{t.email}</label>
             <input
-              className="form-input-auth"
+              id="signin-email"
+              className="signin-input"
+              dir="ltr"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -108,10 +121,12 @@ export default function SignInPage() {
               autoComplete="email"
             />
           </div>
-          <div className="form-group-auth">
-            <label className="form-label-auth">{t.password}</label>
+          <div className="signin-field">
+            <label className="signin-label" htmlFor="signin-password">{t.password}</label>
             <input
-              className="form-input-auth"
+              id="signin-password"
+              className="signin-input"
+              dir="ltr"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -121,7 +136,7 @@ export default function SignInPage() {
               minLength={8}
             />
           </div>
-          <button className="auth-btn-primary" type="submit" disabled={loading}>
+          <button className="signin-btn" type="submit" disabled={loading}>
             {loading ? t.loading : t.signIn}
           </button>
         </form>
@@ -129,15 +144,14 @@ export default function SignInPage() {
         {/* Plain anchors, not react-router <Link>: these are static files in
             public/, not routes. A <Link> is intercepted client-side, matches no
             route, and renders a blank page. */}
-        <p className="auth-legal">
+        <p className="signin-legal">
           {t.legalPrefix}{' '}
           <a href="/terms-of-service.html">{t.terms}</a> {t.legalAnd}{' '}
           <a href="/privacy-policy.html">{t.privacy}</a>
         </p>
-        </div>
-      </div>
+      </main>
 
-      <AuthVisual lang={lang} />
+      <Poster p={POSTERS[1]} />
     </div>
   )
 }
