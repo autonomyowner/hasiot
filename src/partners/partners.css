@@ -1341,6 +1341,24 @@ a.p-choice { text-decoration: none; }
     backdrop-filter: blur(28px) saturate(140%);
   }
 }
+/* "Continue with Google" above the phone form, then an "or" rule. The button
+   is the outline style, not the lime primary: the phone code stays the main
+   path, and two lime buttons would compete. On the dark sign-in card the
+   outline's white fill is swapped for the same glass as the inputs. */
+.p-google { display: flex; flex-direction: column; gap: 12px; }
+.p-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--p-muted);
+  font-size: 12.5px;
+}
+.p-or::before,
+.p-or::after { content: ''; flex: 1; height: 1px; background: var(--p-border); }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-outline { background: rgba(255, 255, 255, 0.06); }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-outline:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+.p-auth-side:has(.p-auth-card:not(.p-auth-card-wide)) .p-btn-outline .p-spinner { border-color: rgba(255, 255, 255, 0.2); border-top-color: currentColor; }
+
 .p-callout-body + .p-callout-body { margin-top: 6px; }
 .p-callout.is-pulse { animation: p-callout-pulse 700ms var(--p-ease) both; }
 @keyframes p-callout-pulse {

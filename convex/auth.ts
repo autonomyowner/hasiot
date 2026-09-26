@@ -10,6 +10,8 @@ import authConfig from "./auth.config";
 import { getSmsProvider, localeFromAcceptLanguage } from "./sms/provider";
 import { tempEmailForPhone } from "./lib/contact";
 import { mirrorAuthUserUpdate, upsertUserFromAuth } from "./users/sync";
+import { appleProvider, canBookWithPhone, googleProvider } from "./lib/phoneRules";
+import { nativeOAuth } from "./lib/nativeOAuth";
 
 const siteUrl = process.env.SITE_URL || "http://localhost:5173";
 
@@ -48,6 +50,7 @@ export const { onCreate, onUpdate, onDelete } = authComponent.triggersApi();
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
   const sms = getSmsProvider();
+  const google = googleProvider();
 
   return betterAuth({
     baseURL: siteUrl,
@@ -68,7 +71,15 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       "https://hasio.net",
       "https://limitless-mockingbird-449.eu-west-1.convex.site", // Mobile app auth (dev)
       "https://hearty-ram-74.eu-west-1.convex.site", // Mobile app auth (production)
+      // The app's own scheme: where Google sign-in hands the session back
+      // (lib/nativeOAuth.ts). Also what lets `hasio://…` pass as a callbackURL.
+      "hasio://",
     ],
+    // Where a sign-in that fails before its own error URL is known lands (a
+    // lost state cookie, a tampered callback). Better Auth's default is
+    // `${baseURL}/error`, a path the website does not serve. SITE_URL is
+    // hasio.xyz in production, which redirects every path to hasio.net.
+    onAPIError: { errorURL: `${siteUrl}/partners` },
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
@@ -120,6 +131,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
           : {}),
       }),
       convex({ authConfig }),
+      nativeOAuth(),
     ],
     hooks: {
       // Runs as middleware in front of the matched route, so unlike a throw
@@ -158,7 +170,13 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
         }
       }),
     },
-    // Google OAuth removed — using email/password only
+    // Google sign-in, for the app and the partner portal — the way in that
+    // does not depend on SMS reaching Saudi numbers. Registered only when both
+    // keys are set (lib/phoneRules.ts), which getPublicConfig reports to the
+    // clients so they never show a button that cannot work.
+    // Apple: the iOS app's native sheet, verified by id token (no secret), so
+    // always on. Guideline 4.8 asks for it wherever Google is offered on iOS.
+    socialProviders: { apple: appleProvider(), ...(google ? { google } : {}) },
   });
 };
 
@@ -207,13 +225,14 @@ export async function getAuthenticatedAppUser(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * A verified phone number, required before booking: the host needs a number
- * they can actually call when a guest is late or lost.
+ * A phone number a host can call, required before booking: confirmed by SMS,
+ * or a Saudi mobile while Saudi SMS is down. The same rule as the booking
+ * seams (lib/phoneRules.ts), so a future caller cannot reintroduce the split.
  */
 export async function requireVerifiedPhone(ctx: QueryCtx | MutationCtx) {
   const user = await getAuthenticatedAppUser(ctx);
   if (!user) throw new Error("Not authenticated");
-  if (!user.phoneVerified) {
+  if (!canBookWithPhone(user)) {
     throw new Error(
       "يلزم توثيق رقم الجوال قبل الحجز. / A verified phone number is required to book."
     );

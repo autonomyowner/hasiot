@@ -188,7 +188,14 @@ type ViewerRole = "guest" | "host" | "provider" | "admin";
 type BookingDetail = Doc<"bookings"> & {
   listing: Doc<"listings"> | null;
   viewerRole: ViewerRole;
-  guest: { firstName?: string; lastName?: string; phone?: string; email: string | null } | null;
+  guest: {
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    // False when the number was typed without an SMS code (lib/phoneRules.ts).
+    phoneVerified: boolean;
+    email: string | null;
+  } | null;
   /** Only with `includeServices`; null on listing bookings and deleted services. */
   service?: Doc<"services"> | null;
   /** Only with `includeServices`; null on listing bookings. */
@@ -241,6 +248,7 @@ export async function bookingForViewer(
           firstName: other.firstName,
           lastName: other.lastName,
           phone: other.phone,
+          phoneVerified: other.phoneVerified ?? false,
           email: isPlaceholderEmail(other.email) ? null : other.email,
         }
       : null,

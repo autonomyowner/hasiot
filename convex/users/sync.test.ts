@@ -37,6 +37,13 @@ describe("splitName", () => {
     expect(splitName("0501234567")).toEqual({});
   });
 
+  it("treats an email as no name", () => {
+    // Sign in with Apple never puts a name in its token, so Better Auth falls
+    // back to the email — often a private relay address.
+    expect(splitName("x7k2@privaterelay.appleid.com")).toEqual({});
+    expect(splitName("sara@example.com")).toEqual({});
+  });
+
   it("treats blank input as no name", () => {
     expect(splitName(null)).toEqual({});
     expect(splitName("   ")).toEqual({});

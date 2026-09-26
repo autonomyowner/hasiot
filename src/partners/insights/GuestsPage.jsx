@@ -27,6 +27,7 @@ const translations = {
     exportFailed: 'The file could not be created.',
     name: 'Name',
     phone: 'Phone',
+    phoneUnconfirmed: 'not confirmed by SMS',
     bookings: 'Bookings',
     completed: 'Completed',
     spent: 'Spent',
@@ -57,6 +58,7 @@ const translations = {
     exportFailed: 'تعذّر إنشاء الملف.',
     name: 'الاسم',
     phone: 'الجوال',
+    phoneUnconfirmed: 'غير موثّق برسالة',
     bookings: 'الحجوزات',
     completed: 'المكتملة',
     spent: 'المصروف',
@@ -132,7 +134,17 @@ export default function GuestsPage({ role }) {
 
   const filtering = Boolean(search || tag)
   const nameOf = (g) => g.name || t.unnamed
-  const phoneOf = (g) => (g.phone ? <Ltr>{formatPhone(g.phone)}</Ltr> : '—')
+  // A number may have been typed without an SMS code while Saudi SMS is down
+  // (design G7); say so beside it, without alarm.
+  const phoneOf = (g) =>
+    g.phone ? (
+      <>
+        <Ltr>{formatPhone(g.phone)}</Ltr>
+        {g.phoneVerified === false && <span className="p-muted p-small"> ({t.phoneUnconfirmed})</span>}
+      </>
+    ) : (
+      '—'
+    )
   const tagsOf = (g) =>
     (g.tags ?? []).map((x) => <span key={x} className="p-ins-tag">{tagLabel(x, lang)}</span>)
 

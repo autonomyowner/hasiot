@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
+import { useQuery } from 'convex/react'
+import { api } from '../../../convex/_generated/api'
 import { authClient } from '../../lib/auth-client'
 import { usePartnerLang, pick } from '../lang'
 import { usePartnerRoute } from '../usePartnerGate'
 import { dashboardPath, safeNext } from '../lib/gate'
 import { formatPhone, normalizePhone, toLatinDigits } from '../lib/phone'
-import { SAUDI_SMS_LIVE, smsBlockedFor } from '../lib/smsAvailability'
+import { saudiSmsOpen, smsBlockedFor } from '../lib/smsAvailability'
+import { googleReturnURL, oauthStartURL, readGoogleReturn } from '../lib/googleSignIn'
 import { errorText } from '../lib/errors'
 import { Icon, Ltr, PageSpinner, Spinner } from '../components/Ui'
 
@@ -28,9 +31,11 @@ const translations = {
     intlHint: 'Include the country code.',
     phoneInvalid: 'Enter a valid mobile number.',
     send: 'Send code',
-    noticeTitle: 'Saudi numbers are coming soon',
-    noticeBody:
-      "We're completing SMS activation for Saudi (+966) numbers with our messaging partner. Sign-in codes to Saudi numbers will be available shortly. Partners with a number from another country can sign in now.",
+    google: 'Continue with Google',
+    googleFailed: "Google sign-in didn't complete. Please try again.",
+    noticeTitle: "SMS codes can't reach Saudi numbers yet.",
+    noticeGoogle: 'Continue with Google instead.',
+    noticeOther: 'Partners with a number from another country can sign in now.',
     noticeContact: 'Questions?',
     codeTitle: 'Enter the code',
     codeSentTo: 'We sent a 6-digit code to',
@@ -59,9 +64,12 @@ const translations = {
     intlHint: 'اكتب الرقم مع رمز الدولة.',
     phoneInvalid: 'أدخل رقم جوال صحيحًا.',
     send: 'إرسال الرمز',
-    noticeTitle: 'أرقام السعودية قريبًا',
-    noticeBody:
-      'نعمل مع شريك الرسائل على تفعيل رسائل التحقق للأرقام السعودية (+966)، وستتوفر رموز الدخول لها قريبًا جدًا. يمكن للشركاء الذين لديهم رقم من دولة أخرى تسجيل الدخول الآن.',
+    // "Google" stays in Latin script: it is the brand the button leads to.
+    google: 'المتابعة باستخدام Google',
+    googleFailed: 'لم يكتمل تسجيل الدخول عبر Google. حاول مرة أخرى.',
+    noticeTitle: 'رسائل الرمز لا تصل إلى الأرقام السعودية حاليًا.',
+    noticeGoogle: 'تابع باستخدام Google.',
+    noticeOther: 'يمكن للشركاء الذين لديهم رقم من دولة أخرى تسجيل الدخول الآن.',
     noticeContact: 'للاستفسار:',
     codeTitle: 'أدخل الرمز',
     codeSentTo: 'أرسلنا رمزًا من 6 أرقام إلى',
@@ -229,6 +237,22 @@ function ResendRing({ seconds }) {
 }
 
 /**
+ * Google's "G" as one flat shape in the text colour. The design rules keep
+ * every icon monochrome, so this is deliberately not the four-colour logo.
+ * Path from Simple Icons (CC0).
+ */
+function GoogleMark({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path
+        fill="currentColor"
+        d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
+      />
+    </svg>
+  )
+}
+
+/**
  * Phone + SMS code, exactly as the app signs in (Better Auth's phone plugin).
  * The first verify of a new number creates the account; the auth trigger
  * writes its users row as a tourist, and the gate then sends them to /join.
@@ -240,6 +264,15 @@ function ResendRing({ seconds }) {
  * Saudi numbers: production SMS cannot reach +966 yet (smsAvailability.js).
  * The page says so up front and never sends to a Saudi number while that
  * holds, rather than leaving a partner waiting for a text that never comes.
+ * The server decides (`getPublicConfig().saudiSmsLive`), so the switch flips
+ * without a site deploy.
+ *
+ * Google (design G3/G5): shown only when the server has Google configured,
+ * as the first option. The same button signs in and signs up — a new Google
+ * account gets a tourist users row from the auth trigger and the gate sends it
+ * to /join, exactly like a first phone sign-in. Google sends the partner back
+ * to /partners; a session makes the gate above redirect, and a failure comes
+ * back as `?error=<code>`.
  */
 export default function LoginPage() {
   const { lang, isRtl } = usePartnerLang()
@@ -262,11 +295,50 @@ export default function LoginPage() {
   // Once the partner has started, a session flicker must not unmount the form.
   const [started, setStarted] = useState(false)
 
+  const config = useQuery(api.config.queries.getPublicConfig, {})
+  const saudiLive = saudiSmsOpen(config)
+  // Hidden while the config loads (contract): a button that appears and then
+  // fails is worse than one that appears a moment late.
+  const googleOn = config?.googleAuth === true
+
+  const [googleBusy, setGoogleBusy] = useState(false)
+  // `true` = came back from Google with a failure (shown in the current
+  // language), a string = the start call itself failed, `false` = nothing.
+  // Read once, on the render that lands back from Google, so the message
+  // survives the URL clean-up below. A cancel (access_denied) says nothing.
+  const [googleError, setGoogleError] = useState(() =>
+    typeof window !== 'undefined' && readGoogleReturn(window.location.search).kind === 'failed'
+  )
+
   useEffect(() => {
     if (secondsLeft <= 0) return undefined
     const id = setTimeout(() => setSecondsLeft((s) => s - 1), 1000)
     return () => clearTimeout(id)
   }, [secondsLeft])
+
+  // Drop `?error=` from the address bar once read, so a reload or a copied
+  // link does not repeat it. history.replaceState, not navigate(): nothing on
+  // the page should re-render or re-run for this, and the router's own state
+  // object is passed back unchanged.
+  useEffect(() => {
+    const { kind, search } = readGoogleReturn(window.location.search)
+    if (kind === null) return
+    const { pathname, hash } = window.location
+    window.history.replaceState(window.history.state, '', `${pathname}${search}${hash}`)
+  }, [])
+
+  // Back from Google's page restores this one from the back/forward cache
+  // (Safari and Chrome both do), with the button still spinning. Un-stick it.
+  useEffect(() => {
+    const onShow = (e) => {
+      if (!e.persisted) return
+      busyRef.current = false
+      setGoogleBusy(false)
+      setBusy(false)
+    }
+    window.addEventListener('pageshow', onShow)
+    return () => window.removeEventListener('pageshow', onShow)
+  }, [])
 
   if (route !== 'login' && route !== 'loading') {
     const next = safeNext(params.get('next'))
@@ -278,7 +350,31 @@ export default function LoginPage() {
   const localeOptions = { headers: { 'Accept-Language': lang } }
 
   const typed = normalizePhone(rawPhone)
-  const showNotice = !SAUDI_SMS_LIVE && (country === 'sa' || smsBlockedFor(typed))
+  const showNotice = !saudiLive && (country === 'sa' || smsBlockedFor(typed, saudiLive))
+
+  const onGoogle = () => {
+    if (busyRef.current) return
+    busyRef.current = true
+    setStarted(true)
+    setBusy(true)
+    setGoogleBusy(true)
+    setError('')
+    setGoogleError(false)
+    try {
+      // A plain navigation, no fetch first: /oauth-start creates the sign-in
+      // state in this browser (googleSignIn.js says why that matters).
+      // Leaves the page; busy stays on until it does (or pageshow resets it).
+      window.location.assign(
+        oauthStartURL(import.meta.env.VITE_CONVEX_SITE_URL, googleReturnURL(window.location.origin))
+      )
+    } catch (err) {
+      // Under the Google button, not the phone field: the number is not what failed.
+      setGoogleError(errorText(err, lang))
+      busyRef.current = false
+      setBusy(false)
+      setGoogleBusy(false)
+    }
+  }
 
   const sendCode = async (target) => {
     const result = await authClient.phoneNumber.sendOtp({ phoneNumber: target, fetchOptions: localeOptions })
@@ -296,7 +392,7 @@ export default function LoginPage() {
       return
     }
     // A code to a Saudi number would never arrive: point at the notice instead.
-    if (smsBlockedFor(normalized)) {
+    if (smsBlockedFor(normalized, saudiLive)) {
       setError('')
       setPulse((n) => n + 1)
       phoneRef.current?.focus()
@@ -306,6 +402,7 @@ export default function LoginPage() {
     setStarted(true)
     setBusy(true)
     setError('')
+    setGoogleError(false)
     try {
       await sendCode(normalized)
       setPhone(normalized)
@@ -387,6 +484,34 @@ export default function LoginPage() {
             <p className="p-subtitle" style={{ marginBottom: 0 }}>{t.subtitle}</p>
           </div>
 
+          {(googleOn || googleError) && (
+            <div className="p-google">
+              {googleOn && (
+                <button
+                  type="button"
+                  className="p-btn p-btn-outline p-btn-block p-btn-lg"
+                  onClick={onGoogle}
+                  disabled={busy}
+                  aria-busy={googleBusy ? 'true' : undefined}
+                  aria-describedby={googleError ? 'partner-google-error' : undefined}
+                >
+                  {googleBusy ? <Spinner /> : <GoogleMark />}
+                  <span>{t.google}</span>
+                </button>
+              )}
+              {googleError && (
+                <span id="partner-google-error" className="p-field-error" role="alert">
+                  {googleError === true ? t.googleFailed : googleError}
+                </span>
+              )}
+              {googleOn && (
+                <div className="p-or">
+                  <span>{t.or}</span>
+                </div>
+              )}
+            </div>
+          )}
+
           <div
             className="p-seg"
             role="radiogroup"
@@ -454,7 +579,9 @@ export default function LoginPage() {
               <span className="p-callout-icon"><Icon name="info" size={20} /></span>
               <div>
                 <p className="p-callout-title">{t.noticeTitle}</p>
-                <p className="p-callout-body">{t.noticeBody}</p>
+                {/* With Google on, that is the way in; without it, the only
+                    other way is a number from another country. */}
+                <p className="p-callout-body">{googleOn ? t.noticeGoogle : t.noticeOther}</p>
                 <p className="p-callout-body">
                   {t.noticeContact}{' '}
                   <a className="p-link" href={`mailto:${SUPPORT_EMAIL}`} dir="ltr">{SUPPORT_EMAIL}</a>
@@ -464,7 +591,7 @@ export default function LoginPage() {
           )}
 
           <button type="submit" className="p-btn p-btn-primary p-btn-block p-btn-lg" disabled={busy}>
-            {busy ? <Spinner /> : <Icon name="phone" size={18} />}
+            {busy && !googleBusy ? <Spinner /> : <Icon name="phone" size={18} />}
             <span>{t.send}</span>
           </button>
         </form>

@@ -29,6 +29,7 @@ const translations = {
     unnamed: 'Guest',
     contact: 'Contact',
     phone: 'Phone',
+    phoneUnconfirmed: 'not confirmed by SMS',
     email: 'Email',
     noContact: 'No contact details.',
     bookings: 'Bookings with you',
@@ -66,6 +67,7 @@ const translations = {
     unnamed: 'ضيف',
     contact: 'التواصل',
     phone: 'الجوال',
+    phoneUnconfirmed: 'غير موثّق برسالة',
     email: 'البريد',
     noContact: 'لا توجد بيانات تواصل.',
     bookings: 'حجوزاته لديك',
@@ -156,7 +158,11 @@ function GuestEditor({ guest, t, lang, onDirtyChange }) {
             {guest.phone && (
               <div>
                 <dt>{t.phone}</dt>
-                <dd><a href={`tel:${guest.phone}`} dir="ltr"><Ltr>{formatPhone(guest.phone)}</Ltr></a></dd>
+                <dd>
+                  <a href={`tel:${guest.phone}`} dir="ltr"><Ltr>{formatPhone(guest.phone)}</Ltr></a>
+                  {/* Typed without an SMS code while Saudi SMS is down (design G7). */}
+                  {guest.phoneVerified === false && <span className="p-muted p-small"> ({t.phoneUnconfirmed})</span>}
+                </dd>
               </div>
             )}
             {guest.email && (

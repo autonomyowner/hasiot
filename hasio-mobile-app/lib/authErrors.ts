@@ -46,6 +46,11 @@ export const AUTH_ERROR_COPY = {
   emailTaken: { title: "authSignInFailedTitle", message: "emailAlreadyExists" },
   sessionExpired: { title: "authSessionExpiredTitle", message: "errorSessionExpired" },
   network: { title: "authOfflineTitle", message: "networkError" },
+  // Google's sign-in came back without a session: the server's `error=` on
+  // the return link, or no session cookie on it (lib/oauthCallback.ts).
+  googleFailed: { title: "authGoogleFailedTitle", message: "authGoogleFailed" },
+  // Apple's sheet failed, or the server refused its identity token.
+  appleFailed: { title: "authAppleFailedTitle", message: "authAppleFailed" },
   unknown: { title: "error", message: "pleaseTryAgain" },
   // `as const` keeps each value its literal key rather than widening it to
   // string; `satisfies` then checks every one is a real translation key.
@@ -140,6 +145,11 @@ export function getAuthErrorKind(error: unknown): AuthErrorKind {
 
   const byCode = kindFromCode(code, status);
   if (byCode) return byCode;
+  // Coded by lib/oauthCallback.ts and signInWithGoogle, one code per
+  // server `error=` value — a family, not a list.
+  if (code?.startsWith("GOOGLE_")) return "googleFailed";
+  // Coded by signInWithApple when Apple's own sheet fails.
+  if (code?.startsWith("APPLE_")) return "appleFailed";
 
   // Better Auth's own limiter answers 429 with no code at all.
   if (status === 429) return "rateLimited";

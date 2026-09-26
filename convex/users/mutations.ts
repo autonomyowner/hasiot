@@ -8,6 +8,7 @@ import { LISTING_ERRORS } from "../listings/queries";
 import { notifyBookingEvent } from "../notifications/internal";
 import { recomputeReviewTarget } from "../reviews/service";
 import { buildSearchTextFrom } from "./search";
+import { setContactPhoneForUser } from "./contactPhone";
 
 /**
  * "Not authenticated" stays English only: the app maps that exact text to
@@ -160,6 +161,19 @@ export const updateProfile = mutation({
     await ctx.db.patch(user._id, updates);
 
     return { success: true };
+  },
+});
+
+/**
+ * A Saudi mobile typed without a code, so a guest can book while Saudi SMS is
+ * down. Rules and refusals in contactPhone.ts.
+ */
+export const setContactPhone = mutation({
+  args: { phone: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getAuthenticatedAppUser(ctx);
+    if (!user) throw new ConvexError(NOT_AUTHENTICATED);
+    return await setContactPhoneForUser(ctx, user, args.phone.trim());
   },
 });
 

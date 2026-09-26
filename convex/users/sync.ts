@@ -44,6 +44,10 @@ export function splitName(
   if (!trimmed) return {};
   if (phone && trimmed === phone) return {};
   if (/^\+?\d[\d\s-]*$/.test(trimmed)) return {};
+  // Sign in with Apple never puts a name in its token, so Better Auth uses the
+  // email instead — often "…@privaterelay.appleid.com". The app saves the real
+  // name Apple hands it on the first sign-in (auth.tsx).
+  if (trimmed.includes("@")) return {};
 
   const parts = trimmed.split(/\s+/);
   return {

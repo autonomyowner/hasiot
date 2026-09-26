@@ -1,4 +1,9 @@
 import * as SecureStore from "expo-secure-store";
+import * as WebBrowser from "expo-web-browser";
+import * as AppleAuthentication from "expo-apple-authentication";
+import * as Crypto from "expo-crypto";
+import { appleProfileName, isAppleCancel } from "./appleSignIn";
+import { OAUTH_CALLBACK_URL, oauthStartUrl, parseOAuthCallback } from "./oauthCallback";
 
 const CONVEX_SITE_URL = process.env.EXPO_PUBLIC_CONVEX_SITE_URL;
 if (!CONVEX_SITE_URL) {
@@ -232,6 +237,141 @@ export async function verifyPhoneOtp(
   }
 
   return { token: sessionToken, user: data.user };
+}
+
+/**
+ * Sign in (or up) with Google, in the system browser.
+ *
+ * Everything before the return happens in the browser, set up by the server
+ * (convex/lib/nativeOAuth.ts):
+ * 1. The browser opens /oauth-start (lib/oauthCallback.ts oauthStartUrl). The
+ *    server creates the OAuth state there — its cookie first-party in that
+ *    browser, where the callback will check it — and redirects to Google.
+ *    The app never mints the state itself with a fetch: a state made outside
+ *    the browser that checks it could be handed to someone else's browser
+ *    and sign them in as the wrong person (login CSRF).
+ * 2. Google returns to the server, which redirects to hasio://auth-callback
+ *    with the session's Set-Cookie header in the query. openAuthSessionAsync
+ *    (ASWebAuthenticationSession on iOS, a Custom Tab on Android) resolves
+ *    with that URL, and lib/oauthCallback.ts lifts the token out of it.
+ *
+ * Null when the person backed out — closed the browser or pressed Cancel on
+ * Google's page. That is a choice, not a failure, so the screen says nothing.
+ * JS-only: expo-web-browser is already in the dev client and store builds.
+ */
+export async function signInWithGoogle(): Promise<{ token: string } | null> {
+  const result = await WebBrowser.openAuthSessionAsync(
+    oauthStartUrl(CONVEX_SITE_URL!),
+    OAUTH_CALLBACK_URL
+  );
+  if (result.type !== "success") return null;
+
+  const sessionToken = parseOAuthCallback(result.url);
+  if (!sessionToken) return null;
+
+  // Stored exactly as a phone sign-in stores its token. The cached user
+  // (SESSION_KEY) is cleared rather than fetched: nothing reads it, a
+  // fetch would be one more round trip between the person and the app, and
+  // an old one would name whoever was signed in before.
+  try {
+    await SecureStore.setItemAsync(SESSION_TOKEN_KEY, sessionToken);
+    await SecureStore.deleteItemAsync(SESSION_KEY);
+  } catch {
+    // As in verifyPhoneOtp: signed in for this session only is still better
+    // than refusing a sign-in the server has already accepted.
+  }
+  const jwt = await fetchConvexToken(sessionToken);
+  if (!jwt) {
+    // The token did not buy a Convex identity, so there is no signed-in app
+    // to go back to. Leave nothing half-stored behind.
+    await clearStoredAuth();
+    const err: AuthError = new Error("Google sign-in returned an unusable session");
+    err.code = "GOOGLE_NO_SESSION";
+    throw err;
+  }
+
+  return { token: sessionToken };
+}
+
+/**
+ * Sign in (or up) with Apple — iOS only, with Apple's own sheet.
+ *
+ * No browser and no redirect: Apple hands the app a signed identity token,
+ * and Better Auth verifies it against Apple's public keys with the bundle id
+ * as audience (convex/lib/phoneRules.ts appleProvider), then answers with a
+ * session token exactly like a phone sign-in's.
+ *
+ * The nonce is fresh per attempt and sent to Apple and to the server
+ * unchanged; Apple copies it into the token and Better Auth checks the two
+ * match, so a token lifted from one sign-in cannot be replayed into another.
+ *
+ * Apple gives the person's name on the first sign-in only and never inside
+ * the token, so it is saved here straight away (best effort: a failure costs
+ * a name, not the sign-in). Null when the person closed Apple's sheet.
+ */
+export async function signInWithApple(): Promise<{ token: string } | null> {
+  const nonce = Crypto.randomUUID();
+  let credential: AppleAuthentication.AppleAuthenticationCredential;
+  try {
+    credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [
+        AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+        AppleAuthentication.AppleAuthenticationScope.EMAIL,
+      ],
+      nonce,
+    });
+  } catch (error) {
+    if (isAppleCancel(error)) return null;
+    const err: AuthError = new Error("Apple sign-in failed");
+    err.code = "APPLE_FAILED";
+    throw err;
+  }
+  if (!credential.identityToken) {
+    const err: AuthError = new Error("Apple returned no identity token");
+    err.code = "APPLE_FAILED";
+    throw err;
+  }
+
+  const data: AuthResponse = await authFetch("/sign-in/social", {
+    provider: "apple",
+    idToken: { token: credential.identityToken, nonce },
+  });
+  const sessionToken = data.token || data.session?.token;
+  if (!sessionToken) throw new Error("No token received");
+
+  try {
+    await SecureStore.setItemAsync(SESSION_TOKEN_KEY, sessionToken);
+    if (data.user) {
+      await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(data.user));
+    }
+  } catch {
+    // As in verifyPhoneOtp.
+  }
+  const jwt = await fetchConvexToken(sessionToken);
+
+  const name = appleProfileName(credential.fullName);
+  if (jwt && name) await saveProfileName(jwt, name);
+
+  return { token: sessionToken };
+}
+
+/**
+ * users/mutations:updateProfile over Convex's HTTP API, with the JWT just
+ * issued — the app's Convex client has not picked up the new session yet at
+ * this point. Never throws.
+ */
+async function saveProfileName(jwt: string, name: { firstName?: string; lastName?: string }) {
+  const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL;
+  if (!convexUrl) return;
+  try {
+    await fetchWithTimeout(`${convexUrl}/api/mutation`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify({ path: "users/mutations:updateProfile", args: name, format: "json" }),
+    });
+  } catch {
+    // The account works without it; the person can add a name in Settings.
+  }
 }
 
 export async function signUp(

@@ -430,6 +430,9 @@ export async function listGuestsFor(
       ...acc,
       name: fullName(person),
       phone: person?.phone ?? null,
+      // A number may be typed without an SMS code while Saudi SMS is down
+      // (lib/phoneRules.ts); the partner is told which it is.
+      phoneVerified: person?.phoneVerified ?? false,
       tags: note?.tags ?? [],
       hasNote: !!note && note.note.trim().length > 0,
     };
@@ -462,6 +465,7 @@ export async function listGuestsFor(
       guestId: g.guestId,
       name: g.name,
       phone: g.phone,
+      phoneVerified: g.phoneVerified,
       bookings: g.bookings,
       completed: g.completed,
       spent: g.spent,
@@ -524,6 +528,7 @@ export async function getGuestFor(ctx: Reader, user: Doc<"users">, guestId: Id<"
     guestId,
     name: fullName(guest),
     phone: guest.phone ?? null,
+    phoneVerified: guest.phoneVerified ?? false,
     // A phone sign-up's synthesised address cannot receive mail.
     email: isPlaceholderEmail(guest.email) ? null : guest.email,
     note: note?.note ?? "",

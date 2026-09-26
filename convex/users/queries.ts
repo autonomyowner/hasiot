@@ -2,12 +2,14 @@ import { query } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
 import { getAuthenticatedAppUser } from "../auth";
 import { AUTH_ERRORS } from "../lib/errors";
+import { withBookingReadiness } from "./contactPhone";
 
 // Get the current authenticated user
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
-    return await getAuthenticatedAppUser(ctx);
+    // `canBook` carries the phone rule, so no client re-implements it.
+    return withBookingReadiness(await getAuthenticatedAppUser(ctx));
   },
 });
 

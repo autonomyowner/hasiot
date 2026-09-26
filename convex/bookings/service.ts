@@ -6,6 +6,7 @@ import { isBookableStay } from "../listings/pricing";
 import { isPublicListing, withoutSuspendedOwners } from "../listings/queries";
 import { riyadhDateTimeToTimestamp, todayRiyadhISO } from "../lib/dates";
 import { notifyBookingEvent } from "../notifications/internal";
+import { canBookWithPhone } from "../lib/phoneRules";
 import {
   computeServiceQuote,
   isBookableService,
@@ -69,7 +70,8 @@ export async function createStayForUser(
 ): Promise<{ bookingId: Id<"bookings">; confirmationCode: string }> {
   // The host has to be able to reach the guest — a stay is someone arriving at
   // a physical building, possibly late at night.
-  if (!user.phoneVerified) {
+  // Confirmed by SMS, or a Saudi mobile while Saudi SMS is down (lib/phoneRules.ts).
+  if (!canBookWithPhone(user)) {
     throw new ConvexError(BOOKING_ERRORS.PHONE_REQUIRED);
   }
 
@@ -266,7 +268,8 @@ export async function createServiceForUser(
 ): Promise<{ bookingId: Id<"bookings">; confirmationCode: string }> {
   // The provider has to be able to reach the traveller: a guide waiting at a
   // meeting point, a driver outside a hotel.
-  if (!user.phoneVerified) {
+  // Confirmed by SMS, or a Saudi mobile while Saudi SMS is down (lib/phoneRules.ts).
+  if (!canBookWithPhone(user)) {
     throw new ConvexError(BOOKING_ERRORS.PHONE_REQUIRED);
   }
 

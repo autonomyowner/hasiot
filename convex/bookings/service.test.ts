@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ConvexError } from "convex/values";
 import {
   makeT,
@@ -129,6 +129,23 @@ describe("createStayForUser", () => {
     const listingId = await seedHotel(t);
 
     await expect(book(t, user, listingId)).rejects.toThrow(BOOKING_ERRORS.PHONE_REQUIRED);
+  });
+
+  it("accepts an unconfirmed Saudi mobile while Saudi SMS is off, and not after", async () => {
+    const t = makeT();
+    const user = await guest(t, { phone: "+966501234567", phoneVerified: false });
+    const listingId = await seedHotel(t);
+
+    await expect(book(t, user, listingId)).resolves.toMatchObject({ confirmationCode: expect.any(String) });
+
+    vi.stubEnv("SAUDI_SMS_LIVE", "true");
+    try {
+      await expect(
+        book(t, user, listingId, { checkIn: "2026-10-01", checkOut: "2026-10-03" })
+      ).rejects.toThrow(BOOKING_ERRORS.PHONE_REQUIRED);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("will not let a host book their own place", async () => {
@@ -800,6 +817,15 @@ describe("createServiceForUser", () => {
 
     // The service is gone too, but the phone is what the traveller can fix.
     expect(await refusalOf(bookService(t, user, serviceId))).toBe(BOOKING_ERRORS.PHONE_REQUIRED);
+  });
+
+  it("accepts an unconfirmed Saudi mobile while Saudi SMS is off", async () => {
+    const t = makeT();
+    const user = await guest(t, { phone: "+966501234567", phoneVerified: false });
+    const { serviceId } = await offering(t);
+
+    const { bookingId } = await bookService(t, user, serviceId);
+    expect(bookingId).toBeDefined();
   });
 
   it("shares the daily booking limit with stays, checked before the service", async () => {

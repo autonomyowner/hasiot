@@ -69,6 +69,8 @@ module.exports = ({ config, projectRoot }) => {
   const root = projectRoot || process.cwd();
   const hasGoogleServices = fs.existsSync(path.join(root, "google-services.json"));
   const iosPush = process.env.HASIO_IOS_PUSH !== "off";
+  // Sign in with Apple, iOS only — plugins/withAppleSignInSwitch.js.
+  const appleSignIn = process.env.HASIO_IOS_APPLE_SIGNIN !== "off";
   const androidPushOff = process.env.HASIO_ANDROID_PUSH === "off";
 
   // EAS_BUILD_PROFILE and EAS_BUILD_PLATFORM exist on the EAS builder only —
@@ -127,7 +129,12 @@ module.exports = ({ config, projectRoot }) => {
       // FIRST, so it acts on the entitlements after expo-notifications (see
       // the plugin for why the order is reversed).
       "./plugins/withoutPushEntitlement",
+      // Before expo-apple-authentication, for the same reason.
+      "./plugins/withAppleSignInSwitch",
       ...plugins,
+      // Listed so it runs once, here, after the switch above — Expo would
+      // otherwise apply it on its own because the package is installed.
+      "expo-apple-authentication",
       "expo-system-ui",
       [
         "expo-notifications",
@@ -144,6 +151,7 @@ module.exports = ({ config, projectRoot }) => {
     ],
     extra: {
       ...config.extra,
+      appleSignIn,
       push: {
         ios: iosPush,
         android: hasGoogleServices && !androidPushOff,

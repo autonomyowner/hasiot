@@ -22,6 +22,10 @@ const load = createRequire(import.meta.url);
 const APP_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const appConfig = load("../app.config.js") as ConfigFn;
 const withoutPushEntitlement = load("../plugins/withoutPushEntitlement.js") as Plugin;
+const withAppleSignInSwitch = load("../plugins/withAppleSignInSwitch.js") as Plugin;
+const appleAuthModule = load("expo-apple-authentication/app.plugin.js") as Plugin | { default: Plugin };
+const withAppleAuth: Plugin =
+  typeof appleAuthModule === "function" ? appleAuthModule : appleAuthModule.default;
 // An ES module compiled to CommonJS: the plugin is its default export, which
 // Expo's own plugin resolver unwraps the same way.
 const notificationsModule = load("expo-notifications/app.plugin.js") as
@@ -31,7 +35,7 @@ const withNotifications: Plugin =
   typeof notificationsModule === "function" ? notificationsModule : notificationsModule.default;
 const appJson = load("../app.json") as { expo: AnyConfig };
 
-const ENV_KEYS = ["HASIO_IOS_PUSH", "HASIO_ANDROID_PUSH", "EAS_BUILD_PROFILE", "EAS_BUILD_PLATFORM"];
+const ENV_KEYS = ["HASIO_IOS_APPLE_SIGNIN", "HASIO_IOS_PUSH", "HASIO_ANDROID_PUSH", "EAS_BUILD_PROFILE", "EAS_BUILD_PLATFORM"];
 let savedEnv: Record<string, string | undefined> = {};
 let emptyRoot: string;
 let firebaseRoot: string;
@@ -204,9 +208,16 @@ describe("app.config.js push switches", () => {
  * (last registered) to the innermost, and returns the entitlements.
  */
 async function entitlementsAfter(plugins: [Plugin, unknown][]): Promise<AnyConfig> {
+  return iosModAfter(plugins, "entitlements");
+}
+
+async function iosModAfter(
+  plugins: [Plugin, unknown][],
+  modName: "entitlements" | "infoPlist"
+): Promise<AnyConfig> {
   let config: AnyConfig = { name: "Hasio", slug: "hasio", _internal: { projectRoot: APP_ROOT } };
   for (const [plugin, props] of plugins) config = plugin(config, props);
-  const run = config.mods?.ios?.entitlements;
+  const run = config.mods?.ios?.[modName];
   if (!run) return {};
   const result = await run({
     ...config,
@@ -214,7 +225,7 @@ async function entitlementsAfter(plugins: [Plugin, unknown][]): Promise<AnyConfi
     modRequest: {
       projectRoot: APP_ROOT,
       platformProjectRoot: path.join(APP_ROOT, "ios"),
-      modName: "entitlements",
+      modName,
       platform: "ios",
       introspect: true,
     },
@@ -241,5 +252,43 @@ describe("plugins/withoutPushEntitlement.js", () => {
     process.env.HASIO_IOS_PUSH = "off";
     const reversed: [Plugin, unknown][] = [listed[1], listed[0]];
     expect(await entitlementsAfter(reversed)).toEqual({ "aps-environment": "production" });
+  });
+});
+
+describe("app.config.js Sign in with Apple switch", () => {
+  it("lists the switch before expo-apple-authentication, so it acts after it", () => {
+    const names = (evaluate().plugins as unknown[]).map((p) => (Array.isArray(p) ? p[0] : p));
+    const at = names.indexOf("./plugins/withAppleSignInSwitch");
+    expect(at).toBeGreaterThanOrEqual(0);
+    expect(at).toBeLessThan(names.indexOf("expo-apple-authentication"));
+  });
+
+  it("tells the app whether this build can sign in with Apple", () => {
+    expect(evaluate().extra.appleSignIn).toBe(true);
+    process.env.HASIO_IOS_APPLE_SIGNIN = "off";
+    expect(evaluate().extra.appleSignIn).toBe(false);
+  });
+});
+
+describe("plugins/withAppleSignInSwitch.js", () => {
+  const listed: [Plugin, unknown][] = [
+    [withAppleSignInSwitch, undefined],
+    [withAppleAuth, undefined],
+  ];
+
+  it("keeps the Sign in with Apple entitlement while the switch is on", async () => {
+    expect(await entitlementsAfter(listed)).toEqual({ "com.apple.developer.applesignin": ["Default"] });
+  });
+
+  it("removes it with HASIO_IOS_APPLE_SIGNIN=off, so the build signs without the capability", async () => {
+    process.env.HASIO_IOS_APPLE_SIGNIN = "off";
+    expect(await entitlementsAfter(listed)).toEqual({});
+  });
+
+  it("never lets the plugin mark the app as taking the phone's language", async () => {
+    // CFBundleAllowMixedLocalizations would make an iPhone set to Arabic lay
+    // the app out right to left natively, on top of the app's own mirroring.
+    const plist = await iosModAfter(listed, "infoPlist");
+    expect(plist.CFBundleAllowMixedLocalizations).toBeUndefined();
   });
 });
