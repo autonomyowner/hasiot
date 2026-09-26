@@ -7,7 +7,7 @@ import { useHotelPages, useSentinel } from '../hooks/useHotelPages'
 import { canonicalCity, CITIES, CITY_LABELS } from '../admin/constants'
 import { formatSAR, priceLine, unitLabel } from '../booking/money'
 import { cityName, serviceTitle, serviceTypeLabel } from '../partners/services/labels'
-import { serviceSearchText, sortServices } from './service/browse'
+import { matchServices, serviceSearchText, sortServices } from './service/browse'
 import '../App.css'
 import './ExplorePage.css'
 
@@ -259,12 +259,7 @@ export default function ExplorePage() {
   // The Services chip lists services alone; "All" lists them after the
   // places whenever the visitor searches or picks a city. The rows and the
   // hotel list below stay places only.
-  const serviceResults = useMemo(() => {
-    if (type !== 'services' && !(type === 'all' && (q !== '' || city !== ''))) return []
-    return serviceIndex
-      .filter(({ s, key }) => (!city || canonicalCity(s.city) === city) && (!q || q.split(/\s+/).every((w) => key.includes(w))))
-      .map(({ s }) => s)
-  }, [serviceIndex, type, city, q])
+  const serviceResults = useMemo(() => matchServices(serviceIndex, { type, query: q, city }), [serviceIndex, type, q, city])
   const found = results.length + serviceResults.length
 
   const clear = () => { setQuery(''); setType('all'); setCity('') }

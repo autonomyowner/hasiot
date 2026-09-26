@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { serviceSearchText, sortServices } from './browse'
+import { matchServices, serviceSearchText, sortServices } from './browse'
 
 describe('serviceSearchText', () => {
   it('holds both titles, the city in both languages and the kind of service in both', () => {
@@ -18,6 +18,37 @@ describe('serviceSearchText', () => {
 
   it('reads an unknown kind as "Other", as its tag does', () => {
     expect(serviceSearchText({ title_en: 'Henna', title_ar: 'حناء', serviceType: 'henna' })).toBe('Henna حناء Other أخرى')
+  })
+})
+
+describe('matchServices', () => {
+  // As /explore holds them: each service with its search text, already folded.
+  const guide = { s: { _id: 'g', city: 'Hofuf' }, key: 'desert walks tour guide al ahsa' }
+  const driver = { s: { _id: 'd', city: 'Dammam' }, key: 'airport rides driver dammam' }
+  const index = [guide, driver]
+  const ids = (rows) => rows.map((s) => s._id)
+
+  it('lists every service under the Services chip', () => {
+    expect(ids(matchServices(index, { type: 'services', query: '', city: '' }))).toEqual(['g', 'd'])
+  })
+
+  it('leaves "All" to places until the visitor searches or picks a city', () => {
+    expect(matchServices(index, { type: 'all', query: '', city: '' })).toEqual([])
+  })
+
+  it('adds the services a search finds under "All", every word matching', () => {
+    expect(ids(matchServices(index, { type: 'all', query: 'guide', city: '' }))).toEqual(['g'])
+    expect(ids(matchServices(index, { type: 'all', query: 'tour  walks', city: '' }))).toEqual(['g'])
+    expect(matchServices(index, { type: 'all', query: 'guide dammam', city: '' })).toEqual([])
+  })
+
+  it('matches the city through the sub-areas that fold into it', () => {
+    expect(ids(matchServices(index, { type: 'all', query: '', city: 'Al Ahsa' }))).toEqual(['g'])
+    expect(ids(matchServices(index, { type: 'services', query: '', city: 'Dammam' }))).toEqual(['d'])
+  })
+
+  it('shows none under a chip for a kind of place', () => {
+    expect(matchServices(index, { type: 'hotel', query: 'guide', city: '' })).toEqual([])
   })
 })
 

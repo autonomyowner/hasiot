@@ -30,6 +30,22 @@ export function serviceSearchText(service) {
 }
 
 /**
+ * The services /explore lists for the visitor's filters, from its index of
+ * `{s, key}` (each key folded, like `query`). The Services chip lists them
+ * all; "All" adds the ones that match once the visitor searches or picks a
+ * city — with nothing asked, "All" is the rows of places. A chip for a kind
+ * of place lists none. Every word of the query must match, as for places.
+ */
+export function matchServices(index, { type, query, city }) {
+  const asked = query !== '' || city !== ''
+  if (type !== 'services' && !(type === 'all' && asked)) return []
+  const words = query.split(/\s+/).filter(Boolean)
+  return index
+    .filter(({ s, key }) => (!city || canonicalCity(s.city) === city) && words.every((w) => key.includes(w)))
+    .map(({ s }) => s)
+}
+
+/**
  * The app's browse order (lib/serviceDisplay.ts sortServicesForBrowse): what
  * can be booked first, then the best rated — the review count breaking a tie,
  * so 5.0 from one review does not outrank 5.0 from forty — then the newest.
