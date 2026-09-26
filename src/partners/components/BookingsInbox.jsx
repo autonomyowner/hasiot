@@ -21,6 +21,7 @@ const translations = {
     errorTitle: 'Bookings could not be loaded',
     retry: 'Try again',
     guest: 'Guest',
+    phoneUnconfirmed: 'not confirmed by SMS',
     confirm: 'Confirm',
     decline: 'Decline',
     complete: 'Mark completed',
@@ -69,6 +70,7 @@ const translations = {
     errorTitle: 'تعذّر تحميل الحجوزات',
     retry: 'حاول مرة أخرى',
     guest: 'ضيف',
+    phoneUnconfirmed: 'غير موثّق برسالة',
     confirm: 'تأكيد',
     decline: 'رفض',
     complete: 'تم الإنجاز',
@@ -308,6 +310,12 @@ function BookingRow({ booking: b, kind, now, lang, t, busy, onAction }) {
             <span>
               <Icon name="phone" size={16} />
               <a href={`tel:${phone}`}><Ltr>{formatPhone(phone)}</Ltr></a>
+              {/* While Saudi SMS is off a traveller may book with a number
+                  they typed but never confirmed (design G7). Say so, plainly
+                  and without alarm: it is still most likely their number. */}
+              {guest?.phoneVerified === false && (
+                <span className="p-muted p-small">({t.phoneUnconfirmed})</span>
+              )}
             </span>
           )}
         </div>
