@@ -1,0 +1,116 @@
+/* /explore. Tokens, the fixed nav, the card frame and the marquee all come from
+   App.css; this file only adds the search hero, the result grid and the small
+   pieces a mixed (not hotel-only) card needs. */
+
+.explore{display:flex;flex-direction:column}
+.explore .nav-menu a[aria-current="page"]{opacity:1}
+.explore .nav-menu a[aria-current="page"]::after{scale:1 1}
+/* The header links hide with the home page's burger breakpoint; this page has
+   no burger, so a plain Home link stands in for them there. */
+.explore .ex-home{display:none}
+@media(max-width:900px){.explore .ex-home{display:inline-block}}
+.explore .ex-home{font-size:13px;font-weight:500;padding:10px 6px;opacity:.8;transition:opacity .2s}
+.explore .ex-home:hover{opacity:1}
+
+/* ---- hero ----
+   Search first, directly under the bar: it is the one thing a visitor came to
+   this page to do. The headline sits under it and the rows under that. */
+.ex-hero{position:relative;padding:calc(66px + clamp(34px,5vw,64px)) clamp(20px,4vw,66px) 0;
+ background:radial-gradient(120% 90% at 50% -10%,#fff9ec 0%,transparent 60%),var(--paper)}
+.ex-search{display:flex;align-items:center;gap:6px;max-width:880px;margin:0 auto;padding:8px;background:#fff;border:1px solid var(--line);border-radius:999px;
+ box-shadow:0 1px 2px #0a1c1210,0 18px 44px -26px #0a1c1259;transition:box-shadow .25s,border-color .25s}
+.ex-search:focus-within{border-color:var(--line-strong);box-shadow:0 1px 2px #0a1c1210,0 22px 50px -24px #0a1c1270}
+.ex-field{display:flex;align-items:center;gap:10px;min-width:0;height:52px;padding:0 18px;border-radius:999px;color:var(--muted);transition:background-color .2s}
+.ex-field:hover{background:#17241d08}
+.ex-field svg{width:20px;height:20px;flex:none}
+.ex-field input,.ex-field select{flex:1;min-width:0;height:100%;border:0;background:none;outline:none;font:inherit;font-size:15px;color:var(--ink)}
+.ex-field input::placeholder{color:#17241d80}
+.ex-field input::-webkit-search-cancel-button{cursor:pointer}
+.ex-q{flex:1}
+.ex-city{flex:none;width:210px;border-inline-start:1px solid var(--line);border-radius:0;padding-inline-start:18px}
+.ex-city:hover{background:none}
+.ex-field select{cursor:pointer;appearance:none;-webkit-appearance:none;padding-inline-end:18px;
+ background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2317241d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right center/14px}
+.rtl .ex-field select{background-position:left center}
+/* Same pill-with-puck as .place-cta on the home page. (chip - icon) is even —
+   36/18 — so the arrow lands on whole pixels. */
+.ex-go{flex:none;display:inline-flex;align-items:center;gap:12px;height:52px;padding:0 8px 0 24px;border-radius:999px;background:var(--green);color:var(--paper);font-size:14px;font-weight:600;transition:background-color .25s}
+.rtl .ex-go{padding:0 24px 0 8px}
+.ex-go span{width:36px;height:36px;border-radius:50%;background:var(--paper);color:var(--green);display:grid;place-items:center;transition:translate .3s cubic-bezier(.22,1,.36,1)}
+.ex-go svg{width:18px;height:18px;stroke-width:2.67}
+.rtl .ex-go svg{scale:-1 1}
+.ex-go:hover{background:var(--green-deep)}
+.ex-go:hover span{translate:3px 0}
+.rtl .ex-go:hover span{translate:-3px 0}
+.ex-go:focus-visible,.ex-chips button:focus-visible,.ex-clear:focus-visible,.ex-count button:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+
+.ex-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:18px auto 0;max-width:880px}
+.ex-chips button{min-height:40px;padding:0 18px;border-radius:999px;border:1px solid var(--line-strong);font-size:13px;font-weight:500;color:var(--ink);transition:background-color .2s,color .2s,border-color .2s}
+.ex-chips button:hover{background:#17241d0d}
+.ex-chips button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+
+.ex-copy{max-width:1180px;margin:clamp(36px,4vw,56px) auto 0;display:grid;grid-template-columns:1fr minmax(260px,400px);gap:24px 56px;align-items:end}
+.ex-copy h1{font-size:clamp(40px,4.2vw,62px);font-weight:400;line-height:1.08}
+.ex-copy p{font-size:15px;line-height:1.75;color:var(--muted)}
+.ex-copy .eyebrow{margin-bottom:18px}
+.ex-stats{display:flex;gap:10px;margin-top:16px;font-size:12px;color:var(--ink)}
+.ex-stats span{padding:6px 12px;border-radius:999px;border:1px solid var(--line)}
+@media(max-width:850px){.ex-copy{grid-template-columns:1fr}}
+
+/* ---- rows / results ---- */
+.ex-results{padding-bottom:clamp(56px,6vw,88px);scroll-margin-top:90px}
+.ex-marquee{margin-top:clamp(40px,5vw,60px)}
+.ex-card{text-decoration:none;background:#d9cfbb}
+.ex-tags{position:absolute;top:14px;inset-inline:14px;display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+.ex-tags span{display:inline-flex;align-items:center;gap:4px;height:26px;padding:0 11px;border-radius:999px;background:#f3f0e7eb;color:var(--ink);font-size:11.5px;font-weight:600;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.ex-tags .ex-rating{margin-inline-start:auto}
+.ex-tags svg{width:12px;height:12px;color:var(--gold)}
+
+.ex-grid-wrap{max-width:calc(1180px + 2*clamp(20px,4vw,66px));margin:clamp(40px,5vw,60px) auto 0;padding:0 clamp(20px,4vw,66px)}
+.ex-count{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:18px;margin-bottom:26px;border-bottom:1px solid var(--line)}
+.ex-count b{font-size:15px;font-weight:600}
+.ex-count button{font-size:13px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;padding:8px 0}
+.ex-count button:hover{color:var(--ink)}
+.ex-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px}
+.ex-grid .place-card{width:auto;aspect-ratio:4/5}
+
+.ex-empty{max-width:520px;margin:clamp(40px,5vw,60px) auto 0;padding:0 20px;text-align:center}
+.ex-empty h2{font-size:26px;font-weight:400;margin-bottom:10px}
+.ex-empty p{color:var(--muted);font-size:14.5px;margin-bottom:22px}
+.ex-clear{min-height:44px;padding:0 22px;border-radius:999px;background:var(--green);color:var(--paper);font-size:13px;font-weight:600}
+.ex-clear:hover{background:var(--green-deep)}
+
+.ex-foot{display:flex;justify-content:space-between;gap:16px;padding:26px clamp(20px,4vw,66px);border-top:1px solid var(--line);font-size:11px;letter-spacing:.14em;color:var(--muted)}
+.ex-foot a:hover{color:var(--ink)}
+
+/* Phone: the bar stacks — the text field full width, city and the button on a
+   row beneath — and the card goes back to a rounded panel. */
+@media(max-width:700px){
+ .ex-search{flex-wrap:wrap;border-radius:26px;padding:8px}
+ .ex-q{flex:1 1 100%;height:50px}
+ .ex-city{flex:1;width:auto;border-inline-start:0;background:#17241d08;border-radius:999px;height:48px}
+ .ex-go{height:48px;padding-inline-start:20px}
+ .rtl .ex-go{padding-inline:20px 8px}
+ .ex-chips{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:calc(-1*clamp(20px,4vw,66px));padding-inline:clamp(20px,4vw,66px)}
+ .ex-chips::-webkit-scrollbar{display:none}
+ .ex-chips button{flex:none}
+ .ex-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+ .ex-grid .place-body{inset-inline:12px;bottom:12px}
+ .ex-grid .place-body h3{font-size:15px}
+ .ex-grid .hotel-foot{flex-wrap:wrap}
+}
+
+/* ---- all hotels: the vertical browse list under the rows ----
+   The rows' own overlay card, still, in the results grid. Loaded ten at a
+   time; the sentinel
+   under the grid asks for the next page 600px before it comes into view. */
+.ex-all{max-width:calc(1180px + 2*clamp(20px,4vw,66px));margin:0 auto;width:100%;padding:0 clamp(20px,4vw,66px) clamp(72px,8vw,120px)}
+.ex-all[hidden]{display:none}
+.ex-all-head{padding-top:clamp(20px,3vw,40px);border-top:1px solid var(--line);margin-bottom:34px}
+.ex-all-head .eyebrow{margin:26px 0 16px}
+.ex-all-head h2{font-size:clamp(30px,3vw,42px);font-weight:400;line-height:1.1;margin-bottom:10px}
+.ex-all-head p{font-size:14.5px;color:var(--muted)}
+.ex-sentinel{height:1px}
+.ex-all-foot{display:flex;flex-direction:column;align-items:center;gap:14px;margin-top:34px;text-align:center;font-size:13.5px;color:var(--muted)}
+.ex-more{min-height:44px;padding:0 26px;border-radius:999px;border:1px solid var(--line-strong);font-size:13px;font-weight:600;color:var(--ink);transition:background-color .2s}
+.ex-more:hover{background:#17241d0d}

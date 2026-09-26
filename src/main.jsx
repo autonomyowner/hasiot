@@ -8,6 +8,9 @@ import './index.css'
 // The public landing page. Loaded eagerly-ish as the only route most visitors
 // ever hit; everything else is behind the authed layout.
 const App = lazy(() => import('./App.jsx'))
+// Every live hotel and place with search. Public and anonymous like /, so it
+// sits outside AuthedLayout and reads the backend with a plain fetch.
+const ExplorePage = lazy(() => import('./pages/ExplorePage.jsx'))
 
 // Convex + Better-Auth are confined to this layout chunk so they never load for
 // anonymous visitors on /.
@@ -33,6 +36,7 @@ createRoot(document.getElementById('root')).render(
         <Suspense fallback={<PageLoader />}>
           <Routes>
             <Route path="/" element={<App />} />
+            <Route path="/explore" element={<ExplorePage />} />
 
             {/* Not linked from anywhere. /sign-in exists so the admin portal has
                 a login; /delete-account is required by the App Store and is

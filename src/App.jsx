@@ -26,19 +26,30 @@ const WHATSAPP_DISPLAY = '+966 53 757 7789'
 const LINKEDIN_URL = 'https://www.linkedin.com/in/marzouq-alshammari-339897160/'
 
 const content = {
-  en: { nav:['The edit','Places','The app','Concierge','Absher','What’s next'],getApp:'Get the app',switch:'العربية',eyebrow:'SAUDI ARABIA, CURATED',titleA:'Saudi Arabia,',titleB:'beyond the expected.',intro:'A considered guide to the Kingdom’s rare stays, storied places and local encounters—and, soon, a way to feel them before you ever set out. We are operating in the Eastern Province today.',onIos:'Download on the',appStore:'App Store',onAndroid:'Get it on',playStore:'Google Play',storyKicker:'THE HASIO EDIT',storyTitle:['Travel slowly.','Remember deeply.'],storyBody:'We look beyond the obvious to bring you closer to the people, flavours and landscapes that give this country its soul—the world’s largest oasis, the old harbours of the coast, and everything in between.',why:'Why travel with us',values:[['Locally considered','Recommendations shaped by people who know the province by heart.'],['Quietly exceptional','Distinctive stays and experiences, chosen for character—not crowds.'],['Effortlessly yours','Save, plan and book your entire escape from one beautifully simple place.']],placesKicker:'EXPLORE THE KINGDOM',placesTitle:['Timeless places','waiting for you.'],placesBody:'From the heritage quarters of Al-Ahsa to the Gulf shore — see a place, and feel it, before you go.',placesCta:'Explore in the app',places:[['Heritage','Step into history that still lives.'],['Nature','Palms, springs and the Gulf shore.'],['Culture','Traditions that tell our story.'],['Flavours','A table set by the oasis and the sea.'],['Mountains','Caves carved by wind and time.'],['Stays','Desert and seaside retreats worth the journey.']],showKicker:'INSIDE THE APP',showTitle:'Everything the Kingdom holds',shots:[['Discover','Heritage sites, oasis paths, corniches and the places locals actually go.'],['Plan','Tell Hasio your pace and your dates. Get an itinerary built around them.'],['Stay & taste','Hotels, farm stays and the tables worth crossing town for.']],plannerName:'Hasio Concierge',plannerStatus:'Online',plannerQuote:'“A quiet three-day escape with heritage, palms and memorable local food.”',plannerRoutes:[['Old Hofuf','Souq, architecture & slow lunch'],['Al Qarah','Caves & an open-air supper'],['Half Moon Bay','Dunes meeting the Gulf at golden hour']],serviceKicker:'YOUR PERSONAL CONCIERGE',serviceTitle:['One journey.','Entirely your own.'],serviceBody:'Tell Hasio what moves you. The planner turns your pace, tastes and travel dates into a considered itinerary—in Arabic or English.',quote:'“The beauty of this country is not only what you see. It is how time feels while you are here.”',dlKicker:'AVAILABLE NOW',dlTitle:'Carry the Kingdom with you.',dlBody:'Free on iPhone and Android, in Arabic and English throughout.',footTag:'Curating the soul of Saudi Arabia.',privacy:'Privacy',terms:'Terms',support:'Support' },
-  ar: { nav:['اختيارات Hasio','الأماكن','التطبيق','مرشدك','أبشر','القادم'],getApp:'حمّل التطبيق',switch:'English',eyebrow:'السعودية، كما لم ترها من قبل',titleA:'السعودية،',titleB:'أقرب مما تتوقّع.',intro:'دليلك المختار بعناية إلى إقامات المملكة النادرة وأماكنها التي تحكي التاريخ وتجاربها المحلية الأصيلة—وقريباً، طريقة تشعر بها قبل أن تذهب إليها. نعمل حالياً في المنطقة الشرقية.',onIos:'حمّله من',appStore:'App Store',onAndroid:'متوفر على',playStore:'Google Play',storyKicker:'اختيارات Hasio',storyTitle:['تمهّل في رحلتك.','واصنع ذكرى أعمق.'],storyBody:'نأخذك إلى ما وراء المألوف، لتقترب من الناس والنكهات والطبيعة التي تمنح هذه البلاد روحها—من أكبر واحة في العالم إلى موانئ الساحل القديمة.',why:'لماذا تسافر معنا',values:[['برؤية محلية','توصيات يصنعها من يعرف المنطقة عن قرب.'],['استثنائي بهدوء','إقامات وتجارب لها طابعها الخاص، بعيداً عن الزحام.'],['رحلتك ببساطة','احفظ وخطط واحجز رحلتك كاملة من مكان واحد جميل وسهل.']],placesKicker:'استكشف المملكة',placesTitle:['أماكن خالدة','بانتظارك.'],placesBody:'من أحياء الأحساء التراثية إلى ساحل الخليج — شاهد المكان واشعر به قبل أن تذهب إليه.',placesCta:'استكشفها في التطبيق',places:[['التراث','ادخل إلى تاريخ ما زال حياً.'],['الطبيعة','نخيل وعيون وساحل خليجي.'],['الثقافة','عادات تروي حكايتنا.'],['النكهات','مائدة تصنعها الواحة والبحر.'],['الجبال','كهوف نحتتها الريح والزمن.'],['الإقامة','منتجعات في الصحراء وعلى الساحل تستحق الرحلة.']],showKicker:'داخل التطبيق',showTitle:'كل ما تحتضنه المملكة',shots:[['اكتشف','مواقع تراثية ودروب الواحة وكورنيشات والأماكن التي يقصدها الأهالي فعلاً.'],['خطط','أخبر Hasio بإيقاعك وتواريخك، واحصل على برنامج مصمم لك.'],['أقم وتذوّق','فنادق ومزارع للإقامة وموائد تستحق عناء الطريق.']],plannerName:'مرشد Hasio',plannerStatus:'متصل',plannerQuote:'«ثلاثة أيام هادئة بين التراث والنخيل ومائدة محلية لا تُنسى.»',plannerRoutes:[['الهفوف القديمة','السوق والعمارة وغداء على مهل'],['جبل القارة','كهوف وعشاء في الهواء الطلق'],['نصف القمر','كثبان تلامس الخليج عند الغروب']],serviceKicker:'مرشدك الشخصي',serviceTitle:['رحلة واحدة.','مصممة لك.'],serviceBody:'أخبر Hasio بما تحب. يحوّل المخطط وقتك وذوقك وتواريخ سفرك إلى برنامج مدروس—بالعربية أو الإنجليزية.',quote:'«جمال هذه البلاد ليس فقط فيما تراه، بل في إحساس الوقت وأنت هنا.»',dlKicker:'متوفر الآن',dlTitle:'خذ المملكة معك.',dlBody:'مجاناً على أجهزة iPhone وأجهزة Android، بالعربية والإنجليزية بالكامل.',footTag:'نحتفي بروح المملكة العربية السعودية.',privacy:'الخصوصية',terms:'الشروط',support:'الدعم' },
+  en: { nav:['Our story','Places','The app','Concierge','Absher','What’s next'],getApp:'Get the app',switch:'العربية',eyebrow:'SAUDI ARABIA, CURATED',titleA:'Saudi Arabia,',titleB:'beyond the expected.',intro:'A considered guide to the Kingdom’s rare stays, storied places and local encounters—and, soon, a way to feel them before you ever set out. We are operating in the Eastern Province today.',onIos:'Download on the',appStore:'App Store',onAndroid:'Get it on',playStore:'Google Play',storyKicker:'THE HASIO EDIT',storyTitle:['Travel slowly.','Remember deeply.'],storyBody:'We look beyond the obvious to bring you closer to the people, flavours and landscapes that give this country its soul—the world’s largest oasis, the old harbours of the coast, and everything in between.',why:'Why travel with us',values:[['Locally considered','Recommendations shaped by people who know the province by heart.'],['Quietly exceptional','Distinctive stays and experiences, chosen for character—not crowds.'],['Effortlessly yours','Save, plan and book your entire escape from one beautifully simple place.']],placesKicker:'EXPLORE THE KINGDOM',placesTitle:['Timeless places','waiting for you.'],placesBody:'From the heritage quarters of Al-Ahsa to the Gulf shore — see a place, and feel it, before you go.',placesCta:'Explore in the app',places:[['Heritage','Step into history that still lives.'],['Nature','Palms, springs and the Gulf shore.'],['Culture','Traditions that tell our story.'],['Flavours','A table set by the oasis and the sea.'],['Mountains','Caves carved by wind and time.'],['Stays','Desert and seaside retreats worth the journey.']],showKicker:'INSIDE THE APP',showTitle:'Everything the Kingdom holds',shots:[['Discover','Heritage sites, oasis paths, corniches and the places locals actually go.'],['Plan','Tell Hasio your pace and your dates. Get an itinerary built around them.'],['Stay & taste','Hotels, farm stays and the tables worth crossing town for.']],plannerName:'Hasio Concierge',plannerStatus:'Online',plannerQuote:'“A quiet three-day escape with heritage, palms and memorable local food.”',plannerRoutes:[['Old Hofuf','Souq, architecture & slow lunch'],['Al Qarah','Caves & an open-air supper'],['Half Moon Bay','Dunes meeting the Gulf at golden hour']],serviceKicker:'YOUR PERSONAL CONCIERGE',serviceTitle:['One journey.','Entirely your own.'],serviceBody:'Tell Hasio what moves you. The planner turns your pace, tastes and travel dates into a considered itinerary—in Arabic or English.',quote:'“The beauty of this country is not only what you see. It is how time feels while you are here.”',dlKicker:'AVAILABLE NOW',dlTitle:'Carry the Kingdom with you.',dlBody:'Free on iPhone and Android, in Arabic and English throughout.',footTag:'Curating the soul of Saudi Arabia.',privacy:'Privacy',terms:'Terms',support:'Support' },
+  ar: { nav:['قصتنا','الأماكن','التطبيق','مرشدك','أبشر','القادم'],getApp:'حمّل التطبيق',switch:'English',eyebrow:'السعودية، كما لم ترها من قبل',titleA:'السعودية،',titleB:'أقرب مما تتوقّع.',intro:'دليلك المختار بعناية إلى إقامات المملكة النادرة وأماكنها التي تحكي التاريخ وتجاربها المحلية الأصيلة—وقريباً، طريقة تشعر بها قبل أن تذهب إليها. نعمل حالياً في المنطقة الشرقية.',onIos:'حمّله من',appStore:'App Store',onAndroid:'متوفر على',playStore:'Google Play',storyKicker:'اختيارات Hasio',storyTitle:['تمهّل في رحلتك.','واصنع ذكرى أعمق.'],storyBody:'نأخذك إلى ما وراء المألوف، لتقترب من الناس والنكهات والطبيعة التي تمنح هذه البلاد روحها—من أكبر واحة في العالم إلى موانئ الساحل القديمة.',why:'لماذا تسافر معنا',values:[['برؤية محلية','توصيات يصنعها من يعرف المنطقة عن قرب.'],['استثنائي بهدوء','إقامات وتجارب لها طابعها الخاص، بعيداً عن الزحام.'],['رحلتك ببساطة','احفظ وخطط واحجز رحلتك كاملة من مكان واحد جميل وسهل.']],placesKicker:'استكشف المملكة',placesTitle:['أماكن خالدة','بانتظارك.'],placesBody:'من أحياء الأحساء التراثية إلى ساحل الخليج — شاهد المكان واشعر به قبل أن تذهب إليه.',placesCta:'استكشفها في التطبيق',places:[['التراث','ادخل إلى تاريخ ما زال حياً.'],['الطبيعة','نخيل وعيون وساحل خليجي.'],['الثقافة','عادات تروي حكايتنا.'],['النكهات','مائدة تصنعها الواحة والبحر.'],['الجبال','كهوف نحتتها الريح والزمن.'],['الإقامة','منتجعات في الصحراء وعلى الساحل تستحق الرحلة.']],showKicker:'داخل التطبيق',showTitle:'كل ما تحتضنه المملكة',shots:[['اكتشف','مواقع تراثية ودروب الواحة وكورنيشات والأماكن التي يقصدها الأهالي فعلاً.'],['خطط','أخبر Hasio بإيقاعك وتواريخك، واحصل على برنامج مصمم لك.'],['أقم وتذوّق','فنادق ومزارع للإقامة وموائد تستحق عناء الطريق.']],plannerName:'مرشد Hasio',plannerStatus:'متصل',plannerQuote:'«ثلاثة أيام هادئة بين التراث والنخيل ومائدة محلية لا تُنسى.»',plannerRoutes:[['الهفوف القديمة','السوق والعمارة وغداء على مهل'],['جبل القارة','كهوف وعشاء في الهواء الطلق'],['نصف القمر','كثبان تلامس الخليج عند الغروب']],serviceKicker:'مرشدك الشخصي',serviceTitle:['رحلة واحدة.','مصممة لك.'],serviceBody:'أخبر Hasio بما تحب. يحوّل المخطط وقتك وذوقك وتواريخ سفرك إلى برنامج مدروس—بالعربية أو الإنجليزية.',quote:'«جمال هذه البلاد ليس فقط فيما تراه، بل في إحساس الوقت وأنت هنا.»',dlKicker:'متوفر الآن',dlTitle:'خذ المملكة معك.',dlBody:'مجاناً على أجهزة iPhone وأجهزة Android، بالعربية والإنجليزية بالكامل.',footTag:'نحتفي بروح المملكة العربية السعودية.',privacy:'الخصوصية',terms:'الشروط',support:'الدعم' },
 }
 
 // Chrome the marketing copy never shows but keyboard navigation, the burger
 // panel and the footer need, so it lives outside `content`.
 const ui = {
-  en: { skip: 'Skip to content', menu: 'Menu', explore: 'Explore', legal: 'Legal', support: 'WhatsApp support', partners: 'For partners', partnerLogin: 'Partner login', partnerSignIn: 'Hotels & providers — sign in' },
-  ar: { skip: 'تخطي إلى المحتوى', menu: 'القائمة', explore: 'استكشف', legal: 'الشروط والسياسات', support: 'الدعم عبر واتساب', partners: 'للشركاء', partnerLogin: 'دخول الشركاء', partnerSignIn: 'دخول الفنادق ومقدمي الخدمات' },
+  en: { skip: 'Skip to content', menu: 'Menu', explore: 'Explore', exploreAll: 'Hotels & places', home: 'Home', app: 'The app', contact: 'Contact', legal: 'Legal', support: 'WhatsApp support', partners: 'For partners', partnerLogin: 'Partner login', partnerSignIn: 'Hotels & providers — sign in' },
+  ar: { skip: 'تخطي إلى المحتوى', menu: 'القائمة', explore: 'استكشف', exploreAll: 'الفنادق والأماكن', home: 'الرئيسية', app: 'التطبيق', contact: 'تواصل معنا', legal: 'الشروط والسياسات', support: 'الدعم عبر واتساب', partners: 'للشركاء', partnerLogin: 'دخول الشركاء', partnerSignIn: 'دخول الفنادق ومقدمي الخدمات' },
 }
 
-// Section ids, in nav order — drives both the anchors and the active-link state.
+// Section ids, in nav order — the footer's section list and the active-link state.
 const SECTIONS = ['story', 'places', 'app', 'concierge', 'voice', 'immersive']
+
+// The header carries four destinations, not the six sections: six in-page
+// anchors read as a table of contents, and the bar ran out of room for them.
+// The sections are still listed in the footer. `id` is the section that marks
+// the link current while it crosses the middle of the viewport.
+const headerLinks = (u) => [
+  { href: '/explore', label: u.explore },
+  { href: '#top', label: u.home },
+  { href: '#app', label: u.app, id: 'app' },
+  { href: '#contact', label: u.contact, id: 'contact' },
+]
 
 // Two art-directed brand posters. Their typography is baked into the artwork,
 // so they are always shown whole — never object-fit: cover, which would crop
@@ -223,7 +234,7 @@ export default function App() {
 
   // Highlight whichever section is crossing the middle of the viewport.
   useEffect(() => {
-    const els = SECTIONS.map((id) => document.getElementById(id)).filter(Boolean)
+    const els = [...SECTIONS, 'contact'].map((id) => document.getElementById(id)).filter(Boolean)
     if (!els.length) return
     const io = new IntersectionObserver(
       (entries) => entries.forEach((e) => e.isIntersecting && setActive(e.target.id)),
@@ -307,8 +318,9 @@ export default function App() {
       <header className={`home-nav ${stuck || menuOpen ? 'is-stuck' : ''}`}>
         <a className="wordmark" href="#top"><img className="brand-mark" src="/logo-mark.webp" alt="" width="38" height="38" /><span>Hasio</span></a>
         <nav className="nav-menu">
-          {t.nav.map((label, i) => (
-            <a key={label} href={`#${SECTIONS[i]}`} aria-current={active === SECTIONS[i] ? 'true' : undefined}>{label}</a>
+          {/* Its own page, so a plain href rather than an in-page anchor. */}
+          {headerLinks(u).map((l) => (
+            <a key={l.href} href={l.href} aria-current={l.id && active === l.id ? 'true' : undefined}>{l.label}</a>
           ))}
         </nav>
         <div className="nav-actions">
@@ -328,8 +340,8 @@ export default function App() {
 
       {menuOpen && (
         <div className="nav-panel" id="nav-panel">
-          {t.nav.map((label, i) => (
-            <a key={label} href={`#${SECTIONS[i]}`} onClick={() => setMenuOpen(false)}>{label}</a>
+          {headerLinks(u).map((l) => (
+            <a key={l.href} href={l.href} onClick={() => setMenuOpen(false)}>{l.label}</a>
           ))}
           <a href="/partners">{u.partnerLogin}</a>
           <a className="panel-cta" href="#download" onClick={() => setMenuOpen(false)}>{t.getApp}</a>
@@ -473,7 +485,7 @@ export default function App() {
         </div>
       </section>
 
-      <footer className="home-footer">
+      <footer className="home-footer" id="contact">
         <div className="foot-top">
           <div className="foot-brand">
             <a className="wordmark" href="#top"><img className="brand-mark" src="/logo-mark.webp" alt="" width="38" height="38" /><span>Hasio</span></a>
@@ -492,6 +504,7 @@ export default function App() {
           </div>
           <nav className="foot-col">
             <b>{u.explore}</b>
+            <a href="/explore">{u.exploreAll}</a>
             {t.nav.map((label, i) => <a key={label} href={`#${SECTIONS[i]}`}>{label}</a>)}
           </nav>
           <div className="foot-col">

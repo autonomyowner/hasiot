@@ -69,11 +69,13 @@ html{scroll-behavior:smooth}
 .home-nav.is-stuck .brand-mark{box-shadow:0 1px 3px #0a1c1214}
 
 .nav-menu{display:flex;gap:clamp(18px,2.5vw,36px);font-size:13px}
-.nav-menu a{position:relative;padding:6px 1px;opacity:.8;transition:opacity .25s}
+.nav-menu a{position:relative;padding:6px 1px;white-space:nowrap;opacity:.8;transition:opacity .25s}
 .nav-menu a::after{content:'';position:absolute;inset-inline:0;bottom:0;height:1px;background:currentColor;scale:0 1;transform-origin:left;transition:scale .4s cubic-bezier(.22,1,.36,1)}
 .rtl .nav-menu a::after{transform-origin:right}
 .nav-menu a:hover,.nav-menu a[aria-current="true"]{opacity:1}
 .nav-menu a:hover::after,.nav-menu a[aria-current="true"]::after{scale:1 1}
+/* The footer is the Contact link's target; stop it short of the fixed bar. */
+.home-footer{scroll-margin-top:66px}
 
 .nav-actions{display:flex;align-items:center;gap:12px;font-size:12px}
 .nav-actions>*{color:inherit}
@@ -387,15 +389,16 @@ html{scroll-behavior:smooth}
  .home-nav .join{display:none}
 }
 
-/* The burger takes over at 1000px, not at 850 like the rest of the mobile
-   layout, because the section list outgrew the bar before the layout did: six
-   links plus the wordmark, the language button and the CTA need ~870px of a
-   855px bar, so they wrapped onto two lines and pushed into the wordmark. This
-   is deliberately its own query rather than a change to the 850 block — every
-   other rule there is about the page body, and only the nav needs the earlier
-   switch. The panel is offset by 66px, the height the bar always has while it
-   is open (menuOpen forces .is-stuck). */
-@media(max-width:1000px){
+/* The burger takes over at 900px. The bar has four links (Explore, Home, The
+   app, Contact) since 2026-09-26; it used to carry all six section anchors and
+   needed ~1150px, which pushed the burger up to 1000 and then 1180. Four links
+   plus the wordmark, language button, Partner login and CTA measure ~770px of
+   content in either language, so 900 keeps a margin over the 4vw gutters. The
+   links are nowrap, so a too-early width shows as overlap rather than wrapping —
+   re-measure when adding one. Kept apart from the 850 block, which is about the
+   page body. The panel is offset by 66px, the height the bar always has while
+   it is open (menuOpen forces .is-stuck). */
+@media(max-width:900px){
  .nav-menu{display:none}
  .nav-toggle{display:grid}
  .nav-panel{top:66px}
