@@ -16,6 +16,16 @@ const AdminPage = lazy(() => import('./admin/AdminPage.jsx'))
 const SignInPage = lazy(() => import('./pages/SignInPage.jsx'))
 const DeleteAccountPage = lazy(() => import('./pages/DeleteAccountPage.jsx'))
 
+// Partner portal (hotels and service providers). Unlinked until SMS sign-in is
+// real in production; every screen is its own lazy chunk inside AuthedLayout.
+const PartnersLayout = lazy(() => import('./partners/PartnersLayout.jsx'))
+const PartnerLogin = lazy(() => import('./partners/pages/LoginPage.jsx'))
+const PartnerJoin = lazy(() => import('./partners/pages/JoinPage.jsx'))
+const PartnerVerify = lazy(() => import('./partners/pages/VerifyPage.jsx'))
+const PartnerSuspended = lazy(() => import('./partners/pages/SuspendedPage.jsx'))
+const PartnerHotel = lazy(() => import('./partners/hotel/HotelRoutes.jsx'))
+const PartnerServices = lazy(() => import('./partners/services/ServicesRoutes.jsx'))
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
@@ -31,6 +41,15 @@ createRoot(document.getElementById('root')).render(
               <Route path="/sign-in" element={<SignInPage />} />
               <Route path="/delete-account" element={<DeleteAccountPage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="/partners" element={<PartnersLayout />}>
+                <Route index element={<PartnerLogin />} />
+                <Route path="join" element={<PartnerJoin />} />
+                <Route path="verify" element={<PartnerVerify />} />
+                <Route path="suspended" element={<PartnerSuspended />} />
+                <Route path="hotel/*" element={<PartnerHotel />} />
+                <Route path="services/*" element={<PartnerServices />} />
+                <Route path="*" element={<Navigate to="/partners" replace />} />
+              </Route>
             </Route>
 
             {/* Old routes and bookmarks land on the new single page rather than

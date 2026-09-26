@@ -462,6 +462,19 @@ export async function deleteAccountData(
     .withIndex("by_reporter", (q) => q.eq("reporterId", user._id))
     .collect();
   for (const report of reports) await ctx.db.delete(report._id);
+
+  // Partner CRM notes: those a partner wrote about this person, and those this
+  // person wrote as a partner (an index prefix on ownerId).
+  const notesAbout = await ctx.db
+    .query("partnerGuestNotes")
+    .withIndex("by_guestId", (q) => q.eq("guestId", user._id))
+    .collect();
+  const notesWritten = await ctx.db
+    .query("partnerGuestNotes")
+    .withIndex("by_ownerId_and_guestId", (q) => q.eq("ownerId", user._id))
+    .collect();
+  const noteIds = new Set([...notesAbout, ...notesWritten].map((row) => row._id));
+  for (const id of noteIds) await ctx.db.delete(id);
 }
 
 // Delete user account and all associated data (Google Play requirement)

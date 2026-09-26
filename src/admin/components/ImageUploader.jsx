@@ -22,12 +22,40 @@ class UploadError extends Error {}
  * `images` is an array of URL strings and index 0 is the cover, so ordering is
  * a real editing operation, not decoration.
  */
+// The panel's own wording. The partner portal passes `labels` to speak
+// English too; anything it leaves out stays Arabic.
+const AR_LABELS = {
+  title: 'الصور',
+  hint: (count, max) => ` — الأولى هي صورة الغلاف في التطبيق (${count}/${max})`,
+  tooMany: (remaining, max) => `يمكن إضافة ${remaining} صورة فقط. الحد الأقصى ${max} صور.`,
+  notImage: (name) => `"${name}" ليس ملف صورة.`,
+  tooBig: (name) => `"${name}" أكبر من 5 ميجابايت.`,
+  uploadFailed: (name, status) => `فشل رفع "${name}" (${status})`,
+  noUrl: (name) => `تعذّر الحصول على رابط الصورة "${name}"`,
+  uploaded: (n) => (n === 1 ? 'تم رفع الصورة' : `تم رفع ${n} صور`),
+  photo: (i) => `صورة ${i}`,
+  cover: 'الغلاف',
+  earlier: 'تقديم',
+  earlierLabel: (i) => `تقديم الصورة ${i}`,
+  later: 'تأخير',
+  laterLabel: (i) => `تأخير الصورة ${i}`,
+  remove: 'حذف',
+  removeLabel: (i) => `حذف الصورة ${i}`,
+  uploading: (current, total) => `جاري الرفع ${current} من ${total}...`,
+  add: 'إضافة صور',
+  full: 'اكتمل الحد الأقصى',
+  formats: 'JPG أو PNG أو WebP، حتى 5 ميجابايت للصورة',
+}
+
 export default function ImageUploader({
   images,
   onChange,
   max = 8,
   emptyHint = 'لا توجد صور. الأماكن بدون صور تظهر فارغة في التطبيق.',
+  labels,
+  onError,
 }) {
+  const L = { ...AR_LABELS, ...labels }
   const generateUploadUrl = useMutation(api.users.mutations.generateUploadUrl)
   const convex = useConvex()
   const toast = useToast()
@@ -43,17 +71,17 @@ export default function ImageUploader({
     if (picked.length === 0) return
 
     if (picked.length > remaining) {
-      toast.error(`يمكن إضافة ${remaining} صورة فقط. الحد الأقصى ${max} صور.`)
+      toast.error(L.tooMany(remaining, max))
     }
 
     const accepted = []
     for (const file of picked.slice(0, remaining)) {
       if (!file.type.startsWith('image/')) {
-        toast.error(`"${file.name}" ليس ملف صورة.`)
+        toast.error(L.notImage(file.name))
         continue
       }
       if (file.size > MAX_FILE_BYTES) {
-        toast.error(`"${file.name}" أكبر من 5 ميجابايت.`)
+        toast.error(L.tooBig(file.name))
         continue
       }
       accepted.push(file)
@@ -73,23 +101,25 @@ export default function ImageUploader({
           body: file,
         })
         if (!response.ok) {
-          throw new UploadError(`فشل رفع "${file.name}" (${response.status})`)
+          throw new UploadError(L.uploadFailed(file.name, response.status))
         }
 
         const { storageId } = await response.json()
         const url = await convex.query(api.users.queries.getStorageUrl, { storageId })
-        if (!url) throw new UploadError(`تعذّر الحصول على رابط الصورة "${file.name}"`)
+        if (!url) throw new UploadError(L.noUrl(file.name))
 
         uploaded.push(url)
         // Commit after each file: if the fourth upload fails, the first three
         // are still on the form rather than lost.
         onChange([...images, ...uploaded])
       }
-      toast.success(
-        uploaded.length === 1 ? 'تم رفع الصورة' : `تم رفع ${uploaded.length} صور`
-      )
+      toast.success(L.uploaded(uploaded.length))
     } catch (error) {
-      toast.error(error instanceof UploadError ? error.message : error)
+      // A caller with its own wording for server errors (the partner portal)
+      // takes them; the panel's readableError handles the rest.
+      if (error instanceof UploadError) toast.error(error.message)
+      else if (onError) onError(error)
+      else toast.error(error)
     } finally {
       setProgress(null)
     }
@@ -108,21 +138,21 @@ export default function ImageUploader({
   return (
     <div className="admin-form-group">
       <label className="admin-form-label">
-        الصور
-        <span className="admin-form-hint"> — الأولى هي صورة الغلاف في التطبيق ({images.length}/{max})</span>
+        {L.title}
+        <span className="admin-form-hint">{L.hint(images.length, max)}</span>
       </label>
 
       {images.length > 0 && (
         <div className="admin-uploader-grid">
           {images.map((url, index) => (
             <div key={`${url}-${index}`} className="admin-uploader-thumb">
-              <img src={url} alt={`صورة ${index + 1}`} loading="lazy" />
-              {index === 0 && <span className="admin-uploader-cover">الغلاف</span>}
+              <img src={url} alt={L.photo(index + 1)} loading="lazy" />
+              {index === 0 && <span className="admin-uploader-cover">{L.cover}</span>}
               <div className="admin-uploader-thumb-actions">
                 <button
                   type="button"
-                  title="تقديم"
-                  aria-label={`تقديم الصورة ${index + 1}`}
+                  title={L.earlier}
+                  aria-label={L.earlierLabel(index + 1)}
                   disabled={index === 0}
                   onClick={() => move(index, index - 1)}
                 >
@@ -130,8 +160,8 @@ export default function ImageUploader({
                 </button>
                 <button
                   type="button"
-                  title="تأخير"
-                  aria-label={`تأخير الصورة ${index + 1}`}
+                  title={L.later}
+                  aria-label={L.laterLabel(index + 1)}
                   disabled={index === images.length - 1}
                   onClick={() => move(index, index + 1)}
                 >
@@ -140,8 +170,8 @@ export default function ImageUploader({
                 <button
                   type="button"
                   className="danger"
-                  title="حذف"
-                  aria-label={`حذف الصورة ${index + 1}`}
+                  title={L.remove}
+                  aria-label={L.removeLabel(index + 1)}
                   onClick={() => remove(index)}
                 >
                   ×
@@ -160,10 +190,10 @@ export default function ImageUploader({
           disabled={!!progress || remaining <= 0}
         >
           {progress
-            ? `جاري الرفع ${progress.current} من ${progress.total}...`
-            : remaining > 0 ? 'إضافة صور' : 'اكتمل الحد الأقصى'}
+            ? L.uploading(progress.current, progress.total)
+            : remaining > 0 ? L.add : L.full}
         </button>
-        <span className="admin-form-hint">JPG أو PNG أو WebP، حتى 5 ميجابايت للصورة</span>
+        <span className="admin-form-hint">{L.formats}</span>
         <input
           ref={inputRef}
           type="file"
