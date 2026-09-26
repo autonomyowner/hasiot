@@ -6,14 +6,15 @@ import { AUTH_BASE_URL, authClient } from '../../lib/auth-client'
 import { usePartnerLang, pick } from '../lang'
 import { usePartnerRoute } from '../usePartnerGate'
 import { dashboardPath, safeNext } from '../lib/gate'
-import { formatPhone, normalizePhone, toLatinDigits } from '../lib/phone'
+import { formatPhone, normalizePhone } from '../lib/phone'
 import { saudiSmsOpen, smsBlockedFor } from '../lib/smsAvailability'
 import { googleReturnURL, oauthStartURL, readGoogleReturn } from '../lib/googleSignIn'
 import { errorText } from '../lib/errors'
 import { Icon, Ltr, PageSpinner, Spinner } from '../components/Ui'
+import CodeBoxes, { CODE_LENGTH } from '../../components/auth/CodeBoxes'
+import ResendRing, { RESEND_SECONDS } from '../../components/auth/ResendRing'
+import GoogleMark from '../../components/auth/GoogleMark'
 
-const CODE_LENGTH = 6
-const RESEND_SECONDS = 60
 const SUPPORT_EMAIL = 'support@hasio.xyz'
 
 const translations = {
@@ -88,9 +89,6 @@ const translations = {
 
 const EMPTY_CODE = Array.from({ length: CODE_LENGTH }, () => '')
 
-/** Only digits, Arabic-Indic folded to Latin. */
-const digitsOf = (value) => toLatinDigits(value).replace(/\D/g, '')
-
 /**
  * Arrow keys move the choice in a radio group, as a native radio set does.
  * `rtl` flips left/right so the arrow points where the focus goes.
@@ -108,148 +106,6 @@ function onRadioKeys(e, values, current, select, rtl) {
   select(next)
   const group = e.currentTarget.closest('[role="radiogroup"]')
   group?.querySelector(`[data-value="${next}"]`)?.focus()
-}
-
-/**
- * Six boxes for the SMS code. Always left-to-right, even in Arabic: a code is
- * read digit by digit in the order it arrived. Typing moves on, Backspace on
- * an empty box goes back, a paste or an SMS autofill of the whole code fills
- * every box at once.
- */
-function CodeBoxes({ value, onChange, disabled, invalid, verifying, label, digitLabel }) {
-  const refs = useRef([])
-  const focusAt = (i) => {
-    const el = refs.current[Math.max(0, Math.min(CODE_LENGTH - 1, i))]
-    el?.focus()
-    el?.select()
-  }
-
-  // Writes `digits` starting at box `from`, then focuses the next empty box.
-  const fill = (from, digits) => {
-    const next = [...value]
-    let i = from
-    for (const d of digits) {
-      if (i >= CODE_LENGTH) break
-      next[i] = d
-      i += 1
-    }
-    onChange(next)
-    focusAt(i >= CODE_LENGTH ? CODE_LENGTH - 1 : i)
-  }
-
-  const onInput = (i, raw) => {
-    const digits = digitsOf(raw)
-    if (!digits) {
-      const next = [...value]
-      next[i] = ''
-      onChange(next)
-      return
-    }
-    // A whole code arriving in one box (iOS/Android autofill) fills from the start.
-    if (digits.length >= CODE_LENGTH) return fill(0, digits.slice(0, CODE_LENGTH))
-    // The box already held a digit: keep the one just typed.
-    const typed = digits.length > 1 && value[i] ? digits.replace(value[i], '') || digits.slice(-1) : digits
-    fill(i, typed)
-  }
-
-  const onKeyDown = (i, e) => {
-    if (e.key === 'Backspace' && !value[i] && i > 0) {
-      e.preventDefault()
-      const next = [...value]
-      next[i - 1] = ''
-      onChange(next)
-      focusAt(i - 1)
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault()
-      focusAt(i - 1)
-    } else if (e.key === 'ArrowRight') {
-      e.preventDefault()
-      focusAt(i + 1)
-    } else if (e.key === 'Home') {
-      e.preventDefault()
-      focusAt(0)
-    } else if (e.key === 'End') {
-      e.preventDefault()
-      focusAt(CODE_LENGTH - 1)
-    }
-  }
-
-  const onPaste = (i, e) => {
-    const digits = digitsOf(e.clipboardData.getData('text'))
-    if (!digits) return
-    e.preventDefault()
-    fill(digits.length >= CODE_LENGTH ? 0 : i, digits.slice(0, CODE_LENGTH))
-  }
-
-  // After a wrong code the boxes are emptied; put the caret back in the first.
-  const empty = value.every((d) => !d)
-  useEffect(() => {
-    if (empty && !disabled) refs.current[0]?.focus()
-  }, [empty, disabled])
-
-  return (
-    <div
-      className={`p-otp${verifying ? ' is-verifying' : ''}`}
-      role="group"
-      aria-label={label}
-      dir="ltr"
-    >
-      {value.map((d, i) => (
-        <input
-          key={i}
-          ref={(el) => { refs.current[i] = el }}
-          className="p-otp-box"
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          autoComplete={i === 0 ? 'one-time-code' : 'off'}
-          aria-label={digitLabel.replace('{n}', String(i + 1))}
-          aria-invalid={invalid ? 'true' : undefined}
-          value={d}
-          disabled={disabled}
-          onChange={(e) => onInput(i, e.target.value)}
-          onKeyDown={(e) => onKeyDown(i, e)}
-          onPaste={(e) => onPaste(i, e)}
-          onFocus={(e) => e.target.select()}
-        />
-      ))}
-    </div>
-  )
-}
-
-/** The resend countdown as a thin ring that empties, with the seconds beside it. */
-function ResendRing({ seconds }) {
-  const r = 8
-  const c = 2 * Math.PI * r
-  return (
-    <svg className="p-ring" width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
-      <circle cx="10" cy="10" r={r} className="p-ring-track" />
-      <circle
-        cx="10"
-        cy="10"
-        r={r}
-        className="p-ring-fill"
-        strokeDasharray={c}
-        strokeDashoffset={c * (1 - seconds / RESEND_SECONDS)}
-      />
-    </svg>
-  )
-}
-
-/**
- * Google's "G" as one flat shape in the text colour. The design rules keep
- * every icon monochrome, so this is deliberately not the four-colour logo.
- * Path from Simple Icons (CC0).
- */
-function GoogleMark({ size = 18 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path
-        fill="currentColor"
-        d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
-      />
-    </svg>
-  )
 }
 
 /**
