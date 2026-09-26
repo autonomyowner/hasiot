@@ -355,6 +355,18 @@ export default defineSchema({
     .index("by_listingId_and_rating", ["listingId", "rating"])
     .index("by_serviceId", ["serviceId"]),
 
+  // A partner's private note and tags about one of their guests (the partner
+  // portal's CRM). Never shown to the guest; removed with either account.
+  partnerGuestNotes: defineTable({
+    ownerId: v.id("users"),
+    guestId: v.id("users"),
+    note: v.string(),
+    tags: v.array(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_ownerId_and_guestId", ["ownerId", "guestId"])
+    .index("by_guestId", ["guestId"]),
+
   // Expo push tokens, one row per device. A table rather than an array on the
   // user because a phone changes hands: when someone else signs in on it, the
   // token moves to them, and the previous account must stop receiving its
