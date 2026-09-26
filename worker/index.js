@@ -38,6 +38,16 @@ export default {
     });
     // A fresh Response so the headers are mutable-safe and nothing is cached
     // by accident: auth answers are per person.
+    // A failed OAuth return is a redirect carrying `error=<code>`, and Better
+    // Auth logs nothing for most of them (a missing state cookie, say). Log
+    // the code — only the code: the rest of the URL can hold a session.
+    if (url.pathname.startsWith("/api/auth/callback/")) {
+      const location = response.headers.get("location") ?? "";
+      const code = location.match(/[?&]error=([^&#]*)/)?.[1];
+      console.log(
+        JSON.stringify({ oauthCallback: url.pathname, status: response.status, error: code ?? null })
+      );
+    }
     const out = new Response(response.body, response);
     out.headers.set("cache-control", "no-store");
     return out;
