@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { riyadhTimestamp } from '../../booking/dates'
 import { parseServiceParams } from '../../booking/params'
-import { bookingPath, choiceSearch, initialChoice, missingStep, withDay } from './choice'
+import { bookingPath, choiceSearch, initialChoice, missingStep, withClock, withDay } from './choice'
 
 // 14:10 on 27 September 2026, Riyadh time.
 const now = riyadhTimestamp('2026-09-27', '14:10')
@@ -65,6 +65,22 @@ describe('initialChoice', () => {
   it('takes up to 20 people when the provider set no limit', () => {
     expect(initialChoice('?people=20', fixed, now).people).toBe(20)
     expect(initialChoice('?people=21', fixed, now).people).toBe(1)
+  })
+})
+
+describe('withClock', () => {
+  const picked = { date: '2026-09-27', time: '15:30', quantity: 2, people: 3 }
+
+  it('keeps a choice the clock has not overtaken', () => {
+    expect(withClock(picked, now)).toEqual(picked)
+  })
+
+  it('lets go of a start time that has come within the hour since it was picked', () => {
+    expect(withClock(picked, riyadhTimestamp('2026-09-27', '14:40'))).toEqual({ ...picked, time: null })
+  })
+
+  it('lets go of the day once it has no start time left', () => {
+    expect(withClock(picked, riyadhTimestamp('2026-09-27', '22:30'))).toEqual({ ...picked, date: null, time: null })
   })
 })
 

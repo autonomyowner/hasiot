@@ -20,18 +20,25 @@ const within = (n, min, max) => Number.isInteger(n) && n >= min && n <= max
 
 /** The choice to start from, read from the page's query string. */
 export function initialChoice(search, service, now = Date.now()) {
-  const today = riyadhToday(now)
-  const parsed = parseServiceParams(search, today)
-  const first = firstServiceDay(now)
-  const last = addDays(today, MAX_DAYS_AHEAD)
-
-  const date = parsed.date && parsed.date >= first && parsed.date <= last ? parsed.date : null
-  const time = date && parsed.time && startTimes(date, now).includes(parsed.time) ? parsed.time : null
+  const parsed = parseServiceParams(search, riyadhToday(now))
   const rule = quantityRule(service?.priceUnit)
   const quantity = rule ? (within(parsed.quantity, rule.min, rule.max) ? parsed.quantity : rule.min) : null
   const people = within(parsed.people, 1, maxPeople(service)) ? parsed.people : 1
+  return withClock({ date: parsed.date, time: parsed.time, quantity, people }, now)
+}
 
-  return { date, time, quantity, people }
+/**
+ * The choice as the clock allows it now. A page can sit open for an hour: a
+ * start time that has come within the hour is let go, and so is a day with no
+ * start left, rather than quoted into a refusal (the app's sheet does the
+ * same). Only the day and the time age; the counts are left as they are.
+ */
+export function withClock(choice, now = Date.now()) {
+  const first = firstServiceDay(now)
+  const last = addDays(riyadhToday(now), MAX_DAYS_AHEAD)
+  const date = choice.date && choice.date >= first && choice.date <= last ? choice.date : null
+  const time = date && choice.time && startTimes(date, now).includes(choice.time) ? choice.time : null
+  return { ...choice, date, time }
 }
 
 /** The same choice on another day. A start time that day does not offer is let go. */
