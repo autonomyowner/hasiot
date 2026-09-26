@@ -214,7 +214,9 @@ export function editPlacePayload(form, existing) {
     coordinates: cityChanged ? cityCoordinates(city) : undefined,
     description_en: form.description.trim(),
     description_ar: form.descriptionAr.trim(),
-    phone: form.phone.trim(),
+    // Only a phone the owner actually changed is sent: the app never writes it,
+    // so an admin-set number must survive a web edit that leaves it untouched.
+    phone: form.phone.trim() !== saved.phone.trim() ? form.phone.trim() : undefined,
     images: form.images,
   }
   if (form.kind === 'stay') {

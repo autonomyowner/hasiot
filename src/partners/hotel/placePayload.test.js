@@ -129,8 +129,16 @@ describe('editPlacePayload', () => {
     expect(payload.maxGuests).toBe(4)
     expect(payload.pricePerNight).toBe(500)
     expect(payload.city).toBe('Al Ahsa')
-    // Sent as "" so an emptied phone is cleared rather than silently kept.
-    expect(payload.phone).toBe('')
+    // An untouched phone is not sent, so a number set elsewhere survives.
+    expect('phone' in payload).toBe(false)
+  })
+
+  it('sends the phone only when the owner changed it', () => {
+    const withPhone = { ...seededHotel, phone: '+966500000000' }
+    const kept = editPlacePayload(formFromListing(withPhone), withPhone)
+    expect('phone' in kept).toBe(false)
+    const cleared = editPlacePayload({ ...formFromListing(withPhone), phone: '' }, withPhone)
+    expect(cleared.phone).toBe('')
   })
 
   it('an emptied nightly price is sent as null, and its currency with nothing', () => {
