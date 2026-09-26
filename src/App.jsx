@@ -33,8 +33,8 @@ const content = {
 // Chrome the marketing copy never shows but keyboard navigation, the burger
 // panel and the footer need, so it lives outside `content`.
 const ui = {
-  en: { skip: 'Skip to content', menu: 'Menu', explore: 'Explore', legal: 'Legal', support: 'WhatsApp support', partners: 'For partners', partnerSignIn: 'Hotels & providers — sign in' },
-  ar: { skip: 'تخطي إلى المحتوى', menu: 'القائمة', explore: 'استكشف', legal: 'الشروط والسياسات', support: 'الدعم عبر واتساب', partners: 'للشركاء', partnerSignIn: 'دخول الفنادق ومقدمي الخدمات' },
+  en: { skip: 'Skip to content', menu: 'Menu', explore: 'Explore', legal: 'Legal', support: 'WhatsApp support', partners: 'For partners', partnerLogin: 'Partner login', partnerSignIn: 'Hotels & providers — sign in' },
+  ar: { skip: 'تخطي إلى المحتوى', menu: 'القائمة', explore: 'استكشف', legal: 'الشروط والسياسات', support: 'الدعم عبر واتساب', partners: 'للشركاء', partnerLogin: 'دخول الشركاء', partnerSignIn: 'دخول الفنادق ومقدمي الخدمات' },
 }
 
 // Section ids, in nav order — drives both the anchors and the active-link state.
@@ -313,6 +313,8 @@ export default function App() {
         </nav>
         <div className="nav-actions">
           <button className="lang-btn" onClick={toggleLang}>{t.switch}</button>
+          {/* Plain href: the portal is its own lazy chunk and must stay off this page. */}
+          <a className="partner-login" href="/partners">{u.partnerLogin}</a>
           <a className="join" href="#download">{t.getApp}<span>↓</span></a>
           <button
             className="nav-toggle"
@@ -329,7 +331,7 @@ export default function App() {
           {t.nav.map((label, i) => (
             <a key={label} href={`#${SECTIONS[i]}`} onClick={() => setMenuOpen(false)}>{label}</a>
           ))}
-          <a href="/partners">{u.partners}</a>
+          <a href="/partners">{u.partnerLogin}</a>
           <a className="panel-cta" href="#download" onClick={() => setMenuOpen(false)}>{t.getApp}</a>
         </div>
       )}

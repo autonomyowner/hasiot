@@ -81,6 +81,15 @@ html{scroll-behavior:smooth}
 .lang-btn:hover{background:#ffffff1f}
 .home-nav.is-stuck .lang-btn{border-color:var(--line-strong)}
 .home-nav.is-stuck .lang-btn:hover{background:#17241d0d}
+/* Outlined like the language pill, so it is easy to find, while the filled
+   "Get the app" CTA stays the one loud button in the bar. */
+.partner-login{padding:9px 15px;border-radius:999px;border:1px solid #ffffff5c;font-size:11.5px;font-weight:500;white-space:nowrap;text-decoration:none;transition:background-color .25s,border-color .35s}
+.partner-login:hover{background:#ffffff1f}
+.home-nav.is-stuck .partner-login{border-color:var(--line-strong)}
+.home-nav.is-stuck .partner-login:hover{background:#17241d0d}
+/* Wordmark, language, this and the burger need ~415px; on a narrower phone the
+   same link is in the burger panel. */
+@media(max-width:420px){.home-nav .partner-login{display:none}}
 .join{display:inline-flex;align-items:center;gap:10px;padding:11px 19px;border-radius:999px;border:1px solid #ffffff73;font-size:12px;font-weight:500;white-space:nowrap;transition:background-color .28s,color .28s,border-color .28s}
 .join span{transition:translate .3s cubic-bezier(.22,1,.36,1)}
 .join:hover{background:#fff;color:var(--ink);border-color:#fff}
