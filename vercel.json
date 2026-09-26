@@ -1,16 +1,9 @@
 {
-  "rewrites": [
+  "redirects": [
     {
-      "source": "/pd",
-      "destination": "/pd/index.html"
-    },
-    {
-      "source": "/pd/ar",
-      "destination": "/pd/ar/index.html"
-    },
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/"
+      "source": "/:path*",
+      "destination": "https://hasio.net/:path*",
+      "permanent": true
     }
   ]
 }
