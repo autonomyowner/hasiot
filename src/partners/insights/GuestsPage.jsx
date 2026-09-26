@@ -4,7 +4,7 @@ import { useQuerySafe } from '../../admin/useQuerySafe'
 import { toastApi } from '../../admin/components/toast-context'
 import { usePartnerLang, pick } from '../lang'
 import { usePartnerGate } from '../usePartnerGate'
-import { EmptyState, ErrorState, Ltr, PageSpinner } from '../components/Ui'
+import { EmptyState, ErrorState, Ltr, SkeletonList } from '../components/Ui'
 import { errorText } from '../lib/errors'
 import { formatPhone } from '../lib/phone'
 import { InsightIcon } from './InsightsUi'
@@ -141,7 +141,7 @@ export default function GuestsPage({ role }) {
     body = <ErrorState title={t.errorTitle} hint={errorText(result.error, lang)} retryLabel={t.retry}
       onRetry={() => window.location.reload()} />
   } else if (guests === undefined) {
-    body = <PageSpinner />
+    body = <SkeletonList />
   } else if (guests.length === 0) {
     body = filtering
       ? <EmptyState icon="user" title={t.noMatchTitle} hint={t.noMatchHint} />

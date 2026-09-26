@@ -3,7 +3,7 @@ import { api } from '../../../convex/_generated/api'
 import { useQuerySafe } from '../../admin/useQuerySafe'
 import { usePartnerLang, pick } from '../lang'
 import { usePartnerGate } from '../usePartnerGate'
-import { ErrorState, Icon, PageSpinner } from '../components/Ui'
+import { ErrorState, Icon, Kpi, SkeletonKpis } from '../components/Ui'
 import { ownerStatusOf } from './servicePayload'
 import { STATUS_LABELS } from './labels'
 
@@ -65,7 +65,17 @@ export default function Overview() {
 
   const error = stats.error || services.error
   if (error) return <ErrorState title={t.errorTitle} retryLabel={t.retry} onRetry={() => window.location.reload()} />
-  if (stats.data === undefined || services.data === undefined) return <PageSpinner />
+  if (stats.data === undefined || services.data === undefined) {
+    return (
+      <div className="p-stack">
+        <div>
+          <h1 className="p-title">{t.title}</h1>
+          <p className="p-subtitle" style={{ margin: 0 }}>{t.subtitle}</p>
+        </div>
+        <SkeletonKpis />
+      </div>
+    )
+  }
 
   const s = stats.data ?? { pending: 0, upcoming: 0, completedMonth: 0, revenueMonth: 0, services: 0 }
   const rows = services.data ?? []
@@ -78,10 +88,10 @@ export default function Overview() {
   const statusLabels = STATUS_LABELS[lang === 'en' ? 'en' : 'ar']
 
   const cards = [
-    { key: 'pending', value: s.pending },
-    { key: 'upcoming', value: s.upcoming },
-    { key: 'completedMonth', value: s.completedMonth },
-    { key: 'revenueMonth', value: money(s.revenueMonth, lang) },
+    { key: 'pending', value: s.pending, icon: 'clock' },
+    { key: 'upcoming', value: s.upcoming, icon: 'calendar' },
+    { key: 'completedMonth', value: s.completedMonth, icon: 'check' },
+    { key: 'revenueMonth', value: money(s.revenueMonth, lang), icon: 'wallet' },
   ]
 
   return (
@@ -91,12 +101,10 @@ export default function Overview() {
         <p className="p-subtitle" style={{ margin: 0 }}>{t.subtitle}</p>
       </div>
 
-      <div className="p-svc-stats">
-        {cards.map((card) => (
-          <div key={card.key} className="p-card p-svc-stat">
-            <span className="p-svc-stat-value">{card.value}</span>
-            <span className="p-muted p-small">{t[card.key]}</span>
-          </div>
+      <div className="p-svc-stats p-kpis">
+        {cards.map((card, i) => (
+          <Kpi key={card.key} index={i} className="p-svc-stat" label={t[card.key]}
+            icon={<Icon name={card.icon} size={15} />} value={card.value} />
         ))}
       </div>
 

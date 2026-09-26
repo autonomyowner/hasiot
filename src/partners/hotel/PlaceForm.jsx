@@ -307,7 +307,8 @@ export default function PlaceForm() {
         {!isEditing && (
           <div className="p-field">
             <span className="p-label">{t.kind}</span>
-            <div className="p-grid-2">
+            <div className="p-grid-2 p-seg p-seg-cards"
+              style={{ '--seg-n': 2, '--seg-i': form.kind === 'place' ? 1 : 0, '--seg-on': form.kind === 'stay' || form.kind === 'place' ? 1 : 0 }}>
               {[['stay', t.kindStay, t.kindStayHint], ['place', t.kindPlace, t.kindPlaceHint]].map(([k, title, hint]) => (
                 <button
                   key={k}

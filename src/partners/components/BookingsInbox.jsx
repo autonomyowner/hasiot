@@ -7,7 +7,7 @@ import { usePartnerConfirm } from '../confirm'
 import { actionsFor, partitionBookings, shownStatus } from '../lib/bookings'
 import { errorText } from '../lib/errors'
 import { formatPhone } from '../lib/phone'
-import { EmptyState, ErrorState, Icon, Ltr, PageSpinner, Spinner } from './Ui'
+import { EmptyState, ErrorState, Icon, Ltr, SkeletonList, Spinner } from './Ui'
 
 const translations = {
   en: {
@@ -169,7 +169,7 @@ export default function BookingsInbox({ bookings, kind = 'stay', error, onRetry 
   const groups = useMemo(() => partitionBookings(bookings ?? [], now), [bookings, now])
 
   if (error) return <ErrorState title={t.errorTitle} retryLabel={t.retry} onRetry={onRetry} />
-  if (bookings === undefined) return <PageSpinner />
+  if (bookings === undefined) return <SkeletonList />
 
   const run = async (booking, action) => {
     if (busy[booking._id]) return
@@ -224,7 +224,8 @@ export default function BookingsInbox({ bookings, kind = 'stay', error, onRetry 
 
   return (
     <div>
-      <div className="p-chips" role="tablist">
+      <div className="p-seg p-seg-tabs" role="tablist"
+        style={{ '--seg-n': 3, '--seg-i': Math.max(0, ['pending', 'upcoming', 'past'].indexOf(tab)) }}>
         {['pending', 'upcoming', 'past'].map((key) => (
           <button
             key={key}
