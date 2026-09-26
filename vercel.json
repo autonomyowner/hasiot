@@ -1,9 +1,6 @@
 {
   "redirects": [
-    {
-      "source": "/:path*",
-      "destination": "https://hasio.net/:path*",
-      "permanent": true
-    }
+    { "source": "/", "destination": "https://hasio.net/", "permanent": true },
+    { "source": "/:path+", "destination": "https://hasio.net/:path+", "permanent": true }
   ]
 }
