@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import PageLoader from './components/PageLoader'
+import ScrollToTop from './components/ScrollToTop'
 import './index.css'
 
 // The public landing page. Loaded eagerly-ish as the only route most visitors
@@ -43,6 +44,7 @@ const TripPage = lazy(() => import('./trips/TripPage.jsx'))
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
+      <ScrollToTop />
       <ErrorBoundary>
         <Suspense fallback={<PageLoader />}>
           <Routes>

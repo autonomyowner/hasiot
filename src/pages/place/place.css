@@ -84,10 +84,6 @@
 /* ---- the phone bar ---- */
 .bk .pl-bar b small{font-size:12px;font-weight:400;color:var(--muted)}
 @media(max-width:380px){.bk .pl-bar .bk-btn{padding-inline:16px}}
-/* The bar is fixed over the bottom of the screen, and PageShell pads <main>
-   for it but not the footer after it: without this the footer's links sit
-   under the bar at the end of the page. */
-@media(max-width:899px){.bk:has(.pl-bar) .bk-foot{padding-bottom:calc(88px + env(safe-area-inset-bottom))}}
 
 /* ---- loading ---- */
 .bk .pl-skel-gallery{aspect-ratio:16/10;border-radius:22px}

@@ -53,16 +53,25 @@ const Prev = () => (
   </svg>
 )
 
-const WIDE = '(min-width: 900px)'
-function useWide() {
-  const [wide, setWide] = useState(() => typeof window !== 'undefined' && window.matchMedia(WIDE).matches)
+// Two months need about 600px for 40px days; below that one month reads better.
+const TWO_MONTHS_MIN = 600
+
+/**
+ * Whether the calendar's own box is wide enough for two months. Measured on
+ * the calendar rather than the window: beside a booking card on a 1000px
+ * screen the column is far narrower than the screen. The observer reports the
+ * first size before the browser paints, so the calendar does not jump.
+ */
+function useTwoMonths(ref) {
+  const [two, setTwo] = useState(false)
   useEffect(() => {
-    const mq = window.matchMedia(WIDE)
-    const onChange = (e) => setWide(e.matches)
-    mq.addEventListener('change', onChange)
-    return () => mq.removeEventListener('change', onChange)
-  }, [])
-  return wide
+    const el = ref.current
+    if (!el || typeof ResizeObserver === 'undefined') return undefined
+    const ro = new ResizeObserver(([entry]) => setTwo(entry.contentRect.width >= TWO_MONTHS_MIN))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [ref])
+  return two
 }
 
 const clamp = (iso, min, max) => (iso < min ? min : max && iso > max ? max : iso)
@@ -71,7 +80,8 @@ const monthIndex = ({ year, month }) => year * 12 + month
 
 /**
  * A month calendar for picking a stay (`mode="range"`) or a day
- * (`mode="single"`). Two months side by side from 900px, one below.
+ * (`mode="single"`). Two months side by side when its box is 600px or wider,
+ * one below that.
  *
  * Keyboard: the days are buttons with one tab stop between them (roving
  * tabindex); arrow keys move by a day or a week — left and right follow the
@@ -86,8 +96,8 @@ const monthIndex = ({ year, month }) => year * 12 + month
 export default function Calendar({ mode = 'range', value, onChange, min, max, lang, maxNights = MAX_NIGHTS, label }) {
   const t = translations[lang === 'ar' ? 'ar' : 'en']
   const isRtl = lang === 'ar'
-  const wide = useWide()
-  const count = wide ? 2 : 1
+  const rootRef = useRef(null)
+  const count = useTwoMonths(rootRef) ? 2 : 1
   const labelId = useId()
 
   const start = mode === 'range' ? value?.start ?? null : value ?? null
@@ -196,7 +206,7 @@ export default function Calendar({ mode = 'range', value, onChange, min, max, la
   const names = weekdayNames(lang)
 
   return (
-    <div className="bk-cal" role="group" aria-labelledby={label ? labelId : undefined}>
+    <div className="bk-cal" role="group" aria-labelledby={label ? labelId : undefined} ref={rootRef}>
       {label && <span id={labelId} className="bk-sr">{label}</span>}
       <div className="bk-cal-head">
         <button type="button" className="bk-cal-nav" onClick={() => setView(addMonths(view, -1))} disabled={!canPrev} aria-label={t.prev}>

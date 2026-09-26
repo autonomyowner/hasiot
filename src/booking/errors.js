@@ -112,9 +112,20 @@ export function serverText(err) {
 
 const pick = (key, lang) => T[key][lang === 'ar' ? 1 : 0]
 
+// Pages call these while rendering, so the same failure can come through many
+// times; it goes to the console once.
+const logged = new WeakSet()
+function logOnce(err) {
+  if (typeof err === 'object' && err !== null) {
+    if (logged.has(err)) return
+    logged.add(err)
+  }
+  console.error('[booking] unexpected error:', err)
+}
+
 function fallback(err, text, lang) {
   if (!text || INTERNAL.test(text)) {
-    if (err) console.error('[booking] unexpected error:', err)
+    if (err) logOnce(err)
     return pick('generic', lang)
   }
   const parts = text.split(' / ')

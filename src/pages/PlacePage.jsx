@@ -1,5 +1,4 @@
-import { useLayoutEffect, useState } from 'react'
-import { Link, useNavigationType, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useLanguage } from '../hooks/useLanguage'
 import PageShell from '../booking/PageShell'
 import { usePageMeta } from '../booking/usePageMeta'
@@ -283,15 +282,6 @@ export default function PlacePage() {
   const name = shown ? localized(shown, 'name', lang) : null
   const message = notFound ? t.notFound : failed ? t.failed : null
   usePageMeta({ title: name?.text ?? message?.replace(/\.$/, '') })
-
-  // The router keeps the previous page's scroll offset, so a place opened from
-  // far down /explore would open part-way down its own page. Back and forward
-  // (POP) are left to the browser. Before paint, so the jump is never seen.
-  const navigationType = useNavigationType()
-  const [arrival] = useState(navigationType)
-  useLayoutEffect(() => {
-    if (arrival !== 'POP') window.scrollTo({ top: 0, behavior: 'instant' })
-  }, [id, arrival])
 
   const retry = () => {
     listingQ.reload()

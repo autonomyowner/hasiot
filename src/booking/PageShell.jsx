@@ -14,15 +14,16 @@ const translations = {
  * The page passes its own `useLanguage()` result in rather than the shell
  * calling it again: each call keeps its own state, and a toggle in one would
  * not re-render the other (the storage event only fires in other tabs).
- * `withBar` leaves room at the bottom for a page's sticky phone bar.
+ * `withBar` leaves room under the footer for a page's fixed phone bar, which
+ * would otherwise cover the page's last lines.
  */
 export default function PageShell({ lang, toggleLang, isRtl, current = null, withBar = false, children }) {
   const t = translations[lang === 'ar' ? 'ar' : 'en']
   return (
     <div className="landing-type contents">
-      <div className={`bk${isRtl ? ' rtl' : ''}`} dir={isRtl ? 'rtl' : 'ltr'} lang={lang}>
+      <div className={`bk${isRtl ? ' rtl' : ''}${withBar ? ' bk-with-bar' : ''}`} dir={isRtl ? 'rtl' : 'ltr'} lang={lang}>
         <SiteHeader lang={lang} toggleLang={toggleLang} current={current} />
-        <main id="main" className={`bk-page${withBar ? ' bk-has-bar' : ''}`}>{children}</main>
+        <main id="main" className="bk-page">{children}</main>
         <footer className="bk-foot">
           <span>© 2026 HASIO</span>
           <span className="bk-row" style={{ gap: 18 }}>
