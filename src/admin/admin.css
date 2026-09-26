@@ -2597,3 +2597,266 @@ html.dark body { background: #0b1611; color: var(--ar-ink); }
   color: #f5f2ea;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* ==========================================================================
+   Console layout (2026-09-26), after the aitridi operator console: a sidebar
+   with the sections grouped by the kind of work, and the page on one plate
+   with a slim top bar. It replaced a single row of twelve pills, which
+   stopped fitting beside the brand below 1460px (the old two-row rule above
+   is now inert: the top bar is a flex row, not the grid it described).
+   Below 1024px the sidebar becomes the phone menu, a sheet from the right.
+   ========================================================================== */
+.admin-console {
+  max-width: 1560px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 252px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.admin-console .admin-shell { max-width: none; margin: 0; min-width: 0; }
+
+/* --- Sidebar ------------------------------------------------------------- */
+.admin-sidebar {
+  position: sticky;
+  top: 1.25rem;
+  height: calc(100vh - 2.5rem);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 6px 2px 4px;
+  overflow: hidden;
+}
+
+.admin-side-brand {
+  padding: 2px 12px 2px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ar-ink);
+  text-decoration: none;
+}
+
+/* Which console this is: the one lime-edged block in the sidebar. */
+.admin-console-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(204, 231, 69, 0.28);
+  background: rgba(204, 231, 69, 0.07);
+}
+.admin-console-badge-icon {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: #cce745;
+  color: #14210f;
+}
+.admin-console-badge-icon svg { width: 16px; height: 16px; }
+.admin-console-badge small { display: block; font-size: 11px; color: var(--ar-ink-3); line-height: 1.4; }
+.admin-console-badge strong { display: block; font-size: 13.5px; color: var(--ar-ink); line-height: 1.4; }
+
+/* Only the section list scrolls, so the account and sign-out at the foot
+   stay in view on a short window. */
+.admin-side-nav {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.admin-side-nav::-webkit-scrollbar { display: none; }
+.admin-side-group { display: flex; flex-direction: column; gap: 2px; }
+.admin-side-heading {
+  margin: 0 0 4px;
+  padding: 0 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ar-ink-3);
+}
+.admin-side-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 38px;
+  padding: 7px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: none;
+  color: var(--ar-ink-2);
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color 0.18s var(--ar-ease), color 0.18s var(--ar-ease), border-color 0.18s var(--ar-ease);
+}
+.admin-side-link svg { flex: none; width: 17px; height: 17px; }
+.admin-side-link:hover { background: var(--ar-line-soft); color: var(--ar-ink); }
+.admin-side-link.active {
+  border-color: rgba(204, 231, 69, 0.35);
+  background: rgba(204, 231, 69, 0.1);
+  color: #cce745;
+  font-weight: 600;
+}
+.admin-side-link:focus-visible,
+.admin-side-signout:focus-visible,
+.admin-side-audit button:focus-visible { outline: 2px solid #6fd3ae; outline-offset: 2px; }
+.admin-side-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-side-count {
+  flex: none;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ar-r-pill);
+  background: var(--ar-gold);
+  color: #14210f;
+  font-size: 11px;
+  font-weight: 700;
+}
+.admin-side-note { margin: 0; padding: 0 12px; font-size: 11.5px; color: var(--ar-danger); }
+
+.admin-side-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ar-line-soft);
+}
+.admin-side-audit {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--ar-line-soft);
+  background: rgba(0, 0, 0, 0.18);
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: var(--ar-ink-3);
+}
+.admin-side-audit button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #cce745;
+  font: inherit;
+  cursor: pointer;
+}
+.admin-side-audit button:hover { text-decoration: underline; }
+.admin-side-account { display: flex; align-items: center; gap: 10px; padding: 2px 6px; }
+.admin-side-avatar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #cce745;
+  color: #14210f;
+  font-weight: 700;
+  font-size: 14px;
+}
+.admin-side-who { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.35; }
+.admin-side-who strong { font-size: 13px; color: var(--ar-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-side-who small { font-size: 11px; color: var(--ar-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: end; }
+.admin-side-signout {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ar-line);
+  border-radius: 10px;
+  background: none;
+  color: var(--ar-ink-2);
+  cursor: pointer;
+}
+.admin-side-signout svg { width: 16px; height: 16px; }
+.admin-side-signout:hover:not(:disabled) { background: var(--ar-line-soft); color: var(--ar-ink); }
+.admin-side-signout:disabled { opacity: 0.5; cursor: default; }
+
+/* --- Top bar ------------------------------------------------------------- */
+.admin-console .admin-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 1rem 1.5rem 0.75rem;
+}
+.admin-menu-btn { display: none; }
+.admin-crumb { margin: 0; display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 13px; color: var(--ar-ink-3); }
+.admin-crumb span::after { content: '/'; margin-inline-start: 8px; opacity: 0.5; }
+.admin-crumb strong { font-size: 15px; font-weight: 700; color: var(--ar-ink); white-space: nowrap; }
+.admin-quick {
+  margin-inline-start: auto;
+  display: flex;
+  gap: 2px;
+  padding: 4px;
+  border-radius: var(--ar-r-pill);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.admin-quick::-webkit-scrollbar { display: none; }
+
+/* --- Phone menu ------------------------------------------------------------ */
+.admin-sheet-root { position: fixed; inset: 0; z-index: 60; }
+.admin-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.admin-sheet {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: min(290px, 86vw);
+  padding: 16px 10px max(16px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  scrollbar-width: none;
+  background: #0f1d17;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: var(--ar-shadow-lg);
+}
+.admin-sheet .admin-sidebar.in-sheet { position: static; height: auto; min-height: 100%; padding: 0; overflow: visible; }
+.admin-sheet .admin-sidebar.in-sheet .admin-side-nav { overflow: visible; }
+.admin-sheet-close {
+  position: absolute;
+  top: 14px;
+  left: 12px;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ar-line);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ar-ink);
+  cursor: pointer;
+}
+.admin-sheet-close svg { width: 16px; height: 16px; }
+
+@media (max-width: 1023px) {
+  .admin-console { grid-template-columns: minmax(0, 1fr); }
+  .admin-console > .admin-sidebar { display: none; }
+  .admin-menu-btn { display: inline-flex; }
+  .admin-console .admin-topbar { padding: 0.875rem 1rem 0.5rem; }
+  .admin-quick { order: 5; width: 100%; margin: 0; }
+  .admin-console .admin-topbar-actions { margin-inline-start: auto; }
+}
