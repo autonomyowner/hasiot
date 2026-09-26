@@ -181,3 +181,17 @@ describe("pickLanguageHalf", () => {
     expect(pickLanguageHalf("", "ar")).toBeNull();
   });
 });
+
+describe("getAuthErrorKind — Google sign-in", () => {
+  it("reads every GOOGLE_ code from the return link as a Google failure", () => {
+    for (const code of ["GOOGLE_STATE_MISMATCH", "GOOGLE_NO_SESSION", "GOOGLE_NO_URL"]) {
+      const error = Object.assign(new Error("Google sign-in failed"), { code });
+      expect(getAuthErrorKind(error)).toBe("googleFailed");
+      expect(getAuthErrorKey(error)).toBe("authGoogleFailed");
+    }
+  });
+
+  it("still calls a dropped connection a network failure", () => {
+    expect(getAuthErrorKind(new TypeError("Network request failed"))).toBe("network");
+  });
+});

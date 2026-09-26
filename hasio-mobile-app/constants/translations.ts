@@ -906,6 +906,27 @@ export const translations = {
     authOk: "OK",
     authShowPassword: "Show password",
     authHidePassword: "Hide password",
+    // Google sign-in (lib/auth.ts signInWithGoogle). The button's own label is
+    // continueWithGoogle, at the top of this block.
+    authOr: "or",
+    authGoogleFailed: "Google sign-in didn't complete. Please try again.",
+    authGoogleFailedTitle: "Couldn't sign in with Google",
+    // Under the phone field while SMS cannot reach +966 numbers (the server's
+    // SAUDI_SMS_LIVE switch). The first points at Google; the second is for a
+    // build or backend where Google is not configured.
+    saudiSmsUnavailableGoogle: "SMS codes can't reach Saudi numbers yet. Continue with Google instead.",
+    saudiSmsUnavailableEmail: "SMS codes can't reach Saudi numbers yet. Sign in with email instead.",
+    // Booking with an unconfirmed Saudi number while that is so
+    // (VerifyPhoneSheet; users/mutations:setContactPhone).
+    contactPhoneTitle: "Add your phone number",
+    contactPhoneSubtitle:
+      "SMS to Saudi numbers isn't available yet. Your host will see this number, marked as not confirmed.",
+    saveNumber: "Save number",
+    contactPhoneSmsLive: "Saudi numbers are confirmed by SMS code now. Please send yourself a code.",
+    contactPhoneAlreadyVerified: "Your phone number is already verified.",
+    contactPhoneDailyLimit: "You've changed your number too many times today. Try again tomorrow.",
+    // Beside a guest's number in the host and provider inboxes.
+    phoneNotConfirmed: "not confirmed by SMS",
     // Profile — shown in place of the page while the account is going away.
     accountSigningOut: "Signing you out…",
     accountDeleting: "Deleting your account…",
@@ -995,7 +1016,8 @@ export const translations = {
     arabic: "العربية",
     continue: "متابعة",
     skip: "تخطي",
-    continueWithGoogle: "المتابعة مع جوجل",
+    // "Google" in Latin letters, as the brand writes itself, like "Hasio".
+    continueWithGoogle: "المتابعة باستخدام Google",
     continueWithApple: "المتابعة مع أبل",
     signOut: "تسجيل الخروج",
     signOutSubtitle: "الخروج من حسابك",
@@ -1877,6 +1899,20 @@ export const translations = {
     authOk: "حسناً",
     authShowPassword: "إظهار كلمة المرور",
     authHidePassword: "إخفاء كلمة المرور",
+    // Google sign-in — see the English block (the button is continueWithGoogle, at the top).
+    authOr: "أو",
+    authGoogleFailed: "لم يكتمل تسجيل الدخول عبر Google. حاول مرة أخرى.",
+    authGoogleFailedTitle: "تعذّر الدخول عبر Google",
+    saudiSmsUnavailableGoogle: "رسائل الرمز لا تصل إلى الأرقام السعودية حاليًا. تابع باستخدام Google.",
+    saudiSmsUnavailableEmail: "رسائل الرمز لا تصل إلى الأرقام السعودية حاليًا. سجّل الدخول بالبريد الإلكتروني.",
+    contactPhoneTitle: "أضف رقم جوالك",
+    contactPhoneSubtitle:
+      "رسائل SMS لا تصل للأرقام السعودية حاليًا. سيرى المضيف هذا الرقم مع إشارة أنه غير موثّق.",
+    saveNumber: "حفظ الرقم",
+    contactPhoneSmsLive: "أرقام السعودية تُوثَّق برمز SMS الآن. أرسل رمزًا إلى رقمك.",
+    contactPhoneAlreadyVerified: "رقم جوالك موثّق بالفعل.",
+    contactPhoneDailyLimit: "غيّرت رقمك مرات كثيرة اليوم. حاول مرة أخرى غدًا.",
+    phoneNotConfirmed: "غير موثّق برسالة",
     // Profile — see the English block.
     accountSigningOut: "جارٍ تسجيل خروجك…",
     accountDeleting: "جارٍ حذف حسابك…",

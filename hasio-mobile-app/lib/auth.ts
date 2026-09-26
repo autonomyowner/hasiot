@@ -1,4 +1,6 @@
 import * as SecureStore from "expo-secure-store";
+import * as WebBrowser from "expo-web-browser";
+import { OAUTH_CALLBACK_URL, parseOAuthCallback } from "./oauthCallback";
 
 const CONVEX_SITE_URL = process.env.EXPO_PUBLIC_CONVEX_SITE_URL;
 if (!CONVEX_SITE_URL) {
@@ -232,6 +234,68 @@ export async function verifyPhoneOtp(
   }
 
   return { token: sessionToken, user: data.user };
+}
+
+/**
+ * Sign in (or up) with Google, in the system browser.
+ *
+ * Three hops, all set by the server (convex/lib/nativeOAuth.ts):
+ * 1. /sign-in/social with `disableRedirect` hands back Google's consent URL
+ *    instead of redirecting this fetch there.
+ * 2. That URL is opened through /oauth-start, *in the browser*. It sets the
+ *    OAuth state cookie first-party there — the cookie this fetch received
+ *    lives in the app's own jar, which the browser never sees, and without it
+ *    the callback fails its state check.
+ * 3. Google returns to the server, which redirects to hasio://auth-callback
+ *    with the session's Set-Cookie header in the query. openAuthSessionAsync
+ *    (ASWebAuthenticationSession on iOS, a Custom Tab on Android) resolves
+ *    with that URL, and lib/oauthCallback.ts lifts the token out of it.
+ *
+ * Null when the person backed out — closed the browser or pressed Cancel on
+ * Google's page. That is a choice, not a failure, so the screen says nothing.
+ * JS-only: expo-web-browser is already in the dev client and store builds.
+ */
+export async function signInWithGoogle(): Promise<{ token: string } | null> {
+  const data: { url?: string } = await authFetch("/sign-in/social", {
+    provider: "google",
+    callbackURL: OAUTH_CALLBACK_URL,
+    errorCallbackURL: OAUTH_CALLBACK_URL,
+    disableRedirect: true,
+  });
+  if (!data?.url) {
+    const err: AuthError = new Error("No authorization URL received");
+    err.code = "GOOGLE_NO_URL";
+    throw err;
+  }
+
+  const start = `${CONVEX_SITE_URL}/api/auth/oauth-start?authorizationURL=${encodeURIComponent(data.url)}`;
+  const result = await WebBrowser.openAuthSessionAsync(start, OAUTH_CALLBACK_URL);
+  if (result.type !== "success") return null;
+
+  const sessionToken = parseOAuthCallback(result.url);
+  if (!sessionToken) return null;
+
+  // Stored exactly as a phone sign-in stores its token. The cached user
+  // (SESSION_KEY) is left alone: nothing reads it, and fetching it would be a
+  // fourth round trip standing between the person and the app.
+  try {
+    await SecureStore.setItemAsync(SESSION_TOKEN_KEY, sessionToken);
+    await SecureStore.deleteItemAsync(SESSION_KEY);
+  } catch {
+    // As in verifyPhoneOtp: signed in for this session only is still better
+    // than refusing a sign-in the server has already accepted.
+  }
+  const jwt = await fetchConvexToken(sessionToken);
+  if (!jwt) {
+    // The token did not buy a Convex identity, so there is no signed-in app
+    // to go back to. Leave nothing half-stored behind.
+    await clearStoredAuth();
+    const err: AuthError = new Error("Google sign-in returned an unusable session");
+    err.code = "GOOGLE_NO_SESSION";
+    throw err;
+  }
+
+  return { token: sessionToken };
 }
 
 export async function signUp(
