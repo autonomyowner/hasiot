@@ -66,6 +66,11 @@ Search folds case and matches name or phone digits. At most 500 guests returned.
 ```
 Throws GUEST_NOT_FOUND unless the guest has ≥1 booking with this partner (in their kind split).
 
+### `partners/queries:getAccountStatus({})` (added after review)
+`{ status: "signed_out" } | { status: "no_account" } | { status: "suspended", reason: string | null } | { status: "active" }`.
+Never throws. Exists because `getCurrentUser` returns null for a suspended account, which the
+portal could not tell apart from a new sign-up. The web asks only when signed in with a null user.
+
 ## Mutations
 
 ### `partners/mutations:saveGuestNote({ guestId, note: string, tags: string[] })` → `{ ok: true }`
