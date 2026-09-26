@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { stayQuery } from '../../booking/params'
-import { blockReason, defaultGuests, quoteView, readStay, writeStay } from './stayState'
+import { blockReason, changeStay, defaultGuests, pressOutcome, quoteView, readStay, writeStay } from './stayState'
 
 const TODAY = '2026-09-27'
 const LIMITS = { today: TODAY, maxDay: '2027-09-27', maxGuests: 4 }
@@ -87,6 +87,52 @@ describe('writeStay', () => {
     const params = new URLSearchParams('guests=1')
     writeStay(params, stay)
     expect(params.toString()).toBe('guests=1')
+  })
+})
+
+describe('changeStay', () => {
+  it('writes the first pick with the guests the page was showing', () => {
+    expect(changeStay('', { checkIn: '2026-10-01', checkOut: null }, LIMITS).toString()).toBe('checkIn=2026-10-01&guests=2')
+  })
+
+  it('completes the stay, then restarts it, as the calendar says', () => {
+    const first = changeStay('?checkIn=2026-10-01&guests=2', { checkIn: '2026-10-01', checkOut: '2026-10-04' }, LIMITS)
+    expect(first.toString()).toBe('checkIn=2026-10-01&checkOut=2026-10-04&guests=2')
+    expect(changeStay(first, { checkIn: '2026-10-10', checkOut: null }, LIMITS).toString()).toBe('checkIn=2026-10-10&guests=2')
+  })
+
+  it('changes guests without touching the dates', () => {
+    expect(changeStay('?checkIn=2026-10-01&checkOut=2026-10-04&guests=2', { guests: 3 }, LIMITS).toString())
+      .toBe('checkIn=2026-10-01&checkOut=2026-10-04&guests=3')
+  })
+
+  it('clears the dates and keeps the guests', () => {
+    expect(changeStay('?checkIn=2026-10-01&checkOut=2026-10-04&guests=3', { checkIn: null, checkOut: null }, LIMITS).toString())
+      .toBe('guests=3')
+  })
+
+  it('drops dates from the old address that the page was not showing', () => {
+    expect(changeStay('?checkIn=2020-01-01&checkOut=2020-01-03&guests=2', { guests: 1 }, LIMITS).toString()).toBe('guests=1')
+  })
+})
+
+describe('pressOutcome', () => {
+  it('goes to the checkout when nothing stands in the way', () => {
+    expect(pressOutcome(null)).toEqual({ go: true, reload: false, say: null, point: false })
+  })
+
+  it('points at the calendar when the dates are what must change', () => {
+    for (const reason of ['dates', 'checkout', 'unavailable', 'refused']) {
+      expect(pressOutcome(reason)).toEqual({ go: false, reload: false, say: reason, point: true })
+    }
+  })
+
+  it('only says so while the total is on its way — waiting is not a mistake', () => {
+    expect(pressOutcome('calculating')).toEqual({ go: false, reload: false, say: 'calculating', point: false })
+  })
+
+  it('asks again for a quote that never arrived', () => {
+    expect(pressOutcome('failed')).toEqual({ go: false, reload: true, say: 'calculating', point: false })
   })
 })
 

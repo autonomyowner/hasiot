@@ -50,6 +50,16 @@ export function writeStay(search, stay) {
 }
 
 /**
+ * The URL after one change (a calendar pick, the guests, "Clear dates"): the
+ * stay as the page was showing it, with the change laid over it. Starting
+ * from what readStay kept means a stale date left in an old link is dropped
+ * the first time the traveller touches anything.
+ */
+export function changeStay(search, change, limits) {
+  return writeStay(search, { ...readStay(search, limits), ...change })
+}
+
+/**
  * What the summary card shows, from the stay and the live quote (the
  * `{data, error, stale}` of useConvexQuery):
  * - `empty`       both dates not chosen yet, so nothing is asked for;
@@ -84,4 +94,17 @@ export function blockReason({ checkIn, checkOut }, view) {
   if (view.state === 'loading' || view.stale) return 'calculating'
   if (view.state === 'failed' || view.state === 'refused' || view.state === 'unavailable') return view.state
   return null
+}
+
+/**
+ * What a press of "Request to book" does, given blockReason: go to the
+ * checkout; or say what stands in the way (`say`, a blockReason). A quote
+ * that failed to arrive is asked for again (`reload`) and the wait is what is
+ * said. The calendar is scrolled to and shaken (`point`) only when the dates
+ * are what must change — waiting for a total is not the traveller's mistake.
+ */
+export function pressOutcome(reason) {
+  if (!reason) return { go: true, reload: false, say: null, point: false }
+  if (reason === 'failed') return { go: false, reload: true, say: 'calculating', point: false }
+  return { go: false, reload: false, say: reason, point: reason !== 'calculating' }
 }
