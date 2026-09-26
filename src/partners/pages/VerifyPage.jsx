@@ -179,7 +179,10 @@ export default function VerifyPage() {
                 ref={inputRef}
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
-                hidden
+                // Visually hidden, not `hidden`: a hidden input leaves the label
+                // with nothing focusable, so the upload is unreachable by keyboard.
+                className="p-visually-hidden"
+                aria-label={uploadLabel}
                 disabled={busy}
                 onChange={(e) => void upload(e.target.files?.[0])}
               />

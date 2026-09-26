@@ -119,7 +119,7 @@ export default function PartnersLayout() {
                 <span lang={isRtl ? 'en' : 'ar'}>{t.toggle}</span>
               </button>
               {isAuthenticated && (
-                <button type="button" className="p-btn p-btn-ghost p-btn-sm" onClick={signOut}>
+                <button type="button" className="p-btn p-btn-ghost p-btn-sm" onClick={signOut} aria-label={t.signOut}>
                   <Icon name="logout" size={18} />
                   <span>{t.signOut}</span>
                 </button>

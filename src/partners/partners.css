@@ -277,6 +277,11 @@
   color: var(--p-muted);
   cursor: pointer;
 }
+.p-visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.p-drop:focus-within { outline: 2px solid var(--p-green); outline-offset: 2px; }
 .p-drop:hover, .p-drop.is-over { border-color: var(--p-green); background: var(--p-green-tint); }
 .p-progress { height: 6px; border-radius: 3px; background: var(--p-paper); overflow: hidden; }
 .p-progress > span { display: block; height: 100%; background: var(--p-green); transition: width 0.2s; }
