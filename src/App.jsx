@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { useLanguage } from './hooks/useLanguage'
 import { useReveal } from './hooks/useReveal'
+import { useHotels } from './hooks/useHotels'
+import { canonicalCity, CITY_LABELS } from './admin/constants'
 import './App.css'
 
 // Lazy so the section's CSS and the blob's shaders stay out of the entry chunk. The
@@ -25,7 +27,7 @@ const LINKEDIN_URL = 'https://www.linkedin.com/in/marzouq-alshammari-339897160/'
 
 const content = {
   en: { nav:['The edit','Places','The app','Concierge','Absher','What’s next'],getApp:'Get the app',switch:'العربية',eyebrow:'SAUDI ARABIA, CURATED',titleA:'Saudi Arabia,',titleB:'beyond the expected.',intro:'A considered guide to the Kingdom’s rare stays, storied places and local encounters—and, soon, a way to feel them before you ever set out. We are operating in the Eastern Province today.',onIos:'Download on the',appStore:'App Store',onAndroid:'Get it on',playStore:'Google Play',storyKicker:'THE HASIO EDIT',storyTitle:['Travel slowly.','Remember deeply.'],storyBody:'We look beyond the obvious to bring you closer to the people, flavours and landscapes that give this country its soul—the world’s largest oasis, the old harbours of the coast, and everything in between.',why:'Why travel with us',values:[['Locally considered','Recommendations shaped by people who know the province by heart.'],['Quietly exceptional','Distinctive stays and experiences, chosen for character—not crowds.'],['Effortlessly yours','Save, plan and book your entire escape from one beautifully simple place.']],placesKicker:'EXPLORE THE KINGDOM',placesTitle:['Timeless places','waiting for you.'],placesBody:'From the heritage quarters of Al-Ahsa to the Gulf shore — see a place, and feel it, before you go.',placesCta:'Explore in the app',places:[['Heritage','Step into history that still lives.'],['Nature','Palms, springs and the Gulf shore.'],['Culture','Traditions that tell our story.'],['Flavours','A table set by the oasis and the sea.'],['Mountains','Caves carved by wind and time.'],['Stays','Desert and seaside retreats worth the journey.']],showKicker:'INSIDE THE APP',showTitle:'Everything the Kingdom holds',shots:[['Discover','Heritage sites, oasis paths, corniches and the places locals actually go.'],['Plan','Tell Hasio your pace and your dates. Get an itinerary built around them.'],['Stay & taste','Hotels, farm stays and the tables worth crossing town for.']],plannerName:'Hasio Concierge',plannerStatus:'Online',plannerQuote:'“A quiet three-day escape with heritage, palms and memorable local food.”',plannerRoutes:[['Old Hofuf','Souq, architecture & slow lunch'],['Al Qarah','Caves & an open-air supper'],['Half Moon Bay','Dunes meeting the Gulf at golden hour']],serviceKicker:'YOUR PERSONAL CONCIERGE',serviceTitle:['One journey.','Entirely your own.'],serviceBody:'Tell Hasio what moves you. The planner turns your pace, tastes and travel dates into a considered itinerary—in Arabic or English.',quote:'“The beauty of this country is not only what you see. It is how time feels while you are here.”',dlKicker:'AVAILABLE NOW',dlTitle:'Carry the Kingdom with you.',dlBody:'Free on iPhone and Android, in Arabic and English throughout.',footTag:'Curating the soul of Saudi Arabia.',privacy:'Privacy',terms:'Terms',support:'Support' },
-  ar: { nav:['اختيارات Hasio','الأماكن','التطبيق','مرشدك','أبشر','القادم'],getApp:'حمّل التطبيق',switch:'English',eyebrow:'السعودية، كما لم ترها من قبل',titleA:'السعودية،',titleB:'أبعد من المتوقّع.',intro:'دليلك المختار بعناية إلى إقامات المملكة النادرة وأماكنها التي تحكي التاريخ وتجاربها المحلية الأصيلة—وقريباً، طريقة تشعر بها قبل أن تذهب إليها. نعمل حالياً في المنطقة الشرقية.',onIos:'حمّله من',appStore:'App Store',onAndroid:'متوفر على',playStore:'Google Play',storyKicker:'اختيارات Hasio',storyTitle:['تمهّل في رحلتك.','واصنع ذكرى أعمق.'],storyBody:'نأخذك إلى ما وراء المألوف، لتقترب من الناس والنكهات والطبيعة التي تمنح هذه البلاد روحها—من أكبر واحة في العالم إلى موانئ الساحل القديمة.',why:'لماذا تسافر معنا',values:[['برؤية محلية','توصيات يصنعها من يعرف المنطقة عن قرب.'],['استثنائي بهدوء','إقامات وتجارب لها طابعها الخاص، بعيداً عن الزحام.'],['رحلتك ببساطة','احفظ وخطط واحجز رحلتك كاملة من مكان واحد جميل وسهل.']],placesKicker:'استكشف المملكة',placesTitle:['أماكن خالدة','بانتظارك.'],placesBody:'من أحياء الأحساء التراثية إلى ساحل الخليج — شاهد المكان واشعر به قبل أن تذهب إليه.',placesCta:'استكشفها في التطبيق',places:[['التراث','ادخل إلى تاريخ ما زال حياً.'],['الطبيعة','نخيل وعيون وساحل خليجي.'],['الثقافة','عادات تروي حكايتنا.'],['النكهات','مائدة تصنعها الواحة والبحر.'],['الجبال','كهوف نحتتها الريح والزمن.'],['الإقامة','منتجعات في الصحراء وعلى الساحل تستحق الرحلة.']],showKicker:'داخل التطبيق',showTitle:'كل ما تحتضنه المملكة',shots:[['اكتشف','مواقع تراثية ودروب الواحة وكورنيشات والأماكن التي يقصدها الأهالي فعلاً.'],['خطط','أخبر Hasio بإيقاعك وتواريخك، واحصل على برنامج مصمم لك.'],['أقم وتذوّق','فنادق ومزارع للإقامة وموائد تستحق عناء الطريق.']],plannerName:'مرشد Hasio',plannerStatus:'متصل',plannerQuote:'«ثلاثة أيام هادئة بين التراث والنخيل ومائدة محلية لا تُنسى.»',plannerRoutes:[['الهفوف القديمة','السوق والعمارة وغداء على مهل'],['جبل القارة','كهوف وعشاء في الهواء الطلق'],['نصف القمر','كثبان تلامس الخليج عند الغروب']],serviceKicker:'مرشدك الشخصي',serviceTitle:['رحلة واحدة.','مصممة لك.'],serviceBody:'أخبر Hasio بما تحب. يحوّل المخطط وقتك وذوقك وتواريخ سفرك إلى برنامج مدروس—بالعربية أو الإنجليزية.',quote:'«جمال هذه البلاد ليس فقط فيما تراه، بل في إحساس الوقت وأنت هنا.»',dlKicker:'متوفر الآن',dlTitle:'خذ المملكة معك.',dlBody:'مجاناً على أجهزة iPhone وأجهزة Android، بالعربية والإنجليزية بالكامل.',footTag:'نحتفي بروح المملكة العربية السعودية.',privacy:'الخصوصية',terms:'الشروط',support:'الدعم' },
+  ar: { nav:['اختيارات Hasio','الأماكن','التطبيق','مرشدك','أبشر','القادم'],getApp:'حمّل التطبيق',switch:'English',eyebrow:'السعودية، كما لم ترها من قبل',titleA:'السعودية،',titleB:'أقرب مما تتوقّع.',intro:'دليلك المختار بعناية إلى إقامات المملكة النادرة وأماكنها التي تحكي التاريخ وتجاربها المحلية الأصيلة—وقريباً، طريقة تشعر بها قبل أن تذهب إليها. نعمل حالياً في المنطقة الشرقية.',onIos:'حمّله من',appStore:'App Store',onAndroid:'متوفر على',playStore:'Google Play',storyKicker:'اختيارات Hasio',storyTitle:['تمهّل في رحلتك.','واصنع ذكرى أعمق.'],storyBody:'نأخذك إلى ما وراء المألوف، لتقترب من الناس والنكهات والطبيعة التي تمنح هذه البلاد روحها—من أكبر واحة في العالم إلى موانئ الساحل القديمة.',why:'لماذا تسافر معنا',values:[['برؤية محلية','توصيات يصنعها من يعرف المنطقة عن قرب.'],['استثنائي بهدوء','إقامات وتجارب لها طابعها الخاص، بعيداً عن الزحام.'],['رحلتك ببساطة','احفظ وخطط واحجز رحلتك كاملة من مكان واحد جميل وسهل.']],placesKicker:'استكشف المملكة',placesTitle:['أماكن خالدة','بانتظارك.'],placesBody:'من أحياء الأحساء التراثية إلى ساحل الخليج — شاهد المكان واشعر به قبل أن تذهب إليه.',placesCta:'استكشفها في التطبيق',places:[['التراث','ادخل إلى تاريخ ما زال حياً.'],['الطبيعة','نخيل وعيون وساحل خليجي.'],['الثقافة','عادات تروي حكايتنا.'],['النكهات','مائدة تصنعها الواحة والبحر.'],['الجبال','كهوف نحتتها الريح والزمن.'],['الإقامة','منتجعات في الصحراء وعلى الساحل تستحق الرحلة.']],showKicker:'داخل التطبيق',showTitle:'كل ما تحتضنه المملكة',shots:[['اكتشف','مواقع تراثية ودروب الواحة وكورنيشات والأماكن التي يقصدها الأهالي فعلاً.'],['خطط','أخبر Hasio بإيقاعك وتواريخك، واحصل على برنامج مصمم لك.'],['أقم وتذوّق','فنادق ومزارع للإقامة وموائد تستحق عناء الطريق.']],plannerName:'مرشد Hasio',plannerStatus:'متصل',plannerQuote:'«ثلاثة أيام هادئة بين التراث والنخيل ومائدة محلية لا تُنسى.»',plannerRoutes:[['الهفوف القديمة','السوق والعمارة وغداء على مهل'],['جبل القارة','كهوف وعشاء في الهواء الطلق'],['نصف القمر','كثبان تلامس الخليج عند الغروب']],serviceKicker:'مرشدك الشخصي',serviceTitle:['رحلة واحدة.','مصممة لك.'],serviceBody:'أخبر Hasio بما تحب. يحوّل المخطط وقتك وذوقك وتواريخ سفرك إلى برنامج مدروس—بالعربية أو الإنجليزية.',quote:'«جمال هذه البلاد ليس فقط فيما تراه، بل في إحساس الوقت وأنت هنا.»',dlKicker:'متوفر الآن',dlTitle:'خذ المملكة معك.',dlBody:'مجاناً على أجهزة iPhone وأجهزة Android، بالعربية والإنجليزية بالكامل.',footTag:'نحتفي بروح المملكة العربية السعودية.',privacy:'الخصوصية',terms:'الشروط',support:'الدعم' },
 }
 
 // Chrome the marketing copy never shows but keyboard navigation, the burger
@@ -101,6 +103,48 @@ const PlayMark = () => <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden=
 
 // Both badges together, wherever a CTA is needed. `tone` picks the light-on-dark
 // variant used over the hero photo and the green concierge panel.
+// "Book" on a hotel card: booking lives in the app, so send the visitor to the
+// store their phone uses. A desktop visitor has no store to open, so they go to
+// the download section, which shows both badges.
+const bookUrl = () => {
+  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent
+  if (/iPhone|iPad|iPod/i.test(ua)) return IOS_URL
+  if (/Android/i.test(ua)) return ANDROID_URL
+  return '#download'
+}
+
+// The card's words. Kept out of `content` because they are small UI chrome
+// around live data, not marketing copy.
+const hotelUi = {
+  en: { book: 'Book', night: '/ night', sar: 'SAR' },
+  ar: { book: 'احجز', night: '/ الليلة', sar: 'ر.س' },
+}
+
+function HotelCard({ h, lang }) {
+  const w = hotelUi[lang]
+  const city = canonicalCity(h.city)
+  const name = lang === 'ar' ? h.name_ar || h.name_en : h.name_en
+  const href = bookUrl()
+  const external = href.startsWith('http')
+  const price = Math.round(h.pricePerNight).toLocaleString(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US')
+  return (
+    <article className="place-card hotel-card">
+      <img src={h.images[0]} alt={name} loading="lazy" width="520" height="880" />
+      <div className="place-shade" />
+      <div className="place-body">
+        <span className="hotel-city">{lang === 'ar' ? CITY_LABELS[city] || city : city}</span>
+        <h3>{name}</h3>
+        <div className="hotel-foot">
+          <p className="hotel-price">
+            {lang === 'ar' ? <><b>{price}</b> {w.sar}</> : <>{w.sar} <b>{price}</b></>} <small>{w.night}</small>
+          </p>
+          <a className="hotel-book" href={href} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{w.book}</a>
+        </div>
+      </div>
+    </article>
+  )
+}
+
 function StoreBadges({ t, tone = 'dark' }) {
   return (
     <div className={`badges ${tone}`}>
@@ -126,6 +170,7 @@ export default function App() {
   // Lists here are keyed by translated strings, so switching language mounts
   // fresh nodes — the reveal observer has to pick them up again.
   useReveal(lang)
+  const hotels = useHotels()
 
   // The nav is fixed. Over the hero it stays transparent; once the hero's
   // bottom edge passes under it, it turns into a solid paper bar. An observer
@@ -186,7 +231,7 @@ export default function App() {
   useEffect(() => {
     const id = requestAnimationFrame(syncRail)
     return () => cancelAnimationFrame(id)
-  }, [lang, syncRail])
+  }, [lang, hotels, syncRail])
 
   // Escape or a scroll dismisses the mobile panel. Deliberately not a body
   // scroll lock: the panel links are in-page anchors, and locking the body
@@ -296,7 +341,12 @@ export default function App() {
               <button type="button" onClick={() => slide(1)} aria-label="Next" disabled={scroll.atEnd}><Chevron /></button>
             </div>
             <div className="rail" ref={rail} tabIndex="0" role="region" aria-label={t.placesKicker}>
-              {t.places.map((c, i) => (
+              {/* Live hotels when the backend answers; three blank cards while
+                  it is asked (no flash of the picture cards); the picture cards
+                  only if it fails or has nothing to show. */}
+              {hotels === null && [0, 1, 2].map((i) => <div className="place-card hotel-skeleton" key={i} aria-hidden="true" />)}
+              {hotels?.length > 0 && hotels.map((h) => <HotelCard key={h._id} h={h} lang={lang} />)}
+              {hotels?.length === 0 && t.places.map((c, i) => (
                 <a className="place-card" key={c[0]} href="#download">
                   <img src={places[i]} alt={c[0]} loading="lazy" width="520" height="880" />
                   <div className="place-shade" />
