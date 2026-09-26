@@ -78,6 +78,8 @@
 .bk .pl-figures-dates{font-size:15px;font-weight:600}
 .bk .pl-status{display:flex;align-items:center;gap:8px;margin:0;font-size:13.5px;line-height:1.5;color:var(--muted)}
 .bk .pl-failed{display:grid;justify-items:start;gap:6px}
+/* Text-styled buttons still get a finger-sized target. */
+.bk .pl-to-cal,.bk .pl-failed .bk-link{min-height:44px;text-align:start}
 
 /* ---- the phone bar ---- */
 .bk .pl-bar b small{font-size:12px;font-weight:400;color:var(--muted)}

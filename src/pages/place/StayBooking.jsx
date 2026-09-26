@@ -45,7 +45,9 @@ const translations = {
     dates: 'تواريخ الإقامة',
     clear: 'مسح التواريخ',
     guests: 'الضيوف',
-    upTo: (guests) => `حتى ${guests}`,
+    // Not «حتى …»: after that preposition two guests would have to be
+    // «ضيفين», and text.js has the nominative «ضيفان» only.
+    upTo: (guests) => `الحد الأقصى: ${guests}`,
     summary: 'إقامتك',
     perNight: '/ الليلة',
     chooseDates: 'اختر التواريخ لعرض الإجمالي',
@@ -100,8 +102,18 @@ function Figures({ quote, withTotal, lang, t }) {
 }
 
 /** The summary card's middle: what the live quote says right now. */
-function QuoteStatus({ view, checkIn, onRetry, lang, t }) {
-  if (view.state === 'empty') return <Status>{checkIn ? t.nudge.checkout : t.chooseDates}</Status>
+function QuoteStatus({ view, checkIn, onRetry, onChooseDates, lang, t }) {
+  if (view.state === 'empty') {
+    // On a wide screen the calendar can be far below the card, so the prompt
+    // is also the way there.
+    return (
+      <p className="pl-status">
+        <button type="button" className="bk-link pl-to-cal" onClick={onChooseDates}>
+          {checkIn ? t.nudge.checkout : t.chooseDates}
+        </button>
+      </p>
+    )
+  }
   if (view.state === 'loading') return <Status busy>{t.calculating}</Status>
   if (view.state === 'failed') {
     return (
@@ -243,16 +255,18 @@ export default function StayBooking({ listing, lang }) {
     setSearchParams((prev) => changeStay(prev, change, limits), { replace: true })
   }
 
-  // Pressed too early: bring the calendar to the middle of the screen, shake it
-  // once and put the keyboard on its current day.
-  const pointAtCalendar = () => {
+  // Bring the calendar to the middle of the screen and put the keyboard on its
+  // current day; `shake` once when it was pressed too early.
+  const showCalendar = (shake = false) => {
     const el = pickRef.current
     if (!el) return
     const still = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
     el.scrollIntoView({ block: 'center', behavior: still ? 'instant' : 'smooth' })
-    el.classList.remove('bk-shake')
-    void el.offsetWidth // restarts the animation on a second press
-    el.classList.add('bk-shake')
+    if (shake) {
+      el.classList.remove('bk-shake')
+      void el.offsetWidth // restarts the animation on a second press
+      el.classList.add('bk-shake')
+    }
     el.querySelector('.bk-cal-day[tabindex="0"]')?.focus({ preventScroll: true })
   }
 
@@ -267,7 +281,7 @@ export default function StayBooking({ listing, lang }) {
     }
     if (outcome.reload) quote.reload()
     setNudge((prev) => ({ reason: outcome.say, n: (prev?.n ?? 0) + 1 }))
-    if (outcome.point) pointAtCalendar()
+    if (outcome.point) showCalendar(true)
   }
 
   // Shown only while it is still the reason: picking a date or a fresh quote
@@ -326,7 +340,14 @@ export default function StayBooking({ listing, lang }) {
           <h2 id="pl-summary-title" className="bk-sr">{t.summary}</h2>
           <p className="pl-card-price"><b>{price}</b> <span>{t.perNight}</span></p>
           <div className="pl-quote">
-            <QuoteStatus view={view} checkIn={checkIn} onRetry={quote.reload} lang={lang} t={t} />
+            <QuoteStatus
+              view={view}
+              checkIn={checkIn}
+              onRetry={quote.reload}
+              onChooseDates={() => showCalendar()}
+              lang={lang}
+              t={t}
+            />
           </div>
           <p className="bk-sr" aria-live="polite" aria-atomic="true">{liveText(view, lang, t)}</p>
           <RequestButton going={going} onClick={request} className="bk-btn-block pl-card-cta">{t.request}</RequestButton>

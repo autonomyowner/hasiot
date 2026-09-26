@@ -277,8 +277,8 @@ export default function PlacePage() {
   const bookable = shown !== null && isBookableHotel(shown)
 
   const name = shown ? localized(shown, 'name', lang) : null
-  const title = name?.text ?? (notFound ? t.notFound : failed ? t.failed : undefined)
-  usePageMeta({ title: title?.replace(/\.$/, '') })
+  const message = notFound ? t.notFound : failed ? t.failed : null
+  usePageMeta({ title: name?.text ?? message?.replace(/\.$/, '') })
 
   // The router keeps the previous page's scroll offset, so a place opened from
   // far down /explore would open part-way down its own page. Back and forward
