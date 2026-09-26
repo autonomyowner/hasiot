@@ -97,6 +97,9 @@ export default function ServiceBooking({ service, lang, children }) {
   const dayRef = useRef(null)
   const timeRef = useRef(null)
   const quoteRef = useRef(null)
+  // Set on the way to the checkout: two taps can land in one frame, and a
+  // second navigate() would put the checkout in the history twice.
+  const leaving = useRef(false)
 
   useEffect(() => {
     const timer = setInterval(() => setNow(readClock()), CLOCK_TICK_MS)
@@ -158,6 +161,7 @@ export default function ServiceBooking({ service, lang, children }) {
   }
 
   const request = () => {
+    if (leaving.current) return
     const missing = missingStep(choice)
     if (missing) {
       pointAt(missing)
@@ -169,6 +173,7 @@ export default function ServiceBooking({ service, lang, children }) {
       pointAt('quote')
       return
     }
+    leaving.current = true
     navigate(bookingPath(service._id, choice, rule))
   }
 
