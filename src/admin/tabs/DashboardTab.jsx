@@ -14,7 +14,8 @@ import {
 } from '../constants'
 
 const GOLD = '#D4AF37'
-const BRAND = '#0D7A5F'
+// Mint, not the brand's #0D7A5F: the panel is dark and that green disappears on it.
+const BRAND = '#6fd3ae'
 
 /**
  * The dashboard is a bento: a greeting and the headline figures, then cards of
@@ -303,7 +304,7 @@ export default function DashboardTab({ onNavigate, user, stats, statsError }) {
             centerLabel="مكان"
             segments={[
               { label: 'مكتملة', value: complete, color: BRAND },
-              { label: 'ناقصة', value: Math.max(total - complete, 0), color: '#e6e3dd' },
+              { label: 'ناقصة', value: Math.max(total - complete, 0), color: 'rgba(255, 255, 255, 0.12)' },
             ]}
           />
           <div className="ar-card-actions">

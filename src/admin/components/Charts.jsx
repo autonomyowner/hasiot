@@ -67,7 +67,7 @@ export function AreaChart({ values, labels, height = 120, color = BRAND, valueLa
                 className="ar-chart-crosshair" vectorEffect="non-scaling-stroke" />
         )}
 
-        <circle cx={last[0]} cy={last[1]} r="4.5" fill={color} stroke="#fff" strokeWidth="2"
+        <circle cx={last[0]} cy={last[1]} r="4.5" fill={color} stroke="#13221b" strokeWidth="2"
                 vectorEffect="non-scaling-stroke" />
       </svg>
 
@@ -154,7 +154,7 @@ export function LineChart({ series, labels, height = 190 }) {
                   y2={height - padBottom} className="ar-chart-crosshair" vectorEffect="non-scaling-stroke" />
             {series.map((s) => (
               <circle key={s.label} cx={width - hover * stepX} cy={y(s.values[hover])} r="4.5"
-                      fill={s.color} stroke="#fff" strokeWidth="2" vectorEffect="non-scaling-stroke" />
+                      fill={s.color} stroke="#13221b" strokeWidth="2" vectorEffect="non-scaling-stroke" />
             ))}
           </>
         )}

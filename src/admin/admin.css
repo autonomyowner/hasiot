@@ -2466,3 +2466,134 @@
   font-weight: 700;
   cursor: help;
 }
+
+/* ==========================================================================
+   Dark (since 2026-09-26): the partner portal's dark green and glass.
+   AdminPage puts `dark` on <html> while it is open (Radix portals dialogs to
+   <body>, so it cannot live on .admin-page). The tokens do most of it; the
+   rest are the rules that hardcoded a colour, and three families that need
+   more than a token:
+   - --ar-ink is both the text colour and the fill of every "selected" thing
+     (active tab, avatar, primary task row, amenity on) with white text on it.
+     Text follows the token to cream; those fills become the app's lime with
+     dark text, the portal's primary colour.
+   - --ar-surface becomes glass, so the overlays (menu, drawer, bulk bar,
+     tooltips) get a solid fill instead — text never sits on see-through glass.
+   - The font follows the site and the portal: Playpen Sans Arabic.
+   ========================================================================== */
+.dark {
+  --font-arabic: 'Playpen Sans Arabic', 'Cairo', 'Outfit', system-ui, sans-serif;
+
+  --ar-ink: #f5f2ea;
+  --ar-ink-2: rgba(245, 242, 234, 0.72);
+  --ar-ink-3: rgba(245, 242, 234, 0.5);
+  --ar-line: rgba(255, 255, 255, 0.12);
+  --ar-line-soft: rgba(255, 255, 255, 0.07);
+  --ar-surface: rgba(255, 255, 255, 0.05);
+  --ar-bg: #0b1611;
+  --ar-brand-dark: #9be4c8;
+  --ar-brand-wash: rgba(111, 211, 174, 0.14);
+  --ar-gold: #e8c65a;
+  --ar-danger: #ff8a7a;
+  --ar-danger-wash: rgba(255, 120, 100, 0.14);
+
+  --ar-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --ar-shadow-md: 0 12px 32px -8px rgba(0, 0, 0, 0.45);
+  --ar-shadow-lg: 0 28px 60px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* Radix portals dialogs and selects to <body>, which index.css gives the
+   site's dark text colour — so without this every dialog title and select
+   value is near-black on the dark dialog. The site's light scrollbar too. */
+html.dark body { background: #0b1611; color: var(--ar-ink); }
+.dark ::-webkit-scrollbar-track { background: #0b1611; }
+.dark ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); }
+
+.dark .admin-page,
+.dark .admin-login {
+  background:
+    radial-gradient(40% 35% at 20% 0%, rgba(214, 170, 96, 0.14), transparent 70%),
+    radial-gradient(55% 50% at 80% 100%, rgba(13, 122, 95, 0.3), transparent 70%),
+    radial-gradient(60% 45% at 50% 0%, rgba(13, 122, 95, 0.22), transparent 70%),
+    #0b1611;
+  background-attachment: fixed;
+  color: var(--ar-ink);
+}
+.dark .admin-shell {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 30px 80px -40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+}
+
+/* Top bar */
+.dark .admin-brand { border-color: rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.05); }
+.dark .admin-pillnav { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.08); }
+.dark .admin-pill:hover { background: rgba(255, 255, 255, 0.08); }
+.dark .admin-pill.active { background: #cce745; color: #14210f; box-shadow: none; }
+.dark .admin-pill-badge { color: #14210f; }
+.dark .admin-pill.active .admin-pill-badge { background: #14210f; color: #cce745; }
+.dark .admin-icon-btn { border-color: rgba(255, 255, 255, 0.12); background: rgba(255, 255, 255, 0.05); }
+.dark .admin-icon-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.2); }
+.dark .admin-avatar,
+.dark .admin-avatar:hover { background: #cce745; color: #14210f; border-color: transparent; }
+.dark .admin-icon-btn.has-dot::after,
+.dark .admin-icon-btn.has-error::after { border-color: #0b1611; }
+
+/* Lime for "selected" and the primary action */
+.dark .admin-btn-primary { background: #cce745; color: #14210f; box-shadow: none; }
+.dark .admin-btn-primary:hover:not(:disabled) { background: #d9f05c; }
+.dark .admin-amenity.active { background: #cce745; border-color: #cce745; color: #14210f; }
+.dark .ar-task.primary { background: #cce745; border-color: #cce745; color: #14210f; }
+.dark .ar-task.primary .ar-task-label { color: rgba(20, 33, 15, 0.7); }
+.dark .ar-task.primary .ar-task-count { color: #14210f; }
+.dark .ar-segment-bar.ink { background: #cce745; color: #14210f; }
+.dark .ar-segment-bar.gold { color: #14210f; }
+.dark :is(.admin-uploader-cover, .admin-gallery-cover) { color: #0b1611; }
+
+/* Buttons */
+.dark .admin-btn-danger { color: #1a0f0d; }
+.dark .admin-btn-danger:hover:not(:disabled) { background: #ff9f91; }
+.dark .ar-btn-ghost:hover { background: rgba(111, 211, 174, 0.2); }
+.dark .admin-action-btn { background: rgba(255, 255, 255, 0.06); }
+.dark .admin-action-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+.dark .admin-action-btn.edit { color: #9be4c8; }
+.dark .admin-action-btn.edit:hover:not(:disabled) { background: rgba(111, 211, 174, 0.22); color: #c5f1e0; }
+.dark .admin-action-btn.delete:hover:not(:disabled) { border-color: rgba(255, 138, 122, 0.4); }
+.dark .admin-uploader-thumb-actions button { color: #14201c; }
+
+/* Status colours: tints, light text */
+.dark .admin-info-box,
+.dark .admin-callout.info { border-color: rgba(111, 211, 174, 0.3); color: #9be4c8; }
+.dark .admin-error,
+.dark .admin-callout.danger { border-color: rgba(255, 138, 122, 0.35); color: #ffb3a8; }
+.dark .admin-badge.green { color: #9be4c8; }
+.dark .admin-badge.blue { background: rgba(90, 150, 230, 0.16); color: #9cc3f5; }
+.dark .admin-badge.red { color: #ffb3a8; }
+.dark :is(.admin-badge.yellow, .admin-badge-warning, .ar-capped) { background: rgba(232, 198, 90, 0.15); color: #f0d27a; }
+.dark :is(.admin-form-warning, .admin-callout) { border-color: rgba(232, 198, 90, 0.3); background: rgba(232, 198, 90, 0.12); color: #f0d27a; }
+.dark .admin-hours-overnight { color: #f0d27a; }
+.dark .ar-clear { border-color: rgba(111, 211, 174, 0.3); }
+
+/* Tables, cards, controls */
+.dark .admin-table tbody tr:hover { background: rgba(255, 255, 255, 0.04); }
+.dark .ar-card { border-color: rgba(255, 255, 255, 0.08); box-shadow: none; }
+.dark .ar-card-dark { background: rgba(0, 0, 0, 0.32); border-color: rgba(255, 255, 255, 0.08); }
+.dark .ar-expand { border-color: rgba(255, 255, 255, 0.14); }
+.dark .ar-segment-bar.ghost { border-color: rgba(255, 255, 255, 0.18); }
+.dark .ar-segment-bar.hatch {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.13) 0 3px, transparent 3px 7px);
+}
+.dark .ar-switch { background: rgba(255, 255, 255, 0.18); }
+.dark .admin-host-row { background: var(--ar-surface); }
+.dark .admin-segmented button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.14); }
+
+/* Overlays: solid, never glass */
+.dark :is(.admin-menu, .admin-drawer, .admin-bulk-bar) { background: #13221b; }
+.dark :is(.ar-chart-tip, .ar-line-tip) {
+  background: #1d2e26;
+  color: #f5f2ea;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}

@@ -48,6 +48,15 @@ export default function AdminPage() {
   // Admin panel is Arabic-only; the RTL rules key off html[dir].
   useSyncHtmlLang('ar')
 
+  // The panel is dark, like the partner portal. `dark` goes on <html>, not on
+  // .admin-page, because Radix portals dialogs, selects and toasts to <body>
+  // and they must be dark too; it comes off on leave so no other page is.
+  useEffect(() => {
+    const root = document.documentElement
+    root.classList.add('dark')
+    return () => root.classList.remove('dark')
+  }, [])
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       window.location.href = '/sign-in?next=/admin'

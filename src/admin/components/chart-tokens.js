@@ -14,7 +14,8 @@ export const STATUS_COLORS = {
   no_show: '#ec835a',
 }
 
-export const BRAND = '#0D7A5F'
+// Mint, not the brand's #0D7A5F: the panel is dark and that green disappears on it.
+export const BRAND = '#6fd3ae'
 
 // Latin digits: Arabic-Indic numerals read badly beside the Latin figures used
 // for ids, coordinates and prices elsewhere in the panel.
