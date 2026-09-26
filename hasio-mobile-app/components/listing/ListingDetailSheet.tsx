@@ -34,6 +34,7 @@ import { RatingSummary, ReviewCard, ReviewSheet } from "@/components/review";
 import { resolveAmenity } from "@/constants/amenities";
 import { telUrl } from "@/lib/bookingDisplay";
 import { weekdayLabelKey } from "@/lib/dates";
+import { userCanBook } from "@/lib/phoneRules";
 import type { ListingDetails } from "@/types";
 import type { Id } from "../../../convex/_generated/dataModel";
 
@@ -183,7 +184,7 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
     setWhenReady(null);
     if (isAuthenticated) {
       if (whenReady === "rate") setReviewOpen(true);
-      else if (user?.phoneVerified) setBookingOpen(true);
+      else if (userCanBook(user)) setBookingOpen(true);
       else setVerifyOpen(true);
     }
   }
@@ -208,7 +209,10 @@ export function ListingDetailSheet({ item, onClose }: ListingDetailSheetProps) {
       router.push("/auth");
       return;
     }
-    if (!user?.phoneVerified) {
+    // `canBook`, the server's answer, rather than `phoneVerified`: while SMS
+    // cannot reach Saudi numbers an unconfirmed Saudi mobile is enough
+    // (lib/phoneRules.ts userCanBook).
+    if (!userCanBook(user)) {
       // Open the sheet rather than routing: this guest is already signed in,
       // so sending them to /auth would show a login form they are past, with
       // no way to reach the thing actually being asked for.

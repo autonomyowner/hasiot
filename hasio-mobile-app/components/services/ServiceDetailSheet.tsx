@@ -32,6 +32,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { useLanguage } from "@/hooks/useLanguage";
 import { telUrl } from "@/lib/bookingDisplay";
 import { formatPhoneForDisplay, ltr } from "@/lib/phone";
+import { userCanBook } from "@/lib/phoneRules";
 import { maybeAskForPush } from "@/lib/pushPrompt";
 import {
   DEFAULT_MAX_GROUP,
@@ -167,7 +168,7 @@ export function ServiceDetailSheet({ service, onClose }: ServiceDetailSheetProps
   if (whenReady && !isUserLoading && isAuthenticated) {
     setWhenReady(null);
     if (whenReady === "rate") setReviewOpen(true);
-    else if (user?.phoneVerified) setBookingOpen(true);
+    else if (userCanBook(user)) setBookingOpen(true);
     else setVerifyOpen(true);
   }
 
@@ -217,7 +218,9 @@ export function ServiceDetailSheet({ service, onClose }: ServiceDetailSheetProps
       goToSignIn();
       return;
     }
-    if (!user?.phoneVerified) {
+    // The server's `canBook`: while SMS cannot reach Saudi numbers an
+    // unconfirmed Saudi mobile is enough (lib/phoneRules.ts userCanBook).
+    if (!userCanBook(user)) {
       // The sheet, not the sign-in screen: this traveller is already signed
       // in, and the sign-in form is past them.
       setVerifyOpen(true);
