@@ -10,6 +10,7 @@ import type { Doc } from "../_generated/dataModel";
 import { isPlaceholderEmail } from "../lib/contact";
 import { renderEmail, type NotificationEvent, type TemplateInput } from "./templates";
 import { closedAtStart } from "./internal";
+import { bookingActionUrl, publicSiteUrl } from "./links";
 
 /**
  * Fanning a notification out to push and email.
@@ -23,13 +24,16 @@ import { closedAtStart } from "./internal";
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const RESEND_URL = "https://api.resend.com/emails";
 
-// Events worth an email. A host watching their inbox for new requests gets
-// those in-app and by push; email is reserved for the things a guest needs a
-// durable record of, or needs to see when the app is not open.
+// Events worth an email: everything a guest needs a durable record of, and —
+// since hosts and travellers can use the website, where there is no push —
+// the two a host must act on or hear about: a new request, which expires
+// unanswered after 48 hours, and a cancellation, which frees their dates.
 const EMAILED_EVENTS: NotificationEvent[] = [
+  "booking.requested",
   "booking.confirmed",
   "booking.declined",
   "booking.expired",
+  "booking.cancelled",
   "booking.cancelled_admin",
   "booking.reminder",
 ];
@@ -173,7 +177,17 @@ export const send = internalAction({
 
     // A service booking has no listing; it used to be skipped here for that
     // reason alone.
-    const emailInput = emailInputFor(booking, listing, service);
+    const baseInput = emailInputFor(booking, listing, service);
+    // Rows written before `audience` existed were all to the traveller.
+    const audience = notification.data?.audience === "owner" ? "owner" : "tourist";
+    const emailInput: TemplateInput | null =
+      baseInput && booking
+        ? {
+            ...baseInput,
+            audience,
+            actionUrl: bookingActionUrl(audience, booking, publicSiteUrl()),
+          }
+        : baseInput;
     if (
       EMAILED_EVENTS.includes(notification.type as NotificationEvent) &&
       emailInput !== null &&

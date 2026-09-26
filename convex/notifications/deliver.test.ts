@@ -257,6 +257,97 @@ describe("email", () => {
     expect(calls.filter((c) => c.url === RESEND)).toEqual([]);
   });
 
+  it("links the traveller's email to their trip on the website", async () => {
+    const t = makeT();
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    const calls = fakeNetwork(() => ok({}));
+    const userId = await recipient(t, { language: "en" });
+    const listingId = await seedHotel(t, { name_en: "Al Koot Heritage" });
+    const bookingId = await seedStay(t, {
+      userId,
+      listingId,
+      checkIn: "2026-09-10",
+      checkOut: "2026-09-12",
+      status: "confirmed",
+    });
+
+    await send(
+      t,
+      await notice(t, userId, { data: { bookingId, listingId, audience: "tourist", target: "booking" } })
+    );
+
+    const [email] = calls.filter((c) => c.url === RESEND).map((c) => c.body as { text: string });
+    expect(email.text).toContain(`View booking: https://hasio.net/trips/${bookingId}`);
+  });
+
+  it("emails the host a new request, with the payment line and a link to their inbox", async () => {
+    // A host who works from the website has no push: without this email a
+    // request made on the site can sit unseen until it expires.
+    const t = makeT();
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    vi.stubEnv("PUBLIC_SITE_URL", "https://staging.hasio.net/");
+    const calls = fakeNetwork(() => ok({}));
+    const hostId = await recipient(t, { email: "host@example.com", language: "en" });
+    const guestId = await seedUser(t, { email: "guest@example.com", firstName: "Sara" });
+    const listingId = await seedHotel(t, { ownerId: hostId, name_en: "Al Koot Heritage" });
+    const bookingId = await seedStay(t, {
+      userId: guestId,
+      listingId,
+      ownerId: hostId,
+      checkIn: "2026-09-10",
+      checkOut: "2026-09-12",
+    });
+
+    await send(
+      t,
+      await notice(t, hostId, {
+        type: "booking.requested",
+        title_en: "New booking request",
+        data: { bookingId, listingId, audience: "owner", target: "host-inbox" },
+      })
+    );
+
+    const emails = calls.filter((c) => c.url === RESEND).map((c) => c.body as { to: string[]; text: string });
+    expect(emails).toHaveLength(1);
+    expect(emails[0].to).toEqual(["host@example.com"]);
+    expect(emails[0].text).toContain("The guest pays you at the property.");
+    expect(emails[0].text).toContain(
+      "Open your bookings: https://staging.hasio.net/partners/hotel/bookings"
+    );
+  });
+
+  it("emails the provider when a traveller cancels", async () => {
+    const t = makeT();
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    const calls = fakeNetwork(() => ok({}));
+    const travellerId = await recipient(t, { email: "sara@example.com" });
+    const providerId = await seedUser(t, {
+      role: "service_provider",
+      isApproved: true,
+      email: "guide@example.com",
+    });
+    const serviceId = await seedService(t, { ownerId: providerId, title_en: "Oasis day tour", title_ar: "جولة الواحة" });
+    const bookingId = await seedServiceBooking(t, {
+      userId: travellerId,
+      serviceId,
+      ownerId: providerId,
+      date: "2026-09-10",
+      status: "cancelled",
+    });
+
+    await send(
+      t,
+      await notice(t, providerId, {
+        type: "booking.cancelled",
+        data: { bookingId, serviceId, audience: "owner", target: "provider-inbox" },
+      })
+    );
+
+    const [email] = calls.filter((c) => c.url === RESEND).map((c) => c.body as { to: string[]; text: string });
+    expect(email.to).toEqual(["guide@example.com"]);
+    expect(email.text).toContain("/partners/services/bookings");
+  });
+
   it("never throws when the email provider fails", async () => {
     const t = makeT();
     vi.stubEnv("RESEND_API_KEY", "re_test");

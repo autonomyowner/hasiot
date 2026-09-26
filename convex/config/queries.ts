@@ -1,5 +1,6 @@
 import { query } from "../_generated/server";
 import { googleProvider, saudiSmsLive } from "../lib/phoneRules";
+import { emailDeliveryOn } from "../notifications/links";
 
 // Expose public config values to the frontend
 export const getPublicConfig = query({
@@ -20,6 +21,9 @@ export const getPublicConfig = query({
       // Sign in with Apple by id token (lib/phoneRules.ts appleProvider). The
       // iOS app also needs a build with the entitlement (extra.appleSignIn).
       appleAuth: true,
+      // Whether booking emails are sent at all (notifications/links.ts). The
+      // website's confirmation promises an email only when this is true.
+      bookingEmails: emailDeliveryOn(),
     };
   },
 });
