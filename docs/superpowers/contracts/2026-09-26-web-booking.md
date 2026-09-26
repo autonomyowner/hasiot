@@ -187,6 +187,19 @@ Data:
 
 UI (all styled by `booking.css`, under a `.bk` root):
 
+- `src/booking/PageShell.jsx` — `<PageShell lang toggleLang isRtl current? withBar?>{children}</PageShell>`:
+  the `.landing-type` font, the `.bk` root with `dir`, `SiteHeader`, `<main id="main"
+  className="bk-page">` and the footer. The page calls `useLanguage()` once and passes all three
+  in (two `useLanguage()` calls would not stay in step). `withBar` leaves room for a sticky phone
+  bar. Every new page renders inside it.
+- `src/booking/links.js` (pure, tested) — `directionsUrl({coordinates, address})`,
+  `telHref(phone)`, `mailHref(email)`, `websiteHref(url)` (http(s) only); `null` when there is
+  nothing real to open. `text.js` also has `reviewsText(n, lang)`.
+- Labels that already exist and are safe on public pages (no `convex` import):
+  `src/partners/services/labels.js` (`serviceTypeLabel(type, lang)`, `serviceTitle(service,
+  lang)`, `cityName(city, lang)`), `src/partners/hotel/amenities.js` (`AMENITIES`),
+  `src/admin/constants.js` (`canonicalCity`, `CITY_LABELS`).
+
 - `src/booking/Calendar.jsx` — `<Calendar mode="range"|"single" value onChange min max lang
   maxNights? label />` (two months side by side from 900px, one below). `value` is `{start, end}`
   (range) or an ISO string (single). Days are buttons with full-date `aria-label`s; one is
@@ -206,7 +219,8 @@ UI (all styled by `booking.css`, under a `.bk` root):
   Tab trapped, Escape and the backdrop cancel, focus returns to the trigger.
 - `src/booking/place/Gallery.jsx` — `<Gallery images name lang />`: first photo eager, the rest
   lazy, thumbnails, prev/next (mirrored in RTL), sand fallback when there are none.
-- `src/booking/place/Reviews.jsx` — `<Reviews summary reviews lang kind="stay"|"service" />`: the
+- `src/booking/place/Reviews.jsx` — `<Reviews summary reviews lang kind="stay"|"service" />` (and a
+  named `RatingLine({summary, lang})` for a page's header): the
   average and count ("★ 4.6 · 12 reviews"), the newest reviews (name or "A traveller" / «مسافر»,
   date, stars, text, "Verified stay" / «إقامة موثّقة» — service: "Verified booking" / «حجز موثّق» —
   when `isVerified`), "No reviews yet." / «لا توجد تقييمات بعد.».
