@@ -352,7 +352,7 @@ export default function LoginPage() {
   const typed = normalizePhone(rawPhone)
   const showNotice = !saudiLive && (country === 'sa' || smsBlockedFor(typed, saudiLive))
 
-  const onGoogle = async () => {
+  const onGoogle = () => {
     if (busyRef.current) return
     busyRef.current = true
     setStarted(true)
@@ -361,18 +361,12 @@ export default function LoginPage() {
     setError('')
     setGoogleError(false)
     try {
-      const returnTo = googleReturnURL(window.location.origin)
-      // disableRedirect: better-auth's client would otherwise navigate to
-      // Google itself, skipping /oauth-start and its first-party state cookie.
-      const result = await authClient.signIn.social({
-        provider: 'google',
-        callbackURL: returnTo,
-        errorCallbackURL: returnTo,
-        disableRedirect: true,
-      })
-      if (result?.error) throw result
+      // A plain navigation, no fetch first: /oauth-start creates the sign-in
+      // state in this browser (googleSignIn.js says why that matters).
       // Leaves the page; busy stays on until it does (or pageshow resets it).
-      window.location.assign(oauthStartURL(import.meta.env.VITE_CONVEX_SITE_URL, result?.data?.url))
+      window.location.assign(
+        oauthStartURL(import.meta.env.VITE_CONVEX_SITE_URL, googleReturnURL(window.location.origin))
+      )
     } catch (err) {
       // Under the Google button, not the phone field: the number is not what failed.
       setGoogleError(errorText(err, lang))

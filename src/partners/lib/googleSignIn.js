@@ -2,12 +2,12 @@
  * The pieces of "Continue with Google" that are plain string work, kept out of
  * the page so they can be tested.
  *
- * The flow (contract 2026-09-26, "Auth HTTP"): the page asks the auth server
- * for Google's consent URL with `disableRedirect`, then navigates the whole tab
- * to the server's `/oauth-start`, which sets the OAuth state cookie
- * first-party on the Convex site before hopping to Google. Letting the
- * `/sign-in/social` fetch set that cookie instead would make it a third-party
- * cookie, which Safari drops — and the callback would then fail its state check.
+ * The flow (contract 2026-09-26, "Auth HTTP"): the whole tab navigates to the
+ * auth server's `/oauth-start`, which creates the OAuth state there — in this
+ * browser, first-party on the Convex site — and hops to Google. There is no
+ * fetch first: a state minted by a separate request could be minted by
+ * anyone and planted in someone else's browser (login CSRF), and a cookie set
+ * by a cross-site fetch is third-party, which Safari drops.
  */
 
 /** Where Google sends the partner back to, on success and on failure alike. */
@@ -15,14 +15,13 @@ export function googleReturnURL(origin) {
   return `${String(origin).replace(/\/+$/, '')}/partners`
 }
 
-/** The top-level page that starts the Google hop on the Convex site. */
-export function oauthStartURL(convexSiteURL, authorizationURL) {
+/** The top-level page that starts Google sign-in on the Convex site. */
+export function oauthStartURL(convexSiteURL, returnURL) {
   if (!convexSiteURL) throw new Error('VITE_CONVEX_SITE_URL is not set')
-  if (typeof authorizationURL !== 'string' || !authorizationURL) {
-    throw new Error('No Google authorization URL in the sign-in response')
-  }
+  if (typeof returnURL !== 'string' || !returnURL) throw new Error('No return address for Google sign-in')
   const base = String(convexSiteURL).replace(/\/+$/, '')
-  return `${base}/api/auth/oauth-start?authorizationURL=${encodeURIComponent(authorizationURL)}`
+  const params = new URLSearchParams({ provider: 'google', callbackURL: returnURL, errorCallbackURL: returnURL })
+  return `${base}/api/auth/oauth-start?${params}`
 }
 
 /**

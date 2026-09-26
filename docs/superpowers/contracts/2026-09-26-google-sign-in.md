@@ -42,9 +42,13 @@ Host / provider inboxes already receive `guest.phoneVerified`; show «غير م�
 
 | Step | Request | Result |
 |---|---|---|
-| 1 | `POST /sign-in/social` `{ provider: "google", callbackURL, errorCallbackURL, disableRedirect: true }` | `{ url, redirect: false }` — `url` is Google's consent page |
-| 2 | Open `GET /oauth-start?authorizationURL=<encodeURIComponent(url)>` **in the browser** (top-level) | Sets the state cookie first-party, 302 to Google |
-| 3 | Google → `GET /callback/google` | Success: 302 to `callbackURL` with the session cookie set. Error: 302 to `errorCallbackURL?error=<code>` |
+| 1 | Open `GET /oauth-start?provider=google&callbackURL=…&errorCallbackURL=…` **in the browser** (top-level; no fetch before it) | Creates the OAuth state in *that* browser (verification row + signed cookie, first-party), 302 to Google. Untrusted return address → 403; other provider / no callbackURL → 400 |
+| 2 | Google → `GET /callback/google` | Success: 302 to `callbackURL` with the session cookie set. Error: 302 to `errorCallbackURL?error=<code>` |
+
+**Changed 2026-09-26 after review:** the first version had the client `POST /sign-in/social` and
+pass Google's URL to `/oauth-start`, which copied its state into the cookie. Anyone could mint such
+a state, finish Google as themselves and plant it in a victim's browser (login CSRF). `/sign-in/social`
+is no longer used by either client.
 
 - **App:** `callbackURL` and `errorCallbackURL` = `hasio://auth-callback`. The server appends
   `cookie=<the Set-Cookie header>` to that redirect. The session token is the value of the cookie

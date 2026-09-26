@@ -42,6 +42,12 @@ Risks), native Google Sign-In, profile photos from Google.
   Recorded as an open owner decision; not built here.
 - The site's session after sign-in is still a third-party cookie on the Convex site (as for email
   and phone today), so Safari users of `/partners` may not stay signed in — pre-existing, unchanged.
+- **The `hasio://` hand-off (review, medium):** the session comes back to the app on a custom URL
+  scheme, which is not exclusive — a malicious app on the same phone that also claims `hasio://`
+  could receive a Google sign-in's session. Same exposure as `@better-auth/expo`. The real fix is a
+  verified App Link / Universal Link (`https://hasio.net/auth-callback` + `assetlinks.json` /
+  `apple-app-site-association`), a native change that fits the 1.1.0 build — open owner decision.
+- **Login CSRF (review, high) — fixed:** `/oauth-start` creates the state itself; see the contract.
 - An unconfirmed number can be anyone's. Harm is bounded: it is only shown to the host of a booking
   that person made, marked unconfirmed.
 

@@ -10,7 +10,7 @@ import authConfig from "./auth.config";
 import { getSmsProvider, localeFromAcceptLanguage } from "./sms/provider";
 import { tempEmailForPhone } from "./lib/contact";
 import { mirrorAuthUserUpdate, upsertUserFromAuth } from "./users/sync";
-import { googleProvider } from "./lib/phoneRules";
+import { canBookWithPhone, googleProvider } from "./lib/phoneRules";
 import { nativeOAuth } from "./lib/nativeOAuth";
 
 const siteUrl = process.env.SITE_URL || "http://localhost:5173";
@@ -223,13 +223,14 @@ export async function getAuthenticatedAppUser(ctx: QueryCtx | MutationCtx) {
 }
 
 /**
- * A verified phone number, required before booking: the host needs a number
- * they can actually call when a guest is late or lost.
+ * A phone number a host can call, required before booking: confirmed by SMS,
+ * or a Saudi mobile while Saudi SMS is down. The same rule as the booking
+ * seams (lib/phoneRules.ts), so a future caller cannot reintroduce the split.
  */
 export async function requireVerifiedPhone(ctx: QueryCtx | MutationCtx) {
   const user = await getAuthenticatedAppUser(ctx);
   if (!user) throw new Error("Not authenticated");
-  if (!user.phoneVerified) {
+  if (!canBookWithPhone(user)) {
     throw new Error(
       "يلزم توثيق رقم الجوال قبل الحجز. / A verified phone number is required to book."
     );

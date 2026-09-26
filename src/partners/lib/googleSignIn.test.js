@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { googleReturnURL, oauthStartURL, readGoogleReturn } from './googleSignIn'
 
 const SITE = 'https://hearty-ram-74.eu-west-1.convex.site'
-const GOOGLE = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=abc&state=x%2By&redirect_uri=https%3A%2F%2Fa.b%2Fcb'
+const BACK = 'https://hasio.net/partners'
 
 describe('googleReturnURL', () => {
   it('lands back on the portal on this origin', () => {
@@ -12,18 +12,20 @@ describe('googleReturnURL', () => {
 })
 
 describe('oauthStartURL', () => {
-  it('points at /oauth-start with the Google URL encoded once', () => {
-    const url = oauthStartURL(SITE, GOOGLE)
-    expect(url.startsWith(`${SITE}/api/auth/oauth-start?authorizationURL=`)).toBe(true)
-    expect(new URL(url).searchParams.get('authorizationURL')).toBe(GOOGLE)
+  it('opens /oauth-start for Google with both return addresses', () => {
+    const url = new URL(oauthStartURL(SITE, BACK))
+    expect(`${url.origin}${url.pathname}`).toBe(`${SITE}/api/auth/oauth-start`)
+    expect(url.searchParams.get('provider')).toBe('google')
+    expect(url.searchParams.get('callbackURL')).toBe(BACK)
+    expect(url.searchParams.get('errorCallbackURL')).toBe(BACK)
   })
 
   it('tolerates a trailing slash on the site URL', () => {
-    expect(oauthStartURL(`${SITE}/`, GOOGLE).startsWith(`${SITE}/api/auth/`)).toBe(true)
+    expect(oauthStartURL(`${SITE}/`, BACK).startsWith(`${SITE}/api/auth/`)).toBe(true)
   })
 
-  it('refuses a missing site URL or Google URL', () => {
-    expect(() => oauthStartURL('', GOOGLE)).toThrow()
+  it('refuses a missing site URL or return address', () => {
+    expect(() => oauthStartURL('', BACK)).toThrow()
     expect(() => oauthStartURL(SITE, undefined)).toThrow()
     expect(() => oauthStartURL(SITE, '')).toThrow()
   })
