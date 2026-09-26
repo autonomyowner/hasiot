@@ -9,19 +9,12 @@
 
 type Env = Record<string, string | undefined>;
 
+// Where the website is lives with the auth config's other uses of it.
+export { publicSiteUrl } from "../lib/site";
+
 /** Whether an email can actually be sent: the Resend key is what deliver.ts needs. */
 export function emailDeliveryOn(env: Env = process.env): boolean {
   return typeof env.RESEND_API_KEY === "string" && env.RESEND_API_KEY.trim().length > 0;
-}
-
-/**
- * The public website, for links in emails. Not SITE_URL: that is Better
- * Auth's base URL and still points at hasio.xyz in production, which only
- * redirects.
- */
-export function publicSiteUrl(env: Env = process.env): string {
-  const configured = env.PUBLIC_SITE_URL?.trim();
-  return (configured || "https://hasio.net").replace(/\/+$/, "");
 }
 
 type LinkedBooking = { _id: string; kind?: string; serviceId?: string; listingId?: string };

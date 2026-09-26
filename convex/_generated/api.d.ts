@@ -33,6 +33,7 @@ import type * as lib_dates from "../lib/dates.js";
 import type * as lib_errors from "../lib/errors.js";
 import type * as lib_nativeOAuth from "../lib/nativeOAuth.js";
 import type * as lib_phoneRules from "../lib/phoneRules.js";
+import type * as lib_site from "../lib/site.js";
 import type * as listings_mutations from "../listings/mutations.js";
 import type * as listings_photoTools from "../listings/photoTools.js";
 import type * as listings_pricing from "../listings/pricing.js";
@@ -109,6 +110,7 @@ declare const fullApi: ApiFromModules<{
   "lib/errors": typeof lib_errors;
   "lib/nativeOAuth": typeof lib_nativeOAuth;
   "lib/phoneRules": typeof lib_phoneRules;
+  "lib/site": typeof lib_site;
   "listings/mutations": typeof listings_mutations;
   "listings/photoTools": typeof listings_photoTools;
   "listings/pricing": typeof listings_pricing;

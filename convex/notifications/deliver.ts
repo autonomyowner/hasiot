@@ -42,19 +42,25 @@ const EMAILED_EVENTS: NotificationEvent[] = [
 // the read should that ever be bypassed.
 const MAX_DEVICES = 10;
 
+type Guest = Pick<Doc<"users">, "firstName" | "lastName"> | null | undefined;
+
 /**
  * What an email about a booking says, or null when there is nothing to name —
  * the place or service it was for no longer exists.
  *
  * A service booking is described by its service, its day and its start time,
- * rather than a place and a range of nights.
+ * rather than a place and a range of nights. `guest` is the traveller, whose
+ * name the host's new-request email opens with, as the push does
+ * (internal.ts notifyBookingEvent); without one it reads "A guest".
  */
 export function emailInputFor(
   booking: Doc<"bookings"> | null,
   listing: Doc<"listings"> | null,
-  service: Doc<"services"> | null
+  service: Doc<"services"> | null,
+  guest?: Guest
 ): TemplateInput | null {
   const reason = booking?.declineReason ?? booking?.cancellationReason;
+  const guestName = [guest?.firstName, guest?.lastName].filter(Boolean).join(" ").trim() || undefined;
 
   if (booking?.kind === "service") {
     if (!service) return null;
@@ -70,6 +76,7 @@ export function emailInputFor(
       totalAmount: booking.totalAmount,
       currency: booking.currency ?? "SAR",
       confirmationCode: booking.confirmationCode,
+      ...(guestName ? { guestName } : {}),
       reason,
       expiredAtStart: closedAtStart(booking),
     };
@@ -86,6 +93,7 @@ export function emailInputFor(
     totalAmount: booking?.totalAmount,
     currency: booking?.currency ?? "SAR",
     confirmationCode: booking?.confirmationCode,
+    ...(guestName ? { guestName } : {}),
     reason,
     checkInTime: listing.checkInTime,
     address: listing.address,
@@ -108,6 +116,8 @@ export const loadPayload = internalQuery({
     const serviceId = notification.data?.serviceId ?? booking?.serviceId;
     const listing = listingId ? await ctx.db.get(listingId) : null;
     const service = serviceId ? await ctx.db.get(serviceId) : null;
+    // The traveller, for the host's emails: only their name leaves this query.
+    const traveller = booking ? await ctx.db.get(booking.userId) : null;
 
     // The devices come from the pushTokens table, which follows a phone to
     // whoever signed in on it last. users.pushTokens is never written.
@@ -127,6 +137,7 @@ export const loadPayload = internalQuery({
       booking,
       listing,
       service,
+      guest: traveller ? { firstName: traveller.firstName, lastName: traveller.lastName } : null,
     };
   },
 });
@@ -165,7 +176,7 @@ export const send = internalAction({
     });
     if (!payload) return;
 
-    const { notification, user, listing, service, booking } = payload;
+    const { notification, user, listing, service, booking, guest } = payload;
     const isArabic = user.preferredLanguage === "ar";
 
     await sendPush(ctx, {
@@ -177,7 +188,7 @@ export const send = internalAction({
 
     // A service booking has no listing; it used to be skipped here for that
     // reason alone.
-    const baseInput = emailInputFor(booking, listing, service);
+    const baseInput = emailInputFor(booking, listing, service, guest);
     // Rows written before `audience` existed were all to the traveller.
     const audience = notification.data?.audience === "owner" ? "owner" : "tourist";
     const emailInput: TemplateInput | null =

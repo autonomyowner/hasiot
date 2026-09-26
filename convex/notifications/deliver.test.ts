@@ -310,6 +310,9 @@ describe("email", () => {
     const emails = calls.filter((c) => c.url === RESEND).map((c) => c.body as { to: string[]; text: string });
     expect(emails).toHaveLength(1);
     expect(emails[0].to).toEqual(["host@example.com"]);
+    // The push says who is coming; the email must too.
+    // (seedUser's default last name is "User".)
+    expect(emails[0].text).toContain("Sara User requested 2 nights at Al Koot Heritage");
     expect(emails[0].text).toContain("The guest pays you at the property.");
     expect(emails[0].text).toContain(
       "Open your bookings: https://staging.hasio.net/partners/hotel/bookings"
@@ -400,5 +403,14 @@ describe("emailInputFor", () => {
   it("has nothing to say without the booked place or service", () => {
     expect(emailInputFor(serviceBooking, null, null)).toBeNull();
     expect(emailInputFor(null, null, null)).toBeNull();
+  });
+
+  it("names the guest when there is a name to give", () => {
+    expect(emailInputFor(serviceBooking, null, service, { firstName: "Sara", lastName: "Al Qahtani" })?.guestName).toBe(
+      "Sara Al Qahtani"
+    );
+    // A phone sign-up with no name reads "A guest", as in the push.
+    expect(emailInputFor(serviceBooking, null, service, { firstName: undefined })?.guestName).toBeUndefined();
+    expect(emailInputFor(serviceBooking, null, service, null)?.guestName).toBeUndefined();
   });
 });

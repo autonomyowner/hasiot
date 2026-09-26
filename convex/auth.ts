@@ -12,6 +12,7 @@ import { tempEmailForPhone } from "./lib/contact";
 import { mirrorAuthUserUpdate, upsertUserFromAuth } from "./users/sync";
 import { appleProvider, canBookWithPhone, googleProvider } from "./lib/phoneRules";
 import { nativeOAuth } from "./lib/nativeOAuth";
+import { publicSiteUrl } from "./lib/site";
 
 const siteUrl = process.env.SITE_URL || "http://localhost:5173";
 
@@ -77,9 +78,12 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     ],
     // Where a sign-in that fails before its own error URL is known lands (a
     // lost state cookie, a tampered callback). Better Auth's default is
-    // `${baseURL}/error`, a path the website does not serve. SITE_URL is
-    // hasio.xyz in production, which redirects every path to hasio.net.
-    onAPIError: { errorURL: `${siteUrl}/partners` },
+    // `${baseURL}/error`, a path the website does not serve. It is the
+    // traveller login, not the partner one: travellers far outnumber partners
+    // now that booking is on the website, and a traveller dropped on the
+    // partner login is steered into applying as a partner. /login says the
+    // sign-in did not complete and links partners to /partners.
+    onAPIError: { errorURL: `${publicSiteUrl()}/login` },
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
