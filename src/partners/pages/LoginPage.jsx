@@ -23,7 +23,8 @@ const translations = {
     phoneLabel: 'Mobile number',
     saPlaceholder: '5X XXX XXXX',
     intlPlaceholder: '+213 6XX XX XX XX',
-    saHint: 'As you usually write it: 05…, 5… or +966…',
+    saHintLead: 'As you usually write it:',
+    or: 'or',
     intlHint: 'Include the country code.',
     phoneInvalid: 'Enter a valid mobile number.',
     send: 'Send code',
@@ -53,7 +54,8 @@ const translations = {
     phoneLabel: 'رقم الجوال',
     saPlaceholder: '5X XXX XXXX',
     intlPlaceholder: '+213 6XX XX XX XX',
-    saHint: 'كما تكتبه عادة: ‎05…‎ أو ‎5…‎ أو ‎+966…',
+    saHintLead: 'كما تكتبه عادة:',
+    or: 'أو',
     intlHint: 'اكتب الرقم مع رمز الدولة.',
     phoneInvalid: 'أدخل رقم جوال صحيحًا.',
     send: 'إرسال الرمز',
@@ -428,7 +430,11 @@ export default function LoginPage() {
               />
             </div>
             <span id="partner-phone-hint" className="p-muted p-small">
-              {country === 'sa' ? t.saHint : t.intlHint}
+              {country === 'sa' ? (
+                <>
+                  {t.saHintLead} <bdi dir="ltr">05…</bdi>{lang === 'en' ? ',' : '،'} <bdi dir="ltr">5…</bdi> {t.or} <bdi dir="ltr">+966…</bdi>
+                </>
+              ) : t.intlHint}
             </span>
             {error && <span className="p-field-error" role="alert">{error}</span>}
           </div>
