@@ -29,6 +29,9 @@ import { Textarea } from '../ui/textarea'
  * must make (it traps focus and does not close on outside click), and the
  * hand-rolled version focused its own card on mount, stealing focus from the
  * reason box — so typed spaces scrolled the page instead of reaching the field.
+ *
+ * `dir` defaults to RTL (the panel is Arabic); the partner portal passes 'ltr'
+ * in English along with its own `confirmLabel` / `cancelLabel`.
  */
 export function useConfirm() {
   const [request, setRequest] = useState(null)
@@ -55,7 +58,7 @@ export function useConfirm() {
       onOpenChange={(open) => { if (!open) settle(null) }}
     >
       {request && (
-        <AlertDialogContent dir="rtl" className="text-start sm:max-w-md">
+        <AlertDialogContent dir={options.dir || 'rtl'} className="text-start sm:max-w-md">
           <AlertDialogHeader>
             <AlertDialogTitle>{options.title}</AlertDialogTitle>
             {options.message && (
