@@ -22,15 +22,25 @@ import { Feather } from "@expo/vector-icons";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useKeyboardOverlap } from "@/hooks/useKeyboardOverlap";
 import { useNudge } from "@/hooks/useNudge";
+import { useQuery } from "convex/react";
 import { api } from "@/backend";
-import { sendPhoneOtp, signIn, signOut, verifyPhoneOtp } from "@/lib/auth";
 import {
+  sendPhoneOtp,
+  signIn,
+  signInWithGoogle,
+  signOut,
+  verifyPhoneOtp,
+} from "@/lib/auth";
+import {
+  AUTH_ERROR_COPY,
   describeAuthError,
   isCodeStepError,
   type AuthErrorDescription,
 } from "@/lib/authErrors";
 import { toLatinDigits } from "@/lib/digits";
 import { formatPhoneForDisplay, ltr, normalizeKsaPhone } from "@/lib/phone";
+import { googleSignInAvailable, saudiSmsBlocked, smsBlockedFor } from "@/lib/phoneRules";
+import { GoogleMark } from "@/components/auth/GoogleMark";
 import { convex, refreshAuth } from "@/lib/convex";
 import { useAppStore } from "@/stores/appStore";
 import { colors, type AppFonts } from "@/constants/colors";
@@ -148,6 +158,39 @@ export default function AuthScreen() {
   // Pressed too early, they shake the field that is missing something.
   const { style: phoneNudgeStyle, nudge: nudgePhone } = useNudge();
   const { style: codeNudgeStyle, nudge: nudgeCode } = useNudge();
+  const { style: smsNoticeNudgeStyle, nudge: nudgeSmsNotice } = useNudge();
+
+  // Held as a subscription (the demo fill asks once per code instead) because
+  // two things on this screen are drawn from it: whether Google is offered,
+  // and whether a code can reach a Saudi number at all.
+  const config = useQuery(api.config.queries.getPublicConfig);
+  const showGoogle = googleSignInAvailable(config, Platform.OS);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // While SMS cannot reach +966 numbers the field stays (the owner wants SMS
+  // kept for when it can), but Send code does not send: it would only start a
+  // wait for a text that never comes. The notice under the field says so. It
+  // appears once the config has answered — not while it loads, or every
+  // sign-in after Saudi SMS comes back would flash a warning that is no longer
+  // true — unless Send code is pressed first, which counts loading as "off"
+  // (the contract's rule) and shows it then.
+  const smsOff = saudiSmsBlocked(config);
+  const [smsNoticeForced, setSmsNoticeForced] = useState(false);
+  const showSmsNotice = smsOff && (config !== undefined || smsNoticeForced);
+  const smsNoticeText = t(showGoogle ? "saudiSmsUnavailableGoogle" : "saudiSmsUnavailableEmail");
+
+  // The phone field used to take the keyboard as the screen opened. With
+  // Google on offer that puts the keyboard over the button that works, asking
+  // for a number that — while Saudi SMS is down — cannot be used. autoFocus is
+  // read only on mount, before the config has answered, so the choice is made
+  // here instead, once: focus the number when there is no Google button above
+  // it, leave the keyboard down when there is.
+  const configAnswered = config !== undefined;
+  useEffect(() => {
+    if (configAnswered && !showGoogle) phoneRef.current?.focus();
+    // Once, when the config first answers — not every time Google flips.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configAnswered]);
 
   useEffect(() => {
     if (resendIn <= 0) return;
@@ -252,6 +295,14 @@ export default function AuthScreen() {
       phoneRef.current?.focus();
       return;
     }
+    // Only from the phone step: the code step is reached only when a code
+    // could be sent, and its Resend has no notice to point at.
+    if (step === "phone" && smsBlockedFor(target, config)) {
+      setFieldError(null);
+      setSmsNoticeForced(true);
+      nudgeSmsNotice(smsNoticeText);
+      return;
+    }
 
     busy.current = true;
     setLoading(true);
@@ -332,6 +383,41 @@ export default function AuthScreen() {
       return;
     }
     void verify(code);
+  };
+
+  /**
+   * Google, in the system browser (lib/auth.ts signInWithGoogle). Finishes as
+   * a phone sign-in does: the users row already exists — Better Auth's
+   * onCreate trigger writes it in the same transaction as the account, before
+   * the browser is sent back — so there is no profile to wait for.
+   */
+  const handleGoogle = async () => {
+    if (busy.current) return;
+    busy.current = true;
+    setGoogleLoading(true);
+    setFieldError(null);
+    let signedIn = false;
+    try {
+      signedIn = (await signInWithGoogle()) !== null;
+    } catch (error) {
+      const failure = describeAuthError(error, locale);
+      // A dropped connection or the server's limiter keep their own words;
+      // anything else — a refused state, no session on the way back, Google
+      // itself refusing — reads as the one thing the person can act on.
+      alertFailure(
+        failure.kind === "network" || failure.kind === "rateLimited"
+          ? failure
+          : { kind: "googleFailed", ...AUTH_ERROR_COPY.googleFailed, serverText: null }
+      );
+    }
+    if (!signedIn) {
+      // A cancel lands here too, and says nothing: backing out is a choice.
+      busy.current = false;
+      setGoogleLoading(false);
+      return;
+    }
+    // Still busy on purpose, as after a phone sign-in: the screen is leaving.
+    finishSignIn();
   };
 
   const handleEmailSignIn = async () => {
@@ -482,6 +568,41 @@ export default function AuthScreen() {
           <Animated.View entering={FadeInDown.delay(200).duration(600)} style={styles.form}>
             {step === "phone" && (
               <>
+                {/* First, while SMS cannot reach Saudi numbers: for most
+                    people this is the way in that works. Outlined, so the
+                    lime Send code stays the one filled button on the page. */}
+                {showGoogle ? (
+                  <>
+                    <Pressable
+                      onPress={handleGoogle}
+                      disabled={loading || googleLoading}
+                      style={({ pressed }) => [
+                        styles.googleButton,
+                        isRTL && styles.rowRTL,
+                        pressed && styles.pressed,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("continueWithGoogle")}
+                      accessibilityState={{ disabled: loading || googleLoading, busy: googleLoading }}
+                    >
+                      {googleLoading ? (
+                        <ActivityIndicator color={colors.ink} />
+                      ) : (
+                        <>
+                          <GoogleMark size={18} color={colors.ink} />
+                          <Text style={styles.googleButtonText}>{t("continueWithGoogle")}</Text>
+                        </>
+                      )}
+                    </Pressable>
+
+                    <View style={styles.orRow} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+                      <View style={styles.orLine} />
+                      <Text style={styles.orText}>{t("authOr")}</Text>
+                      <View style={styles.orLine} />
+                    </View>
+                  </>
+                ) : null}
+
                 <View style={styles.inputGroup}>
                   <Text style={[styles.label, isRTL && styles.textRTL]}>{t("phoneNumber")}</Text>
                   {/* The country code is fixed furniture rather than part of
@@ -514,10 +635,24 @@ export default function AuthScreen() {
                       autoComplete="tel"
                       returnKeyType="go"
                       onSubmitEditing={handleSendCode}
-                      autoFocus
+                      // On first opening the config has not answered yet, and
+                      // the effect at configAnswered focuses it; coming back
+                      // from the code or email step it has, and this does.
+                      autoFocus={configAnswered && !showGoogle}
                     />
                   </Animated.View>
                   {fieldErrorText}
+                  {showSmsNotice ? (
+                    <Animated.View
+                      style={[styles.smsNotice, isRTL && styles.rowRTL, smsNoticeNudgeStyle]}
+                      accessibilityLiveRegion="polite"
+                    >
+                      <Feather name="info" size={16} color={colors.onSurface.muted} />
+                      <Text style={[styles.smsNoticeText, isRTL && styles.textRTL]}>
+                        {smsNoticeText}
+                      </Text>
+                    </Animated.View>
+                  ) : null}
                 </View>
 
                 {/* Consent sits here because this is the step that creates the
@@ -804,6 +939,61 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   backButtonRTL: {
     alignSelf: "flex-end",
+  },
+  rowRTL: {
+    flexDirection: "row-reverse",
+  },
+  // The secondary way in: white with a hairline, the same 52pt and radius as
+  // the fields, so it reads as a button without competing with the lime one.
+  googleButton: {
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#D4D4D4",
+    backgroundColor: colors.surface.DEFAULT,
+  },
+  googleButtonText: {
+    fontSize: 16,
+    fontFamily: fonts.semibold,
+    color: colors.ink,
+  },
+  orRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  orLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "#D4D4D4",
+  },
+  orText: {
+    fontSize: 14,
+    fontFamily: fonts.medium,
+    color: colors.onSurface.muted,
+  },
+  // Information, not an error: muted ink on a white card with an info mark,
+  // where the field error below the field is the destructive red.
+  smsNotice: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    backgroundColor: colors.surface.DEFAULT,
+  },
+  smsNoticeText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.variant,
   },
   header: {
     marginBottom: 40,

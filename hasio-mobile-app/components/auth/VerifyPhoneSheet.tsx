@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import Animated from "react-native-reanimated";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/backend";
 import { BottomSheet } from "@/components/ui/BottomSheet";
 import { ThemedTextInput } from "@/components/ui/ThemedTextInput";
@@ -24,6 +25,8 @@ import {
 import { convex } from "@/lib/convex";
 import { toLatinDigits } from "@/lib/digits";
 import { formatPhoneForDisplay, ltr, normalizeKsaPhone } from "@/lib/phone";
+import { isSaudiMobile, saudiSmsBlocked } from "@/lib/phoneRules";
+import { describeContactPhoneError } from "@/lib/contactPhoneError";
 import { colors, type AppFonts } from "@/constants/colors";
 import { useThemedStyles } from "@/hooks/useAppFonts";
 
@@ -66,6 +69,14 @@ interface VerifyPhoneSheetProps {
  * The code step works as app/auth.tsx's does, for the same reasons — read the
  * comments there: the field is never read-only, has no maxLength, takes Arabic
  * digits, and a wrong or expired code is said under it with the keyboard up.
+ *
+ * While SMS cannot reach Saudi numbers (getPublicConfig().saudiSmsLive false,
+ * and not the demo backend), a Saudi mobile is *saved* instead of verified:
+ * users/mutations:setContactPhone stores it unconfirmed, the server's
+ * `canBook` turns true, and the host sees it marked "not confirmed by SMS"
+ * (design G7, the owner's call). The sheet then reports success exactly as a
+ * verified number does, so the booking carries on. A number from outside
+ * Saudi still gets a code — SMS reaches those.
  */
 export function VerifyPhoneSheet({
   visible,
@@ -130,6 +141,13 @@ export function VerifyPhoneSheet({
   useEffect(() => () => { if (demoFill.current) clearTimeout(demoFill.current); }, []);
 
   const normalizedPhone = normalizeKsaPhone(phone);
+
+  // Loading counts as "SMS off" (the contract's rule), so a press before the
+  // config answers saves rather than starting a wait for a text that would
+  // never come; on the demo backend it flips to Send code once it answers.
+  const config = useQuery(api.config.queries.getPublicConfig);
+  const saveMode = saudiSmsBlocked(config);
+  const setContactPhone = useMutation(api.users.mutations.setContactPhone);
 
   // Send code and Verify stay solid lime, as on the sign-in screen: faded out
   // until the input was complete, they read as text on an Android phone (see
@@ -239,6 +257,64 @@ export function VerifyPhoneSheet({
     armDemoFill(target);
   };
 
+  /** Store a Saudi mobile unconfirmed, while SMS cannot reach it. */
+  const saveNumber = async (target: string) => {
+    if (busy.current) return;
+    const mine = session.current;
+    busy.current = true;
+    setLoading(true);
+    setFieldError(null);
+    stopDemoFill();
+    try {
+      await setContactPhone({ phone: target });
+    } catch (error) {
+      if (mine !== session.current) return;
+      const refusal = describeContactPhoneError(error);
+      // Already confirmed (by SMS on another device, say): that is all the
+      // booking needed, so it goes on as if this save had worked.
+      if (!refusal.alreadyVerified) {
+        busy.current = false;
+        setLoading(false);
+        if (refusal.field) {
+          showFieldError(t(refusal.key));
+          nudgePhone();
+        } else {
+          appAlert(t("error"), t(refusal.key), [
+            { text: t("authOk"), onPress: () => phoneRef.current?.focus() },
+          ]);
+        }
+        return;
+      }
+    }
+    // Closed while saving: the number is stored, but the guest walked away,
+    // so nothing opens on their behalf (as with a verification).
+    if (mine !== session.current) return;
+    busy.current = false;
+    onVerified?.();
+    onClose();
+  };
+
+  /**
+   * The phone step's one button. Saves a Saudi mobile while Saudi SMS is off,
+   * and sends a code otherwise — including, in that mode, to a number from
+   * outside Saudi, which SMS still reaches and the server will not save.
+   */
+  const handlePhonePrimary = () => {
+    if (busy.current) return;
+    const target = normalizedPhone;
+    if (!saveMode || !target || !target.startsWith("+966")) {
+      void handleSendCode();
+      return;
+    }
+    if (!isSaudiMobile(target)) {
+      showFieldError(t("invalidPhone"));
+      nudgePhone();
+      phoneRef.current?.focus();
+      return;
+    }
+    void saveNumber(target);
+  };
+
   const verify = async (submitted: string, target: string | null = normalizedPhone) => {
     if (busy.current || !target || submitted.length !== CODE_LENGTH) return;
 
@@ -320,14 +396,18 @@ export function VerifyPhoneSheet({
       bottomPadding={24}
       header={
         <Text style={[styles.title, isRTL && styles.textRTL]}>
-          {step === "phone" ? t("verifyPhoneTitle") : t("enterCodeTitle")}
+          {step === "code"
+            ? t("enterCodeTitle")
+            : saveMode
+              ? t("contactPhoneTitle")
+              : t("verifyPhoneTitle")}
         </Text>
       }
     >
       <View style={styles.body}>
         <Text style={[styles.subtitle, isRTL && styles.textRTL]}>
           {step === "phone"
-            ? t("verifyPhoneSubtitle")
+            ? t(saveMode ? "contactPhoneSubtitle" : "verifyPhoneSubtitle")
             : t("enterCodeSubtitle").replace(
                 "{phone}",
                 // One left-to-right unit, or Arabic lays the groups out
@@ -361,14 +441,14 @@ export function VerifyPhoneSheet({
                 textContentType="telephoneNumber"
                 autoComplete="tel"
                 returnKeyType="go"
-                onSubmitEditing={handleSendCode}
+                onSubmitEditing={handlePhonePrimary}
                 autoFocus
               />
             </Animated.View>
             {fieldErrorText}
 
             <Pressable
-              onPress={handleSendCode}
+              onPress={handlePhonePrimary}
               disabled={loading}
               style={({ pressed }) => [
                 styles.submitButton,
@@ -376,14 +456,16 @@ export function VerifyPhoneSheet({
                 pressed && styles.pressed,
               ]}
               accessibilityRole="button"
-              accessibilityLabel={t("sendCode")}
+              accessibilityLabel={t(saveMode ? "saveNumber" : "sendCode")}
               accessibilityHint={normalizedPhone ? undefined : t("enterPhoneNudge")}
               accessibilityState={{ disabled: loading, busy: loading }}
             >
               {loading ? (
                 <ActivityIndicator color={colors.ink} />
               ) : (
-                <Text style={styles.submitButtonText}>{t("sendCode")}</Text>
+                <Text style={styles.submitButtonText}>
+                  {t(saveMode ? "saveNumber" : "sendCode")}
+                </Text>
               )}
             </Pressable>
           </>
