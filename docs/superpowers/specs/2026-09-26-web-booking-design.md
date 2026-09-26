@@ -37,10 +37,10 @@ in, give a phone number, send the request, and follow it afterwards.
 |---|---|---|
 | W1 | Booking needs an account. Sign-in methods on the web: **Google**, **phone code**, and **email for existing accounts** (the app's three; Apple needs a Services ID from Nabil's account and stays app-only) | The server's rule; parity with the app |
 | W2 | **Stays and services** are both bookable. Services show on `/explore` (a "Services" chip) only once at least one is live | The backend and the partner portal already take providers; none are live today, so nothing empty is shown |
-| W3 | Public pages stay anonymous and light: `/places/:id` and `/services/:id` use plain `fetch` to Convex's HTTP query API — no Convex client, no Better Auth chunk (same rule as `/` and `/explore`). The Convex client loads only under `AuthedLayout`: `/book/*`, `/trips/*`, `/signin` | Visitors who only browse pay nothing extra; the bundle rule in CLAUDE.md holds |
+| W3 | Public pages stay anonymous and light: `/places/:id` and `/services/:id` use plain `fetch` to Convex's HTTP query API — no Convex client, no Better Auth chunk (same rule as `/` and `/explore`). The Convex client loads only under `AuthedLayout`: `/book/*`, `/trips/*`, `/login` | Visitors who only browse pay nothing extra; the bundle rule in CLAUDE.md holds |
 | W4 | Checkout is **its own page with the choice in the URL**: `/book/stay/:listingId?checkIn=&checkOut=&guests=`, `/book/service/:serviceId?date=&time=&quantity=&people=` | A Google round-trip, a reload or a shared link comes back to the same request |
 | W5 | The phone step is the app's (`VerifyPhoneSheet`): while `saudiSmsLive` is false a **+966 mobile is typed once** (`setContactPhone`, unconfirmed); any other number — or a Saudi one once SMS is live — is confirmed by **SMS code** with `updatePhoneNumber: true` | One rule, owned by the server (`canBook`) |
-| W6 | When the account has **no name** (phone sign-ups), the checkout asks for a first name (last name optional) and saves it with `updateProfile` | A host must know who is arriving at the door. The app never asks; the web has no profile screen to set it elsewhere |
+| W6 | When the account has **no name** (phone sign-ups), the checkout asks for it — one "Your name" field, split into first and last name at the first space — and saves it with `updateProfile` | A host must know who is arriving at the door. The app never asks; the web has no profile screen to set it elsewhere |
 | W7 | The app's limits and defaults: dates today (Riyadh) to 365 days out, 1–30 nights, guests default 2 (or `maxGuests` if lower), 1…`maxGuests` (fallback 4), notes ≤ 500. Services: a day, start times 06:00–23:00 every 30 min (today: at least 60 min ahead), hours 1–12 / days 1–14 for hourly/daily prices, people 1…`maxGroupSize` (fallback 20) | Same numbers the server enforces |
 | W8 | No greyed-out dates. The live quote's `available` is the truth: "No rooms available for those dates" | The app has no per-day availability either |
 | W9 | Cancel as in the app: a pending or confirmed booking, a stay before its check-in day, a confirmed service before its start; no reason asked; dialog "Cancel this booking?" · "Keep it" / "Cancel booking" | Server rules (`cancelAsTourist`) |
@@ -49,11 +49,25 @@ in, give a phone number, send the request, and follow it afterwards.
 | W12 | SAR only on the web (the app's USD toggle is not ported) | The server stores and quotes SAR |
 | W13 | Dates are Gregorian on the Riyadh clock, week starting Sunday; Arabic uses `ar-SA-u-ca-gregory-nu-latn` (plain `ar-SA` would print Hijri dates); Arabic counts use the four plural forms | The app's rules (`lib/dates.ts`, `lib/calendarLocale.ts`) |
 | W14 | **Email reaches web users.** (a) Every booking email carries a button to the page that acts on it — the traveller's trip page, or the host's / provider's inbox on `/partners`. (b) Hosts and providers are also emailed a **new request** and a **cancellation** (the app only pushes those). (c) `getPublicConfig().bookingEmails` tells the site whether email is switched on, so the confirmation never promises an email that will not come | A web traveller has no push, and a web-only host has no push either — an unseen request simply expires after 48 hours |
-| W15 | "My trips" is linked from every public header (landing included, re-measured) and leads to `/trips`; signed out, `/trips` sends to `/signin?next=/trips` | Travellers need a way back to their bookings |
-| W16 | `/signin?next=` is the traveller sign-in. `next` is followed only if it is a relative path under `/trips` or `/book/` | No open redirect; `/sign-in` stays the admin's email login |
+| W15 | "My trips" is linked from every public header (landing included, re-measured) and leads to `/trips`; signed out, `/trips` sends to `/login?next=/trips` | Travellers need a way back to their bookings |
+| W16 | `/login?next=` is the traveller sign-in. `next` is followed only if it is a relative path under `/trips` or `/book/`, with no dot segments | No open redirect. `/sign-in` stays the admin's (unlinked) email login; a different word, not a hyphen, tells the two apart |
 | W17 | Refusals read like the app: the English half of the server's message is matched against the app's tables (`lib/bookingError.ts`, `lib/serviceBookingError.ts`, the phone sheet's errors); anything unmatched but bilingual shows the half in the page's language; anything internal shows the generic line | Same wording across clients; the English half is already an API |
 | W18 | The partner login's `CodeBoxes`, `ResendRing` and `GoogleMark` move to `src/components/auth/` and both sign-ins use them | One OTP input, not two |
 | W19 | No new booking functions on the backend. The web calls exactly what the 1.1.0 app calls | The rules are already tested (518 backend tests) |
+| W20 | A Google sign-in that fails before its own return address is known (a lost state cookie) lands on **`/login`**, not `/partners`: `onAPIError.errorURL` → `${PUBLIC_SITE_URL}/login`. `/login` reads `?error=` and `?state=state_not_found`, and links partners to `/partners` | A traveller landing on the partner login would be steered into applying as a partner |
+| W21 | The checkout saves the page's language as the account's `preferredLanguage` (with the name, in one `updateProfile`) before sending the request | Every web account starts as Arabic (`users/sync.ts`); the emails about a booking should speak the language it was made in |
+| W22 | The host's new-request email names the guest (`guestName` loaded with the booking), as the push already does | W6's name is wasted if the one email that needs it says "A guest" |
+| W23 | Each new page sets its title, `canonical` and `og:url` to `https://hasio.net<path>` and restores them on leaving; `index.html`'s canonical, `og:url`, images and the sitemap move from hasio.xyz to hasio.net; `robots.txt` keeps `/book/`, `/trips` and `/login` out of search | Every page declared itself a copy of hasio.xyz's home |
+| W24 | A malformed or foreign id in a link, or a booking that is not the viewer's own, shows "not found" — never the error screen. Public pages learn it from the HTTP error (`validation`), signed-in pages read queries through `useQuerySafe` | An email link cut short by a mail client must not look like a crash |
+| W25 | Reservations made by the 1.0.x apps (restaurant/event "slot" bookings: a date, a time, a party size, no total or code) appear in My trips as such, and can be cancelled while open | `getUserBookings` returns them; the server allows it |
+
+Fable's plan review (2026-09-26) is folded into W6, W16 and W20–W25 and into the contract. Two of
+its suggestions were not taken: the Services chip on `/explore` stays (it costs one small request
+and appears by itself once the first service is live — otherwise going live would need a deploy),
+and `/sign-in` is not merged into the traveller page (it is the admin's login and
+`/delete-account`'s; the traveller page is named `/login` instead). A "request received" email to
+the traveller is deferred: tourist emails today are answers only, and adding one needs an
+email-only path.
 
 ## Pages
 
@@ -82,7 +96,7 @@ Signed in (under `AuthedLayout`):
   note) beside three steps:
   1. **Sign in** — Google, phone code, or "Sign in with email" for existing accounts. Signed in:
      "Signed in as … · Not you? Sign out".
-  2. **Your details** — first/last name when missing (W6); the phone step when `canBook` is false
+  2. **Your details** — your name when missing (W6); the phone step when `canBook` is false
      (W5). Done: the number, marked "not confirmed by SMS" when it is.
   3. **Send your request** — notes (≤ 500), the terms line, **"Send booking request"**.
   Success replaces the page with the trip page (`/trips/:id?sent=1`). A quote that stops being
@@ -93,7 +107,7 @@ Signed in (under `AuthedLayout`):
   48-hour note, and "We'll email you at …" only when W14c says email is on and the account has a
   real address); status; confirmation code; dates and times; guests; total; the host's reason when
   declined; address, Call, Directions; the provider's contact for services; Cancel (W9); Rate (W10).
-- **`/signin`** — the traveller sign-in on its own (W16), for `/trips` and any signed-out entry.
+- **`/login`** — the traveller sign-in on its own (W16, W20), for `/trips` and any signed-out entry.
 
 ## Flows
 
@@ -120,10 +134,13 @@ traveller is on; a failure comes back as `?error=`, is read once and removed fro
    `https://hasio.net`.
 3. `booking.requested` and `booking.cancelled` are emailed to the host / provider, with a
    host-facing payment line ("The guest pays you at the property." / "The traveller pays you
-   directly."). Placeholder addresses are still never mailed.
+   directly.") and the guest's name (W22). Placeholder addresses are still never mailed.
+4. `onAPIError.errorURL` → `${PUBLIC_SITE_URL}/login` (W20); `publicSiteUrl()` moves to
+   `convex/lib/site.ts` so auth and email share it.
 
 Nothing else on the server changes. The 1.0.x apps and the 1.1.0 app are unaffected: no function,
-argument or return shape they use changes (only emails gain a link and two events).
+argument or return shape they use changes (only emails gain a link and two events, and a lost
+Google state lands on `/login`).
 
 ## Errors
 

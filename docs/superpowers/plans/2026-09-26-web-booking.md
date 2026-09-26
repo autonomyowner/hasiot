@@ -15,9 +15,10 @@ Auth). Pure rules (dates, prices, parameters, statuses, error texts) sit in test
 **Tech stack:** React 19 + Vite 7 + react-router 7, Convex 1.32, Better Auth 1.4 (phone, Google via
 `/oauth-start`, email), vitest 3, plain CSS on App.css's tokens.
 
-**Read first:** the design `docs/superpowers/specs/2026-09-26-web-booking-design.md` (W1–W19), the
+**Read first:** the design `docs/superpowers/specs/2026-09-26-web-booking-design.md` (W1–W25), the
 contract `docs/superpowers/contracts/2026-09-26-web-booking.md`, `CLAUDE.md` (Frontend, Bundle &
-Code Splitting, Authentication).
+Code Splitting, Authentication). Fable's review of this plan (2026-09-26) is folded in: tasks 1b
+and 7b, the larger task 8, and the builders' use of the core's shared pieces.
 
 Baseline on `web-booking` @ `aff154f`: `npx vitest run` → 50 files, 680 tests pass.
 
@@ -25,19 +26,19 @@ Baseline on `web-booking` @ `aff154f`: `npx vitest run` → 50 files, 680 tests 
 
 | File | Responsibility | Part |
 |---|---|---|
-| `convex/notifications/links.ts` (+test) | `emailDeliveryOn`, `publicSiteUrl`, `bookingActionUrl` | 1 |
+| `convex/notifications/links.ts`, `convex/lib/site.ts` (+tests) | `emailDeliveryOn`, `publicSiteUrl`, `bookingActionUrl` | 1 |
 | `convex/notifications/templates.ts` (+test) | action button, host-facing payment line | 1 |
-| `convex/notifications/deliver.ts` | two more emailed events; action link + audience per email | 1 |
-| `convex/config/queries.ts` | `bookingEmails` | 1 |
-| `src/lib/convexHttp.js` (+test) | `convexQuery`, `useConvexQuery` | 1 |
-| `src/booking/{dates,text,money,params,serviceRules,status,errors}.js` (+tests) | the pure rules | 1 |
-| `src/booking/{Calendar,Stepper}.jsx`, `useTitle.js`, `booking.css` | shared traveller UI | 1 |
+| `convex/notifications/deliver.ts` | two more emailed events; action link, audience and guest name per email | 1 |
+| `convex/config/queries.ts`, `convex/auth.ts` | `bookingEmails`; a lost Google state lands on `/login` | 1 |
+| `src/lib/convexHttp.js`, `src/lib/useQuerySafe.js` (+test) | public reads; signed-in reads that never throw | 1 |
+| `src/booking/{dates,text,money,params,serviceRules,status,errors,authReturn}.js` (+tests) | the pure rules | 1 |
+| `src/booking/{Calendar,Stepper,StatusChip,ConfirmDialog}.jsx`, `src/booking/place/*`, `usePageMeta.js`, `useViewer.js`, `booking.css` | shared traveller UI | 1 |
 | `src/site/SiteHeader.jsx` | the public header with "My trips" | 1 |
 | `src/main.jsx` | the seven routes, placeholders | 1 |
-| `src/App.jsx`, `src/pages/ExplorePage.jsx` | cards open `/places/:id`; "My trips" link | 1 |
+| `src/App.jsx`, `src/pages/ExplorePage.jsx`, `index.html`, `public/robots.txt`, `public/sitemap.xml` | cards open `/places/:id`; "My trips" link; hasio.net as canonical | 1 |
 | `src/pages/PlacePage.jsx`, `src/pages/place/*` | place page + stay booking section | 2A |
 | `src/pages/ServicePage.jsx`, `src/pages/service/*`, `src/hooks/useServices.js`, Explore services chip | service page + booking section | 2B |
-| `src/booking/{CheckoutPage,SignInPage}.jsx`, `src/booking/checkout/*`, `src/components/auth/*` | sign-in, checkout, phone step | 2C |
+| `src/booking/{CheckoutPage,LoginPage}.jsx`, `src/booking/checkout/*`, `src/components/auth/*` | sign-in, checkout, phone step | 2C |
 | `src/trips/*` | My trips, trip page, cancel, review | 2D |
 
 ---
@@ -78,6 +79,18 @@ Every task: write the test, see it fail for the right reason, write the code, ru
 - [ ] Run `npx vitest run convex/notifications` and `npm run typecheck:convex` — green.
 - [ ] Commit `feat(email): booking emails link to the page that acts on them; hosts hear of new
   requests and cancellations`.
+
+### Task 1b: after Fable's review — the guest's name, and where a lost Google state lands
+
+**Files:** create `convex/lib/site.ts` (move `publicSiteUrl` there; `links.ts` imports it), modify
+`convex/notifications/deliver.ts` (+test), `convex/auth.ts`.
+
+- [ ] Test: the host's new-request email text contains "Sara Al Qahtani requested" when the
+  booking's traveller has that name; `emailInputFor(..., guest)` sets `guestName`.
+- [ ] Implement: `loadPayload` also returns the booking's traveller (`firstName`, `lastName`);
+  `emailInputFor(booking, listing, service, guest)`; `auth.ts` `onAPIError.errorURL =
+  ${publicSiteUrl()}/login`.
+- [ ] `npx vitest run convex/notifications`, `npm run typecheck:convex`; commit.
 
 ### Task 2: plain-fetch Convex reads
 
@@ -181,19 +194,35 @@ Every task: write the test, see it fail for the right reason, write the code, ru
 - [ ] Implement (the server's text: `err.data` string, `err.data.message`, `err.error.message`,
   `err.message`), run, commit.
 
+### Task 7b: after Fable's review — ids, returns, redirects, names
+
+- [ ] `convexHttp`: `err.validation = true` when `errorMessage` contains `ArgumentValidationError`
+  (test).
+- [ ] `src/booking/authReturn.js` + test: `readAuthReturn` (contract §3).
+- [ ] `safeNext` refuses `..` and `%2e` segments (tests: `/trips/../admin`, `/trips/%2e%2e/admin`,
+  `/book/x/..`).
+- [ ] `errors.js`: the web's number-taken sentence (contract §3) (test).
+- [ ] Move `src/admin/useQuerySafe.js` to `src/lib/useQuerySafe.js`; the admin file re-exports it.
+- [ ] Commit.
+
 ### Task 8: shared UI, header, routes, links
 
-**Files:** create `src/booking/Calendar.jsx`, `src/booking/Stepper.jsx`, `src/booking/useTitle.js`,
-`src/booking/booking.css`, `src/site/SiteHeader.jsx`, placeholders `src/pages/PlacePage.jsx`,
-`src/pages/ServicePage.jsx`, `src/booking/SignInPage.jsx`, `src/booking/CheckoutPage.jsx`,
-`src/trips/TripsPage.jsx`, `src/trips/TripPage.jsx`; modify `src/main.jsx`, `src/App.jsx`,
-`src/pages/ExplorePage.jsx`, `src/App.css` (the header's "My trips" link only).
+**Files:** create `src/booking/Calendar.jsx`, `src/booking/Stepper.jsx`, `src/booking/usePageMeta.js`,
+`src/booking/useViewer.js`, `src/booking/StatusChip.jsx`, `src/booking/ConfirmDialog.jsx`,
+`src/booking/place/{Gallery,Reviews,ContactActions}.jsx`, `src/booking/booking.css`,
+`src/site/SiteHeader.jsx`, placeholders `src/pages/PlacePage.jsx`, `src/pages/ServicePage.jsx`,
+`src/booking/LoginPage.jsx`, `src/booking/CheckoutPage.jsx`, `src/trips/TripsPage.jsx`,
+`src/trips/TripPage.jsx`; modify `src/main.jsx`, `src/App.jsx`, `src/pages/ExplorePage.jsx`,
+`src/App.css` (the header's "My trips" link only), `index.html` (canonical, `og:url`, images →
+hasio.net), `public/robots.txt` (disallow `/book/`, `/trips`, `/login`; sitemap URL),
+`public/sitemap.xml` (hasio.net, plus `/explore`).
 
 - [ ] Calendar per contract §4 (range + single; `months` 2 at ≥ 900px via `matchMedia`, else 1;
   roving `tabIndex`; RTL arrow flip; `aria-label` = `formatDayLong`; selected start/end/in-range
   classes `is-start`, `is-end`, `is-between`; today marked `aria-current="date"`).
-- [ ] Stepper, useTitle, SiteHeader, `booking.css` per contract §4.
-- [ ] Routes: `/places/:id` and `/services/:id` beside `/explore`; `/signin`, `/book/stay/:listingId`,
+- [ ] Stepper, usePageMeta, useViewer, StatusChip, ConfirmDialog, Gallery, Reviews,
+  ContactActions, SiteHeader, `booking.css` per contract §4.
+- [ ] Routes: `/places/:id` and `/services/:id` beside `/explore`; `/login`, `/book/stay/:listingId`,
   `/book/service/:serviceId`, `/trips`, `/trips/:bookingId` inside `AuthedLayout`. Each
   placeholder renders `SiteHeader` and a "Coming soon" line so the route is visibly wired.
 - [ ] Explore `ListingCard` and the landing `HotelCard`: the button and the whole card open
@@ -220,23 +249,21 @@ check output, decisions and risks.
 ### Task A: the place page and the stay booking section
 
 **Files:** `src/pages/PlacePage.jsx` (replace the placeholder), `src/pages/place/StayBooking.jsx`,
-`src/pages/place/Gallery.jsx`, `src/pages/place/Reviews.jsx`, `src/pages/place/place.css`, tests
-for any pure helper it adds (`src/pages/place/*.test.js`).
+`src/pages/place/place.css`, tests for any pure helper it adds (`src/pages/place/*.test.js`).
+Uses the core's `Gallery`, `Reviews`, `ContactActions`, `Calendar`, `Stepper`, `usePageMeta`.
 
 1. Data (plain fetch only): `useConvexQuery('listings/queries:getListing', {listingId: id})`;
-   `reviews/queries:getSummary` and `listForListing {limit: 6}`. Loading skeleton; `null` → "This
-   place isn't available." / «هذا المكان غير متاح.» + "Back to Explore"; error → "We couldn't
-   load this place." / «تعذّر تحميل هذا المكان.» + "Try again". An id Convex rejects is `null`.
-2. Layout: `SiteHeader current={null}`; gallery (first photo eager, others lazy; thumbnails;
-   arrows; swipe-free is fine); name (page language, other as fallback), type chip, city label
-   (`CITY_LABELS`, `canonicalCity`), rating "★ 4.6 · 12 reviews"; Call (`tel:`, if `phone`),
-   Directions (`https://www.google.com/maps/dir/?api=1&destination=<lat>,<lng>`, coordinates
-   first, else the address), Website (only `http(s)`); About; Amenities (labels from
-   `src/partners/hotel/amenities.js`, unknown keys shown as typed); opening hours for non-hotels;
-   check-in/check-out times for hotels when set ("Check-in from 15:00 · Check-out by 12:00" /
-   «الوصول من 15:00 · المغادرة حتى 12:00»); Reviews (summary, the newest six, "Verified stay" /
-   «إقامة موثّقة» when `isVerified`, "A traveller" / «مسافر» for anonymous).
-3. `useTitle(name)`.
+   `reviews/queries:getSummary` and `listForListing {limit: 6}`. Loading skeleton; `null`, or an
+   error with `validation` → "This place isn't available." / «هذا المكان غير متاح.» + "Back to
+   Explore"; any other error → "We couldn't load this place." / «تعذّر تحميل هذا المكان.» + "Try
+   again" (`reload`).
+2. Layout: `SiteHeader current={null}`; `Gallery`; name (page language, other as fallback), type
+   chip, city label (`CITY_LABELS`, `canonicalCity` from `src/admin/constants.js`), the rating line;
+   `ContactActions` (phone, email, website, coordinates, address); About; Amenities (labels from
+   `src/partners/hotel/amenities.js`, unknown keys shown as typed); opening hours for non-hotels
+   (`workingHours`, "Closed" / «مغلق»); check-in/check-out times for hotels when set ("Check-in from
+   15:00 · Check-out by 12:00" / «الوصول من 15:00 · المغادرة حتى 12:00»); `Reviews kind="stay"`.
+3. `usePageMeta({title: name})`.
 4. `StayBooking` only when `type === 'hotel' && pricePerNight > 0`: heading "Book your stay" /
    «احجز إقامتك»; "Choose your arrival, then your departure" / «اختر يوم الوصول ثم يوم المغادرة»;
    `Calendar mode="range" min={riyadhToday()} max={addDays(today, MAX_DAYS_AHEAD)}
@@ -268,12 +295,14 @@ for any pure helper it adds (`src/pages/place/*.test.js`).
 services chip and cards only), tests for any pure helper.
 
 1. Data: `services/queries:getService {serviceId}`, `reviews/queries:getServiceSummary`,
-   `listForService {limit: 6}` via `useConvexQuery`. Not found → "This service isn't available
-   right now." / «هذه الخدمة غير متاحة حاليًا.».
-2. Layout: photos, type (labels from `src/partners/services/labels.js`), city, "Offered by {name}"
-   / «يقدّمها {name}», `priceLine(price, priceUnit)`, "Up to {n} people" / «حتى {n}» with
-   `peopleText`, "Languages: …" / «اللغات: …», availability text (`availability_en/_ar`), About,
-   reviews (as task A).
+   `listForService {limit: 6}` via `useConvexQuery`. `null` or a `validation` error → "This
+   service isn't available right now." / «هذه الخدمة غير متاحة حاليًا.»; other errors → a retry.
+   `usePageMeta({title})`.
+2. Layout: `SiteHeader`; the core's `Gallery`; type (labels from `src/partners/services/labels.js`),
+   city, "Offered by {name}" / «يقدّمها {name}», `priceLine(price, priceUnit)`, "Up to {n}" / «حتى
+   {n}» with `peopleText`, "Languages: …" / «اللغات: …», availability text (`availability_en/_ar`),
+   About, the core's `Reviews kind="service"`. Never import `SERVICE_ERRORS` or anything else
+   under `convex/` (contract §5).
 3. `bookable` → `ServiceBooking`: "Book this service" / «احجز هذه الخدمة»; "Choose a day" /
    «اختر اليوم» with `Calendar mode="single" min={firstServiceDay()}`; "Start time" / «وقت البدء»
    chips from `startTimes(date)`, "Times are in Saudi time." / «الأوقات بتوقيت السعودية.»; before a
@@ -285,8 +314,8 @@ services chip and cards only), tests for any pure helper.
    confirms within 48 hours, or before the start time if that's sooner. You pay the provider
    directly." / «يؤكد مقدم الخدمة خلال 48 ساعة، أو قبل وقت البدء إن كان أقرب. تدفع لمقدم الخدمة
    مباشرة.» "Request to book" → `navigate('/book/service/' + id + serviceQuery(...))`.
-4. Not bookable but public → "Contact" / «تواصل»: `contactPhone` → `tel:`, `contactEmail` →
-   `mailto:`; neither → no button, price line "Price on request".
+4. Not bookable but public → "Contact" / «تواصل» through the core's `ContactActions`
+   (`contactPhone`, `contactEmail`); neither → no button, price line "Price on request".
 5. Explore: `useServices()` (plain fetch `services/queries:listServices {}`, `null` loading, `[]`
    on failure); a "Services" / «الخدمات» chip appears only when the list is non-empty; selecting it
    (or a search that matches a service title, city or type) shows service cards (the same
@@ -294,7 +323,7 @@ services chip and cards only), tests for any pure helper.
 
 ### Task C: sign-in, checkout and the phone step
 
-**Files:** `src/booking/SignInPage.jsx`, `src/booking/CheckoutPage.jsx`,
+**Files:** `src/booking/LoginPage.jsx`, `src/booking/CheckoutPage.jsx`,
 `src/booking/checkout/{SignInPanel,PhonePanel,NameStep,Summary}.jsx`, `src/booking/checkout/checkout.css`,
 `src/components/auth/{CodeBoxes,ResendRing,GoogleMark}.jsx`, `src/partners/pages/LoginPage.jsx`
 (imports only), tests for any pure helper.
@@ -303,7 +332,9 @@ services chip and cards only), tests for any pure helper.
    into `src/components/auth/`; the partner login imports them — no behaviour or markup change.
 2. `SignInPanel({returnTo, lang})`: Google first when `getPublicConfig().googleAuth` (top-level
    navigation to `oauthStartURL(AUTH_BASE_URL, returnTo)`; `pageshow` un-sticks the spinner;
-   `?error=` read once via `readGoogleReturn` and removed); "or"; phone: Saudi / Another country,
+   `?error=` (and on `/login` `?state=state_not_found`) read once via `readAuthReturn` and removed;
+   "Google sign-in didn't complete. Please try again." / «لم يكتمل تسجيل الدخول عبر Google. حاول
+   مرة أخرى.»; a cancel says nothing); "or"; phone: Saudi / Another country,
    `+966` prefix, `normalizePhone`, `smsBlockedFor(e164, saudiSmsOpen(config))` → the notice
    "SMS codes can't reach Saudi numbers yet. Continue with Google instead." / «رسائل الرمز لا تصل
    إلى الأرقام السعودية حاليًا. تابع باستخدام Google.»; code boxes, resend ring 60 s, auto-verify
@@ -311,23 +342,28 @@ services chip and cards only), tests for any pure helper.
    existing accounts ("Email sign-in is for existing accounts. New accounts start with Google or a
    phone number." / «الدخول بالبريد للحسابات الحالية فقط. الحسابات الجديدة تبدأ بـ Google أو رقم
    الجوال.»). `Accept-Language: lang` on every OTP call. Errors via `phoneErrorText`.
-3. `SignInPage` (`/signin`): `SiteHeader`, the panel, `returnTo = origin + (safeNext(next) ??
-   '/trips')`; once signed in, `navigate(safeNext(next) ?? '/trips', {replace: true})`.
+3. `LoginPage` (`/login`): `SiteHeader`, "Sign in" / «تسجيل الدخول», the panel with `returnTo =
+   origin + '/login' + (next ? '?next=' + encodeURIComponent(next) : '')` so a Google failure
+   comes back here, and once `useViewer().state === 'active'`, `navigate(safeNext(next) ??
+   '/trips', {replace: true})`. Under the panel: "Hotel or service provider? Partner sign-in" /
+   «فندق أو مقدم خدمة؟ دخول الشركاء» → `/partners` (W20). `usePageMeta`.
 4. `CheckoutPage kind="stay"|"service"`: params via `parseStayParams` / `parseServiceParams`;
    invalid → "Those dates can't be booked." / «لا يمكن حجز هذه التواريخ.» + "Change dates" back to
-   the place page with the params. Data (Convex client): `getListing` or `getService`,
-   `quoteStay` / `quoteService` (live), `getCurrentUser`, `getPublicConfig`; a session with a
-   `null` user asks `getAccountStatus` — `suspended` → "Your account is suspended. Contact
-   support@hasio.xyz." / «حسابك موقوف. تواصل مع support@hasio.xyz.».
+   the place page with the params. Data (Convex client): `getListing` or `getService` through
+   `useQuerySafe` (an error or `null` → "This place isn't taking bookings right now." / the
+   service line, + "Back to Explore"), `quoteStay` / `quoteService` (live, `useQuerySafe`), and
+   `useViewer()` — `suspended` → "Your account is suspended. Contact support@hasio.xyz." /
+   «حسابك موقوف. تواصل مع support@hasio.xyz.».
 5. Summary (sticky on wide screens, first on phones): photo, name, city, dates or day + time +
    duration, guests or people, "3 × 450 SAR", Total, the payment note of task A / B, "Change" /
    «تغيير» back to the place or service page with the params.
 6. Step 1 "Sign in" / «تسجيل الدخول»: signed out → `SignInPanel returnTo={location.href}`; signed
    in → "Signed in as {name | phone | email}" / «مسجّل باسم …» + "Not you? Sign out" / «لست أنت؟
    تسجيل الخروج».
-7. Step 2 "Your details" / «بياناتك»: `NameStep` when the user has no first name ("First name" /
-   «الاسم الأول», "Last name (optional)" / «اسم العائلة (اختياري)», "The host sees your name on
-   your request." / «يرى المضيف اسمك في طلبك.»; `updateProfile`); `PhonePanel` when
+7. Step 2 "Your details" / «بياناتك»: `NameStep` when the user has no first name (one field "Your
+   name" / «اسمك», split at the first space into `firstName` / `lastName`, 1–60 characters, "The
+   host sees your name on your request." / «يرى المضيف اسمك في طلبك.»; `updateProfile`);
+   `PhonePanel` when
    `canBook === false`: Saudi SMS off → "Add your phone number" / «أضف رقم جوالك», "SMS to Saudi
    numbers isn't available yet. Your host will see this number, marked as not confirmed." /
    «رسائل SMS لا تصل إلى الأرقام السعودية بعد. سيرى المضيف هذا الرقم مع إشارة أنه غير موثّق.»,
@@ -342,22 +378,26 @@ services chip and cards only), tests for any pure helper.
    «هل هناك ما يجب أن يعرفه مقدم الخدمة؟ (اختياري)», placeholder "Meeting point, languages,
    special requests…" / «نقطة اللقاء، اللغات، طلبات خاصة…»; "By sending this request you agree to
    the Terms of Service." (link `/terms-of-service.html`); "Send booking request" / «إرسال طلب
-   الحجز» → `createStayBooking` / `createServiceBooking` → `navigate('/trips/' + bookingId +
+   الحجز» → first `updateProfile({preferredLanguage: lang})` when it differs from the account's
+   (W21; sent together with the name when step 2 asked for one), then `createStayBooking` /
+   `createServiceBooking` (`partySize: people` for a service) → `navigate('/trips/' + bookingId +
    '?sent=1', {replace: true})`. Refusals: `bookingErrorText(err, lang, kind)` under the button;
    `refusalKind` → duplicate adds "Open My trips" / «افتح رحلاتي»; unavailable/dates add "Change
    dates"; phone reopens step 2; auth reopens step 1.
 9. A quote that is not ok (or `available === false`) replaces the button with the reason and
    "Change dates".
-10. `useTitle`.
+10. `usePageMeta({title: 'Request to book'})`; focus moves to each step's heading as it opens.
 
 ### Task D: My trips
 
 **Files:** `src/trips/TripsPage.jsx`, `src/trips/TripPage.jsx`, `src/trips/TripCard.jsx`,
-`src/trips/ReviewForm.jsx`, `src/trips/ConfirmDialog.jsx`, `src/trips/trips.css`, tests for any
-pure helper.
+`src/trips/ReviewForm.jsx`, `src/trips/trips.css`, tests for any pure helper. Uses the core's
+`useViewer`, `useQuerySafe`, `StatusChip`, `ConfirmDialog`, `usePageMeta`.
 
-1. Both pages: signed out (`useConvexAuth`) → `<Navigate to={'/signin?next=' +
-   encodeURIComponent(path)} replace />`.
+1. Both pages: `useViewer()`: `loading` → a spinner (never redirect before the session settles);
+   `signed_out` → `<Navigate to={'/login?next=' + encodeURIComponent(path + search)} replace />`;
+   `suspended` → "Your account is suspended. Contact support@hasio.xyz." / «حسابك موقوف. تواصل مع
+   support@hasio.xyz.».
 2. `/trips`: `getUserBookings({includeServices: true})`; `splitTrips`; tabs "Upcoming" / «القادمة»,
    "Past" / «السابقة» (default Upcoming, or Past when Upcoming is empty and Past is not). Card:
    photo (listing or service, sand fallback), name, stay `formatRange` or service "10 Oct at
@@ -369,13 +409,17 @@ pure helper.
    في تبويب السابقة.»; "Nothing here yet" / «لا شيء هنا بعد», "Bookings appear here once they're
    over." / «تظهر الحجوزات هنا بعد انتهائها.». Foot: "Signed in as …", "Sign out", "Delete
    account" (`/delete-account`).
-3. `/trips/:bookingId`: `getBooking({bookingId, includeServices: true})`; `null` → "We couldn't
-   find this booking." / «لم نعثر على هذا الحجز.» + "My trips". `?sent=1` → a banner "Request
+   A slot row (1.0.x restaurant/event reservation, contract §4) shows "3 Oct at 19:00 · 4 people"
+   and no total. `usePageMeta({title: 'My trips'})`.
+3. `/trips/:bookingId`: `getBooking({bookingId, includeServices: true})` through `useQuerySafe`;
+   `null` or an error → "We couldn't find this booking." / «لم نعثر على هذا الحجز.» + "My trips";
+   `viewerRole !== 'guest'` → "This booking isn't one of your trips." / «هذا الحجز ليس من
+   رحلاتك.» + "Partner bookings" / «حجوزات الشركاء» → `/partners`. `?sent=1` → a banner "Request
    sent" / «تم إرسال الطلب», the code, "The host confirms within 48 hours." (service: the provider
    line), and "We'll email you at {email} when they answer." / «سنراسلك على {email} عند الرد.» only
    when `getPublicConfig().bookingEmails` and the account has a real email (not
    `@phone.hasio.xyz`), else "This page updates the moment they answer." / «تتحدث هذه الصفحة فور
-   الرد.»; the banner closes and the `sent` param is removed with `replace`.
+   الرد.»; focus moves to the banner; it closes and the `sent` param is removed with `replace`.
 4. Detail: status chip; "Your confirmation code" / «رمز التأكيد» + code (monospace, copy button);
    stay rows "Check-in" `formatDay · checkInTime`, "Check-out" `formatDay · checkOutTime`, "Stay"
    `nights · guests`, "Total"; service rows "Date", "Start", "Duration", "People", "Total"; notes;
@@ -398,8 +442,8 @@ pure helper.
    serviceId, rating, content, bookingId, isAnonymous})`; done → "Thanks — your review is live." /
    «شكرًا، تم نشر تقييمك.»; already rated → "You rated this {n}/5" / «قيّمته {n}/5».
 7. "Also in the app" / «متوفر أيضًا في التطبيق» with the two store links, quiet, at the foot.
-8. `ConfirmDialog`: `role="dialog"`, `aria-modal`, focus on open, Tab trapped, Escape closes,
-   focus returns to the trigger.
+8. Slot bookings: date, time, party size; Cancel while open (`canCancel`); no rating (the server
+   rates places from stays and services only).
 
 ---
 
@@ -409,9 +453,11 @@ pure helper.
   risk a builder raised (fix test-first, or record why not).
 - [ ] Merge each builder branch into `web-booking` with `--no-ff` (merge-tree plumbing if the
   owner's index is dirty — see memory "git-and-agents-on-this-box").
+- [ ] Hoist CSS rules two builders duplicated into `booking.css`.
 - [ ] Checks: `npx vitest run` (all), `npm run typecheck:convex`, `npm run lint`, `npm run build`,
-  `dist/index.html` has no `modulepreload`; the built chunks for `/`, `/explore`, `/places/:id`
-  import no `convex` or `better-auth` chunk (inspect the manifest / chunk imports).
+  `dist/index.html` has no `modulepreload`; the built chunks for `/`, `/explore`, `PlacePage` and
+  `ServicePage` import no `convex` or `better-auth` chunk, directly or through a shared chunk
+  (walk each chunk's static imports).
 - [ ] Push the backend to development: `npx convex dev --once` (with `CONVEX_TMPDIR`).
 - [ ] Browser (headless Chrome via `playwright-core` from the scratchpad, `npm run dev` on 5173,
   dev backend, `node scripts/smoke/partner-fixture.mjs create` for a hotel host and a provider):

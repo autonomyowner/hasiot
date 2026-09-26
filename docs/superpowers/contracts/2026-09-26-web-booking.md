@@ -1,8 +1,10 @@
 # Booking on hasio.net — contract
 
-Design: `docs/superpowers/specs/2026-09-26-web-booking-design.md` (decisions W1–W19). Plan:
+Design: `docs/superpowers/specs/2026-09-26-web-booking-design.md` (decisions W1–W25). Plan:
 `docs/superpowers/plans/2026-09-26-web-booking.md`. Everything a page builder may rely on is here;
 nobody guesses. The **core** (part 1 of the plan) builds sections 3–5 before the pages start.
+Revised after Fable's plan review (2026-09-26): shared page pieces, `useViewer`, the id guard,
+`/login`, slot rows and the import rule moved into the core.
 
 ## 1. Routes
 
@@ -10,7 +12,7 @@ nobody guesses. The **core** (part 1 of the plan) builds sections 3–5 before t
 |---|---|---|---|
 | `/places/:id` | public | `src/pages/PlacePage.jsx` | builder A |
 | `/services/:id` | public | `src/pages/ServicePage.jsx` | builder B |
-| `/signin` | `AuthedLayout` | `src/booking/SignInPage.jsx` | builder C |
+| `/login` | `AuthedLayout` | `src/booking/LoginPage.jsx` | builder C |
 | `/book/stay/:listingId` | `AuthedLayout` | `src/booking/CheckoutPage.jsx` (`kind="stay"`) | builder C |
 | `/book/service/:serviceId` | `AuthedLayout` | `src/booking/CheckoutPage.jsx` (`kind="service"`) | builder C |
 | `/trips` | `AuthedLayout` | `src/trips/TripsPage.jsx` | builder D |
@@ -23,10 +25,12 @@ URL parameters (built and read only through `src/booking/params.js`):
 
 - stay: `?checkIn=YYYY-MM-DD&checkOut=YYYY-MM-DD&guests=N`
 - service: `?date=YYYY-MM-DD&time=HH:MM&quantity=N&people=N` (`quantity` only for hourly/daily)
-- `/signin?next=<path>` — followed only when `safeNext(next)` accepts it (`/trips…`, `/book/…`)
+- `/login?next=<path>` — followed only when `safeNext(next)` accepts it (`/trips…`, `/book/…`, no
+  dot segments)
 - `/trips/:bookingId?sent=1` — the checkout's success hand-off (show the "Request sent" banner once)
-- Google returns: `?error=<code>` on any page that started Google; read with
-  `readGoogleReturn` (`src/partners/lib/googleSignIn.js`) and removed with `history.replaceState`
+- Google returns: `?error=<code>` (or `?state=state_not_found` on `/login`, W20) on any page that
+  started Google; read with `readAuthReturn` (`src/booking/authReturn.js`) and removed with
+  `history.replaceState`
 
 ## 2. Backend — what the web calls
 
@@ -59,7 +63,7 @@ Signed in (Convex React client, `api.*` from `convex/_generated/api`):
 | `bookings.queries.getBooking` | `{bookingId, includeServices: true}` | booking + full `listing` + `service` + `provider` + `viewerRole`, or `null` | — |
 | `bookings.mutations.cancelBooking` | `{bookingId}` | `{success}` | ALREADY_CLOSED, STAY_STARTED, SERVICE_STARTED |
 | `users.mutations.setContactPhone` | `{phone}` (E.164) | `{phone, phoneVerified:false}` | CONTACT_PHONE_ERRORS, the daily limit (10) |
-| `users.mutations.updateProfile` | `{firstName?, lastName?}` | `{success}` | — |
+| `users.mutations.updateProfile` | `{firstName?, lastName?, preferredLanguage?: 'ar' \| 'en'}` | `{success}` | — (the checkout sends the name when missing and the page's language, W6/W21) |
 | `reviews.queries.getMine` / `getMineForService` | `{listingId}` / `{serviceId}` | review or `null` | — |
 | `reviews.mutations.addReview` | `{listingId? , serviceId?, rating 1–5, content?, bookingId, isAnonymous?}` | review id | the refusals in `convex/reviews/logic.ts` |
 
@@ -85,6 +89,10 @@ Every result is `{data, error}`; treat `result.error` as thrown.
 - `EMAILED_EVENTS` adds `booking.requested` and `booking.cancelled`. For the owner audience the
   payment line reads "The guest pays you at the property." / «يدفع الضيف لك مباشرة في مكان الإقامة.»
   (stay) and "The traveller pays you directly." / «يدفع المسافر لك مباشرة.» (service).
+- The host's email names the guest: `loadPayload` loads the booking's traveller and
+  `emailInputFor(booking, listing, service, guest)` sets `guestName` (W22).
+- `publicSiteUrl()` lives in `convex/lib/site.ts`; `convex/auth.ts` sets `onAPIError.errorURL` to
+  `${publicSiteUrl()}/login` (W20).
 
 ## 3. Core modules (pure, tested) — `src/booking/`
 
@@ -121,7 +129,12 @@ field `null` when missing or malformed; `valid` = both dates ISO, `checkIn ≥ t
 guests a whole number ≥ 1); `stayQuery({checkIn, checkOut, guests}) → '?checkIn=…'`;
 `parseServiceParams(search, today?) → {date, time, quantity, people, valid}` (`valid` = ISO date ≥
 today, `HH:MM` time, people ≥ 1, quantity a whole number ≥ 1 or `null`); `serviceQuery({date,
-time, quantity, people})` (omits `quantity` when null); `safeNext(next) → path | null`.
+time, quantity, people})` (omits `quantity` when null); `safeNext(next) → path | null` (under
+`/trips` or `/book/`; refuses `//`, `\`, and any `..` or `%2e` segment).
+
+**`authReturn.js`** — `readAuthReturn(search) → {kind: null | 'cancelled' | 'failed', search}`:
+`?error=access_denied` → cancelled, any other `error` or `state=state_not_found` → failed; `search`
+is the query without `error`, `error_description` and that `state`, ready for `replaceState`.
 
 **`serviceRules.js`** — `SERVICE_START = '06:00'`, `SERVICE_END = '23:00'`, `STEP_MIN = 30`,
 `LEAD_MIN = 60`. `startTimes(date, now?) → ['06:00', …, '23:00']`, today only times ≥ now + 60 min
@@ -145,46 +158,96 @@ Arabic strings from `hasio-mobile-app/constants/translations.ts`; unmatched → 
 bilingual server message in `lang`; internal (`Server Error`, `[CONVEX`, stack) → "Please try
 again later" / «يرجى المحاولة لاحقاً». `phoneErrorText(err, lang)` for the phone and sign-in steps
 (invalid Saudi mobile, wrong code, expired code, too many attempts, number taken, SMS now live,
-daily change limit, the OTP rate limit's own bilingual text). `refusalKind(err) → 'duplicate' |
+daily change limit, the OTP rate limit's own bilingual text, a wrong email password; a number owned
+by another account reads "This number already belongs to another Hasio account. Sign in with that
+number instead, or use a different one."). `refusalKind(err) → 'duplicate' |
 'unavailable' | 'dates' | 'phone' | 'auth' | 'own' | 'limit' | 'closed' | 'started' | null` — what
 the page should offer next.
 
 ## 4. Core modules (shared, not pure)
 
+Data:
+
 - `src/lib/convexHttp.js` — `convexQuery(path, args?, {signal}?) → Promise<value>`: POST
   `${VITE_CONVEX_URL}/api/query` `{path, args, format:'json'}`; a `status:'error'` answer throws an
-  `Error` whose `data` is the server's `errorData` (a ConvexError's text) and `message` its
-  `errorMessage`. `useConvexQuery(path, args, {skip, debounceMs, keepPrevious}) →
-  {data, error, loading}` — re-runs when the serialised args change, aborts the stale request,
-  keeps the previous `data` while loading when `keepPrevious`.
+  `Error` whose `data` is the server's `errorData` (a ConvexError's text), `message` its
+  `errorMessage`, and `validation === true` when Convex refused the arguments (a malformed or
+  foreign id — treat as "not found", W24). `useConvexQuery(path, args, {skip, debounceMs,
+  keepPrevious}) → {data, error, loading, stale, reload}` — re-runs when the serialised args change,
+  aborts the stale request, keeps the previous `data` (flagged `stale`) while loading when
+  `keepPrevious`.
+- `src/lib/useQuerySafe.js` — moved from `src/admin/` (which re-exports it): `useQuerySafe(query,
+  args | 'skip') → {data, error}`, a `useQuery` that returns a failure instead of throwing it. Every
+  signed-in page reads an id from the URL through it (W24).
+- `src/booking/useViewer.js` — `useViewer() → {state, user, config}` where `state` is `'loading' |
+  'signed_out' | 'suspended' | 'no_account' | 'active'` (session from `authClient.useSession`,
+  `getCurrentUser`, and `getAccountStatus` only when a session has no user; `loading` until the
+  session's `isPending` settles, so a reload never bounces to `/login`); `config` is
+  `getPublicConfig`. Only under `AuthedLayout`.
+
+UI (all styled by `booking.css`, under a `.bk` root):
+
 - `src/booking/Calendar.jsx` — `<Calendar mode="range"|"single" value onChange min max lang
-  months={1|2} maxNights? label />`. `value` is `{start, end}` (range) or an ISO string (single).
-  Days are buttons with full-date `aria-label`s; one is tabbable; arrow keys move a day / a week
-  (left and right flip in RTL), Home/End the week, PageUp/PageDown the month, Enter/Space picks.
-  Days outside `[min, max]` are disabled. Prev/next month buttons, mirrored in RTL.
+  maxNights? label />` (two months side by side from 900px, one below). `value` is `{start, end}`
+  (range) or an ISO string (single). Days are buttons with full-date `aria-label`s; one is
+  tabbable; arrow keys move a day / a week (left and right flip in RTL), Home/End the week,
+  PageUp/PageDown the month, Enter/Space picks. Days outside `[min, max]` are disabled. Prev/next
+  month buttons, mirrored in RTL. A polite live line says what to pick next ("Check-in 3 Oct —
+  now choose check-out").
 - `src/booking/Stepper.jsx` — `<Stepper label value min max onChange format? />`: − / value / +,
   44px targets, `aria-live` value.
-- `src/booking/useTitle.js` — `useTitle(text)` sets `document.title` to `"${text} · Hasio"`.
+- `src/booking/usePageMeta.js` — `usePageMeta({title})`: `document.title = "${title} · Hasio"`,
+  `<link rel="canonical">` and `og:url` = `https://hasio.net` + the path (no query); restores all
+  three on unmount (W23).
+- `src/booking/StatusChip.jsx` — `<StatusChip booking lang />` (label + tone from `status.js`,
+  `effectiveStatus` applied).
+- `src/booking/ConfirmDialog.jsx` — `<ConfirmDialog open title body confirmLabel cancelLabel
+  onConfirm onCancel busy tone="danger"|"default" />`: `role="dialog"`, `aria-modal`, focus on open,
+  Tab trapped, Escape and the backdrop cancel, focus returns to the trigger.
+- `src/booking/place/Gallery.jsx` — `<Gallery images name lang />`: first photo eager, the rest
+  lazy, thumbnails, prev/next (mirrored in RTL), sand fallback when there are none.
+- `src/booking/place/Reviews.jsx` — `<Reviews summary reviews lang kind="stay"|"service" />`: the
+  average and count ("★ 4.6 · 12 reviews"), the newest reviews (name or "A traveller" / «مسافر»,
+  date, stars, text, "Verified stay" / «إقامة موثّقة» — service: "Verified booking" / «حجز موثّق» —
+  when `isVerified`), "No reviews yet." / «لا توجد تقييمات بعد.».
+- `src/booking/place/ContactActions.jsx` — `<ContactActions phone email website coordinates
+  address lang />`: Call (`tel:`), Email (`mailto:`), Directions
+  (`https://www.google.com/maps/dir/?api=1&destination=` + `lat,lng`, else the encoded address),
+  Website (only `http(s)`); each only when it has something to open.
 - `src/components/auth/CodeBoxes.jsx`, `ResendRing.jsx`, `GoogleMark.jsx` — moved verbatim from
-  `src/partners/pages/LoginPage.jsx` (builder C moves them; the partner login must render
-  identically). Class names stay `p-otp`, `p-otp-box`, `p-ring…`; the traveller pages style them
-  under their own root.
-- `src/site/SiteHeader.jsx` — `<SiteHeader lang toggleLang isRtl current="explore"|"trips"|null />`:
-  the `/explore` bar (brand, Explore / Home / The app / Contact, "My trips", the language button),
+  `src/partners/pages/LoginPage.jsx` by builder C (the partner login must render identically).
+  Class names stay `p-otp`, `p-otp-box`, `p-ring…`; `booking.css` styles them under `.bk`.
+- `src/site/SiteHeader.jsx` — `<SiteHeader lang toggleLang current="explore"|"trips"|null />`: the
+  `/explore` bar (brand, Explore / Home / The app / Contact, "My trips", the language button),
   `home-nav is-stuck` classes from `App.css`.
 - `src/booking/booking.css` — the traveller look shared by every new page, all under `.bk`:
   page and card frames, buttons (`.bk-btn`, `.bk-btn-primary` green, `.bk-btn-ghost`), fields,
   chips, status chips (`.bk-status[data-tone]`), the calendar, the stepper, the summary card, the
-  sticky phone bar, the OTP boxes. Tokens are App.css's (`--ink`, `--green`, `--paper`, `--gold`,
-  `--muted`, `--line`), fonts `.landing-type`'s. Each builder adds its own CSS file
-  (`place.css`, `service.css`, `checkout.css`, `trips.css`) and never edits `booking.css` — a
-  missing shared style is reported, not added.
+  sticky phone bar, the dialog, the gallery, reviews, contact actions, the OTP boxes. Tokens are
+  App.css's (`--ink`, `--green`, `--paper`, `--gold`, `--muted`, `--line`), fonts `.landing-type`'s.
+  Each builder adds its own CSS file (`place.css`, `service.css`, `checkout.css`, `trips.css`)
+  with page-scoped rules as it needs them and does not edit `booking.css`; the coordinator
+  hoists anything two builders duplicated.
+
+Rendering rules the pages share:
+
+- A **slot** booking (from the 1.0.x apps: `kind` `'slot'` or absent, no `checkIn`) shows its date,
+  time and `partySize` ("3 Oct at 19:00 · 4 people"), no total and no code (W25).
+- `/trips/:bookingId` shows a booking only when `viewerRole === 'guest'`; a host or provider
+  opening it gets "This booking isn't one of your trips." / «هذا الحجز ليس من رحلاتك.» and a link to
+  `/partners`.
+- After a navigation that changes what the page is about (the checkout's hand-off to the trip
+  page, a step completing), focus moves to the new heading or banner.
 
 ## 5. Rules every builder follows
 
-- Public pages (`PlacePage`, `ServicePage`) import nothing from `convex/react`, `convex/browser`,
-  `@convex-dev/better-auth`, `better-auth` or `src/lib/auth-client.js`; navigation to `/book/…` is
-  a `useNavigate()` call. They may `import('../AuthedLayout.jsx')` to prefetch once dates are chosen.
+- Public pages (`PlacePage`, `ServicePage`, anything they import) import nothing from
+  `convex/react`, `convex/browser`, `@convex-dev/better-auth`, `better-auth`,
+  `src/lib/auth-client.js`, or **any file under `convex/`** (even `convex/_generated/api` — a server
+  constant such as `SERVICE_ERRORS` drags `convex/values` in). Signed-in pages may import
+  `convex/_generated/api` and nothing else under `convex/`. Navigation to `/book/…` is a
+  `useNavigate()` call; a public page may `import('../AuthedLayout.jsx')` to prefetch once dates
+  are chosen.
 - Text is co-located: `const translations = { en: {…}, ar: {…} }` in each component; language from
   `useLanguage()`; `dir` on the page root; brand always "Hasio".
 - Buttons: a primary button is never faded to wait for input — it is disabled only while its own
