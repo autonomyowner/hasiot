@@ -33,8 +33,8 @@ const content = {
 // Chrome the marketing copy never shows but keyboard navigation, the burger
 // panel and the footer need, so it lives outside `content`.
 const ui = {
-  en: { skip: 'Skip to content', menu: 'Menu', explore: 'Explore', legal: 'Legal', support: 'WhatsApp support' },
-  ar: { skip: 'تخطي إلى المحتوى', menu: 'القائمة', explore: 'استكشف', legal: 'الشروط والسياسات', support: 'الدعم عبر واتساب' },
+  en: { skip: 'Skip to content', menu: 'Menu', explore: 'Explore', legal: 'Legal', support: 'WhatsApp support', partners: 'For partners', partnerSignIn: 'Hotels & providers — sign in' },
+  ar: { skip: 'تخطي إلى المحتوى', menu: 'القائمة', explore: 'استكشف', legal: 'الشروط والسياسات', support: 'الدعم عبر واتساب', partners: 'للشركاء', partnerSignIn: 'دخول الفنادق ومقدمي الخدمات' },
 }
 
 // Section ids, in nav order — drives both the anchors and the active-link state.
@@ -329,6 +329,7 @@ export default function App() {
           {t.nav.map((label, i) => (
             <a key={label} href={`#${SECTIONS[i]}`} onClick={() => setMenuOpen(false)}>{label}</a>
           ))}
+          <a href="/partners">{u.partners}</a>
           <a className="panel-cta" href="#download" onClick={() => setMenuOpen(false)}>{t.getApp}</a>
         </div>
       )}
@@ -495,6 +496,12 @@ export default function App() {
             <b>{t.getApp}</b>
             <a href={IOS_URL} target="_blank" rel="noopener noreferrer">{t.appStore}</a>
             <a href={ANDROID_URL} target="_blank" rel="noopener noreferrer">{t.playStore}</a>
+          </div>
+          {/* A plain link, not a router Link or an import: the portal is its
+              own lazy chunk behind AuthedLayout and must stay off this page. */}
+          <div className="foot-col">
+            <b>{u.partners}</b>
+            <a href="/partners">{u.partnerSignIn}</a>
           </div>
           <div className="foot-col">
             <b>{u.legal}</b>

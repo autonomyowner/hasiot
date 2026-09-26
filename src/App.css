@@ -341,7 +341,7 @@ html{scroll-behavior:smooth}
 
 /* ---- footer ---- */
 .home-footer{background:var(--green-deep);color:#fff;padding:78px clamp(24px,6vw,90px) 34px}
-.foot-top{display:grid;grid-template-columns:1.8fr repeat(3,1fr);gap:48px;padding-bottom:52px;border-bottom:1px solid #ffffff1f}
+.foot-top{display:grid;grid-template-columns:1.8fr repeat(4,1fr);gap:40px;padding-bottom:52px;border-bottom:1px solid #ffffff1f}
 .foot-brand p{font:26px/1.35 var(--font-display);color:#cad0c7;margin-top:22px;max-width:24ch}
 /* Support and social sit under the brand tagline rather than in a link column:
    the WhatsApp number is a real CTA and reads as chrome at 12.5px in a list. */
