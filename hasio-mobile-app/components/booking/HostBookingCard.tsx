@@ -35,7 +35,12 @@ export interface HostBookingData {
   totalAmount?: number | null;
   notes?: string;
   listing?: { name_en: string; name_ar: string; images?: string[] } | null;
-  tourist?: { firstName?: string; lastName?: string; phone?: string } | null;
+  /**
+   * `phoneVerified` false: a Saudi mobile the guest typed without a code,
+   * accepted while SMS cannot reach Saudi numbers (design G7). Absent from a
+   * server that predates it, which is read as confirmed — as it always was.
+   */
+  tourist?: { firstName?: string; lastName?: string; phone?: string; phoneVerified?: boolean } | null;
   // A service booking (kind "service", the provider inbox): hours or days
   // when the service is priced by them, else 1; the price per unit frozen at
   // booking time; the group; and when an unanswered request closes. `service`
@@ -87,6 +92,8 @@ interface HostBookingCardProps {
      */
     formatTotal: (stay: StayTotal) => string;
     callGuest: string;
+    /** "not confirmed by SMS", beside a number the guest never confirmed. */
+    phoneNotConfirmed: string;
     confirm: string;
     decline: string;
     noShow: string;
@@ -206,6 +213,11 @@ function HostBookingCardInner({
               {/* Kept in one piece: in an Arabic line the digit groups
                   otherwise come out in reverse order. */}
               {ltr(formatPhoneForDisplay(phone))}
+              {/* Said, not hidden: the number is still the way to reach the
+                  guest, but the host should know nobody proved it is theirs. */}
+              {guest?.phoneVerified === false ? (
+                <Text style={styles.unconfirmed}>{`  ·  ${labels.phoneNotConfirmed}`}</Text>
+              ) : null}
             </Text>
           ) : null}
         </View>
@@ -379,6 +391,12 @@ const makeStyles = (fonts: AppFonts) => StyleSheet.create({
   },
   guestText: {
     flex: 1,
+  },
+  // Quieter than the number it qualifies: muted and a size down.
+  unconfirmed: {
+    fontSize: 12,
+    fontFamily: fonts.regular,
+    color: colors.onSurface.muted,
   },
   // 44pt, the smallest target a thumb is sure of; it was 40.
   callButton: {

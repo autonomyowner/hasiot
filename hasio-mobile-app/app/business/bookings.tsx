@@ -162,6 +162,7 @@ export default function OwnerBookingsScreen() {
       guest: t("guest"),
       formatTotal: (stay: StayTotal) => format(displayTotalSar(stay, currency)),
       callGuest: t("callGuest"),
+      phoneNotConfirmed: t("phoneNotConfirmed"),
       confirm: t("confirmBooking"),
       decline: t("declineBooking"),
       noShow: t("markNoShow"),
