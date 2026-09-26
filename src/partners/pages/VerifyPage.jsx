@@ -8,6 +8,7 @@ import { usePartnerGate } from '../usePartnerGate'
 import { dashboardPath } from '../lib/gate'
 import { errorText } from '../lib/errors'
 import { Icon, Spinner } from '../components/Ui'
+import { AuthSteps } from '../components/AuthShell'
 
 const MAX_BYTES = 10 * 1024 * 1024
 const ACCEPTED = ['application/pdf', 'image/jpeg', 'image/png']
@@ -136,7 +137,10 @@ export default function VerifyPage() {
   const uploadLabel = state === 'rejected' ? t.uploadAgain : state === 'pending' ? t.replace : t.upload
 
   return (
-    <div style={{ maxWidth: 640 }}>
+    // Before approval this sits in the auth shell as step 3 of sign-up;
+    // an approved partner reaches it from the sidebar and sees no steps.
+    <div className={route === 'verify' ? 'p-auth-card p-auth-card-wide p-auth-step' : undefined} style={route === 'verify' ? undefined : { maxWidth: 640 }}>
+      {route === 'verify' && state !== 'approved' && <AuthSteps current={3} />}
       <h1 className="p-title">{t.title}</h1>
       <p className="p-subtitle">{isProvider ? t.subtitleProvider : t.subtitleBusiness}</p>
 

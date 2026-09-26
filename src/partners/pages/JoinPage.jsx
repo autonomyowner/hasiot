@@ -6,6 +6,7 @@ import { usePartnerLang, pick } from '../lang'
 import { usePartnerGate } from '../usePartnerGate'
 import { errorText } from '../lib/errors'
 import { Icon, Spinner } from '../components/Ui'
+import { AuthSteps } from '../components/AuthShell'
 
 const MAX_NAME = 60
 
@@ -23,6 +24,7 @@ const translations = {
     pickRole: 'Choose what you offer.',
     continue: 'Continue',
     next: 'Next you will upload a document (commercial registration or ID) for review.',
+    reassure: 'Takes about two minutes. We review every partner within one to two working days.',
   },
   ar: {
     title: 'انضم إلى Hasio كشريك',
@@ -37,6 +39,7 @@ const translations = {
     pickRole: 'اختر ما تقدمه.',
     continue: 'متابعة',
     next: 'بعدها ترفع مستندًا (سجل تجاري أو هوية) للمراجعة.',
+    reassure: 'يستغرق دقيقتين تقريبًا. نراجع كل شريك خلال يوم إلى يومي عمل.',
   },
 }
 
@@ -48,7 +51,7 @@ const translations = {
  * No businessType: the app does not ask for one either.
  */
 export default function JoinPage() {
-  const { lang } = usePartnerLang()
+  const { lang, isRtl } = usePartnerLang()
   const t = pick(translations, lang)
   const { guard } = usePartnerGate('join')
   const navigate = useNavigate()
@@ -91,38 +94,58 @@ export default function JoinPage() {
     { value: 'service_provider', icon: 'briefcase', title: t.providerTitle, hint: t.providerHint },
   ]
 
+  const pickRole = (value) => {
+    setRole(value)
+    setError('')
+  }
+  // A radio group: one tab stop, arrow keys move and select (either axis, any direction).
+  const onRoleKeys = (e) => {
+    const step = { ArrowDown: 1, ArrowRight: isRtl ? -1 : 1, ArrowUp: -1, ArrowLeft: isRtl ? 1 : -1 }[e.key]
+    if (!step) return
+    e.preventDefault()
+    const values = choices.map((c) => c.value)
+    const i = Math.max(0, values.indexOf(role))
+    const next = values[((role ? i + step : 0) + values.length) % values.length]
+    pickRole(next)
+    e.currentTarget.parentElement?.querySelector(`[data-value="${next}"]`)?.focus()
+  }
+
   return (
-    <div className="p-narrow" style={{ maxWidth: 560 }}>
-      <form className="p-card p-stack" onSubmit={onSubmit} noValidate>
+    <div className="p-auth-card p-auth-card-wide">
+      <AuthSteps current={2} />
+      <form className="p-stack p-auth-step" onSubmit={onSubmit} noValidate>
         <div>
           <h1 className="p-title">{t.title}</h1>
           <p className="p-subtitle" style={{ marginBottom: 0 }}>{t.subtitle}</p>
         </div>
 
-        <div className="p-choices" role="radiogroup" aria-label={t.pickRole}>
-          {choices.map((c) => (
-            <button
-              key={c.value}
-              type="button"
-              role="radio"
-              aria-checked={role === c.value}
-              className={role === c.value ? 'p-choice is-selected' : 'p-choice'}
-              onClick={() => {
-                setRole(c.value)
-                setError('')
-              }}
-            >
-              <span className="p-choice-icon"><Icon name={c.icon} size={22} /></span>
-              <span className="p-choice-body">
-                <span className="p-choice-title">{c.title}</span>
-                <span className="p-choice-hint">{c.hint}</span>
-              </span>
-              <Icon name={role === c.value ? 'check' : 'chevron'} size={18} className="p-chevron" />
-            </button>
-          ))}
+        <div className="p-role-cards" role="radiogroup" aria-label={t.pickRole}>
+          {choices.map((c, i) => {
+            const selected = role === c.value
+            return (
+              <button
+                key={c.value}
+                type="button"
+                role="radio"
+                data-value={c.value}
+                aria-checked={selected}
+                tabIndex={selected || (!role && i === 0) ? 0 : -1}
+                className={selected ? 'p-role-card is-selected' : 'p-role-card'}
+                onClick={() => pickRole(c.value)}
+                onKeyDown={onRoleKeys}
+              >
+                <span className="p-role-check" aria-hidden="true">
+                  {selected && <Icon name="check" size={14} />}
+                </span>
+                <span className="p-role-icon"><Icon name={c.icon} size={24} /></span>
+                <span className="p-role-title">{c.title}</span>
+                <span className="p-role-hint">{c.hint}</span>
+              </button>
+            )
+          })}
         </div>
 
-        <div className="p-grid-2">
+        <div className="p-auth-names">
           <div className="p-field">
             <label className="p-label" htmlFor="join-first">{t.firstName}</label>
             <input
@@ -150,10 +173,14 @@ export default function JoinPage() {
         {error && <p className="p-field-error" role="alert">{error}</p>}
         <p className="p-note">{t.next}</p>
 
-        <button type="submit" className="p-btn p-btn-primary p-btn-block" disabled={busy}>
+        <button type="submit" className="p-btn p-btn-primary p-btn-block p-btn-lg" disabled={busy}>
           {busy && <Spinner />}
           <span>{t.continue}</span>
         </button>
+        <p className="p-auth-reassure">
+          <Icon name="clock" size={16} />
+          <span>{t.reassure}</span>
+        </p>
       </form>
     </div>
   )

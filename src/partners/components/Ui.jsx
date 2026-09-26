@@ -22,6 +22,10 @@ const PATHS = {
   wallet: 'M4 7h15a1 1 0 011 1v11a1 1 0 01-1 1H4zM4 7V5a1 1 0 011-1h11v3M15 13.5h2',
   menu: 'M4 7h16M4 12h16M4 17h16',
   close: 'M6 6l12 12M18 6L6 18',
+  info: 'M12 3a9 9 0 100 18 9 9 0 000-18zM12 11v5M12 7.5v.5',
+  inbox: 'M4 13l2.5-8h11l2.5 8v6H4zM4 13h5l1 2h4l1-2h5',
+  chart: 'M4 20h16M7 16v-4M12 16V8M17 16v-7',
+  map: 'M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14',
 }
 
 export function Icon({ name, size = 20, className = '' }) {
