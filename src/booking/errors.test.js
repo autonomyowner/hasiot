@@ -71,6 +71,16 @@ describe('what nobody mapped', () => {
     expect(bookingErrorText(refusal(SERVICE_ERRORS.INVALID_PARTY), 'ar', 'service')).toBe('عدد الأشخاص غير صحيح.')
   })
 
+  it('treats a refused id as a bad link, not a bug: generic text, nothing logged', () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const refused = new Error(
+      '[CONVEX Q(bookings/queries:quoteStay)] Server Error\nArgumentValidationError: Value does not match validator.'
+    )
+    expect(bookingErrorText(refused, 'en')).toBe('Please try again later')
+    expect(errors).not.toHaveBeenCalled()
+    errors.mockRestore()
+  })
+
   it('never shows a person an internal error', () => {
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(bookingErrorText(new Error('[CONVEX M(bookings/mutations:createStayBooking)] Server Error'), 'en')).toBe(

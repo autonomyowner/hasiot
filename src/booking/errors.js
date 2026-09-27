@@ -126,9 +126,13 @@ function logOnce(err) {
   console.error('[booking] unexpected error:', err)
 }
 
+// Convex refusing an argument means a link was cut short or edited — expected
+// input on pages that read an id from the URL, which show "not found" for it.
+const BAD_LINK = /ArgumentValidationError/
+
 function fallback(err, text, lang) {
   if (!text || INTERNAL.test(text)) {
-    if (err) logOnce(err)
+    if (err && !BAD_LINK.test(text)) logOnce(err)
     return pick('generic', lang)
   }
   const parts = text.split(' / ')
