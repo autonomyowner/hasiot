@@ -137,6 +137,10 @@ traveller is on; a failure comes back as `?error=`, is read once and removed fro
    directly.") and the guest's name (W22). Placeholder addresses are still never mailed.
 4. `onAPIError.errorURL` → `${PUBLIC_SITE_URL}/login` (W20); `publicSiteUrl()` moves to
    `convex/lib/site.ts` so auth and email share it.
+5. Found while building: a stay's notes are cut to 500 characters on the server, as a service's
+   were; and (Fable's code review) booking emails are capped at 40 a day per recipient, counted
+   only when email is on — requests and cancellations now reach the host, and cheap accounts
+   must not be able to burn the sending domain through one inbox.
 
 Nothing else on the server changes. The 1.0.x apps and the 1.1.0 app are unaffected: no function,
 argument or return shape they use changes (only emails gain a link and two events, and a lost

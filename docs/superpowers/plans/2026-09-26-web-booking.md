@@ -480,6 +480,27 @@ services chip and cards only), tests for any pure helper.
   switch), the memory notes, and the design's open items. No deploy without "ship it"; the deploy
   order is the design's Rollout.
 
+### Outcome (2026-09-27)
+
+All of part 3 ran. The four builders' branches were merged `--no-ff` (D `1d2a604`, A `1888239`,
+B `5ebe25d`, C `a0b587e`) after each diff was read; the shared pieces they found wanting were fixed
+in the core (`065349b`, `ed96bf8`, `4fa7b41`), including a backend gap (a stay's notes were not
+length-capped on the server). Fable's review of the merged code found no blocker; its three
+should-fix items (a daily cap on booking emails per recipient, HTTP 560 error bodies, an internal
+message shown raw) and four polish items are in `03a072e`.
+
+Evidence: `npx vitest run` 73 files / 1013 tests (backend + website), `npm run lint` and
+`typecheck:convex` clean, `npm run build` clean with `modulepreload` 0 and the landing, `/explore`,
+place and service chunks walking to no Convex client or Better Auth code. In headless Chrome
+against development, with `scripts/smoke/web-booking-fixture.mjs` (not the partner fixture — it
+seeds its own bookings): 20 steps passed — the eight above plus a duplicate refused in the app's
+words, bad and foreign ids reading "not found" on four pages, and the partner sign-in still
+reaching its code boxes — and a sweep of 7 pages × 320/768/1024/1440px × both languages showed
+no sideways scroll and no console errors. A separate run covered the phone step's code path: an
+email account attached a +213 number by SMS code (`updatePhoneNumber`) and booked. Test accounts
+were deleted afterwards. Not run: a real Google sign-in (it needs a person at Google's screen) and
+real SMS delivery (development accepts any six digits).
+
 ## Summary
 
 First I build the shared rules, the email changes and the page skeletons myself, with tests.
