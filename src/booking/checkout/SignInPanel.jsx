@@ -151,6 +151,18 @@ export default function SignInPanel({ returnTo, lang, errorFromReturn = false, o
     setBusy(false)
   }
 
+  // After a sign-in succeeds the page swaps this panel out, but only once the
+  // session has reached Convex, a moment later. Re-enabling the form in that
+  // moment would invite a second tap on a code already used ("This code has
+  // expired…" under a form about to vanish), so it stays busy — released
+  // after a while only in case the session never arrives.
+  const holdTimer = useRef(null)
+  useEffect(() => () => clearTimeout(holdTimer.current), [])
+  const holdAfterSuccess = () => {
+    clearTimeout(holdTimer.current)
+    holdTimer.current = setTimeout(end, 15000)
+  }
+
   const onGoogle = () => {
     if (busyRef.current) return
     busyRef.current = true
@@ -230,12 +242,12 @@ export default function SignInPanel({ returnTo, lang, errorFromReturn = false, o
       const result = await authClient.phoneNumber.verify({ phoneNumber: phone, code: digits, fetchOptions: localeOptions })
       if (result?.error) throw result
       onSignedIn?.()
+      holdAfterSuccess()
     } catch (err) {
       setError(phoneErrorText(err, lang))
       setCode(EMPTY_CODE)
       // An expired or exhausted code needs a new one: no reason to wait.
       if (codeFailure(err) === 'expired') setSecondsLeft(0)
-    } finally {
       end()
     }
   }
@@ -267,9 +279,9 @@ export default function SignInPanel({ returnTo, lang, errorFromReturn = false, o
       const result = await authClient.signIn.email({ email: address, password })
       if (result?.error) throw result
       onSignedIn?.()
+      holdAfterSuccess()
     } catch (err) {
       setError(phoneErrorText(err, lang))
-    } finally {
       end()
     }
   }

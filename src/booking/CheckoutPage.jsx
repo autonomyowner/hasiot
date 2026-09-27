@@ -289,7 +289,10 @@ export default function CheckoutPage({ kind }) {
                       lang={lang}
                       config={viewer.config}
                       titleRef={phoneTitle}
-                      initialPhone={phoneOverride === 'edit' ? user?.phone : undefined}
+                      // Whatever number the account already has — being
+                      // changed, or asked for again once Saudi SMS went
+                      // live — starts in the field rather than a blank one.
+                      initialPhone={user?.phone ?? undefined}
                       onDone={() => {
                         setPhoneOverride(null)
                         setNotice(null)

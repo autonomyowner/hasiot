@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from 'convex/react'
 import { api } from '../../convex/_generated/api'
@@ -6,6 +6,8 @@ import { useLanguage } from '../hooks/useLanguage'
 import PageShell from '../booking/PageShell'
 import { usePageMeta } from '../booking/usePageMeta'
 import { useViewer } from '../booking/useViewer'
+// What is upcoming and what a chip says (a lapsed request reads Expired) turn on it.
+import { useMinuteClock } from '../booking/useMinuteClock'
 import { splitTrips } from '../booking/status'
 import { bookingErrorText } from '../booking/errors'
 import { authClient } from '../lib/auth-client'
@@ -59,20 +61,6 @@ const translations = {
 }
 
 const SUPPORT_EMAIL = 'support@hasio.xyz'
-
-/**
- * The clock, moved on once a minute: what is upcoming and what a chip says
- * (a request past its deadline reads Expired) turn on it, and reading
- * Date.now() during render would make the page impure.
- */
-function useMinuteClock() {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000)
-    return () => clearInterval(id)
-  }, [])
-  return now
-}
 
 const SuitcaseIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

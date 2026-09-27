@@ -7,6 +7,7 @@ import { bookingErrorText } from '../../booking/errors'
 import { formatSAR } from '../../booking/money'
 import { stayQuery } from '../../booking/params'
 import { guestsText, nightsText } from '../../booking/text'
+import { useMinuteClock } from '../../booking/useMinuteClock'
 import { useConvexQuery } from '../../lib/convexHttp'
 import { guestLimit } from './placeInfo'
 import { blockReason, changeStay, pressOutcome, quoteView, readStay } from './stayState'
@@ -217,7 +218,9 @@ export default function StayBooking({ listing, lang }) {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
 
-  const today = riyadhToday()
+  // From a clock that moves on: a page left open past midnight in Riyadh
+  // drops a check-in that is now in the past (readStay) instead of quoting it.
+  const today = riyadhToday(useMinuteClock())
   const maxDay = addDays(today, MAX_DAYS_AHEAD)
   const maxGuests = guestLimit(listing)
   const limits = { today, maxDay, maxGuests }

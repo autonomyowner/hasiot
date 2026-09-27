@@ -10,7 +10,7 @@ import type { Doc } from "../_generated/dataModel";
 import { isPlaceholderEmail } from "../lib/contact";
 import { renderEmail, type NotificationEvent, type TemplateInput } from "./templates";
 import { closedAtStart } from "./internal";
-import { bookingActionUrl, publicSiteUrl } from "./links";
+import { bookingActionUrl, emailDeliveryOn, publicSiteUrl } from "./links";
 
 /**
  * Fanning a notification out to push and email.
@@ -41,6 +41,16 @@ const EMAILED_EVENTS: NotificationEvent[] = [
 // A user keeps their newest five devices (users/push.ts); this only bounds
 // the read should that ever be bypassed.
 const MAX_DEVICES = 10;
+
+/**
+ * Booking emails one person may receive in a day. New requests and
+ * cancellations email the host, and a traveller may send 30 requests a day
+ * and cancel each — so without a cap a handful of cheap accounts could turn
+ * one host's inbox into a way to burn the sending domain's reputation. A busy
+ * host's real day is far below this; past it, push and the in-app inbox still
+ * carry every event.
+ */
+export const EMAILS_PER_RECIPIENT_PER_DAY = 40;
 
 type Guest = Pick<Doc<"users">, "firstName" | "lastName"> | null | undefined;
 
@@ -205,14 +215,25 @@ export const send = internalAction({
       // Phone sign-ups get a synthesised address on a domain that accepts no
       // mail. Sending there is a guaranteed bounce, and bounces are what cost
       // a sending domain its reputation.
-      !isPlaceholderEmail(user.email)
+      !isPlaceholderEmail(user.email) &&
+      // Checked before counting, so a deployment without email writes no
+      // rate-limit rows for every booking event.
+      emailDeliveryOn()
     ) {
-      await sendEmail({
-        to: user.email,
-        locale: user.preferredLanguage,
-        event: notification.type as NotificationEvent,
-        input: emailInput,
+      const quota = await ctx.runMutation(internal.rateLimit.checkAndIncrement, {
+        key: `email:${user._id}`,
+        limit: EMAILS_PER_RECIPIENT_PER_DAY,
       });
+      if (quota.allowed) {
+        await sendEmail({
+          to: user.email,
+          locale: user.preferredLanguage,
+          event: notification.type as NotificationEvent,
+          input: emailInput,
+        });
+      } else {
+        console.warn(`Booking email skipped: ${user._id} reached ${EMAILS_PER_RECIPIENT_PER_DAY} today`);
+      }
     }
 
     await ctx.runMutation(internal.notifications.deliver.markDelivered, {

@@ -78,6 +78,11 @@ describe('what nobody mapped', () => {
     )
     expect(bookingErrorText(new TypeError('Failed to fetch'), 'ar')).toBe('يرجى المحاولة لاحقاً')
     expect(bookingErrorText(undefined, 'en')).toBe('Please try again later')
+    // convexQuery's own words for a failed request are not for a person either.
+    expect(bookingErrorText(new Error('Convex query bookings/queries:quoteService failed: HTTP 429'), 'en')).toBe(
+      'Please try again later'
+    )
+    expect(bookingErrorText(new Error('VITE_CONVEX_URL is not set'), 'en')).toBe('Please try again later')
     errors.mockRestore()
   })
 })

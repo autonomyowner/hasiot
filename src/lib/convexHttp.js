@@ -25,7 +25,11 @@ export async function convexQuery(path, args = {}, { signal, url = CONVEX_URL } 
     body: JSON.stringify({ path, args, format: 'json' }),
     signal,
   })
-  if (!res.ok) throw new Error(`Convex query ${path} failed: HTTP ${res.status}`)
+  // A failed function comes back as a JSON error body — with 200 from this
+  // deployment, and with 560 in Convex's own client's reading of the API
+  // (convex/browser http_client, STATUS_CODE_UDF_FAILED). Read the body for
+  // both, so a refused id still reads "not found" either way.
+  if (!res.ok && res.status !== 560) throw new Error(`Convex query ${path} failed: HTTP ${res.status}`)
   const body = await res.json()
   if (body.status === 'success') return body.value
   const err = new Error(body.errorMessage || `Convex query ${path} failed`)

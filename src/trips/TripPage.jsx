@@ -9,6 +9,8 @@ import ConfirmDialog from '../booking/ConfirmDialog'
 import ContactActions from '../booking/place/ContactActions'
 import { usePageMeta } from '../booking/usePageMeta'
 import { useViewer } from '../booking/useViewer'
+// A request's deadline and a service's start turn on it.
+import { useMinuteClock } from '../booking/useMinuteClock'
 import { canCancel, effectiveStatus } from '../booking/status'
 import { bookingErrorText } from '../booking/errors'
 import { useQuerySafe } from '../lib/useQuerySafe'
@@ -141,16 +143,6 @@ const translations = {
 }
 
 const SUPPORT_EMAIL = 'support@hasio.xyz'
-
-/** The clock, once a minute: a request's deadline and a service's start turn on it. */
-function useMinuteClock() {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 60_000)
-    return () => clearInterval(id)
-  }, [])
-  return now
-}
 
 const icon = (children, strokeWidth = 2) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

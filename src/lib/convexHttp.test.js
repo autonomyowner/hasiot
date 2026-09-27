@@ -54,6 +54,21 @@ describe('convexQuery', () => {
     expect(other.validation).toBeUndefined()
   })
 
+  it('reads the error body Convex sends with HTTP 560, as its own client does', async () => {
+    // This deployment answers a failed function with 200; Convex's client also
+    // expects 560 for one (convex/browser http_client, STATUS_CODE_UDF_FAILED).
+    stubFetch(() => json({
+      status: 'error',
+      errorMessage: 'ArgumentValidationError: Value does not match validator.',
+    }, 560))
+    const err = await convexQuery('x:y', { listingId: 'nope' }, { url: URL }).catch((e) => e)
+    expect(err.validation).toBe(true)
+
+    stubFetch(() => json({ status: 'error', errorMessage: 'Uncaught ConvexError: x', errorData: 'عربي / English' }, 560))
+    const refusal = await convexQuery('x:y', {}, { url: URL }).catch((e) => e)
+    expect(refusal.data).toBe('عربي / English')
+  })
+
   it('rejects on an HTTP failure, with no data to show a person', async () => {
     stubFetch(() => new Response('upstream', { status: 502 }))
     const err = await convexQuery('x:y', {}, { url: URL }).catch((e) => e)

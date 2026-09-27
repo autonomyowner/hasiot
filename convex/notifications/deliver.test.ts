@@ -11,7 +11,7 @@ import {
 } from "../test.utils";
 import type { TestT } from "../test.utils";
 import type { Doc, Id } from "../_generated/dataModel";
-import { emailInputFor } from "./deliver";
+import { EMAILS_PER_RECIPIENT_PER_DAY, emailInputFor } from "./deliver";
 
 /**
  * Delivery talks to Expo and Resend over the network, so these tests fake
@@ -349,6 +349,25 @@ describe("email", () => {
     const [email] = calls.filter((c) => c.url === RESEND).map((c) => c.body as { to: string[]; text: string });
     expect(email.to).toEqual(["guide@example.com"]);
     expect(email.text).toContain("/partners/services/bookings");
+  });
+
+  it("stops emailing one recipient after a day's worth of booking emails", async () => {
+    // Requests and cancellations now email the host, and accounts are cheap:
+    // without a cap a script could burn the sending domain's reputation
+    // through one host's inbox. Push and the in-app inbox are unaffected.
+    const t = makeT();
+    vi.stubEnv("RESEND_API_KEY", "re_test");
+    const calls = fakeNetwork(() => ok({}));
+    const hostId = await recipient(t, { email: "host@example.com", language: "en" });
+    const guestId = await seedUser(t, { email: "guest@example.com" });
+    const listingId = await seedHotel(t, { ownerId: hostId, name_en: "Al Koot Heritage" });
+    const bookingId = await seedStay(t, { userId: guestId, listingId, ownerId: hostId, checkIn: "2026-09-10", checkOut: "2026-09-12" });
+    const request = () =>
+      notice(t, hostId, { type: "booking.requested", data: { bookingId, listingId, audience: "owner", target: "host-inbox" } });
+
+    for (let i = 0; i < EMAILS_PER_RECIPIENT_PER_DAY + 2; i++) await send(t, await request());
+
+    expect(calls.filter((c) => c.url === RESEND)).toHaveLength(EMAILS_PER_RECIPIENT_PER_DAY);
   });
 
   it("never throws when the email provider fails", async () => {

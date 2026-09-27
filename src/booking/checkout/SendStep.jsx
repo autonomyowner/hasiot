@@ -146,7 +146,8 @@ export default function SendStep({
 
       {blocked ? (
         <div className="co-blocked">
-          <p className="bk-alert" role="status">{quoteText}</p>
+          {/* Not live: the summary beside it already announces the same reason. */}
+          <p className="bk-alert">{quoteText}</p>
           <Link className="bk-btn bk-btn-ghost" to={changeHref}>{backLabel(refusalKind(quote.reason))}</Link>
         </div>
       ) : (

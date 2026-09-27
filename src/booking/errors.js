@@ -96,7 +96,9 @@ const PHONE_RULES = [
 ]
 
 const ARABIC = /[؀-ۿ]/
-const INTERNAL = /\[CONVEX|Server Error|Uncaught|at [\w$.]+ \(|could not find public function|Failed to fetch|NetworkError|Load failed/i
+// Text that is for the console, not a person: Convex's wrappers and stacks,
+// the browser's network failures, and src/lib/convexHttp.js's own messages.
+const INTERNAL = /\[CONVEX|Server Error|Uncaught|at [\w$.]+ \(|could not find public function|Failed to fetch|NetworkError|Load failed|^Convex query .* failed|VITE_CONVEX_URL/i
 
 /** The text the server (or Better Auth) actually sent, wherever it put it. */
 export function serverText(err) {
