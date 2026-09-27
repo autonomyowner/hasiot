@@ -113,13 +113,14 @@ export function serverText(err) {
 const pick = (key, lang) => T[key][lang === 'ar' ? 1 : 0]
 
 // Pages call these while rendering, so the same failure can come through many
-// times; it goes to the console once.
-const logged = new WeakSet()
+// times — and useQuerySafe hands back a new Error object on every render — so
+// it goes to the console once per distinct text.
+const logged = new Set()
 function logOnce(err) {
-  if (typeof err === 'object' && err !== null) {
-    if (logged.has(err)) return
-    logged.add(err)
-  }
+  const key = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+  if (logged.has(key)) return
+  if (logged.size > 100) logged.clear()
+  logged.add(key)
   console.error('[booking] unexpected error:', err)
 }
 

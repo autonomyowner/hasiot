@@ -60,9 +60,8 @@ describe('choiceQuery', () => {
     expect(choiceQuery('service', readChoice('service', '', TODAY), TODAY)).toBe('')
   })
 
-  it('writes a whole service back', () => {
-    expect(choiceQuery('service', readChoice('service', SERVICE, TODAY), TODAY))
-      .toBe('?date=2026-10-03&time=19%3A00&quantity=3&people=2')
+  it('writes a whole service back, the time still readable', () => {
+    expect(choiceQuery('service', readChoice('service', SERVICE, TODAY), TODAY)).toBe(SERVICE)
   })
 
   it('drops a past day with its time, keeps the rest', () => {

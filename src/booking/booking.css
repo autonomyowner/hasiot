@@ -21,7 +21,7 @@
 
 /* ---- page frame ---- */
 .bk-page{width:100%;max-width:1180px;margin:0 auto;padding:calc(var(--nav) + clamp(20px,3vw,36px)) clamp(16px,4vw,48px) clamp(56px,7vw,96px);flex:1}
-.bk-narrow{max-width:560px}
+.bk-narrow{max-width:560px;margin-inline:auto}
 .bk-back{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);text-decoration:none;margin-bottom:18px}
 .bk-back:hover{color:var(--ink)}
 .bk-back svg{width:16px;height:16px}
@@ -54,7 +54,8 @@
 .bk-btn-danger:hover{background:#7e2f26}
 .bk-btn-block{width:100%}
 .bk-btn-sm{min-height:40px;padding:0 16px;font-size:13px}
-.bk-link{color:var(--green);font-weight:600;text-decoration:underline;text-underline-offset:3px;background:none;border:0;padding:0;font:inherit;cursor:pointer}
+/* font:inherit first: as a shorthand it would reset the weight after it. */
+.bk-link{font:inherit;color:var(--green);font-weight:600;text-decoration:underline;text-underline-offset:3px;background:none;border:0;padding:0;cursor:pointer}
 .bk-link:hover{color:var(--green-deep)}
 .bk-spinner{width:16px;height:16px;border-radius:50%;border:2px solid currentColor;border-inline-end-color:transparent;animation:bk-spin .8s linear infinite;flex:none}
 @keyframes bk-spin{to{rotate:360deg}}

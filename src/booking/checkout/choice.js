@@ -1,6 +1,6 @@
 import { MAX_NIGHTS, daysBetween, isISODate, riyadhToday } from '../dates'
 import { formatSAR } from '../money'
-import { parseServiceParams, parseStayParams } from '../params'
+import { parseServiceParams, parseStayParams, readableQuery } from '../params'
 import { quantityText } from '../text'
 
 /**
@@ -56,7 +56,7 @@ export function choiceQuery(kind, choice, today = riyadhToday()) {
     }
     if (choice?.guests) params.set('guests', String(choice.guests))
   }
-  const query = params.toString()
+  const query = readableQuery(params)
   return query ? `?${query}` : ''
 }
 
