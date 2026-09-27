@@ -94,6 +94,21 @@ describe("createStayForUser", () => {
     expect(booking.expiresAt).toBe(NOW + PENDING_TTL_MS);
   });
 
+  it("keeps at most 500 characters of notes, and none that are blank, as for services", async () => {
+    // The clients stop at 500, but the mutation is public: without the cap
+    // any caller could store a note as large as a document allows, and the
+    // host's inbox and email would carry it.
+    const t = makeT();
+    const user = await guest(t);
+    const listingId = await seedHotel(t, { unitCount: 5 });
+
+    const long = await book(t, user, listingId, { notes: "x".repeat(600) });
+    const blank = await book(t, user, listingId, { notes: "   ", checkIn: "2026-09-20", checkOut: "2026-09-21" });
+
+    expect((await t.run((ctx) => ctx.db.get(long.bookingId)))?.notes).toHaveLength(500);
+    expect((await t.run((ctx) => ctx.db.get(blank.bookingId)))?.notes).toBeUndefined();
+  });
+
   it("denormalises the owner so their inbox is one index read", async () => {
     const t = makeT();
     const user = await guest(t);

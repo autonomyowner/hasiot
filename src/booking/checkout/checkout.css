@@ -1,0 +1,96 @@
+/* The traveller's sign-in (/login) and the checkout (/book/…): additions to
+   booking.css for these pages only, all under .bk and prefixed co-. Logical
+   properties throughout, so the same rules serve Arabic and English. */
+
+/* ---- page head ---- */
+.bk .co-head{margin-bottom:clamp(20px,3vw,32px)}
+.bk .co-narrow{margin-inline:auto}
+.bk .co-lead{margin:12px 0 24px;color:var(--muted);font-size:15px;line-height:1.65}
+.bk .co-partner{margin:20px 0 0;text-align:center;font-size:14px;line-height:1.6;color:var(--muted)}
+
+/* ---- layout: the summary first on a phone, beside the steps from 900px
+   (booking.css's .bk-layout makes the second column and the sticky) ---- */
+@media(min-width:900px){
+ .bk .co-layout>.co-aside{grid-column:2;grid-row:1}
+ .bk .co-layout>.co-main{grid-column:1;grid-row:1}
+}
+.bk .co-main,.bk .co-aside{min-width:0}
+.bk .co-steps{display:grid;gap:16px}
+
+/* ---- the three steps ---- */
+.bk .co-step-head{display:flex;align-items:flex-start;gap:14px}
+.bk .co-step-num{flex:none;display:grid;place-items:center;width:32px;height:32px;border-radius:50%;border:1px solid var(--line-strong);background:#fff;font-size:14px;font-weight:600}
+.bk .co-step-num svg{width:16px;height:16px}
+.bk .co-step.is-open .co-step-num{background:var(--green);border-color:var(--green);color:var(--paper)}
+.bk .co-step.is-done .co-step-num{background:var(--mint);border-color:transparent;color:var(--mint-ink)}
+.bk .co-step-heading{flex:1;min-width:0;display:grid;gap:4px;padding-top:4px}
+.bk .co-step-title{margin:0;font-size:17px;font-weight:600;line-height:1.35}
+.bk .co-step-title:focus-visible,.bk .co-sub-title:focus-visible{outline-offset:4px;border-radius:4px}
+/* A step not reached yet reads as a signpost, not as a form to fill. */
+.bk .co-step.is-todo{background:transparent;box-shadow:none}
+.bk .co-step.is-todo .co-step-title,.bk .co-step.is-todo .co-step-num{color:var(--muted)}
+.bk .co-step-summary{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:14px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+.bk .co-step-summary strong{color:var(--ink);font-weight:600}
+.bk .co-step-body{display:grid;gap:18px;margin-top:20px}
+@media(min-width:560px){.bk .co-step-body{padding-inline-start:46px}}
+.bk .co-sep{color:var(--line-strong)}
+.bk .co-tag{display:inline-flex;align-items:center;min-height:24px;padding:0 10px;border-radius:999px;background:#f6f0df;border:1px solid #e6dcc0;color:var(--ink);font-size:12px;font-weight:600;white-space:nowrap}
+.bk .co-done-line{display:flex;align-items:center;gap:8px;margin:0;font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.bk .co-done-line svg{flex:none;width:16px;height:16px;color:var(--mint-ink)}
+.bk .co-step .bk-link[disabled],.bk .co-signin .bk-link[disabled]{opacity:.55;cursor:default}
+
+/* ---- name and phone ---- */
+.bk .co-sub-head{display:grid;gap:6px}
+.bk .co-sub-title{margin:0;font-size:15.5px;font-weight:600}
+.bk .co-actions{display:flex;flex-wrap:wrap;gap:10px}
+.bk .co-actions .bk-btn{min-width:160px}
+@media(max-width:559px){.bk .co-actions .bk-btn{flex:1 1 100%}}
+/* Room for "Saudi Arabia +966" to wrap on a 320px screen instead of clipping. */
+.bk .co-signin .bk-seg button,.bk .co-phone .bk-seg button{padding:6px 10px;line-height:1.25}
+
+/* ---- sign-in ---- */
+.bk .co-signin{display:grid;gap:18px}
+.bk .co-google{display:grid;gap:14px}
+.bk .co-google .bk-btn svg{flex:none}
+.bk .co-or{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:12.5px}
+.bk .co-or::before,.bk .co-or::after{content:'';flex:1;height:1px;background:var(--line)}
+.bk .co-switch{justify-self:center;font-size:14px}
+.bk .co-code-sent{margin:0;font-size:14.5px;line-height:1.6}
+.bk .co-code-sent strong{font-weight:600;white-space:nowrap}
+.bk .co-status{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.bk .co-resend{display:flex;justify-content:center;min-height:24px;font-size:14px}
+.bk .co-countdown{display:inline-flex;align-items:center;gap:8px}
+
+/* ---- the request summary ---- */
+.bk .co-summary{gap:16px}
+.bk .co-sum-item{display:grid;grid-template-columns:88px minmax(0,1fr);gap:14px;align-items:center}
+.bk .co-sum-photo{aspect-ratio:1;border-radius:14px;overflow:hidden;background:var(--sand);display:grid;place-items:center;color:#17241d59}
+.bk .co-sum-photo img{width:100%;height:100%;object-fit:cover;display:block}
+.bk .co-sum-photo svg{width:32px;height:32px}
+.bk .co-sum-text{display:grid;gap:4px;min-width:0}
+.bk .co-sum-kicker{margin:0;font-size:12.5px;color:var(--muted)}
+.bk .co-sum-name{margin:0;font-size:18px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.bk .co-facts{display:grid;gap:10px;margin:0}
+.bk .co-fact{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-size:14px}
+.bk .co-fact dt{flex:none;color:var(--muted)}
+.bk .co-fact dd{margin:0;min-width:0;display:grid;gap:2px;text-align:end}
+.bk .co-fact-sub{font-size:12.5px;color:var(--muted)}
+.bk .co-times{margin:0;font-size:12.5px;color:var(--muted)}
+.bk .co-change{justify-self:start;font-size:14px}
+.bk .co-price{display:grid;gap:10px}
+.bk .co-price .bk-price-row span:last-child,.bk .co-price .bk-total span:last-child{white-space:nowrap}
+
+/* ---- the request itself ---- */
+.bk .co-blocked,.bk .co-refusal{display:grid;gap:10px;justify-items:start}
+.bk .co-refusal .bk-error{margin:0}
+
+/* ---- whole-page messages: bad link, unavailable, suspended ---- */
+.bk .co-message{display:grid;gap:16px;justify-items:start;max-width:560px}
+.bk .co-message-text{margin:0;font-size:17px;line-height:1.55}
+
+/* ---- skeletons ---- */
+.bk .co-skel{display:grid;gap:14px}
+.bk .co-skel-title{height:22px;width:40%}
+.bk .co-skel-line{height:14px}
+.bk .co-skel-line.is-short{width:55%}
+.bk .co-skel-block{height:48px}

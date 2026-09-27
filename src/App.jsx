@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
+import { Link } from 'react-router-dom'
 import { useLanguage } from './hooks/useLanguage'
 import { useReveal } from './hooks/useReveal'
 import { useHotels } from './hooks/useHotels'
@@ -14,8 +15,9 @@ const VoiceSection = lazy(() => import('./components/voice/VoiceSection'))
 // the video sources only once the band is nearly on screen.
 const ImmersiveSection = lazy(() => import('./components/immersive/ImmersiveSection'))
 
-// The site is a single marketing page for the mobile app. Anything a visitor can
-// actually do lives in the app, so every CTA here ends at a store.
+// The landing page for the mobile app. Its store CTAs end at a store; a hotel
+// card opens that hotel's page on the site, where it can be booked too
+// (docs/superpowers/specs/2026-09-26-web-booking-design.md).
 const IOS_URL = 'https://apps.apple.com/app/id6800297588'
 const ANDROID_URL = 'https://play.google.com/store/apps/details?id=com.hasio.travel'
 
@@ -33,8 +35,8 @@ const content = {
 // Chrome the marketing copy never shows but keyboard navigation, the burger
 // panel and the footer need, so it lives outside `content`.
 const ui = {
-  en: { skip: 'Skip to content', menu: 'Menu', explore: 'Explore', exploreAll: 'Hotels & places', home: 'Home', app: 'The app', contact: 'Contact', legal: 'Legal', support: 'WhatsApp support', partners: 'For partners', partnerLogin: 'Partner login', partnerSignIn: 'Hotels & providers — sign in' },
-  ar: { skip: 'تخطي إلى المحتوى', menu: 'القائمة', explore: 'استكشف', exploreAll: 'الفنادق والأماكن', home: 'الرئيسية', app: 'التطبيق', contact: 'تواصل معنا', legal: 'الشروط والسياسات', support: 'الدعم عبر واتساب', partners: 'للشركاء', partnerLogin: 'دخول الشركاء', partnerSignIn: 'دخول الفنادق ومقدمي الخدمات' },
+  en: { skip: 'Skip to content', menu: 'Menu', explore: 'Explore', exploreAll: 'Hotels & places', home: 'Home', app: 'The app', contact: 'Contact', legal: 'Legal', support: 'WhatsApp support', partners: 'For partners', partnerLogin: 'Partner login', partnerSignIn: 'Hotels & providers — sign in', trips: 'My trips' },
+  ar: { skip: 'تخطي إلى المحتوى', menu: 'القائمة', explore: 'استكشف', exploreAll: 'الفنادق والأماكن', home: 'الرئيسية', app: 'التطبيق', contact: 'تواصل معنا', legal: 'الشروط والسياسات', support: 'الدعم عبر واتساب', partners: 'للشركاء', partnerLogin: 'دخول الشركاء', partnerSignIn: 'دخول الفنادق ومقدمي الخدمات', trips: 'رحلاتي' },
 }
 
 // Section ids, in nav order — the footer's section list and the active-link state.
@@ -112,18 +114,6 @@ const LinkedInMark = () => (
 const AppleMark = () => <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.08zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
 const PlayMark = () => <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3.61 1.81 13.79 12 3.61 22.19a1 1 0 0 1-.61-.92V2.73c0-.4.24-.74.61-.92zm10.89 10.9 2.3 2.3-10.94 6.33 8.64-8.63zm3.2-3.2 2.8 1.63a1.05 1.05 0 0 1 0 1.73l-2.8 1.62L15.29 12l2.41-2.49zM5.86 2.66 16.8 8.99l-2.3 2.3-8.64-8.63z"/></svg>
 
-// Both badges together, wherever a CTA is needed. `tone` picks the light-on-dark
-// variant used over the hero photo and the green concierge panel.
-// "Book" on a hotel card: booking lives in the app, so send the visitor to the
-// store their phone uses. A desktop visitor has no store to open, so they go to
-// the download section, which shows both badges.
-const bookUrl = () => {
-  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent
-  if (/iPhone|iPad|iPod/i.test(ua)) return IOS_URL
-  if (/Android/i.test(ua)) return ANDROID_URL
-  return '#download'
-}
-
 // The card's words. Kept out of `content` because they are small UI chrome
 // around live data, not marketing copy.
 const hotelUi = {
@@ -131,15 +121,15 @@ const hotelUi = {
   ar: { book: 'احجز', night: '/ الليلة', sar: 'ر.س' },
 }
 
+// The whole card is the link to the hotel's page, where it can be booked; the
+// "Book" pill is its label, not a second link inside it.
 function HotelCard({ h, lang, hidden = false }) {
   const w = hotelUi[lang]
   const city = canonicalCity(h.city)
   const name = lang === 'ar' ? h.name_ar || h.name_en : h.name_en
-  const href = bookUrl()
-  const external = href.startsWith('http')
   const price = Math.round(h.pricePerNight).toLocaleString(lang === 'ar' ? 'ar-SA-u-nu-latn' : 'en-US')
   return (
-    <article className="place-card hotel-card" aria-hidden={hidden || undefined}>
+    <Link className="place-card hotel-card is-link" to={`/places/${h._id}`} aria-hidden={hidden || undefined} tabIndex={hidden ? -1 : undefined}>
       <img src={h.images[0]} alt={hidden ? '' : name} loading="lazy" width="520" height="880" />
       <div className="place-shade" />
       <div className="place-body">
@@ -149,10 +139,10 @@ function HotelCard({ h, lang, hidden = false }) {
           <p className="hotel-price">
             {lang === 'ar' ? <><b>{price}</b> {w.sar}</> : <>{w.sar} <b>{price}</b></>} <small>{w.night}</small>
           </p>
-          <a className="hotel-book" href={href} tabIndex={hidden ? -1 : undefined} {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>{w.book}</a>
+          <span className="hotel-book">{w.book}</span>
         </div>
       </div>
-    </article>
+    </Link>
   )
 }
 
@@ -325,6 +315,7 @@ export default function App() {
         </nav>
         <div className="nav-actions">
           <button className="lang-btn" onClick={toggleLang}>{t.switch}</button>
+          <Link className="partner-login trips-link" to="/trips">{u.trips}</Link>
           {/* Plain href: the portal is its own lazy chunk and must stay off this page. */}
           <a className="partner-login" href="/partners">{u.partnerLogin}</a>
           <a className="join" href="#download">{t.getApp}<span>↓</span></a>
@@ -343,6 +334,7 @@ export default function App() {
           {headerLinks(u).map((l) => (
             <a key={l.href} href={l.href} onClick={() => setMenuOpen(false)}>{l.label}</a>
           ))}
+          <Link to="/trips">{u.trips}</Link>
           <a href="/partners">{u.partnerLogin}</a>
           <a className="panel-cta" href="#download" onClick={() => setMenuOpen(false)}>{t.getApp}</a>
         </div>

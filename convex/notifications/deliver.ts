@@ -10,6 +10,7 @@ import type { Doc } from "../_generated/dataModel";
 import { isPlaceholderEmail } from "../lib/contact";
 import { renderEmail, type NotificationEvent, type TemplateInput } from "./templates";
 import { closedAtStart } from "./internal";
+import { bookingActionUrl, emailDeliveryOn, publicSiteUrl } from "./links";
 
 /**
  * Fanning a notification out to push and email.
@@ -23,13 +24,16 @@ import { closedAtStart } from "./internal";
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 const RESEND_URL = "https://api.resend.com/emails";
 
-// Events worth an email. A host watching their inbox for new requests gets
-// those in-app and by push; email is reserved for the things a guest needs a
-// durable record of, or needs to see when the app is not open.
+// Events worth an email: everything a guest needs a durable record of, and —
+// since hosts and travellers can use the website, where there is no push —
+// the two a host must act on or hear about: a new request, which expires
+// unanswered after 48 hours, and a cancellation, which frees their dates.
 const EMAILED_EVENTS: NotificationEvent[] = [
+  "booking.requested",
   "booking.confirmed",
   "booking.declined",
   "booking.expired",
+  "booking.cancelled",
   "booking.cancelled_admin",
   "booking.reminder",
 ];
@@ -39,18 +43,34 @@ const EMAILED_EVENTS: NotificationEvent[] = [
 const MAX_DEVICES = 10;
 
 /**
+ * Booking emails one person may receive in a day. New requests and
+ * cancellations email the host, and a traveller may send 30 requests a day
+ * and cancel each — so without a cap a handful of cheap accounts could turn
+ * one host's inbox into a way to burn the sending domain's reputation. A busy
+ * host's real day is far below this; past it, push and the in-app inbox still
+ * carry every event.
+ */
+export const EMAILS_PER_RECIPIENT_PER_DAY = 40;
+
+type Guest = Pick<Doc<"users">, "firstName" | "lastName"> | null | undefined;
+
+/**
  * What an email about a booking says, or null when there is nothing to name —
  * the place or service it was for no longer exists.
  *
  * A service booking is described by its service, its day and its start time,
- * rather than a place and a range of nights.
+ * rather than a place and a range of nights. `guest` is the traveller, whose
+ * name the host's new-request email opens with, as the push does
+ * (internal.ts notifyBookingEvent); without one it reads "A guest".
  */
 export function emailInputFor(
   booking: Doc<"bookings"> | null,
   listing: Doc<"listings"> | null,
-  service: Doc<"services"> | null
+  service: Doc<"services"> | null,
+  guest?: Guest
 ): TemplateInput | null {
   const reason = booking?.declineReason ?? booking?.cancellationReason;
+  const guestName = [guest?.firstName, guest?.lastName].filter(Boolean).join(" ").trim() || undefined;
 
   if (booking?.kind === "service") {
     if (!service) return null;
@@ -66,6 +86,7 @@ export function emailInputFor(
       totalAmount: booking.totalAmount,
       currency: booking.currency ?? "SAR",
       confirmationCode: booking.confirmationCode,
+      ...(guestName ? { guestName } : {}),
       reason,
       expiredAtStart: closedAtStart(booking),
     };
@@ -82,6 +103,7 @@ export function emailInputFor(
     totalAmount: booking?.totalAmount,
     currency: booking?.currency ?? "SAR",
     confirmationCode: booking?.confirmationCode,
+    ...(guestName ? { guestName } : {}),
     reason,
     checkInTime: listing.checkInTime,
     address: listing.address,
@@ -104,6 +126,8 @@ export const loadPayload = internalQuery({
     const serviceId = notification.data?.serviceId ?? booking?.serviceId;
     const listing = listingId ? await ctx.db.get(listingId) : null;
     const service = serviceId ? await ctx.db.get(serviceId) : null;
+    // The traveller, for the host's emails: only their name leaves this query.
+    const traveller = booking ? await ctx.db.get(booking.userId) : null;
 
     // The devices come from the pushTokens table, which follows a phone to
     // whoever signed in on it last. users.pushTokens is never written.
@@ -123,6 +147,7 @@ export const loadPayload = internalQuery({
       booking,
       listing,
       service,
+      guest: traveller ? { firstName: traveller.firstName, lastName: traveller.lastName } : null,
     };
   },
 });
@@ -161,7 +186,7 @@ export const send = internalAction({
     });
     if (!payload) return;
 
-    const { notification, user, listing, service, booking } = payload;
+    const { notification, user, listing, service, booking, guest } = payload;
     const isArabic = user.preferredLanguage === "ar";
 
     await sendPush(ctx, {
@@ -173,21 +198,42 @@ export const send = internalAction({
 
     // A service booking has no listing; it used to be skipped here for that
     // reason alone.
-    const emailInput = emailInputFor(booking, listing, service);
+    const baseInput = emailInputFor(booking, listing, service, guest);
+    // Rows written before `audience` existed were all to the traveller.
+    const audience = notification.data?.audience === "owner" ? "owner" : "tourist";
+    const emailInput: TemplateInput | null =
+      baseInput && booking
+        ? {
+            ...baseInput,
+            audience,
+            actionUrl: bookingActionUrl(audience, booking, publicSiteUrl()),
+          }
+        : baseInput;
     if (
       EMAILED_EVENTS.includes(notification.type as NotificationEvent) &&
       emailInput !== null &&
       // Phone sign-ups get a synthesised address on a domain that accepts no
       // mail. Sending there is a guaranteed bounce, and bounces are what cost
       // a sending domain its reputation.
-      !isPlaceholderEmail(user.email)
+      !isPlaceholderEmail(user.email) &&
+      // Checked before counting, so a deployment without email writes no
+      // rate-limit rows for every booking event.
+      emailDeliveryOn()
     ) {
-      await sendEmail({
-        to: user.email,
-        locale: user.preferredLanguage,
-        event: notification.type as NotificationEvent,
-        input: emailInput,
+      const quota = await ctx.runMutation(internal.rateLimit.checkAndIncrement, {
+        key: `email:${user._id}`,
+        limit: EMAILS_PER_RECIPIENT_PER_DAY,
       });
+      if (quota.allowed) {
+        await sendEmail({
+          to: user.email,
+          locale: user.preferredLanguage,
+          event: notification.type as NotificationEvent,
+          input: emailInput,
+        });
+      } else {
+        console.warn(`Booking email skipped: ${user._id} reached ${EMAILS_PER_RECIPIENT_PER_DAY} today`);
+      }
     }
 
     await ctx.runMutation(internal.notifications.deliver.markDelivered, {

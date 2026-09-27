@@ -59,6 +59,11 @@ export type TemplateInput = {
   priceUnit?: string;
   /** A same-day request closed at its start time, before 48 hours were up. */
   expiredAtStart?: boolean;
+  // --- email only ---
+  /** Who reads it: the traveller (default) or the host / provider being paid. */
+  audience?: "owner" | "tourist";
+  /** The page that acts on the booking (links.ts); no button without it. */
+  actionUrl?: string;
 };
 
 export type RenderedNotification = {
@@ -491,20 +496,45 @@ export function renderEmail(
     )
     .join("");
 
+  // The host or provider is the one being paid, so the same fact is put the
+  // other way round for them.
+  const toOwner = input.audience === "owner";
   const payNote = isService
+    ? toOwner
+      ? isArabic
+        ? "يدفع المسافر لك مباشرة."
+        : "The traveller pays you directly."
+      : isArabic
+        ? "الدفع يتم مباشرة لمقدم الخدمة."
+        : "Payment is made directly to the provider."
+    : toOwner
+      ? isArabic
+        ? "يدفع الضيف لك مباشرة في مكان الإقامة."
+        : "The guest pays you at the property."
+      : isArabic
+        ? "الدفع يتم مباشرة في مكان الإقامة."
+        : "Payment is made directly at the property.";
+
+  // The one thing to do next: the traveller's booking, or the inbox where the
+  // host answers it. A table cell, not a styled <a> alone, because Outlook
+  // ignores padding on links.
+  const actionLabel = toOwner
     ? isArabic
-      ? "الدفع يتم مباشرة لمقدم الخدمة."
-      : "Payment is made directly to the provider."
+      ? "افتح حجوزاتك"
+      : "Open your bookings"
     : isArabic
-      ? "الدفع يتم مباشرة في مكان الإقامة."
-      : "Payment is made directly at the property.";
+      ? "عرض الحجز"
+      : "View booking";
+  const action = input.actionUrl
+    ? `<table role="presentation" style="border-collapse:collapse;margin-top:20px"><tr><td style="background:#0D7A5F;border-radius:8px"><a href="${esc(input.actionUrl)}" style="display:inline-block;padding:12px 20px;color:#FFFFFF;font-size:15px;font-weight:600;text-decoration:none">${esc(actionLabel)}</a></td></tr></table>`
+    : "";
 
   const html = `<div dir="${dir}" style="margin:0;padding:24px;background:#FAF7F2;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">
   <div style="max-width:520px;margin:0 auto;background:#FFFFFF;border-radius:12px;padding:24px;text-align:${align}">
     <div style="color:#0D7A5F;font-size:18px;font-weight:700;margin-bottom:4px">Hasio</div>
     <h1 style="margin:12px 0 8px;font-size:20px;color:#1C1917">${esc(title)}</h1>
     <p style="margin:0 0 16px;color:#44403C;font-size:15px;line-height:1.6">${esc(body)}</p>
-    <table role="presentation" style="width:100%;border-collapse:collapse;border-top:1px solid #E7E2DA;margin-top:8px">${detailRows}</table>
+    <table role="presentation" style="width:100%;border-collapse:collapse;border-top:1px solid #E7E2DA;margin-top:8px">${detailRows}</table>${action}
     <p style="margin:16px 0 0;color:#8A8178;font-size:13px">${esc(payNote)}</p>
   </div>
 </div>`;
@@ -517,6 +547,7 @@ export function renderEmail(
     ...rows
       .filter((row): row is [string, string] => typeof row[1] === "string" && row[1].length > 0)
       .map(([label, value]) => `${label}: ${value}`),
+    ...(input.actionUrl ? ["", `${actionLabel}: ${input.actionUrl}`] : []),
     "",
     payNote,
   ].join("\n");

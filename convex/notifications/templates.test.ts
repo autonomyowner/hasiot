@@ -149,6 +149,50 @@ describe("renderEmail", () => {
     expect(email.html).not.toContain("undefined");
     expect(email.text).not.toContain("undefined");
   });
+
+  it("links the traveller to their booking on the website", () => {
+    // A traveller who booked on hasio.net has no app to open: the email is
+    // how they get back to the booking.
+    const url = "https://hasio.net/trips/b1";
+    const email = renderEmail("booking.confirmed", { ...INPUT, actionUrl: url }, "en");
+    expect(email.html).toContain(`href="${url}"`);
+    expect(email.html).toContain("View booking");
+    expect(email.text).toContain(`View booking: ${url}`);
+    expect(renderEmail("booking.confirmed", { ...INPUT, actionUrl: url }, "ar").html).toContain(
+      "عرض الحجز"
+    );
+  });
+
+  it("has no link when there is nowhere to send the reader", () => {
+    const email = renderEmail("booking.confirmed", INPUT, "en");
+    expect(email.html).not.toContain("<a ");
+    expect(email.text).not.toContain("http");
+  });
+
+  it("escapes the link so it cannot break out of the attribute", () => {
+    const email = renderEmail(
+      "booking.confirmed",
+      { ...INPUT, actionUrl: 'https://hasio.net/trips/x"><script>' },
+      "en"
+    );
+    expect(email.html).not.toContain('x"><script>');
+    expect(email.html).toContain("x&quot;&gt;&lt;script&gt;");
+  });
+
+  it("speaks to the host as the one being paid, and opens their inbox", () => {
+    const url = "https://hasio.net/partners/hotel/bookings";
+    const input: TemplateInput = { ...INPUT, audience: "owner", actionUrl: url };
+
+    const en = renderEmail("booking.requested", input, "en");
+    expect(en.text).toContain("The guest pays you at the property.");
+    expect(en.text).not.toContain("Payment is made directly at the property.");
+    expect(en.html).toContain("Open your bookings");
+    expect(en.text).toContain(`Open your bookings: ${url}`);
+
+    const ar = renderEmail("booking.requested", input, "ar");
+    expect(ar.text).toContain("يدفع الضيف لك مباشرة في مكان الإقامة.");
+    expect(ar.html).toContain("افتح حجوزاتك");
+  });
 });
 
 const SERVICE: TemplateInput = {
@@ -245,6 +289,14 @@ describe("renderNotification for a service booking", () => {
     expect(email.html).not.toContain("Check-out</td>");
     expect(email.text).toContain("Payment is made directly to the provider.");
     expect(renderEmail("booking.confirmed", SERVICE, "ar").text).toContain("لمقدم الخدمة");
+  });
+
+  it("tells the provider the traveller pays them directly", () => {
+    const input: TemplateInput = { ...SERVICE, audience: "owner" };
+    expect(renderEmail("booking.requested", input, "en").text).toContain(
+      "The traveller pays you directly."
+    );
+    expect(renderEmail("booking.requested", input, "ar").text).toContain("يدفع المسافر لك مباشرة.");
   });
 });
 

@@ -145,7 +145,9 @@ export async function createStayForUser(
     currency: quote.currency,
     confirmationCode,
     status: "pending",
-    notes: args.notes?.trim() || undefined,
+    // Bounded like a service's: the mutation is public, and the note is shown
+    // in the host's inbox and email.
+    notes: args.notes?.trim().slice(0, MAX_NOTES) || undefined,
     expiresAt: expiryFor(now),
     createdAt: now,
     updatedAt: now,

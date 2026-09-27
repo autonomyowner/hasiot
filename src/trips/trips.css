@@ -1,0 +1,154 @@
+/* My trips (/trips) and one booking (/trips/:id).
+   Everything is under .bk and the tr- prefix; tokens, buttons, chips, fields
+   and the status chip are booking.css's. Logical properties throughout, so
+   Arabic mirrors without a second set of rules. */
+
+/* ---- shared ---- */
+.bk .tr-head{display:grid;gap:8px;margin-bottom:clamp(18px,2.4vw,28px)}
+.bk .tr-title{overflow-wrap:anywhere}
+.bk .tr-meta{margin:0;font-size:14.5px}
+.bk .tr-state{max-width:560px;display:grid;gap:16px;justify-items:start}
+.bk .tr-state p{margin:0;font-size:15px;line-height:1.6}
+.bk .tr-state a:not(.bk-btn){color:var(--green);font-weight:600}
+.bk .tr-apps{margin:0;font-size:13px;line-height:1.6;color:var(--muted)}
+.bk .tr-apps a{color:inherit;text-decoration:underline;text-underline-offset:3px;display:inline-block;padding-block:6px}
+.bk .tr-apps a:hover{color:var(--ink)}
+/* Moved to by script after a change the page itself made (a cancel, a review,
+   the banner closing); the ring is for keyboard users only. Named one by one:
+   this file stays loaded after leaving My trips, and a bare [tabindex] rule
+   would reach the other pages' calendars and galleries. */
+.bk .tr-status:focus:not(:focus-visible),
+.bk .tr-banner:focus:not(:focus-visible),
+.bk .tr-done:focus:not(:focus-visible),
+.bk .tr-rate-done:focus:not(:focus-visible){outline:none}
+
+/* ---- /trips: tabs, list, cards ---- */
+.bk .tr-tabs{margin-bottom:20px}
+.bk .tr-list{list-style:none;margin:0;padding:0;display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(min(100%,440px),1fr))}
+.bk .tr-list > li{min-width:0}
+
+/* The name is the card's only link; its ::after stretches over the card, so
+   the whole card opens the booking while a screen reader hears the name. */
+.bk .tr-card{position:relative;height:100%;display:grid;grid-template-columns:88px minmax(0,1fr);gap:14px;padding:14px;border-radius:20px;background:var(--card);border:1px solid var(--line);box-shadow:0 1px 2px #0a1c120d;transition:border-color .2s,box-shadow .2s}
+.bk .tr-card:hover{border-color:var(--line-strong);box-shadow:0 1px 2px #0a1c120d,0 18px 44px -32px #0a1c1266}
+.bk .tr-card-media{aspect-ratio:1;border-radius:14px;overflow:hidden;background:var(--sand);align-self:start}
+.bk .tr-card-media img{width:100%;height:100%;object-fit:cover;display:block}
+.bk .tr-card-body{display:grid;gap:3px;min-width:0;align-content:start}
+.bk .tr-card-name{margin:0 0 2px;font-size:16px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.bk .tr-card-link{color:inherit;text-decoration:none}
+.bk .tr-card-link::after{content:'';position:absolute;inset:0;border-radius:20px}
+.bk .tr-card-link:focus-visible{outline:none}
+.bk .tr-card-link:focus-visible::after{outline:2px solid var(--green);outline-offset:3px}
+.bk .tr-card-line{margin:0;font-size:13.5px;line-height:1.5;color:var(--muted)}
+.bk .tr-card-foot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px;margin-top:10px}
+.bk .tr-card-total{font-size:14.5px;font-weight:700;white-space:nowrap}
+.bk .tr-gone{color:var(--muted);font-weight:500}
+@media(min-width:560px){.bk .tr-card{grid-template-columns:112px minmax(0,1fr);gap:16px;padding:16px}}
+
+.bk .tr-empty{display:grid;justify-items:center;gap:10px;padding:clamp(36px,6vw,64px) 20px;border:1px dashed var(--line-strong);border-radius:20px;text-align:center}
+.bk .tr-empty svg{width:40px;height:40px;color:#17241d59}
+.bk .tr-empty h2{margin:0;font-size:19px;font-weight:600}
+.bk .tr-empty p{margin:0;max-width:38ch;font-size:14.5px;line-height:1.6;color:var(--muted)}
+.bk .tr-empty .bk-btn{margin-top:8px}
+
+/* Signed in as …, sign out, delete account, the stores. */
+.bk .tr-account{display:grid;gap:8px;margin-top:clamp(40px,6vw,64px);padding-top:22px;border-top:1px solid var(--line);font-size:14px}
+.bk .tr-account p{margin:0}
+.bk .tr-account-actions{display:flex;flex-wrap:wrap;align-items:center;gap:0 24px}
+.bk .tr-account-actions .bk-link{display:inline-flex;align-items:center;gap:8px;min-height:44px}
+.bk .tr-account-actions .bk-link[disabled]{cursor:progress;opacity:.85}
+
+.bk .tr-skel-tabs{width:200px;height:40px;margin-bottom:20px;border-radius:999px}
+.bk .tr-skel-card{height:120px;border-radius:20px}
+
+/* ---- /trips/:id ---- */
+.bk .tr-detail{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);grid-template-areas:"main aside" "end aside";gap:18px clamp(24px,4vw,48px);align-items:start}
+.bk .tr-detail.is-single{grid-template-columns:minmax(0,1fr);grid-template-areas:"main" "end";max-width:760px}
+.bk .tr-main{grid-area:main;display:grid;gap:18px;min-width:0}
+.bk .tr-aside{grid-area:aside;min-width:0}
+.bk .tr-end{grid-area:end;display:grid;gap:18px;min-width:0}
+@media(min-width:900px){.bk .tr-aside{position:sticky;top:calc(var(--nav) + 20px)}}
+@media(max-width:899px){.bk .tr-detail{grid-template-columns:minmax(0,1fr);grid-template-areas:"main" "aside" "end"}}
+
+.bk .tr-section-title{margin:0 0 6px;font-size:13px;font-weight:600;color:var(--muted)}
+
+/* Status and code, with the "Request sent" banner on top after a checkout. */
+.bk .tr-status{display:grid;gap:14px}
+.bk .tr-banner{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.bk .tr-banner-icon{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--mint);color:var(--mint-ink)}
+.bk .tr-banner-icon svg{width:18px;height:18px}
+.bk .tr-banner h2{margin:6px 0 6px;font-size:19px;font-weight:600;line-height:1.3}
+.bk .tr-banner p{margin:0 0 4px;font-size:14px;line-height:1.6;color:var(--muted)}
+.bk .tr-close{width:44px;height:44px;margin:-6px;border:0;border-radius:50%;background:none;display:grid;place-items:center;color:var(--muted);cursor:pointer}
+.bk .tr-close:hover{background:#17241d0d;color:var(--ink)}
+.bk .tr-close svg{width:18px;height:18px}
+.bk .tr-code{display:grid;gap:6px}
+.bk .tr-code-label{font-size:13px;color:var(--muted)}
+.bk .tr-code-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 16px}
+.bk .tr-code-value{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace;font-size:clamp(22px,3vw,28px);font-weight:600;letter-spacing:.08em;overflow-wrap:anywhere}
+
+/* The booking's facts as label / value rows. */
+.bk .tr-facts{display:grid;gap:14px}
+.bk .tr-rows{margin:0;display:grid}
+.bk .tr-row{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:4px 16px;padding:12px 0;border-top:1px solid var(--line)}
+.bk .tr-row:first-child{padding-top:4px;border-top:0}
+.bk .tr-row dt{font-size:14px;color:var(--muted)}
+.bk .tr-row dd{margin:0;font-size:14.5px;font-weight:600;text-align:end}
+.bk .tr-row.is-total dd{font-size:18px;font-weight:700}
+.bk .tr-block{display:grid;gap:6px;padding-top:14px;border-top:1px solid var(--line)}
+.bk .tr-block h3{margin:0;font-size:13px;font-weight:600;color:var(--muted)}
+.bk .tr-block p{margin:0;font-size:14.5px;line-height:1.65;white-space:pre-line;overflow-wrap:anywhere}
+.bk .tr-pending{padding-top:14px;border-top:1px solid var(--line)}
+
+/* The place or the service, and who to reach. */
+.bk .tr-place{display:grid;gap:12px}
+.bk .tr-place-media{aspect-ratio:16/10;border-radius:14px;overflow:hidden;background:var(--sand)}
+.bk .tr-place-media img{width:100%;height:100%;object-fit:cover;display:block}
+.bk .tr-place-name{margin:0;font-size:17px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.bk .tr-place-name a{color:inherit;text-decoration:underline;text-decoration-color:var(--line-strong);text-underline-offset:4px}
+.bk .tr-place-name a:hover{text-decoration-color:currentColor}
+.bk .tr-place p{margin:0;font-size:14px;line-height:1.6}
+.bk .tr-provider{display:grid;gap:6px;padding-top:12px;border-top:1px solid var(--line)}
+.bk .tr-place > .tr-provider:first-child{padding-top:0;border-top:0}
+.bk .tr-provider-name{font-weight:600}
+
+/* Cancel: a quiet outline with the destructive word, never a red slab. */
+.bk .tr-actions{display:grid;gap:10px;justify-items:start}
+.bk .tr-cancel{color:var(--danger)}
+.bk .tr-cancel:hover{background:var(--danger-tint)}
+.bk .tr-done{margin:0;font-size:14.5px;font-weight:600;color:var(--mint-ink)}
+
+/* ---- rating ---- */
+.bk .tr-rate{display:grid;gap:10px;padding:clamp(18px,2.4vw,26px);border-radius:20px;background:var(--mint)}
+.bk .tr-rate h2{margin:0;font-size:20px;font-weight:600;line-height:1.3}
+.bk .tr-rate > p{margin:0;font-size:14px;line-height:1.6;color:#2b3a31}
+.bk .tr-rate-btn{justify-self:start;margin-top:4px;background:var(--ink);color:var(--paper)}
+.bk .tr-rate-btn:hover{background:var(--green-deep)}
+.bk .tr-rated{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0;font-size:14.5px;font-weight:600}
+.bk .tr-rate-done{margin:0;padding:14px 16px;border-radius:14px;background:var(--mint);color:var(--mint-ink);font-size:14.5px;font-weight:600}
+
+.bk .tr-review{display:grid;gap:16px;margin-top:6px}
+.bk .tr-stars{margin:0;padding:0;border:0;min-width:0;display:grid;gap:6px}
+.bk .tr-stars legend{padding:0;margin-bottom:6px}
+.bk .tr-stars-row{display:flex;gap:2px}
+/* A native radio per star: arrow keys move and choose, as any radio group. It
+   sits invisibly over its star so a tap anywhere on the 44px target picks it. */
+.bk .tr-star{position:relative;width:44px;height:44px;display:grid;place-items:center;color:#17241d73;cursor:pointer}
+.bk .tr-star.is-on{color:var(--gold)}
+.bk .tr-star input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer}
+.bk .tr-star svg{width:32px;height:32px;pointer-events:none}
+.bk .tr-star.is-on svg{fill:currentColor}
+.bk .tr-star input:focus-visible + svg{outline:2px solid var(--green);outline-offset:3px;border-radius:6px}
+.bk .tr-check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:14px;cursor:pointer}
+.bk .tr-check input{width:18px;height:18px;margin:0;accent-color:var(--green);flex:none}
+.bk .tr-review .bk-btn-primary{justify-self:start}
+
+.bk .tr-skel-title{width:min(420px,80%);height:40px;margin-bottom:22px}
+.bk .tr-skel-block{height:150px;border-radius:20px}
+.bk .tr-skel-stack{display:grid;gap:18px;max-width:760px}
+
+@media(max-width:380px){
+ .bk .tr-card{grid-template-columns:72px minmax(0,1fr);gap:12px;padding:12px}
+ .bk .tr-star{width:40px;height:44px}
+ .bk .tr-star svg{width:28px;height:28px}
+}

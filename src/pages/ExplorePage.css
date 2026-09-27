@@ -66,6 +66,13 @@
 .ex-tags .ex-rating{margin-inline-start:auto}
 .ex-tags svg{width:12px;height:12px;color:var(--gold)}
 
+/* A service in the same card. One with no photo keeps the card's sand and a
+   quiet glyph where the picture would be, so it reads as intended rather than
+   broken; its price may wrap, since "1,500 SAR per hour" outruns a night's. */
+.explore .ex-svc-blank{position:absolute;inset:0;display:grid;place-items:center;padding-bottom:30%;color:#17241d47}
+.explore .ex-svc-blank svg{width:46px;height:46px}
+.explore .ex-svc .hotel-price{white-space:normal}
+
 .ex-grid-wrap{max-width:calc(1180px + 2*clamp(20px,4vw,66px));margin:clamp(40px,5vw,60px) auto 0;padding:0 clamp(20px,4vw,66px)}
 .ex-count{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:18px;margin-bottom:26px;border-bottom:1px solid var(--line)}
 .ex-count b{font-size:15px;font-weight:600}
