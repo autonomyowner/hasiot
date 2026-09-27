@@ -27,8 +27,8 @@ export function unitLabel(priceUnit, lang) {
   return lang === 'ar' ? unit.ar : unit.en
 }
 
-/** "150 SAR per hour", or "Price on request" for a service with no price. */
+/** "150 SAR per hour", or "Price on request" for a service with no price (the app's words). */
 export function priceLine(price, priceUnit, lang) {
-  if (typeof price !== 'number' || !(price > 0)) return lang === 'ar' ? 'السعر عند الطلب' : 'Price on request'
+  if (typeof price !== 'number' || !(price > 0)) return lang === 'ar' ? 'السعر عند التواصل' : 'Price on request'
   return `${formatSAR(price, lang)} ${unitLabel(priceUnit, lang)}`
 }

@@ -45,12 +45,6 @@
    else to focus; the shake and the message are the visible cue. */
 .bk .sv-step-head h3:focus{outline:none}
 .bk .sv-nudge{margin:0;color:var(--danger);font-size:13.5px;font-weight:600}
-/* The shared calendar puts two months side by side from a 900px screen, but
-   beside the summary card this column stays too narrow for two readable
-   months until about 1150px (412px at 900px: 27px days, and the round day
-   turns into an oval). Below 600px of column the two months stack instead. */
-.bk .sv-day{container-type:inline-size}
-@container (max-width:599px){.bk .sv-day .bk-cal-months{grid-template-columns:minmax(0,1fr)}}
 /* Up to 35 start times: an even grid reads faster than a ragged wrap, and
    tabular digits keep the columns straight. */
 .bk .sv-times{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px}

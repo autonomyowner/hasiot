@@ -110,7 +110,7 @@ describe('choiceSearch', () => {
   const full = { date: '2026-10-03', time: '10:00', quantity: 3, people: 4 }
 
   it('writes what was chosen in a fixed order', () => {
-    expect(choiceSearch('', full, HOURS)).toBe('?date=2026-10-03&time=10%3A00&quantity=3&people=4')
+    expect(choiceSearch('', full, HOURS)).toBe('?date=2026-10-03&time=10:00&quantity=3&people=4')
   })
 
   it('leaves out what is not chosen yet, and the defaults', () => {
@@ -120,7 +120,7 @@ describe('choiceSearch', () => {
   })
 
   it('never writes a quantity for a price per booking', () => {
-    expect(choiceSearch('', full, null)).toBe('?date=2026-10-03&time=10%3A00&people=4')
+    expect(choiceSearch('', full, null)).toBe('?date=2026-10-03&time=10:00&people=4')
   })
 
   it('keeps parameters that are not its own and replaces its own', () => {
@@ -130,7 +130,7 @@ describe('choiceSearch', () => {
 
   it('changes nothing when written over what it wrote', () => {
     const search = choiceSearch('?ref=x', full, HOURS)
-    expect(search).toBe('?ref=x&date=2026-10-03&time=10%3A00&quantity=3&people=4')
+    expect(search).toBe('?ref=x&date=2026-10-03&time=10:00&quantity=3&people=4')
     expect(choiceSearch(search, full, HOURS)).toBe(search)
   })
 
@@ -143,11 +143,11 @@ describe('bookingPath', () => {
   const choice = { date: '2026-10-03', time: '10:00', quantity: 3, people: 2 }
 
   it('opens the checkout with the whole choice', () => {
-    expect(bookingPath('svc123', choice, HOURS)).toBe('/book/service/svc123?date=2026-10-03&time=10%3A00&quantity=3&people=2')
+    expect(bookingPath('svc123', choice, HOURS)).toBe('/book/service/svc123?date=2026-10-03&time=10:00&quantity=3&people=2')
   })
 
   it('sends no quantity for a price per booking', () => {
-    expect(bookingPath('svc123', choice, null)).toBe('/book/service/svc123?date=2026-10-03&time=10%3A00&people=2')
+    expect(bookingPath('svc123', choice, null)).toBe('/book/service/svc123?date=2026-10-03&time=10:00&people=2')
   })
 
   it('is a request the checkout reads as valid', () => {

@@ -1,5 +1,4 @@
-import { useEffect } from 'react'
-import { Link, useNavigationType, useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import PageShell from '../booking/PageShell'
 import { mailHref, telHref } from '../booking/links'
 import { formatSAR, priceLine, unitLabel } from '../booking/money'
@@ -75,7 +74,6 @@ const ClockIcon = () => icon(<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l
 
 export default function ServicePage() {
   const { id } = useParams()
-  const navigationType = useNavigationType()
   const { lang, toggleLang, isRtl } = useLanguage()
   const t = translations[lang === 'ar' ? 'ar' : 'en']
 
@@ -89,14 +87,6 @@ export default function ServicePage() {
   // Both read "not available", never the error screen (design W24).
   const notFound = data === null || service.error?.validation === true
   usePageMeta({ title: data ? serviceTitle(data, lang) : notFound ? t.unavailableTitle : undefined })
-
-  // BrowserRouter keeps the scroll position across a link, so a card clicked
-  // far down /explore would open this page part-way down. Back and Forward
-  // (POP) keep the browser's own restoration; the page's own replace() of
-  // its query string (REPLACE) must not jump either.
-  useEffect(() => {
-    if (navigationType === 'PUSH') window.scrollTo(0, 0)
-  }, [id, navigationType])
 
   const retry = () => {
     service.reload()

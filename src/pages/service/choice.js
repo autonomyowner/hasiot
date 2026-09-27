@@ -1,5 +1,5 @@
 import { MAX_DAYS_AHEAD, addDays, riyadhToday } from '../../booking/dates'
-import { parseServiceParams, serviceQuery } from '../../booking/params'
+import { parseServiceParams, readableQuery, serviceQuery } from '../../booking/params'
 import { firstServiceDay, maxPeople, quantityRule, startTimes } from '../../booking/serviceRules'
 
 /**
@@ -68,7 +68,7 @@ export function choiceSearch(search, choice, rule) {
   if (choice.date && choice.time) params.set('time', choice.time)
   if (rule && choice.quantity && choice.quantity !== rule.min) params.set('quantity', String(choice.quantity))
   if (choice.people && choice.people !== 1) params.set('people', String(choice.people))
-  const query = params.toString()
+  const query = readableQuery(params)
   return query ? `?${query}` : ''
 }
 

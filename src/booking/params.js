@@ -47,7 +47,17 @@ export function serviceQuery({ date, time, quantity, people }) {
   const params = new URLSearchParams({ date, time })
   if (quantity !== null && quantity !== undefined) params.set('quantity', String(quantity))
   params.set('people', String(people))
-  return `?${params}`
+  return `?${readableQuery(params)}`
+}
+
+/**
+ * A query string with its colons left as they are: URLSearchParams writes
+ * "10:00" as "10%3A00", which works but reads badly in a link a traveller may
+ * copy. A colon is allowed in a query (RFC 3986), and every value here is a
+ * checked date, time or count, so nothing else needs escaping differently.
+ */
+export function readableQuery(params) {
+  return params.toString().replace(/%3A/gi, ':')
 }
 
 const NEXT = /^\/(trips(?:[/?]|$)|book\/)/

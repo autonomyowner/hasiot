@@ -32,6 +32,7 @@ describe('money', () => {
     expect(priceLine(150, 'per_hour', 'en')).toBe('150 SAR per hour')
     expect(priceLine(150, 'per_hour', 'ar')).toBe('150 ر.س للساعة')
     expect(priceLine(undefined, 'per_hour', 'en')).toBe('Price on request')
-    expect(priceLine(0, 'per_hour', 'ar')).toBe('السعر عند الطلب')
+    // The app's words (lib/serviceDisplay.ts formatServicePrice).
+    expect(priceLine(0, 'per_hour', 'ar')).toBe('السعر عند التواصل')
   })
 })

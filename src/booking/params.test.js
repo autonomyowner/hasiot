@@ -77,11 +77,13 @@ describe('service parameters', () => {
   })
 
   it('writes a service request back, leaving out a quantity it does not have', () => {
+    // The colon stays readable: it is allowed in a query, and the link is
+    // one a traveller may copy or share.
     expect(serviceQuery({ date: '2026-10-01', time: '09:30', quantity: 3, people: 4 })).toBe(
-      '?date=2026-10-01&time=09%3A30&quantity=3&people=4'
+      '?date=2026-10-01&time=09:30&quantity=3&people=4'
     )
     expect(serviceQuery({ date: '2026-10-01', time: '09:30', quantity: null, people: 1 })).toBe(
-      '?date=2026-10-01&time=09%3A30&people=1'
+      '?date=2026-10-01&time=09:30&people=1'
     )
     expect(parseServiceParams(serviceQuery({ date: '2026-10-01', time: '09:30', quantity: 3, people: 4 }), TODAY).valid).toBe(true)
   })
