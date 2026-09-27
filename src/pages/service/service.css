@@ -1,0 +1,95 @@
+/* The service page, /services/:id. The shared looks — cards, chips, the
+   calendar, the stepper, the summary card, the phone bar — are booking.css's;
+   this file lays the page out and styles what only a service has. Everything
+   is under .bk and the sv- prefix, and uses logical properties so Arabic
+   mirrors without its own rules. */
+
+/* ---- layout ----
+   Three areas: the top (photos, header, About and, for a service that can be
+   booked, the booking section), the side card, and the bottom (reviews). On a
+   wide screen the card runs beside both and stays in view; on a phone it
+   falls between them, right under the choices it adds up. One card either
+   way, so its live total is announced once. */
+.bk .sv-layout{grid-template-areas:"top side" "bottom side";row-gap:0}
+.bk .sv-top{grid-area:top;min-width:0}
+.bk .sv-side{grid-area:side;min-width:0}
+.bk .sv-bottom{grid-area:bottom;min-width:0}
+@media(max-width:899px){
+ .bk .sv-layout{grid-template-areas:"top" "side" "bottom"}
+ .bk .sv-side{margin-bottom:clamp(22px,3vw,34px)}
+}
+/* booking.css takes the rule off a first section; the bottom's first section
+   follows the top's last, so it keeps its rule and its room. */
+.bk .sv-bottom>.bk-section:first-child{border-top:1px solid var(--line);padding-top:clamp(22px,3vw,34px)}
+
+/* ---- header ---- */
+.bk .sv-head{display:grid;gap:10px;padding:clamp(20px,2.6vw,28px) 0 clamp(22px,3vw,34px);overflow-wrap:anywhere}
+.bk .sv-kicker{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:13px;color:var(--muted)}
+.bk .sv-type{display:inline-flex;align-items:center;min-height:26px;padding:0 11px;border-radius:999px;background:var(--mint);color:var(--mint-ink);font-size:12px;font-weight:600}
+.bk .sv-by{margin:0;font-size:14px;color:var(--muted)}
+.bk .sv-by b{color:var(--ink);font-weight:600}
+.bk .sv-price{margin:2px 0 0;font-size:14.5px;color:var(--muted)}
+.bk .sv-price b{font-size:20px;font-weight:700;color:var(--ink)}
+.bk .sv-facts{list-style:none;margin:6px 0 0;padding:0;display:grid;gap:8px}
+.bk .sv-facts li{display:flex;align-items:flex-start;gap:10px;font-size:14px;line-height:1.55}
+.bk .sv-facts svg{width:18px;height:18px;flex:none;margin-top:1px;color:var(--muted)}
+.bk .sv-facts span{min-width:0}
+.bk .sv-about p{margin:12px 0 0;font-size:15px;line-height:1.75;white-space:pre-line;overflow-wrap:anywhere}
+
+/* ---- the booking section ---- */
+.bk .sv-book{display:grid;gap:clamp(22px,3vw,30px)}
+/* Scrolled to by an early "Request to book": clear of the fixed header. */
+.bk .sv-step{display:grid;gap:12px;scroll-margin-top:calc(var(--nav) + 16px)}
+.bk .sv-step-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px}
+/* A heading is focused only as a place to land when its step has nothing
+   else to focus; the shake and the message are the visible cue. */
+.bk .sv-step-head h3:focus{outline:none}
+.bk .sv-nudge{margin:0;color:var(--danger);font-size:13.5px;font-weight:600}
+/* The shared calendar puts two months side by side from a 900px screen, but
+   beside the summary card this column stays too narrow for two readable
+   months until about 1150px (412px at 900px: 27px days, and the round day
+   turns into an oval). Below 600px of column the two months stack instead. */
+.bk .sv-day{container-type:inline-size}
+@container (max-width:599px){.bk .sv-day .bk-cal-months{grid-template-columns:minmax(0,1fr)}}
+/* Up to 35 start times: an even grid reads faster than a ragged wrap, and
+   tabular digits keep the columns straight. */
+.bk .sv-times{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px}
+.bk .sv-times .bk-chip{padding:0 6px;font-variant-numeric:tabular-nums}
+.bk .sv-counts{gap:0;padding-top:8px;border-top:1px solid var(--line)}
+
+/* ---- the summary card ---- */
+.bk .sv-summary{gap:16px}
+.bk .sv-sum-price{margin:0;font-size:14px;color:var(--muted)}
+.bk .sv-sum-price b{font-size:22px;font-weight:700;color:var(--ink)}
+.bk .sv-sum-body{display:grid;gap:4px;padding-top:14px;border-top:1px solid var(--line)}
+.bk .sv-sum-body p{margin:0}
+.bk .sv-sum-when{font-size:14.5px;font-weight:600}
+.bk .sv-sum-hint{font-size:14px;color:var(--muted)}
+.bk .sv-sum-counts{font-size:13px;color:var(--muted)}
+/* The live part. Empty until there is something to price, and then it takes
+   no room; it is never display:none, so it stays a live region. */
+.bk .sv-sum-quote{display:grid;gap:10px;scroll-margin-top:calc(var(--nav) + 16px)}
+.bk .sv-sum-quote:not(:empty){margin-top:10px}
+.bk .sv-sum-quote:focus{outline:none}
+/* Scrolled to when "Request to book" meets a refusal: on a phone, stop above
+   the fixed bar rather than under it. */
+@media(max-width:899px){.bk .sv-sum-quote{scroll-margin-bottom:calc(96px + env(safe-area-inset-bottom))}}
+.bk .sv-sum-updating{font-size:12.5px;color:var(--muted)}
+
+/* ---- contact, for a service that is not booked on Hasio ---- */
+.bk .sv-contact{display:grid;gap:14px}
+
+/* ---- not available, could not load ---- */
+.bk .sv-empty{display:grid;justify-items:center;gap:14px;max-width:560px;margin:clamp(24px,6vw,72px) auto 0;text-align:center}
+.bk .sv-empty p{margin:0}
+
+/* ---- loading ---- */
+.bk .sv-skeleton{display:grid;gap:14px}
+.bk .sv-skel-gallery{aspect-ratio:16/10;border-radius:22px}
+.bk .sv-skel-tag{width:34%;height:26px;margin-top:12px;border-radius:999px}
+.bk .sv-skel-title{width:72%;height:40px}
+.bk .sv-skel-line{width:52%;height:16px}
+.bk .sv-skel-card{height:320px;border-radius:20px}
+@media(max-width:899px){.bk .sv-skel-side{display:none}}
+.bk .sv-skel-reviews{display:grid;gap:12px}
+.bk .sv-skel-reviews .bk-skel{height:64px}

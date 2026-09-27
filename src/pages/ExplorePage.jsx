@@ -2,8 +2,12 @@ import { useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLanguage } from '../hooks/useLanguage'
 import { useListings } from '../hooks/useListings'
+import { useServices } from '../hooks/useServices'
 import { useHotelPages, useSentinel } from '../hooks/useHotelPages'
 import { canonicalCity, CITIES, CITY_LABELS } from '../admin/constants'
+import { formatSAR, priceLine, unitLabel } from '../booking/money'
+import { cityName, serviceTitle, serviceTypeLabel } from '../partners/services/labels'
+import { matchServices, serviceSearchText, sortServices } from './service/browse'
 import '../App.css'
 import './ExplorePage.css'
 
@@ -11,7 +15,9 @@ import './ExplorePage.css'
 // hero, then the home page's two drifting rows. Searching or filtering swaps
 // the rows for a still grid, because nobody can read results that move.
 // Every card opens its place's page (/places/:id), where a priced hotel can be
-// booked (docs/superpowers/specs/2026-09-26-web-booking-design.md).
+// booked (docs/superpowers/specs/2026-09-26-web-booking-design.md). Services
+// (/services/:id) have a chip of their own once one is live, and join a
+// search under "All"; the rows and the hotel list stay places only.
 
 const copy = {
   en: {
@@ -20,6 +26,7 @@ const copy = {
     body: 'Hotels, heritage, tables and events — live from Hasio. Find a stay and book it right here.',
     placeholder: 'Search a hotel, a place, a city…', search: 'Search', allCities: 'All cities', city: 'City',
     types: [['all', 'All'], ['hotel', 'Stays'], ['attraction', 'Places'], ['restaurant', 'Food'], ['event', 'Events']],
+    services: 'Services',
     book: 'Book', view: 'View', night: '/ night', sar: 'SAR',
     results: (n) => (n === 1 ? '1 result' : `${n} results`),
     none: 'Nothing matches that yet.', noneBody: 'Try another word, or clear the filters.', clear: 'Clear filters',
@@ -35,6 +42,7 @@ const copy = {
     body: 'فنادق وتراث وموائد وفعاليات — مباشرة من Hasio. اعثر على إقامتك واحجزها هنا مباشرة.',
     placeholder: 'ابحث عن فندق أو مكان أو مدينة…', search: 'بحث', allCities: 'كل المدن', city: 'المدينة',
     types: [['all', 'الكل'], ['hotel', 'الإقامة'], ['attraction', 'الأماكن'], ['restaurant', 'المطاعم'], ['event', 'الفعاليات']],
+    services: 'الخدمات',
     book: 'احجز', view: 'عرض', night: '/ الليلة', sar: 'ر.س',
     results: (n) => (n === 1 ? 'نتيجة واحدة' : n === 2 ? 'نتيجتان' : n <= 10 ? `${n} نتائج` : `${n} نتيجة`),
     none: 'لا توجد نتائج مطابقة.', noneBody: 'جرّب كلمة أخرى أو امسح عوامل التصفية.', clear: 'مسح التصفية',
@@ -115,6 +123,47 @@ function ListingCard({ l, lang, hidden = false }) {
   )
 }
 
+const PersonIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="8" r="3.6" /><path d="M4.5 20c.9-4 3.8-6.2 7.5-6.2s6.6 2.2 7.5 6.2" />
+  </svg>
+)
+
+// A service in the same frame as a place: its photo, or the card's sand with
+// a quiet glyph when the provider added none; its kind, city, title and
+// price. The whole card opens /services/:id — "Book" when it can be booked
+// there, "View" when it offers Contact instead.
+function ServiceCard({ s, lang }) {
+  const t = copy[lang]
+  const title = serviceTitle(s, lang)
+  const city = cityName(s.city, lang)
+  const priced = typeof s.price === 'number' && s.price > 0
+  return (
+    <Link className="place-card hotel-card ex-card is-link ex-svc" to={`/services/${s._id}`}>
+      {s.images?.[0]
+        ? <img src={s.images[0]} alt={title} loading="lazy" decoding="async" width="500" height="625" />
+        : <span className="ex-svc-blank" aria-hidden="true"><PersonIcon /></span>}
+      <div className="place-shade" />
+      <div className="ex-tags">
+        <span>{serviceTypeLabel(s.serviceType, lang)}</span>
+        {s.rating > 0 && <span className="ex-rating"><Star />{s.rating.toFixed(1)}</span>}
+      </div>
+      <div className="place-body">
+        {city && <span className="hotel-city">{city}</span>}
+        <h3>{title}</h3>
+        <div className="hotel-foot">
+          <p className="hotel-price">
+            {priced
+              ? <><b>{formatSAR(s.price, lang)}</b> <small>{unitLabel(s.priceUnit, lang)}</small></>
+              : <small>{priceLine(s.price, s.priceUnit, lang)}</small>}
+          </p>
+          <span className="hotel-book">{s.bookable ? t.book : t.view}</span>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
 // The home page's marquee (see HotelMarquee in App.jsx and its CSS): each row
 // is one padded half rendered twice and moved -50%, so the loop is seamless.
 const MIN_HALF = 10
@@ -177,6 +226,7 @@ export default function ExplorePage() {
   const { lang, toggleLang, isRtl } = useLanguage()
   const t = copy[lang]
   const listings = useListings()
+  const services = useServices()
   const [query, setQuery] = useState('')
   const [type, setType] = useState('all')
   const [city, setCity] = useState('')
@@ -186,17 +236,31 @@ export default function ExplorePage() {
     .map((l) => ({ l, key: haystack(l) }))
     .sort((a, b) => (b.l.type === 'hotel') - (a.l.type === 'hotel')), [listings])
 
+  // Guides, drivers, photographers…: bookable ones first, as in the app. None
+  // are shown until the first is live (design W2) — the Services chip comes
+  // with it.
+  const serviceIndex = useMemo(() => sortServices(services || [])
+    .map((s) => ({ s, key: fold(serviceSearchText(s)) })), [services])
+  const hasServices = serviceIndex.length > 0
+
   // Only cities that have something in them — twelve empty options is a trap.
   const cities = useMemo(() => {
     const present = new Set(ordered.map(({ l }) => canonicalCity(l.city)))
+    for (const { s } of serviceIndex) present.add(canonicalCity(s.city))
     return CITIES.filter((c) => present.has(c))
-  }, [ordered])
+  }, [ordered, serviceIndex])
 
   const q = fold(query)
   const filtering = q !== '' || type !== 'all' || city !== ''
   const results = useMemo(() => ordered
     .filter(({ l, key }) => matchesType(l, type) && (!city || canonicalCity(l.city) === city) && (!q || q.split(/\s+/).every((w) => key.includes(w))))
     .map(({ l }) => l), [ordered, type, city, q])
+
+  // The Services chip lists services alone; "All" lists them after the
+  // places whenever the visitor searches or picks a city. The rows and the
+  // hotel list below stay places only.
+  const serviceResults = useMemo(() => matchServices(serviceIndex, { type, query: q, city }), [serviceIndex, type, q, city])
+  const found = results.length + serviceResults.length
 
   const clear = () => { setQuery(''); setType('all'); setCity('') }
 
@@ -239,6 +303,9 @@ export default function ExplorePage() {
             {t.types.map(([k, label]) => (
               <button key={k} type="button" aria-pressed={type === k} onClick={() => setType(k)}>{label}</button>
             ))}
+            {hasServices && (
+              <button type="button" aria-pressed={type === 'services'} onClick={() => setType('services')}>{t.services}</button>
+            )}
           </div>
 
           <div className="ex-copy">
@@ -259,7 +326,8 @@ export default function ExplorePage() {
         </section>
 
         <section className="ex-results" id="ex-results" aria-live="polite">
-          {listings === null && (
+          {/* The Services chip does not wait on the places: its list is its own. */}
+          {listings === null && type !== 'services' && (
             <div className="marquee ex-marquee" aria-hidden="true">
               {[0, 1].map((r) => (
                 <div className="marquee-row" key={r}>
@@ -271,7 +339,7 @@ export default function ExplorePage() {
             </div>
           )}
 
-          {listings?.length === 0 && (
+          {listings?.length === 0 && type !== 'services' && (
             <div className="ex-empty">
               <h2>{t.failed}</h2>
               <button type="button" className="ex-clear" onClick={() => window.location.reload()}>{t.retry}</button>
@@ -280,15 +348,16 @@ export default function ExplorePage() {
 
           {listings?.length > 0 && !filtering && <Marquee items={ordered.map(({ l }) => l)} lang={lang} label={t.rows} />}
 
-          {listings?.length > 0 && filtering && (
+          {filtering && (listings?.length > 0 || type === 'services') && (
             <div className="ex-grid-wrap">
               <div className="ex-count">
-                <b>{t.results(results.length)}</b>
+                <b>{t.results(found)}</b>
                 <button type="button" onClick={clear}>{t.clear}</button>
               </div>
-              {results.length > 0 ? (
+              {found > 0 ? (
                 <div className="ex-grid">
                   {results.map((l) => <ListingCard key={l._id} l={l} lang={lang} />)}
+                  {serviceResults.map((s) => <ServiceCard key={s._id} s={s} lang={lang} />)}
                 </div>
               ) : (
                 <div className="ex-empty">
