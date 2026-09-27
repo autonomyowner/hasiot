@@ -5,10 +5,10 @@ import PageShell from './PageShell'
 import { readAuthReturn } from './authReturn'
 import { safeNext } from './params'
 import { usePageMeta } from './usePageMeta'
-import { useViewer } from './useViewer'
 import SignInPanel from './checkout/SignInPanel'
 import SuspendedNotice from './checkout/SuspendedNotice'
 import { loginReturnURL } from './checkout/returnUrl'
+import { useSteadyViewer } from './checkout/useSteadyViewer'
 import './checkout/checkout.css'
 
 const translations = {
@@ -58,7 +58,9 @@ export default function LoginPage() {
     window.history.replaceState(window.history.state, '', `${pathname}${search}${hash}`)
   }, [])
 
-  const viewer = useViewer()
+  // Steady: returning to the tab refetches the session, which must not
+  // unmount a half-finished sign-in (checkout/steady.js).
+  const viewer = useSteadyViewer()
   if (viewer.state === 'active') return <Navigate to={next ?? '/trips'} replace />
 
   return (
