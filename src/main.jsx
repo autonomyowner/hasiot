@@ -12,6 +12,7 @@ const App = lazy(() => import('./App.jsx'))
 // Every live hotel and place with search. Public and anonymous like /, so it
 // sits outside AuthedLayout and reads the backend with a plain fetch.
 const ExplorePage = lazy(() => import('./pages/ExplorePage.jsx'))
+const FilmPage = lazy(() => import('./pages/film/FilmPage.jsx'))
 // One place or one service, with its booking section. Public like /explore:
 // plain fetch, no Convex client, no Better Auth (src/lib/convexHttp.js).
 const PlacePage = lazy(() => import('./pages/PlacePage.jsx'))
@@ -50,6 +51,7 @@ createRoot(document.getElementById('root')).render(
           <Routes>
             <Route path="/" element={<App />} />
             <Route path="/explore" element={<ExplorePage />} />
+            <Route path="/hasiofilm" element={<FilmPage />} />
             <Route path="/places/:id" element={<PlacePage />} />
             <Route path="/services/:id" element={<ServicePage />} />
 
