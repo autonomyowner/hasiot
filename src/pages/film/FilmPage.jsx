@@ -202,13 +202,14 @@ const SCENES = [
 ]
 const TOTAL = SCENES.reduce((s, x) => s + x.dur, 0)
 
-const fmt = (t) => `00:${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}`
+
 
 export default function FilmPage() {
   const [t, setT] = useState(0)
   const [playing, setPlaying] = useState(false)
   const [started, setStarted] = useState(false) // browsers only allow sound after a click
   const [muted, setMuted] = useState(false)
+  const [idle, setIdle] = useState(false) // controls hide while the film plays untouched
   const voice = useRef({ id: null, el: null })
   const [take, setTake] = useState(0) // bumping it remounts the scene (replay / jump)
   const last = useRef(null)
@@ -283,22 +284,29 @@ export default function FilmPage() {
   // Fetch the hotels and warm their photos while the opening plays.
   useEffect(() => { preloadLiveHotels().then((hs) => hs.forEach((h) => { new Image().src = h.images[0] })) }, [])
 
+  // Any mouse move or tap brings the controls back for 2.5s; paused, they stay.
+  useEffect(() => {
+    let timer
+    const wake = () => { setIdle(false); clearTimeout(timer); timer = setTimeout(() => setIdle(true), 2500) }
+    wake()
+    window.addEventListener('pointermove', wake)
+    window.addEventListener('pointerdown', wake)
+    window.addEventListener('keydown', wake)
+    return () => { clearTimeout(timer); window.removeEventListener('pointermove', wake); window.removeEventListener('pointerdown', wake); window.removeEventListener('keydown', wake) }
+  }, [])
+
   const begin = () => { setStarted(true); setPlaying(true) }
 
   const jump = (i) => { setStarted(true); setT(SCENES.slice(0, i).reduce((a, x) => a + x.dur, 0)); setTake((k) => k + 1); setPlaying(true) }
   const replay = () => jump(0)
 
   return (
-    <main dir="ltr" lang="en" className={`film${playing ? '' : ' is-paused'}`}>
+    <main dir="ltr" lang="en" className={`film${playing ? '' : ' is-paused'}${playing && idle ? ' is-idle' : ''}`}>
       <div className={`stage${isLast ? ' is-last' : ''}`} key={`${scene.id}-${take}`} style={{ '--dur': `${scene.dur}s` }}>
         <scene.Comp />
       </div>
       <div className="grain" aria-hidden />
       <div className="bars" aria-hidden><i /><i /></div>
-      <div className="hud">
-        <span className="hud-rec">● {String(idx + 1).padStart(2, '0')} {scene.title}</span>
-        <span className="hud-tc">{fmt(t)} / {fmt(TOTAL)}</span>
-      </div>
       {!started && (
         <button className="start" onClick={begin}>
           <span className="start-mark">Hasio</span>
