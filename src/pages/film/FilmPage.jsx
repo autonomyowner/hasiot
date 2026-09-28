@@ -1,5 +1,5 @@
 import { createElement, useEffect, useRef, useState } from 'react'
-import { useLiveHotels } from './useLiveHotels'
+import { useLiveHotels, preloadLiveHotels } from './useLiveHotels'
 import './Film.css'
 
 // /hasiofilm — the project told as a short film rather than a deck of slides.
@@ -35,14 +35,21 @@ function Opening() {
 }
 
 function Problem() {
-  const shots = ['stays', 'heritage', 'culture']
+  // Three live hotels with their own photos (uploaded, not stock), so the prints
+  // are real rooms on Hasio today; the picture cards stand in until they load.
+  const hotels = useLiveHotels()
+  const own = (hotels || []).filter((h) => !h.images[0].includes('unsplash.com'))
+  const shots = own.length >= 3
+    ? own.slice(0, 3).map((h) => ({ key: h._id, img: h.images[0], name: h.name_en || h.name }))
+    : ['stays', 'heritage', 'culture'].map((s) => ({ key: s, img: `/places/${s}.webp` }))
   return (
     <div className="sc sc-problem">
       <A d={0.3} className="chapter">Chapter one — Made easy</A>
       <div className="polaroids">
         {shots.map((s, i) => (
-          <A key={s} d={0.8 + i * 0.35} className="polaroid" style={{ '--d': `${0.8 + i * 0.35}s`, '--r': `${(i - 1) * 7}deg` }}>
-            <img src={`/places/${s}.webp`} alt="" />
+          <A key={s.key} d={0.8 + i * 0.35} className="polaroid" style={{ '--d': `${0.8 + i * 0.35}s`, '--r': `${(i - 1) * 7}deg` }}>
+            <img src={s.img} alt="" />
+            {s.name && <span className="polaroid-name">{s.name}</span>}
           </A>
         ))}
       </div>
@@ -273,6 +280,8 @@ export default function FilmPage() {
     }
   }, [scene.id, scene.vo, take, local, playing, muted])
   useEffect(() => () => voice.current.el?.pause(), [])
+  // Fetch the hotels and warm their photos while the opening plays.
+  useEffect(() => { preloadLiveHotels().then((hs) => hs.forEach((h) => { new Image().src = h.images[0] })) }, [])
 
   const begin = () => { setStarted(true); setPlaying(true) }
 

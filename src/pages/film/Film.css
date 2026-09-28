@@ -155,3 +155,4 @@
 .start-play{font:600 12px 'Outfit',sans-serif;letter-spacing:.24em;text-transform:uppercase;color:var(--ink);background:var(--lime);border-radius:999px;padding:14px 26px;transition:transform .3s var(--ease)}
 .start:hover .start-play{transform:scale(1.05)}
 .start-note{font:400 11px 'Outfit',sans-serif;letter-spacing:.3em;text-transform:uppercase;color:rgba(243,240,231,.55)}
+.polaroid img{height:calc(100% - 0px)}.polaroid-name{position:absolute;left:12px;right:12px;bottom:10px;font:500 13px/1.2 "Playpen Sans Arabic",sans-serif;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
